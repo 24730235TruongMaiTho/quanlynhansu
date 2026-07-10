@@ -12,8 +12,7 @@
     <li>Viết code Quản lý vai trò, phân quyền</li>
     <li>Viết code Tạo báo cáo (sử dụng https://recharts.github.io)</li>
     <li>Viết code Sao lưu, phục hồi</li>
-    <li>Design giao diện (css, html)</li>
-    <li>Viết javascript</li>
+    <li>Design giao diện (css, html, js)</li>
     <li>Viết báo cáo, slide</li>
   </ul>
 <li>Kiến trúc</li>
