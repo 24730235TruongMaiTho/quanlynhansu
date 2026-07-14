@@ -5,8 +5,11 @@ use App\Http\Controllers\Backend\ {
     DashboardController,
     PhongBanController
 };
+use App\Http\Controllers\Frontend\HomeController;
 
 Route::get('/dashboard', [App\Http\Controllers\Backend\DashboardController::class, 'index']);
+
+Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
 
 // Tìm kiếm phòng ban
 Route::get('/phong-ban', [PhongBanController::class, 'index'])->name('backend.phongban.index');

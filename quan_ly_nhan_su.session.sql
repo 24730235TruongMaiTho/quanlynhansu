@@ -205,12 +205,12 @@ LEFT JOIN vai_tro vt ON vt.ma_vt = nv.ma_vt;
 -- FUNCTION
 -- ============================================================
 
-DELIMITER $$
-
 /* ---------------------------------------------------------
    Đếm nhân viên theo phòng ban
    --------------------------------------------------------- */
 DROP FUNCTION IF EXISTS fn_dem_nhan_vien_theo_phong_ban;
+
+DELIMITER //
 
 CREATE FUNCTION fn_dem_nhan_vien_theo_phong_ban(p_ma_pb INT)
 RETURNS INT
@@ -219,9 +219,7 @@ BEGIN
     DECLARE v_so_luong INT;
     SELECT COUNT(*) INTO v_so_luong FROM nhan_vien WHERE ma_pb = p_ma_pb;
     RETURN IFNULL(v_so_luong, 0);
-END$$
-
-DELIMITER ;
+END//
 
 /* ---------------------------------------------------------
    Đếm nhân viên theo chức vụ
@@ -681,7 +679,7 @@ DELIMITER //
 /* --------------------------------------
    Thêm phòng ban
    -------------------------------------- */
-DROP PROCEDURE IF EXISTS sp_phong_ban_them;
+DROP PROCEDURE IF EXISTS sp_phong_ban_them//
 
 CREATE PROCEDURE sp_phong_ban_them(
     IN p_ten_pb NVARCHAR(100)
@@ -695,12 +693,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban đã tồn tại.';
     END IF;
     INSERT INTO phong_ban(ten_pb) VALUES (p_ten_pb);
-END
+END//
 
 /* --------------------------------------
    Sửa phòng ban
    -------------------------------------- */
-DROP PROCEDURE IF EXISTS sp_phong_ban_sua;
+DROP PROCEDURE IF EXISTS sp_phong_ban_sua//
 
 CREATE PROCEDURE sp_phong_ban_sua(
     IN p_ma_pb INT,
@@ -718,12 +716,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban đã tồn tại.';
     END IF;
     UPDATE phong_ban SET ten_pb = p_ten_pb WHERE ma_pb = p_ma_pb;
-END
+END//
 
 /* --------------------------------------
    Xóa phòng ban
    -------------------------------------- */
-DROP PROCEDURE IF EXISTS sp_phong_ban_xoa;
+DROP PROCEDURE IF EXISTS sp_phong_ban_xoa//
 
 CREATE PROCEDURE sp_phong_ban_xoa(
     IN p_ma_pb INT
@@ -736,19 +734,19 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không thể xóa phòng ban vì đang có nhân viên thuộc phòng ban này.';
     END IF;
     DELETE FROM phong_ban WHERE ma_pb = p_ma_pb;
-END
+END//
 
 /* --------------------------------------
    Danh sách phòng ban
    -------------------------------------- */
-DROP PROCEDURE IF EXISTS sp_phong_ban_danh_sach$$
+DROP PROCEDURE IF EXISTS sp_phong_ban_danh_sach//
 
 CREATE PROCEDURE sp_phong_ban_danh_sach()
 BEGIN
     SELECT ma_pb, ten_pb, fn_dem_nhan_vien_theo_phong_ban(ma_pb) AS so_nhan_vien 
     FROM phong_ban 
     ORDER BY ma_pb;
-END$$
+END//
 
 /* ============================
    CHỨC VỤ
@@ -2043,7 +2041,7 @@ END//
 DROP PROCEDURE IF EXISTS sp_luong_tim_kiem//
 
 CREATE PROCEDURE sp_luong_tim_kiem(
-    IN p_tu_khoa NVARCHAR(MAX),
+    IN p_tu_khoa NVARCHAR(255),
     IN p_ky_luong DATE,
     IN p_ma_pb INT,
     IN p_ma_cv INT
