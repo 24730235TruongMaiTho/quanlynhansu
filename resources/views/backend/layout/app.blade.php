@@ -8,6 +8,7 @@
     @stack('styles') <!-- Thêm CSS tùy chỉnh -->
     <body>
         <!-- Sidebar -->
+        @include('backend.layout.sidebar')
         <!-- Main content -->
          <!-- Content -->
         @yield('content')
