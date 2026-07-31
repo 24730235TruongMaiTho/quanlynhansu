@@ -21,6 +21,16 @@ Hướng dẫn này dành cho Codex và các agent AI khi làm việc trong repo
 - `resources/css/app.css`, `resources/js/app.js`: entrypoint Vite.
 - `quan_ly_nhan_su.session.sql`: tạo database, bảng, view, function, trigger và stored procedure.
 
+## Tài Sản Quản Lý Codebase Cho Codex
+
+- `docs/CODEX_NEXT_HANDOFF.md`: snapshot kỹ thuật, lỗi chặn và thứ tự công việc tiếp theo. Đọc file này khi tiếp tục một phiên cũ.
+- `.codex/USAGE.md`: cách dùng instruction, prompt, agent role và skill riêng của đồ án.
+- `.codex/instructions/`: các quy tắc theo backend, UI, database và Git.
+- `.codex/prompts/`: prompt mẫu cho các workflow lặp lại.
+- `.codex/agents/`: vai trò tập trung cho phiên làm webapp, UI/UX hoặc review pull request.
+- `.codex/skills/quanlynhansu-project-standard/`: skill chuẩn của dự án; đọc khi sửa hoặc review code trong repo.
+- `.agents/skills/`: thư viện workflow kỹ thuật dùng chung đã có sẵn trong repository.
+
 ## Lệnh Hay Dùng
 
 Chạy trong PowerShell tại root repo:

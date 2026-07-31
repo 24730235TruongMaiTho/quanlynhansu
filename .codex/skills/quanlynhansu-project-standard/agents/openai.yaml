@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chuẩn dự án Quản lý Nhân sự"
+  short_description: "Quy trình làm đồ án Laravel quản lý nhân sự"
+  default_prompt: "Dùng $quanlynhansu-project-standard để thực hiện thay đổi an toàn trong đồ án quản lý nhân sự."
