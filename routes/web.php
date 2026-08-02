@@ -24,3 +24,18 @@ Route::put('/phong-ban/{id}', [PhongBanController::class, 'show'])->name('backen
 
 // Xóa phòng ban
 Route::delete('/phong-ban/{id}', [PhongBanController::class, 'destroy'])->name('backend.phongban.destroy');
+
+// Lương
+Route::get('/luong', function () {
+    return view('backend.luong.index');
+})->name('backend.luong.index');
+
+// Chấm công
+Route::get('/cham-cong', function () {
+    return view('backend.chamcong.index');
+})->name('backend.chamcong.index');
+
+// Nghỉ phép
+Route::get('/nghi-phep', function () {
+    return view('backend.nghiphep.index');
+})->name('backend.nghiphep.index');

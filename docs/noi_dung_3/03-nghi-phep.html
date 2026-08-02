@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nghỉ phép · HR System</title>
+  <link rel="stylesheet" href="primer-hr.css">
+</head>
+<body>
+<main class="hr-page" aria-labelledby="page-title">
+  <section class="page-heading">
+    <div>
+      <div class="crumb"><a href="#">Thời gian làm việc</a><span>/</span><span>Nghỉ phép</span></div>
+      <h1 class="page-title" id="page-title">Nghỉ phép</h1>
+      <p class="page-desc">Quản lý yêu cầu nghỉ phép, phê duyệt và theo dõi số ngày nghỉ của nhân viên.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn" data-toast="Đã mở lịch nghỉ của công ty."><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M5 2v3M11 2v3M2.5 6.5h11"/></svg> Lịch nghỉ</button>
+      <button class="btn btn-primary" data-toast="Mở biểu mẫu tạo đơn nghỉ phép."><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v10M3 8h10"/></svg> Tạo đơn nghỉ phép</button>
+    </div>
+  </section>
+
+  <section class="stats" aria-label="Tổng quan nghỉ phép">
+    <article class="card stat"><div class="stat-label"><span>Chờ duyệt</span><span>◷</span></div><div class="stat-value">5</div><div class="stat-help bad">2 đơn chờ quá 24 giờ</div></article>
+    <article class="card stat"><div class="stat-label"><span>Đã duyệt tháng này</span><span>✓</span></div><div class="stat-value">26</div><div class="stat-help">Tổng cộng 38,5 ngày nghỉ</div></article>
+    <article class="card stat"><div class="stat-label"><span>Đang nghỉ hôm nay</span><span>👥</span></div><div class="stat-value">6</div><div class="stat-help">Thuộc 4 phòng ban</div></article>
+    <article class="card stat"><div class="stat-label"><span>Tỷ lệ phê duyệt</span><span>%</span></div><div class="stat-value">91%</div><div class="stat-help"><span class="good">+2%</span> so với tháng trước</div></article>
+  </section>
+
+  <section class="card filter-card" aria-label="Bộ lọc">
+    <div class="filters">
+      <div class="input-wrap search-field"><span class="search-icon"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg></span><input class="control" type="search" placeholder="Tìm nhân viên hoặc lý do nghỉ..." data-filter-search></div>
+      <select class="control" aria-label="Khoảng thời gian"><option>Tháng 08/2026</option><option>Tháng 07/2026</option></select>
+      <select class="control" aria-label="Phòng ban" data-filter-department>
+        <option value="">Tất cả phòng ban</option><option value="ky-thuat">Kỹ thuật</option><option value="nhan-su">Nhân sự</option><option value="kinh-doanh">Kinh doanh</option><option value="tai-chinh">Tài chính</option>
+      </select>
+      <select class="control" aria-label="Trạng thái" data-filter-status>
+        <option value="">Tất cả trạng thái</option><option value="pending">Chờ duyệt</option><option value="approved">Đã duyệt</option><option value="rejected">Từ chối</option>
+      </select>
+      <button class="btn" data-clear-filters>Xóa lọc</button>
+    </div>
+  </section>
+
+  <section class="card table-card">
+    <div class="table-head">
+      <div><h2>Yêu cầu nghỉ phép</h2><p>Ưu tiên xử lý những đơn có ngày bắt đầu gần nhất.</p></div>
+      <div class="table-tools">
+        <div class="segmented" role="tablist">
+          <button aria-selected="true" data-tab="all">Tất cả</button>
+          <button aria-selected="false" data-tab="pending">Chờ duyệt</button>
+          <button aria-selected="false" data-tab="approved">Đã duyệt</button>
+          <button aria-selected="false" data-tab="rejected">Từ chối</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Nhân viên</th><th>Loại nghỉ</th><th>Thời gian</th><th class="numeric">Số ngày</th><th>Lý do</th><th>Ngày gửi</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+          <tr data-row data-search="NV014 Trần Minh Huy nghỉ phép năm việc gia đình" data-department="kinh-doanh" data-status="pending">
+            <td><div class="employee"><div class="avatar">TH</div><div><div class="employee-name">Trần Minh Huy</div><div class="meta">NV014 · Kinh doanh</div></div></div></td>
+            <td>Nghỉ phép năm</td><td><div>05/08/2026 – 06/08/2026</div><div class="sub">2 ngày liên tiếp</div></td><td class="numeric">2,0</td><td>Việc gia đình</td><td>02/08/2026</td><td><span class="label label-attention">Chờ duyệt</span></td>
+            <td><div class="row-actions"><button class="btn" data-toast="Đã duyệt đơn của Trần Minh Huy.">Duyệt</button><button class="btn btn-danger" data-toast="Đã từ chối đơn của Trần Minh Huy.">Từ chối</button></div></td>
+          </tr>
+          <tr data-row data-search="NV022 Lê Thu Trang nghỉ ốm khám bệnh" data-department="nhan-su" data-status="pending">
+            <td><div class="employee"><div class="avatar">LT</div><div><div class="employee-name">Lê Thu Trang</div><div class="meta">NV022 · Nhân sự</div></div></div></td>
+            <td>Nghỉ ốm</td><td><div>04/08/2026</div><div class="sub">1 ngày</div></td><td class="numeric">1,0</td><td>Khám bệnh</td><td>01/08/2026</td><td><span class="label label-attention">Chờ duyệt</span></td>
+            <td><div class="row-actions"><button class="btn" data-toast="Đã duyệt đơn của Lê Thu Trang.">Duyệt</button><button class="btn btn-danger" data-toast="Đã từ chối đơn của Lê Thu Trang.">Từ chối</button></div></td>
+          </tr>
+          <tr data-row data-search="NV001 Nguyễn Văn An nghỉ phép năm du lịch gia đình" data-department="ky-thuat" data-status="approved">
+            <td><div class="employee"><div class="avatar">NA</div><div><div class="employee-name">Nguyễn Văn An</div><div class="meta">NV001 · Kỹ thuật</div></div></div></td>
+            <td>Nghỉ phép năm</td><td><div>12/08/2026 – 14/08/2026</div><div class="sub">3 ngày liên tiếp</div></td><td class="numeric">3,0</td><td>Du lịch cùng gia đình</td><td>30/07/2026</td><td><span class="label label-success">Đã duyệt</span></td>
+            <td><button class="btn icon-btn kebab" data-toast="Mở chi tiết đơn của Nguyễn Văn An">•••</button></td>
+          </tr>
+          <tr data-row data-search="NV031 Phạm Đức Long nghỉ không lương việc cá nhân" data-department="tai-chinh" data-status="rejected">
+            <td><div class="employee"><div class="avatar">PL</div><div><div class="employee-name">Phạm Đức Long</div><div class="meta">NV031 · Tài chính</div></div></div></td>
+            <td>Nghỉ không lương</td><td><div>08/08/2026</div><div class="sub">1 ngày</div></td><td class="numeric">1,0</td><td>Việc cá nhân</td><td>29/07/2026</td><td><span class="label label-danger">Từ chối</span></td>
+            <td><button class="btn icon-btn kebab" data-toast="Mở chi tiết đơn của Phạm Đức Long">•••</button></td>
+          </tr>
+          <tr class="empty-row"><td colspan="8">Không tìm thấy yêu cầu nghỉ phép phù hợp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-foot"><span>Hiển thị 1–4 trên 42 yêu cầu</span><nav class="pagination"><button>‹</button><button aria-current="page">1</button><button>2</button><button>3</button><button>…</button><button>6</button><button>›</button></nav></div>
+  </section>
+</main>
+<div class="toast" role="status" aria-live="polite"></div>
+<script src="primer-hr.js"></script>
+</body></html>
