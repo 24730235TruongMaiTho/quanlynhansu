@@ -10,6 +10,9 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/css/frontend/home.css',
                 'resources/js/frontend/home.js',
+                'resources/js/frontend/luong/luong.js',
+                'resources/js/frontend/nghiphep/nghiphep.js',
+                'resources/js/frontend/chamcong/chamcong.js'
             ],
             refresh: true,
         }),

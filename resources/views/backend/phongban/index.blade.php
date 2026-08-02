@@ -6,7 +6,7 @@
         <h2>Danh sách phòng ban</h2>
         <table>
             <tr>
-            <th>Mã phòng ban</th> 
+            <th>Mã phòng ban</th>
             <th>Tên phòng ban</th>
         @foreach($pb in $phongban)
             <p>{{$pb->ten_pb}}</p>

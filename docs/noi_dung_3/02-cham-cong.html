@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Chấm công · HR System</title>
+  <link rel="stylesheet" href="primer-hr.css">
+</head>
+<body>
+<main class="hr-page" aria-labelledby="page-title">
+  <section class="page-heading">
+    <div>
+      <div class="crumb"><a href="#">Thời gian làm việc</a><span>/</span><span>Chấm công</span></div>
+      <h1 class="page-title" id="page-title">Chấm công</h1>
+      <p class="page-desc">Theo dõi ngày công, số giờ làm, vào muộn và về sớm theo từng nhân viên.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn" data-toast="Đã mở luồng nhập dữ liệu chấm công."><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8"/><path d="m4.8 7.2 3.2 3.2 3.2-3.2"/><path d="M3 14h10"/></svg> Nhập dữ liệu</button>
+      <button class="btn btn-primary" data-toast="Mở màn cập nhật chấm công."><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v10M3 8h10"/></svg> Cập nhật chấm công</button>
+    </div>
+  </section>
+
+  <section class="stats" aria-label="Tổng quan chấm công">
+    <article class="card stat"><div class="stat-label"><span>Ngày công trung bình</span><span>▣</span></div><div class="stat-value">21,4</div><div class="stat-help">Trên 22 ngày công chuẩn</div></article>
+    <article class="card stat"><div class="stat-label"><span>Tổng giờ làm</span><span>◷</span></div><div class="stat-value">21.920</div><div class="stat-help"><span class="good">+3,2%</span> so với tháng trước</div></article>
+    <article class="card stat"><div class="stat-label"><span>Vào muộn</span><span>!</span></div><div class="stat-value">12</div><div class="stat-help bad">5 trường hợp trên 15 phút</div></article>
+    <article class="card stat"><div class="stat-label"><span>Về sớm</span><span>↙</span></div><div class="stat-value">8</div><div class="stat-help">Giảm 3 trường hợp so với tháng trước</div></article>
+  </section>
+
+  <section class="card filter-card" aria-label="Bộ lọc">
+    <div class="filters">
+      <div class="input-wrap search-field"><span class="search-icon"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg></span><input class="control" type="search" placeholder="Tìm mã hoặc tên nhân viên..." data-filter-search></div>
+      <select class="control" aria-label="Tháng"><option>Tháng 07/2026</option><option>Tháng 06/2026</option></select>
+      <select class="control" aria-label="Phòng ban" data-filter-department>
+        <option value="">Tất cả phòng ban</option><option value="ky-thuat">Kỹ thuật</option><option value="nhan-su">Nhân sự</option><option value="kinh-doanh">Kinh doanh</option><option value="tai-chinh">Tài chính</option>
+      </select>
+      <select class="control" aria-label="Trạng thái" data-filter-status>
+        <option value="">Tất cả trạng thái</option><option value="good">Đủ công</option><option value="warning">Cần kiểm tra</option><option value="leave">Có nghỉ phép</option>
+      </select>
+      <button class="btn" data-clear-filters>Xóa lọc</button>
+    </div>
+  </section>
+
+  <section class="card table-card">
+    <div class="table-head">
+      <div><h2>Tổng hợp chấm công tháng 07/2026</h2><p>Quy đổi: 8 giờ = 1 công, 4 giờ = 0,5 công.</p></div>
+      <div class="table-tools">
+        <div class="segmented" role="tablist"><button aria-selected="true">Theo nhân viên</button><button aria-selected="false" data-toast="Chuyển sang chế độ theo ngày.">Theo ngày</button></div>
+        <button class="btn" data-toast="Đã chuẩn bị file chấm công.">Xuất file</button>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Nhân viên</th><th>Phòng ban</th><th class="numeric">Ngày công</th><th>Tiến độ tháng</th><th class="numeric">Tổng giờ</th><th class="numeric">Vào muộn</th><th class="numeric">Về sớm</th><th class="numeric">Nghỉ phép</th><th>Đánh giá</th><th></th></tr></thead>
+        <tbody>
+          <tr data-row data-search="NV001 Nguyễn Văn An kỹ thuật" data-department="ky-thuat" data-status="good">
+            <td><div class="employee"><div class="avatar">NA</div><div><div class="employee-name">Nguyễn Văn An</div><div class="meta">NV001</div></div></div></td><td>Kỹ thuật</td>
+            <td class="numeric"><strong>22,0</strong> / 22</td><td><div class="progress"><span style="width:100%"></span></div></td><td class="numeric">176 giờ</td><td class="numeric">0</td><td class="numeric">0</td><td class="numeric">0</td><td><span class="label label-success">Đủ công</span></td><td><button class="btn icon-btn kebab" data-toast="Mở chi tiết Nguyễn Văn An">•••</button></td>
+          </tr>
+          <tr data-row data-search="NV014 Trần Minh Huy kinh doanh" data-department="kinh-doanh" data-status="warning">
+            <td><div class="employee"><div class="avatar">TH</div><div><div class="employee-name">Trần Minh Huy</div><div class="meta">NV014</div></div></div></td><td>Kinh doanh</td>
+            <td class="numeric"><strong>21,5</strong> / 22</td><td><div class="progress"><span style="width:98%"></span></div></td><td class="numeric">172 giờ</td><td class="numeric bad">3</td><td class="numeric">1</td><td class="numeric">0,5</td><td><span class="label label-attention">Cần kiểm tra</span></td><td><button class="btn icon-btn kebab" data-toast="Mở chi tiết Trần Minh Huy">•••</button></td>
+          </tr>
+          <tr data-row data-search="NV022 Lê Thu Trang nhân sự" data-department="nhan-su" data-status="leave">
+            <td><div class="employee"><div class="avatar">LT</div><div><div class="employee-name">Lê Thu Trang</div><div class="meta">NV022</div></div></div></td><td>Nhân sự</td>
+            <td class="numeric"><strong>20,0</strong> / 22</td><td><div class="progress"><span style="width:91%"></span></div></td><td class="numeric">160 giờ</td><td class="numeric">0</td><td class="numeric">0</td><td class="numeric">2,0</td><td><span class="label label-accent">Có nghỉ phép</span></td><td><button class="btn icon-btn kebab" data-toast="Mở chi tiết Lê Thu Trang">•••</button></td>
+          </tr>
+          <tr data-row data-search="NV031 Phạm Đức Long tài chính" data-department="tai-chinh" data-status="warning">
+            <td><div class="employee"><div class="avatar">PL</div><div><div class="employee-name">Phạm Đức Long</div><div class="meta">NV031</div></div></div></td><td>Tài chính</td>
+            <td class="numeric"><strong>21,0</strong> / 22</td><td><div class="progress"><span style="width:95%"></span></div></td><td class="numeric">168 giờ</td><td class="numeric">1</td><td class="numeric bad">2</td><td class="numeric">1,0</td><td><span class="label label-attention">Cần kiểm tra</span></td><td><button class="btn icon-btn kebab" data-toast="Mở chi tiết Phạm Đức Long">•••</button></td>
+          </tr>
+          <tr class="empty-row"><td colspan="10">Không có dữ liệu chấm công phù hợp.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-foot"><span>128 nhân viên · Cập nhật lúc 09:42</span><nav class="pagination"><button>‹</button><button aria-current="page">1</button><button>2</button><button>3</button><button>…</button><button>16</button><button>›</button></nav></div>
+  </section>
+</main>
+<div class="toast" role="status" aria-live="polite"></div>
+<script src="primer-hr.js"></script>
+</body></html>
