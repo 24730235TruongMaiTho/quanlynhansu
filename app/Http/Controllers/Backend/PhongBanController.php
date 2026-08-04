@@ -15,7 +15,11 @@ class PhongBanController extends Controller
         $danh_sach_phong_ban = DB::select('CALL sp_phong_ban_danh_sach()');
 
         return view('backend.phongban.index', compact('phongban'));
+    }
 
+    public function create()
+    {
+        return view('backend.phongban.create');
     }
 
     // Thêm phòng ban

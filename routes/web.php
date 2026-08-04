@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Backend\ {
     DashboardController,
-    PhongBanController
+    PhongBanController,
+    ChucVuController,
+    NhanVienController
 };
 use App\Http\Controllers\Frontend\HomeController;
 
@@ -24,3 +26,18 @@ Route::put('/phong-ban/{id}', [PhongBanController::class, 'show'])->name('backen
 
 // Xóa phòng ban
 Route::delete('/phong-ban/{id}', [PhongBanController::class, 'destroy'])->name('backend.phongban.destroy');
+
+
+// Tìm kiếm nhân viên
+Route::get('/nhan-vien', [NhanVienController::class, 'index'])->name('backend.nhanvien.index');
+
+// Tạo mới phòng ban
+Route::get('/nhan-vien/create', [NhanVienController::class, 'create'])->name('backend.nhanvien.create');
+Route::post('/nhan-vien', [NhanVienController::class, 'store'])->name('backend.nhanvien.store');
+
+// Sửa phòng ban
+Route::get('/nhan-vien/{id}/sua', [NhanVienController::class, 'edit'])->name('backend.nhanvien.edit');
+Route::put('/nhan-vien/{id}', [NhanVienController::class, 'show'])->name('backend.nhanvien.show');
+
+// Xóa phòng ban
+Route::delete('/nhan-vien/{id}', [NhanVienController::class, 'destroy'])->name('backend.nhanvien.destroy');
