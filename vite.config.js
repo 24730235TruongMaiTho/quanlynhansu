@@ -12,7 +12,8 @@ export default defineConfig({
                 'resources/js/frontend/home.js',
                 'resources/js/frontend/luong/luong.js',
                 'resources/js/frontend/nghiphep/nghiphep.js',
-                'resources/js/frontend/chamcong/chamcong.js'
+                'resources/js/frontend/chamcong/chamcong.js',
+                'resources/js/frontend/luong/luongCreateUpdate.js'
             ],
             refresh: true,
         }),

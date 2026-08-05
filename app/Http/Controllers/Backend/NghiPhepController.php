@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Backend;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreNghiPhepRequest;
 use App\Http\Requests\UpdateNghiPhepRequest;
 use App\Services\NghiPhepService;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 
 class NghiPhepController extends Controller
 {
