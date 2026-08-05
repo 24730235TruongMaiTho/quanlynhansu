@@ -16,7 +16,7 @@
         <ul class="sidebar-menu">
             <!-- Dashboard -->
             <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="/admin/bang-dieu-khien" class="nav-link">
                     <i class="bi bi-house-fill"></i>
                     <span class="nav-title">Bảng điều khiển</span>
                 </a>
@@ -30,13 +30,13 @@
                 </a>
                 <ul class="sub-menu">
                     <li class="nav-item">
-                        <a href="/nhan-vien" class="nav-link">
+                        <a href="/admin/nhan-vien/danh-sach-nhan-vien" class="nav-link">
                             <i class="bi bi-person-lines-fill"></i>
                             <span class="nav-title">Danh sách nhân viên</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="/nhan-vien/create" class="nav-link">
+                        <a href="/admin/nhan-vien/them-nhan-vien" class="nav-link">
                             <i class="bi bi-person-plus-fill"></i>
                             <span class="nav-title">Thêm mới</span>
                         </a>

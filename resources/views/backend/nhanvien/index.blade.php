@@ -1,4 +1,4 @@
-@extends('backend.layout.app')
+@extends('backend.layouts.app')
 @section('title', 'Danh sách nhân viên - Quản lý nhân sự')
 @section('content')
 <!-- ===== CONTENT AREA ===== -->

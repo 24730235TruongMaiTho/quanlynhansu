@@ -15,10 +15,10 @@
     <body>
         <!-- ===== SIDEBAR BACKDROP ===== -->
         <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-        @include('backend.layout.sidebar')
+        @include('backend.layouts.sidebar')
         <!-- ===== MAIN CONTENT ===== -->
         <div class="main-content">
-            @include('backend.layout.topbar')
+            @include('backend.layouts.topbar')
             @yield('content')
         </div>
         

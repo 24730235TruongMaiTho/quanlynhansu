@@ -24,3 +24,4 @@ class ChucVu extends Model
         return $this->hasMany(NhanVien::class, 'ma_cv', 'ma_cv');
     }
 }
+?>
