@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Backend;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreLuongRequest;
 use App\Http\Requests\UpdateLuongRequest;
 use App\Services\LuongService;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 
 class LuongController extends Controller
 {
@@ -19,7 +19,7 @@ class LuongController extends Controller
 
     public function index(Request $request)
     {
-        $filters = $request->only(['ma_nv', 'from_date', 'to_date']);
+        $filters = $request->only(['ma_nv', 'ky_luong', 'ma_pb', 'ma_cv']);
         $result = $this->service->getAll($filters);
 
         if (!$result['success']) {

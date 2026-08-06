@@ -1,12 +1,11 @@
 <?php
 
 namespace App\Http\Controllers\Backend;
-
-use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreChamCongRequest;
 use App\Http\Requests\UpdateChamCongRequest;
 use App\Services\ChamCongService;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 
 class ChamCongController extends Controller
 {

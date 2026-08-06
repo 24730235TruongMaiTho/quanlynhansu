@@ -14,7 +14,7 @@ class StoreLuongRequest extends FormRequest
     public function rules()
     {
         return [
-            'ma_nv' => 'required|integer|exists:nhan_vien,ma_nv',
+            'ma_nv' => 'required|string|max:5|exists:nhan_vien,ma_nv',
             'ky_luong' => 'required|date',
             'thuong' => 'nullable|numeric|min:0',
             'phat' => 'nullable|numeric|min:0',

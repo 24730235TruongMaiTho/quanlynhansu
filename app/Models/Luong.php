@@ -20,7 +20,6 @@ class Luong extends Model
     ];
 
     protected $casts = [
-        'ky_luong' => 'date',
         'thuong' => 'decimal:2',
         'phat' => 'decimal:2',
         'bao_hiem' => 'decimal:2',

@@ -1,0 +1,894 @@
+/*
+|--------------------------------------------------------------------------
+| Salary module styles
+|--------------------------------------------------------------------------
+| Bootstrap đảm nhiệm grid, spacing, form, button và table.
+| CSS này chỉ giữ phần Primer-like và các class do JavaScript render động.
+| Toàn bộ selector được scope để không ảnh hưởng layout chung.
+*/
+
+.salary-page {
+    --salary-bg: #f6f8fa;
+    --salary-canvas: #ffffff;
+    --salary-subtle: #f6f8fa;
+    --salary-inset: #eff2f5;
+    --salary-fg: #1f2328;
+    --salary-muted: #656d76;
+    --salary-border: #d0d7de;
+    --salary-border-muted: #d8dee4;
+    --salary-accent: #0969da;
+    --salary-accent-muted: #ddf4ff;
+    --salary-success: #1a7f37;
+    --salary-success-muted: #dafbe1;
+    --salary-danger: #cf222e;
+    --salary-danger-muted: #ffebe9;
+    --salary-attention: #9a6700;
+    --salary-attention-muted: #fff8c5;
+
+    color: var(--salary-fg);
+}
+
+.salary-page.hr-page {
+    max-width: 1440px;
+}
+
+.salary-page .page-title {
+    letter-spacing: -0.02em;
+}
+
+.salary-page .crumb a:hover {
+    color: var(--salary-accent) !important;
+    text-decoration: underline !important;
+}
+
+.salary-page .card {
+    border-color: var(--salary-border);
+    border-radius: 0.75rem;
+}
+
+.salary-page .filter-card,
+.salary-page .table-card {
+    background: var(--salary-canvas);
+}
+
+.salary-page .search-field .input-group-text {
+    color: var(--salary-muted);
+    border-color: var(--salary-border);
+    border-right: 0;
+}
+
+.salary-page .search-field .form-control {
+    border-left: 0;
+}
+
+.salary-page .control,
+.salary-page .form-control,
+.salary-page .form-select {
+    border-color: var(--salary-border);
+    color: var(--salary-fg);
+}
+
+.salary-page .control:focus,
+.salary-page .form-control:focus,
+.salary-page .form-select:focus {
+    border-color: var(--salary-accent);
+    box-shadow: 0 0 0 0.2rem rgba(9, 105, 218, 0.18);
+}
+
+.salary-page .control::placeholder {
+    color: #8c959f;
+}
+
+.salary-page .salary-period-group {
+    min-width: max-content;
+}
+
+.salary-page .salary-month-select {
+    width: 4.25rem;
+    min-width: 4.25rem;
+}
+
+.salary-page .salary-year-input {
+    width: 5.5rem;
+    min-width: 5.5rem;
+}
+
+.salary-page #clear-filter-btn {
+    min-width: 5.75rem;
+}
+
+.salary-page .table-head {
+    border-bottom-color: var(--salary-border);
+}
+
+.salary-page .table-scroll {
+    scrollbar-width: thin;
+}
+
+.salary-page .data-table {
+    min-width: 1320px;
+    font-size: 0.875rem;
+}
+
+.salary-page .data-table > :not(caption) > * > * {
+    padding: 0.7rem 0.8rem;
+    border-bottom-color: var(--salary-border-muted);
+}
+
+.salary-page .data-table thead th {
+    color: var(--salary-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.salary-page .data-table tbody tr:hover > * {
+    background-color: rgba(246, 248, 250, 0.72);
+}
+
+.salary-page .numeric {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Các class được luong.js tạo động
+|--------------------------------------------------------------------------
+*/
+
+.salary-page .employee {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 13rem;
+}
+
+.salary-page .avatar {
+    width: 2.125rem;
+    height: 2.125rem;
+    flex: 0 0 2.125rem;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--salary-border);
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ddf4ff, #fbefff);
+    color: var(--salary-fg);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.salary-page .employee-name {
+    font-weight: 600;
+}
+
+.salary-page .meta,
+.salary-page .sub {
+    color: var(--salary-muted);
+    font-size: 0.75rem;
+}
+
+.salary-page .label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.4rem;
+    padding: 0.08rem 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.salary-page .label::before {
+    content: "";
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.salary-page .label-success {
+    color: var(--salary-success);
+    background: var(--salary-success-muted);
+    border-color: rgba(74, 194, 107, 0.34);
+}
+
+.salary-page .label-attention {
+    color: var(--salary-attention);
+    background: var(--salary-attention-muted);
+    border-color: rgba(212, 167, 44, 0.34);
+}
+
+.salary-page .label-danger {
+    color: var(--salary-danger);
+    background: var(--salary-danger-muted);
+    border-color: rgba(255, 129, 130, 0.34);
+}
+
+.salary-page .label-accent {
+    color: var(--salary-accent);
+    background: var(--salary-accent-muted);
+    border-color: rgba(84, 174, 255, 0.34);
+}
+
+.salary-page .row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.375rem;
+    white-space: nowrap;
+}
+
+.salary-page .salary-action-btn {
+    min-height: 1.75rem;
+    padding: 0.15rem 0.5rem;
+    border-color: var(--salary-border);
+    background: var(--salary-canvas);
+    color: var(--salary-fg);
+    font-size: 0.75rem;
+}
+
+.salary-page .salary-action-btn:hover {
+    background: var(--salary-subtle);
+}
+
+.salary-page .btn-danger.salary-action-btn {
+    color: var(--salary-danger);
+}
+
+.salary-page .btn-danger.salary-action-btn:hover {
+    border-color: var(--salary-danger);
+    background: var(--salary-danger-muted);
+    color: var(--salary-danger);
+}
+
+.salary-page .empty-row td,
+.salary-page .table-message {
+    padding: 2.75rem 1rem !important;
+    text-align: center !important;
+    color: var(--salary-muted);
+}
+
+.salary-page .table-foot {
+    border-top: 1px solid var(--salary-border);
+}
+
+.salary-page .salary-pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.salary-page .salary-pagination button {
+    min-width: 1.875rem;
+    height: 1.875rem;
+    padding: 0 0.45rem;
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--salary-fg);
+    cursor: pointer;
+}
+
+.salary-page .salary-pagination button:hover:not(:disabled) {
+    border-color: var(--salary-border);
+    background: var(--salary-subtle);
+}
+
+.salary-page .salary-pagination button[aria-current="page"] {
+    border-color: var(--salary-accent);
+    background: var(--salary-accent);
+    color: #ffffff;
+}
+
+.salary-page .salary-pagination button:disabled {
+    color: #8c959f;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.salary-page .pagination-ellipsis {
+    display: inline-grid;
+    min-width: 1.875rem;
+    height: 1.875rem;
+    place-items: center;
+    color: var(--salary-muted);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Toast
+|--------------------------------------------------------------------------
+*/
+
+.salary-toast {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 1090;
+    display: block;
+    width: auto;
+    max-width: min(24rem, calc(100vw - 2.5rem));
+    padding: 0.7rem 0.9rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: #24292f;
+    color: #ffffff;
+    box-shadow: 0 0.5rem 1.5rem rgba(31, 35, 40, 0.22);
+    opacity: 0;
+    transform: translateY(0.5rem);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.salary-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Native dialog dùng cùng JavaScript hiện tại
+|--------------------------------------------------------------------------
+*/
+
+#salary-modal.salary-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: min(42.5rem, calc(100vw - 2rem));
+    max-width: none;
+    max-height: calc(100dvh - 2.5rem);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--salary-border);
+    border-radius: 0.75rem;
+    background: var(--salary-canvas);
+    color: var(--salary-fg);
+    box-shadow:
+        0 1rem 2rem rgba(31, 35, 40, 0.18),
+        0 0.25rem 0.75rem rgba(31, 35, 40, 0.12);
+}
+
+#salary-modal.salary-dialog::backdrop {
+    background: rgba(31, 35, 40, 0.48);
+    backdrop-filter: blur(2px);
+}
+
+#salary-modal .salary-modal-form {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 2.5rem);
+}
+
+#salary-modal .salary-modal-header {
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid var(--salary-border);
+}
+
+#salary-modal .salary-modal-message {
+    margin: 1rem 1.5rem 0;
+}
+
+#salary-modal .salary-form-grid {
+    margin: 0;
+    padding: 1.25rem 1.5rem 1.5rem;
+    overflow-y: auto;
+}
+
+#salary-modal .salary-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+#salary-modal .salary-modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--salary-border);
+    background: var(--salary-subtle);
+}
+
+#salary-modal[data-mode="view"] #salary-modal-submit {
+    display: none;
+}
+
+#salary-modal[data-mode="view"] input {
+    background: var(--salary-subtle);
+    color: var(--salary-muted);
+    cursor: default;
+}
+
+#salary-modal button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Salary dialog compatible with Bootstrap
+|--------------------------------------------------------------------------
+*/
+
+#salary-modal.salary-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+
+    width: min(680px, calc(100vw - 32px));
+    max-width: none;
+    max-height: calc(100dvh - 40px);
+
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+
+    transform: translate(-50%, -50%);
+
+    border: 1px solid var(--salary-border, #d0d7de);
+    border-radius: 12px;
+
+    background: var(--salary-canvas, #ffffff);
+    color: var(--salary-fg, #1f2328);
+
+    box-shadow:
+        0 16px 32px rgba(31, 35, 40, 0.18),
+        0 4px 12px rgba(31, 35, 40, 0.12);
+}
+
+/*
+ * Native dialog chỉ hiển thị khi showModal() hoặc show() được gọi.
+ */
+#salary-modal.salary-dialog:not([open]) {
+    display: none;
+}
+
+#salary-modal.salary-dialog::backdrop {
+    background: rgba(31, 35, 40, 0.48);
+    backdrop-filter: blur(2px);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Form container
+|--------------------------------------------------------------------------
+*/
+
+#salary-modal .salary-modal-form {
+    display: flex;
+    flex-direction: column;
+
+    width: 100%;
+    max-height: calc(100dvh - 40px);
+
+    margin: 0;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Header
+|--------------------------------------------------------------------------
+*/
+
+#salary-modal .salary-modal-header {
+    flex: 0 0 auto;
+
+    padding: 20px 24px 16px;
+
+    border-bottom: 1px solid var(--salary-border, #d0d7de);
+    background: var(--salary-canvas, #ffffff);
+}
+
+#salary-modal .salary-modal-header h2 {
+    color: var(--salary-fg, #1f2328);
+}
+
+#salary-modal .salary-modal-header p {
+    color: var(--salary-muted, #656d76);
+}
+
+/*
+ * Vì HTML đã dùng Bootstrap .btn-close,
+ * không dùng font-size 24px hoặc ký tự × như CSS cũ.
+ */
+#salary-modal .salary-modal-close {
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
+#salary-modal .salary-modal-close:focus {
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.2);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Error message
+|--------------------------------------------------------------------------
+*/
+
+#salary-modal .salary-modal-message {
+    flex: 0 0 auto;
+
+    margin: 16px 24px 0;
+    padding: 10px 12px;
+
+    font-size: 13px;
+}
+
+/*
+ * Bootstrap có thể dùng display:block cho alert,
+ * nên cần đảm bảo thuộc tính hidden vẫn hoạt động.
+ */
+#salary-modal .salary-modal-message[hidden] {
+    display: none !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Form body
+|--------------------------------------------------------------------------
+*/
+
+/*
+ * HTML đang là:
+ * class="salary-form-grid row g-3"
+ *
+ * Không đặt display:grid nữa.
+ */
+#salary-modal .salary-form-grid {
+    flex: 1 1 auto;
+
+    margin-right: 0;
+    margin-left: 0;
+    padding: 20px 24px 24px;
+
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/*
+ * Các col-12 col-md-6 đã quyết định chiều rộng.
+ * Chỉ giữ cấu trúc label/input theo chiều dọc.
+ */
+#salary-modal .salary-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/*
+ * Không còn dùng grid-column.
+ */
+#salary-modal .salary-form-full {
+    grid-column: auto;
+}
+
+#salary-modal .salary-form-group label {
+    margin-bottom: 6px;
+
+    color: var(--salary-fg, #1f2328);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#salary-modal .form-text {
+    color: var(--salary-muted, #656d76);
+    font-size: 12px;
+}
+
+#salary-modal .required {
+    color: var(--salary-danger, #cf222e);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Inputs
+|--------------------------------------------------------------------------
+*/
+
+#salary-modal .form-control {
+    border-color: var(--salary-border, #d0d7de);
+    color: var(--salary-fg, #1f2328);
+}
+
+#salary-modal .form-control:focus {
+    border-color: var(--salary-accent, #0969da);
+    box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.18);
+}
+
+#salary-modal .form-control[readonly] {
+    background: var(--salary-subtle, #f6f8fa);
+}
+
+/*
+ * money-input hiện là Bootstrap .input-group.
+ * Không dùng position:absolute cho ký hiệu ₫.
+ */
+#salary-modal .money-input {
+    position: static;
+}
+
+#salary-modal .money-input .form-control {
+    text-align: right;
+}
+
+#salary-modal .money-input .input-group-text {
+    border-color: var(--salary-border, #d0d7de);
+
+    background: var(--salary-subtle, #f6f8fa);
+    color: var(--salary-muted, #656d76);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Footer
+|--------------------------------------------------------------------------
+*/
+
+#salary-modal .salary-modal-footer {
+    flex: 0 0 auto;
+
+    padding: 16px 24px;
+
+    border-top: 1px solid var(--salary-border, #d0d7de);
+    background: var(--salary-subtle, #f6f8fa);
+}
+
+/*
+|--------------------------------------------------------------------------
+| View mode
+|--------------------------------------------------------------------------
+*/
+
+#salary-modal[data-mode="view"] #salary-modal-submit {
+    display: none !important;
+}
+
+#salary-modal[data-mode="view"] input {
+    background: var(--salary-subtle, #f6f8fa);
+    color: var(--salary-muted, #656d76);
+    cursor: default;
+}
+
+#salary-modal[data-mode="view"] .input-group-text {
+    background: var(--salary-subtle, #f6f8fa);
+    color: var(--salary-muted, #656d76);
+}
+
+#salary-modal button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.salary-page .salary-per-page-select {
+    width: 84px;
+    min-width: 84px;
+    height: 38px;
+    padding-right: 40px;
+    background-position: right 0.75rem center;
+    background-size: 12px 12px;
+}
+
+
+#coefficient-modal.coefficient-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+
+    width: min(640px, calc(100vw - 32px));
+    max-width: none;
+    max-height: calc(100dvh - 40px);
+
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+
+    transform: translate(-50%, -50%);
+
+    border: 1px solid var(--salary-border, #d0d7de);
+    border-radius: 12px;
+
+    background: var(--salary-canvas, #ffffff);
+    color: var(--salary-fg, #1f2328);
+
+    box-shadow:
+        0 16px 32px rgba(31, 35, 40, 0.18),
+        0 4px 12px rgba(31, 35, 40, 0.12);
+}
+
+#coefficient-modal.coefficient-dialog:not([open]) {
+    display: none;
+}
+
+#coefficient-modal::backdrop {
+    background: rgba(31, 35, 40, 0.48);
+    backdrop-filter: blur(2px);
+}
+
+#coefficient-modal .coefficient-modal-form {
+    display: flex;
+    flex-direction: column;
+
+    width: 100%;
+    max-height: calc(100dvh - 40px);
+
+    margin: 0;
+}
+
+#coefficient-modal .coefficient-modal-header {
+    flex: 0 0 auto;
+
+    padding: 20px 24px 16px;
+
+    border-bottom: 1px solid
+    var(--salary-border, #d0d7de);
+}
+
+#coefficient-modal .coefficient-modal-message {
+    margin: 16px 24px 0;
+    padding: 10px 12px;
+
+    font-size: 13px;
+}
+
+#coefficient-modal .coefficient-modal-message[hidden] {
+    display: none !important;
+}
+
+#coefficient-modal .coefficient-form-body {
+    flex: 1 1 auto;
+
+    margin: 0;
+    padding: 20px 24px 24px;
+
+    overflow-y: auto;
+}
+
+#coefficient-modal .coefficient-modal-footer {
+    flex: 0 0 auto;
+
+    padding: 16px 24px;
+
+    border-top: 1px solid
+    var(--salary-border, #d0d7de);
+
+    background: var(--salary-subtle, #f6f8fa);
+}
+
+#coefficient-modal[data-mode="view"]
+#coefficient-modal-submit {
+    display: none !important;
+}
+
+#coefficient-modal[data-mode="view"]
+input {
+    background: var(--salary-subtle, #f6f8fa);
+    color: var(--salary-muted, #656d76);
+    cursor: default;
+}
+
+#coefficient-modal button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 575.98px) {
+    #coefficient-modal.coefficient-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100dvh - 20px);
+    }
+
+    #coefficient-modal .coefficient-modal-form {
+        max-height: calc(100dvh - 20px);
+    }
+
+    #coefficient-modal .coefficient-modal-header {
+        padding: 16px;
+    }
+
+    #coefficient-modal .coefficient-modal-message {
+        margin: 12px 16px 0;
+    }
+
+    #coefficient-modal .coefficient-form-body {
+        padding: 16px;
+    }
+
+    #coefficient-modal .coefficient-modal-footer {
+        flex-direction: column-reverse;
+        padding: 12px 16px;
+    }
+
+    #coefficient-modal .coefficient-modal-footer .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .salary-page .table-foot > div {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+/*
+|--------------------------------------------------------------------------
+| Mobile
+|--------------------------------------------------------------------------
+*/
+
+@media (max-width: 640px) {
+    #salary-modal.salary-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100dvh - 20px);
+    }
+
+    #salary-modal .salary-modal-form {
+        max-height: calc(100dvh - 20px);
+    }
+
+    #salary-modal .salary-modal-header {
+        padding: 16px;
+    }
+
+    #salary-modal .salary-modal-message {
+        margin: 12px 16px 0;
+    }
+
+    #salary-modal .salary-form-grid {
+        padding: 16px;
+    }
+
+    #salary-modal .salary-modal-footer {
+        flex-direction: column-reverse;
+
+        padding: 12px 16px;
+    }
+
+    #salary-modal .salary-modal-footer .btn {
+        width: 100%;
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Responsive
+|--------------------------------------------------------------------------
+*/
+
+@media (max-width: 991.98px) {
+    .salary-page .salary-period-group {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .salary-page.hr-page {
+        padding-top: 1rem !important;
+        padding-right: 0.625rem;
+        padding-left: 0.625rem;
+    }
+
+    .salary-page .salary-period-group {
+        width: 100%;
+    }
+
+    .salary-page .salary-month-select {
+        width: 4.5rem;
+        min-width: 4.5rem;
+    }
+
+    .salary-page .salary-year-input {
+        width: 100%;
+        min-width: 5.5rem;
+    }
+
+    #salary-modal .salary-modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    #salary-modal .salary-modal-footer .btn {
+        width: 100%;
+    }
+}

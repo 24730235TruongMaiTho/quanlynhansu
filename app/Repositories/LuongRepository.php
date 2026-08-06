@@ -3,26 +3,78 @@
 namespace App\Repositories;
 
 use App\Models\Luong;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class LuongRepository
 {
-    public function all($filters = [])
+    public function all(array $filters = []): LengthAwarePaginator
     {
-        $query = Luong::query();
+        $page = max(
+            (int) ($filters['page'] ?? 1),
+            1
+        );
 
-        if (isset($filters['ma_nv'])) {
-            $query->where('ma_nv', $filters['ma_nv']);
-        }
+        $perPage = min(
+            max((int) ($filters['per_page'] ?? 15), 1),
+            100
+        );
 
-        if (isset($filters['from_date'])) {
-            $query->whereDate('ky_luong', '>=', $filters['from_date']);
-        }
+        $maNhanVien = $this->nullIfEmpty(
+            $filters['ma_nv'] ?? null
+        );
 
-        if (isset($filters['to_date'])) {
-            $query->whereDate('ky_luong', '<=', $filters['to_date']);
-        }
+        $kyLuong = $this->nullIfEmpty(
+            $filters['ky_luong'] ?? null
+        );
 
-        return $query->with('nhanVien')->paginate(15);
+        $maPhongBan = $this->nullableInteger(
+            $filters['ma_pb'] ?? null
+        );
+
+        $maChucVu = $this->nullableInteger(
+            $filters['ma_cv'] ?? null
+        );
+
+        $rows = collect(
+            DB::select(
+                'CALL sp_luong_tim_kiem_phan_trang(
+                    ?, ?, ?, ?, ?, ?
+                )',
+                [
+                    $maNhanVien,
+                    $kyLuong,
+                    $maPhongBan,
+                    $maChucVu,
+                    $page,
+                    $perPage,
+                ]
+            )
+        );
+
+        $total = (int) (
+            $rows->first()->total_count ?? 0
+        );
+
+        $items = $rows
+            ->map(function (object $row): object {
+                unset($row->total_count);
+
+                return $row;
+            })
+            ->values();
+
+        return new LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'query' => request()->query(),
+                'pageName' => 'page',
+            ]
+        );
     }
 
     public function find($id)
@@ -47,5 +99,15 @@ class LuongRepository
     public function delete($id)
     {
         return Luong::destroy($id);
+    }
+
+    private function nullIfEmpty(mixed $param)
+    {
+        return $param === '' ? null : $param;
+    }
+
+    private function nullableInteger(mixed $param)
+    {
+        return is_numeric($param) ? (int) $param : null;
     }
 }
