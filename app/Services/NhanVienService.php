@@ -1,2 +1,4 @@
-namespace app/Services;
+<?php
+namespace App\Services;
 
+?>

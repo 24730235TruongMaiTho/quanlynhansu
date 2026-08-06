@@ -72,3 +72,4 @@ class ChamCongController extends Controller
         return response()->json($result);
     }
 }
+?>

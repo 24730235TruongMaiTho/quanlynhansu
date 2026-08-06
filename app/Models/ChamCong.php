@@ -30,3 +30,4 @@ class ChamCong extends Model
         return $this->belongsTo(NhanVien::class, 'ma_nv', 'ma_nv');
     }
 }
+?>
