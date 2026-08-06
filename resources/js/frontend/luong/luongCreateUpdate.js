@@ -89,6 +89,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${year}-${String(month).padStart(2, '0')}-01`;
     }
 
+    function getSelectedSalaryPeriodLabel() {
+        const month = Number(elements.month?.value);
+        const year = Number(elements.year?.value);
+
+        if (
+            !Number.isInteger(month) ||
+            month < 1 ||
+            month > 12 ||
+            !Number.isInteger(year)
+        ) {
+            return '—';
+        }
+
+        return `${String(month).padStart(2, '0')}/${year}`;
+    }
+
     function showMessage(message) {
         if (!elements.modalMessage) {
             return;
@@ -129,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.salaryId.value = '';
         elements.employeeCode.value = '';
         elements.salaryPeriod.value =
-            getSelectedSalaryPeriod() || '';
+            getSelectedSalaryPeriodLabel() || '';
 
         elements.bonus.value = '0';
         elements.penalty.value = '0';
@@ -267,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
             salary.ma_nv ?? '';
 
         elements.salaryPeriod.value =
-            salary.ky_luong ?? '';
+            getSelectedSalaryPeriodLabel() ?? '';
 
         elements.bonus.value =
             toNumber(salary.thuong);
@@ -320,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .trim()
                 .toUpperCase(),
 
-            ky_luong: elements.salaryPeriod.value,
+            ky_luong: getSelectedSalaryPeriod(),
 
             thuong: toNumber(elements.bonus.value),
             phat: toNumber(elements.penalty.value),

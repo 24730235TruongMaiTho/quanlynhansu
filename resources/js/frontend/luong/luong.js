@@ -1,3 +1,4 @@
+import '../../../css/luong/salary-bootstrap.css'
 document.addEventListener('DOMContentLoaded', () => {
     const LUONG_API_URL = '/api/v1/luong';
     const PHONG_BAN_API_URL = '/api/v1/luong/phong-ban';
@@ -309,21 +310,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hasChamCong =
                     salary.so_ngay_cham_cong !== null && salary.so_ngay_cham_cong > 0
 
-                const hasSalary = salary.ky_luong != null;
+                const hasSalary = salary.thuc_nhan > 0;
 
-                const statusHtml = !hasSalary
+                const statusHtml = hasSalary
                     ? `
-                    <span class="label label-attention">
-                        Chưa có dữ liệu kỳ lương
-                    </span>
-                ` : hasChamCong ? `
                     <span class="label label-success">
                         Đã hoàn tất
                     </span>
-                `
-                    : `
+                ` : `
                     <span class="label label-attention">
-                        Chưa có dữ liệu chấm công
+                        ${salary.thong_bao_tinh_luong}
                     </span>
                 `;
 
@@ -362,16 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     salary.ma_luong || ''
                 )}"
                 >
-                    <td>
-                        <input
-                            class="checkbox"
-                            type="checkbox"
-                            value="${escapeHtml(
-                    salary.ma_luong || ''
-                )}"
-                            aria-label="Chọn ${escapeHtml(employeeName)}"
-                        >
-                    </td>
 
                     <td>
                         <div class="employee">
@@ -483,6 +469,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                 aria-label="Xóa lương của ${escapeHtml(employeeName)}"
                             >
                                 Xóa
+                            </button>
+                            <button
+                                class="btn btn-outline-primary salary-action-btn"
+                                type="button"
+                                data-salary-action="coefficient"
+                                data-employee-code="${escapeHtml(employeeCode)}"
+                                data-employee-name="${escapeHtml(employeeName)}"
+                                aria-label="Xem hệ số lương của ${escapeHtml(employeeName)}"
+                            >
+                                Hệ số
                             </button>
                         </div>
                 </td>
