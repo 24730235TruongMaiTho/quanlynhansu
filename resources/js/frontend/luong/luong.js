@@ -358,16 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     salary.ma_luong || ''
                 )}"
                 >
-                    <td>
-                        <input
-                            class="checkbox"
-                            type="checkbox"
-                            value="${escapeHtml(
-                    salary.ma_luong || ''
-                )}"
-                            aria-label="Chọn ${escapeHtml(employeeName)}"
-                        >
-                    </td>
 
                     <td>
                         <div class="employee">

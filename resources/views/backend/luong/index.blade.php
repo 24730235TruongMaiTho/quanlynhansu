@@ -245,14 +245,6 @@
                 <table class="table table-hover align-middle mb-0 data-table">
                     <thead class="table-light">
                     <tr>
-                        <th>
-                            <input
-                                class="form-check-input checkbox"
-                                type="checkbox"
-                                aria-label="Chọn tất cả"
-                            >
-                        </th>
-
                         <th>Nhân viên</th>
                         <th>Phòng ban / Chức vụ</th>
                         <th class="numeric text-end">Kỳ lương</th>

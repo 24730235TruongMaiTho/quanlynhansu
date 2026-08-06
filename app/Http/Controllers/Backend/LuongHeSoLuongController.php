@@ -120,4 +120,27 @@ class LuongHeSoLuongController extends Controller
             'data' => $item,
         ]);
     }
+
+    /**
+     * Lấy chi tiết một bản ghi hệ số lương theo ma_ls
+     */
+    public function show($ma_ls): JsonResponse
+    {
+        $item = DB::table('lich_su_he_so_luong')
+            ->where('ma_ls', $ma_ls)
+            ->select('ma_ls', 'ma_nv', 'he_so_luong', 'tu_ngay', 'den_ngay')
+            ->first();
+
+        if (! $item) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy bản ghi hệ số lương.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $item,
+        ]);
+    }
 }

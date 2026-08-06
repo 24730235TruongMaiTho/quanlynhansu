@@ -41,6 +41,12 @@ Route::middleware('api')->prefix('v1')->group(function () {
             [LuongHeSoLuongController::class, 'store']
         )->name('api.v1.luong.he-so-luong.store');
 
+        // show single he-so-luong by id
+        Route::get(
+            'he-so-luong/{ma_ls}',
+            [LuongHeSoLuongController::class, 'show']
+        )->name('api.v1.luong.he-so-luong.show');
+
         // update (PUT) and partial update (PATCH)
         Route::match(
             ['PUT', 'PATCH'],
