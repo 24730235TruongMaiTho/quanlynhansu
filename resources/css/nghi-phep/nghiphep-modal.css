@@ -1,0 +1,37 @@
+#leave-modal.leave-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: min(640px, calc(100vw - 32px));
+    max-width: none;
+    max-height: calc(100dvh - 40px);
+    margin: 0;
+    padding: 0;
+    transform: translate(-50%, -50%);
+    overflow: hidden;
+}
+
+#leave-modal.leave-dialog:not([open]) {
+    display: none;
+}
+
+#leave-modal.leave-dialog::backdrop {
+    background: rgba(31, 35, 40, 0.48);
+    backdrop-filter: blur(2px);
+}
+
+#leave-modal #leave-form {
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+}
+
+@media (max-width: 575.98px) {
+    #leave-modal.leave-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100dvh - 20px);
+    }
+
+    #leave-modal #leave-form {
+        max-height: calc(100dvh - 20px);
+    }
+}
