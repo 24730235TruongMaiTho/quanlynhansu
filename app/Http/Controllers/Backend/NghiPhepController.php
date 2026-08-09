@@ -92,24 +92,46 @@ class NghiPhepController extends Controller
         $ma_cv = is_numeric($ma_cv) ? (int) $ma_cv : null;
 
         try {
-            $rows = collect(DB::select(
-                'CALL sp_luong_tim_kiem_phan_trang(?, ?, ?, ?, ?, ?)',
-                [
-                    $tu_khoa,
-                    null, // ky_luong not used for employee lookup
-                    $ma_pb,
-                    $ma_cv,
-                    $page,
-                    $perPage,
-                ]
-            ));
+            // The stored procedure sp_luong_tim_kiem_phan_trang may return multiple rows per
+            // employee when ky_luong is NULL (one row per lương record), causing duplicates.
+            // Use vw_danh_sach_nhan_vien_chi_tiet and group by ma_nv to return unique employees.
 
-            $total = (int) ($rows->first()->total_count ?? 0);
+            $whereClauses = [];
+            $bindings = [];
+
+            if ($tu_khoa !== null && $tu_khoa !== '') {
+                $whereClauses[] = "(ma_nv LIKE ? OR ho_ten LIKE ? OR sdt LIKE ? OR email LIKE ? OR cccd LIKE ? OR ten_pb LIKE ? OR ten_cv LIKE ? )";
+                $like = '%' . $tu_khoa . '%';
+                $bindings = array_merge($bindings, array_fill(0, 7, $like));
+            }
+
+            if ($ma_pb !== null) {
+                $whereClauses[] = "ma_pb = ?";
+                $bindings[] = $ma_pb;
+            }
+
+            if ($ma_cv !== null) {
+                $whereClauses[] = "ma_cv = ?";
+                $bindings[] = $ma_cv;
+            }
+
+            $whereSql = $whereClauses ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
+
+            // total distinct employees matching filters
+            $countSql = "SELECT COUNT(DISTINCT ma_nv) AS total FROM vw_danh_sach_nhan_vien_chi_tiet " . $whereSql;
+            $countRow = collect(DB::select($countSql, $bindings))->first();
+            $total = (int) ($countRow->total ?? 0);
+
+            // fetch unique employees with pagination
+            $offset = ($page - 1) * $perPage;
+
+            $selectSql = "SELECT ma_nv, ho_ten, ngay_sinh, gioi_tinh_hien_thi AS gioi_tinh, sdt, email, ngay_vao_lam, ma_pb, ten_pb, ma_cv, ten_cv, hoc_van, ten_tt FROM vw_danh_sach_nhan_vien_chi_tiet "
+                . $whereSql . " GROUP BY ma_nv ORDER BY ma_nv ASC LIMIT ? OFFSET ?";
+
+            $rows = collect(DB::select($selectSql, array_merge($bindings, [$perPage, $offset])));
 
             $items = $rows->map(function ($row) {
-                $obj = (array) $row;
-                unset($obj['total_count']);
-                return (object) $obj;
+                return (object) $row;
             })->values();
 
             $paginator = new LengthAwarePaginator(
