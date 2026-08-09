@@ -21,7 +21,7 @@ class NghiPhepController extends Controller
 
     public function index(Request $request)
     {
-        $filters = $request->only(['ma_nv', 'trang_thai_duyet', 'from_date', 'to_date']);
+        $filters = $request->only(['ma_nv', 'trang_thai_duyet', 'tu_ngay', 'den_ngay']);
         $result = $this->service->getAll($filters);
 
         if (!$result['success']) {
