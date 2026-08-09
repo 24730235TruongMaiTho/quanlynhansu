@@ -20,6 +20,9 @@ Route::middleware('api')->prefix('v1')->group(function () {
         Route::get('phong-ban', [NghiPhepController::class, 'phongBan']);
         Route::get('chuc-vu', [NghiPhepController::class, 'chucVu']);
         Route::get('loai-phep', [NghiPhepController::class, 'loaiPhep']);
+
+        // duyệt nghỉ phép (PATCH /api/v1/nghi-phep/{ma_np}/duyet)
+        Route::patch('{ma_np}/duyet', [NghiPhepController::class, 'duyet'])->name('api.v1.nghi-phep.duyet');
     });
 
     Route::apiResource('nghi-phep', NghiPhepController::class);

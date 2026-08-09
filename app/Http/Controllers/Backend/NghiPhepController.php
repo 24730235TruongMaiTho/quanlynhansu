@@ -249,4 +249,31 @@ class NghiPhepController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Duyệt (approve/deny) nghỉ phép dùng stored procedure sp_nghi_phep_duyet_phep
+     * PATCH /api/v1/nghi-phep/{ma_np}/duyet
+     * Body: { ma_nv: string, trang_thai_duyet: int }
+     */
+    public function duyet(Request $request, $ma_np)
+    {
+        $ma_nv = $request->input('ma_nv');
+        $trang_thai = $request->input('trang_thai_duyet', 1);
+
+        if (empty($ma_nv)) {
+            return response()->json(['success' => false, 'message' => 'ma_nv is required'], 400);
+        }
+
+        try {
+            DB::statement('CALL sp_nghi_phep_duyet_phep(?, ?, ?)', [
+                (int) $ma_np,
+                $ma_nv,
+                (int) $trang_thai,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái duyệt thành công']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
 }
