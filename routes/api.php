@@ -11,6 +11,17 @@ use App\Http\Controllers\Backend\LuongHeSoLuongController;
 
 Route::middleware('api')->prefix('v1')->group(function () {
     Route::apiResource('cham-cong', ChamCongController::class);
+    // additional endpoints used by frontend nghiphep module
+    Route::prefix('nghi-phep')->group(function () {
+        Route::get('nhan-vien', [NghiPhepController::class, 'employees']);
+        Route::post('nhan-vien', [NghiPhepController::class, 'storeEmployee']);
+        Route::match(['PUT','PATCH'], 'nhan-vien/{ma_nv}', [NghiPhepController::class, 'updateEmployee']);
+
+        Route::get('phong-ban', [NghiPhepController::class, 'phongBan']);
+        Route::get('chuc-vu', [NghiPhepController::class, 'chucVu']);
+        Route::get('loai-phep', [NghiPhepController::class, 'loaiPhep']);
+    });
+
     Route::apiResource('nghi-phep', NghiPhepController::class);
 
     // lookup endpoints for salary filters
