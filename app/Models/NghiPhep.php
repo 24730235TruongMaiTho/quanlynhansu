@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class NghiPhep extends Model
 {
-    protected $table = 'nghiphep';
+    protected $table = 'nghi_phep';
     protected $primaryKey = 'ma_np';
     public $timestamps = false;
 

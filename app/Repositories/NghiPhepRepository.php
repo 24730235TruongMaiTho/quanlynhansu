@@ -18,12 +18,12 @@ class NghiPhepRepository
             $query->where('trang_thai_duyet', $filters['trang_thai_duyet']);
         }
 
-        if (isset($filters['from_date'])) {
-            $query->whereDate('tu_ngay', '>=', $filters['from_date']);
+        if (isset($filters['tu_ngay'])) {
+            $query->whereDate('tu_ngay', '>=', $filters['tu_ngay']);
         }
 
-        if (isset($filters['to_date'])) {
-            $query->whereDate('den_ngay', '<=', $filters['to_date']);
+        if (isset($filters['den_ngay'])) {
+            $query->whereDate('den_ngay', '<=', $filters['den_ngay']);
         }
 
         return $query->with(['nhanVien', 'loaiPhep'])->paginate(15);
