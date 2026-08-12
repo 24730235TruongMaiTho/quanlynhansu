@@ -12,7 +12,7 @@ Xây dựng một vertical slice quản lý nhân viên có thể hoạt động
 - xem danh sách, tìm kiếm, lọc và phân trang;
 - xem chi tiết;
 - tạo hồ sơ nhân viên đồng thời tạo tài khoản đăng nhập;
-- sửa hồ sơ, phòng ban, chức vụ, vai trò và trạng thái làm việc;
+- sửa hồ sơ, phòng ban, chức vụ và trạng thái làm việc; giữ nguyên vai trò;
 - lưu địa chỉ và ảnh đại diện;
 - xóa cứng khi chưa có lịch sử nghiệp vụ, hoặc chuyển sang `DA_NGHI` khi đã có lịch sử;
 - đặt lại mật khẩu;
@@ -30,7 +30,7 @@ Stored procedure là bắt buộc cho các truy vấn/mutation nghiệp vụ c�
 - Tạo JSON API mới cho giao diện nhân viên đầu tiên.
 - Chứng nhận bảo mật hoặc sẵn sàng production.
 
-Phòng ban, chức vụ, vai trò và trạng thái là master data bắt buộc phải tồn tại để tạo nhân viên. Module nhân viên chỉ đọc các lookup này; nếu thiếu, giao diện phải báo rõ và khóa thao tác lưu.
+Phòng ban, chức vụ và trạng thái là lookup bắt buộc cho form nhân viên; nếu thiếu, giao diện phải báo rõ và khóa thao tác lưu. Vai trò mặc định là invariant phía server, không phải lookup cho client.
 
 ## 3. Bằng chứng và vấn đề hiện tại
 
@@ -88,6 +88,14 @@ Vì vậy bộ procedure nhân viên sẽ được thiết kế lại. Trước 
 - Ngày nghỉ việc do Laravel truyền vào theo timezone đã chốt, không phụ thuộc `CURDATE()` của database.
 - Cả hai kết quả phải được giao diện thông báo khác nhau.
 
+### 4.5. Vai trò mặc định và tài khoản đặc quyền
+
+- CRUD nhân viên thông thường không cho client chọn hoặc đổi `ma_vt`; `ma_vt` là field bị cấm ở cả create và update.
+- Mọi nhân viên tạo từ web nhận vai trò có ký hiệu ổn định `NHAN_VIEN_MAC_DINH`. Vai trò này bắt buộc tồn tại đúng một bản ghi và không có mapping quyền nào.
+- Form tạo/sửa chỉ gán phòng ban, chức vụ và trạng thái làm việc. Phân vai đặc quyền là flow quản trị khác, không nằm trong năm quyền của module nhân viên này.
+- Update, xóa/kết thúc và đặt lại mật khẩu thông thường chỉ được tác động tài khoản đang giữ vai trò `NHAN_VIEN_MAC_DINH`; procedure khóa row và kiểm tra lại để chống race. Tài khoản đặc quyền, kể cả chính người thao tác, nhận `403`/lỗi miền an toàn và phải được quản trị bằng flow riêng ngoài phạm vi.
+- Bootstrap local/testing là ngoại lệ tin cậy: tạo tài khoản ở vai trò mặc định rồi gán vai trò quản trị bằng procedure nội bộ trong cùng transaction. Procedure nội bộ không được lộ qua controller, route hoặc `NhanVienServiceContract`.
+
 ## 5. Kiến trúc
 
 Luồng chính:
@@ -138,7 +146,13 @@ Bổ sung `ky_hieu VARCHAR(20) NOT NULL UNIQUE`. Tối thiểu cần các mã �
 
 Logic không được dựa vào tên hiển thị hoặc một `ma_tt` hard-code. Script nâng cấp phải seed/backfill theo dữ liệu đã xác nhận và dừng nếu gặp mapping mơ hồ.
 
-### 6.3. Bảng `dia_chi_nhan_vien`
+### 6.3. Bảng `vai_tro`
+
+Bổ sung `ky_hieu VARCHAR(50) NULL UNIQUE`. Trong scope này chỉ seed một ký hiệu hệ thống `NHAN_VIEN_MAC_DINH`; các vai trò legacy khác có thể giữ `NULL` cho đến khi module quản lý chức vụ/vai trò có migration riêng.
+
+Script xử lý role mặc định theo contract xác định: nếu chưa có tên normalize chính xác `nhân viên mặc định` thì insert; nếu có đúng một row và zero mapping thì gán ký hiệu; nếu có nhiều row, ký hiệu xung đột hoặc row candidate đã có quyền thì dừng trước DDL. Không tự nhận một vai trò legacy khác tên hoặc đang có quyền. Sau khi tạo, role mặc định phải có đúng zero row trong `vai_tro_quyen`; procedure gán quyền/xóa vai trò phải khóa rồi từ chối role hệ thống này.
+
+### 6.4. Bảng `dia_chi_nhan_vien`
 
 Tạo quan hệ một-một:
 
@@ -150,13 +164,13 @@ Tạo quan hệ một-một:
 | `quan_huyen` | `NVARCHAR(100) NOT NULL` |
 | `tinh_thanh` | `NVARCHAR(100) NOT NULL` |
 
-### 6.4. Bảng `bo_dem_ma_nhan_vien`
+### 6.5. Bảng `bo_dem_ma_nhan_vien`
 
 Bảng có `ten_bo_dem VARCHAR(30) PRIMARY KEY` và `so_da_cap SMALLINT UNSIGNED NOT NULL`. Chỉ có một dòng canonical với khóa `NHAN_VIEN`. Procedure tạo nhân viên khóa dòng này, tăng một đơn vị, kiểm tra không vượt `999`, rồi ghép `NV` với ba chữ số.
 
 Trên database mới, bộ đếm bắt đầu bằng `0`. Khi nâng cấp database đã có dữ liệu, script preflight mọi mã theo định dạng `NV[0-9]{3}`, khởi tạo `so_da_cap` bằng hậu tố lớn nhất và dừng an toàn nếu có mã ngoài contract hoặc dữ liệu trùng cần xử lý. Script không bao giờ hạ giá trị bộ đếm.
 
-### 6.5. View dùng chung an toàn
+### 6.6. View dùng chung an toàn
 
 Recreate `vw_danh_sach_nhan_vien_chi_tiet` với danh sách cột tường minh:
 
@@ -165,11 +179,11 @@ Recreate `vw_danh_sach_nhan_vien_chi_tiet` với danh sách cột tường minh:
 - `ma_pb`, `ten_pb`, `ma_cv`, `ten_cv`, `he_so_phu_cap`;
 - `dan_toc`, `cccd`, `noi_cap_cccd`, `hoc_van`;
 - `ma_tt`, `ky_hieu`, `ten_tt`, `ngay_nghi_viec`;
-- `ma_vt`, `ten_vt`, `anh_dai_dien`.
+- `ma_vt`, `ky_hieu_vai_tro`, `ten_vt`, `anh_dai_dien`.
 
 View tuyệt đối không có `mat_khau`. Vì view đang được controller nghỉ phép và procedure chấm công/lương dùng chung, migration phải inventory và regression-test toàn bộ caller trước/sau khi recreate; không được thay tên hoặc loại cột an toàn cũ mà chưa chuyển caller.
 
-### 6.6. Script database
+### 6.7. Script database
 
 - Tạo script nâng cấp có version, chỉ chứa thay đổi thuộc module nhân viên.
 - Đồng bộ cùng thay đổi vào đúng block của `quan_ly_nhan_su.session.sql`.
@@ -213,7 +227,7 @@ Input `p_ma_nv VARCHAR(5)`. Trả đúng một dòng hồ sơ, hoặc result r�
 - công việc: `ngay_vao_lam DATE`, `ma_pb INT`, `ten_pb NVARCHAR(100)`, `ma_cv INT`, `ten_cv NVARCHAR(100)`;
 - hồ sơ: `dan_toc NVARCHAR(50)`, `cccd VARCHAR(12)`, `noi_cap_cccd NVARCHAR(50)`, `hoc_van NVARCHAR(50)`;
 - trạng thái: `ma_tt TINYINT`, `ky_hieu VARCHAR(20)`, `ten_tt NVARCHAR(50)`, `ngay_nghi_viec DATE NULL`;
-- tài khoản/ảnh: `ma_vt INT`, `ten_vt NVARCHAR(100)`, `anh_dai_dien VARCHAR(255) NULL`;
+- tài khoản/ảnh: `ma_vt INT`, `ky_hieu_vai_tro VARCHAR(50) NULL`, `ten_vt NVARCHAR(100)`, `anh_dai_dien VARCHAR(255) NULL`;
 - địa chỉ: `dia_chi_cu_the NVARCHAR(255) NULL`, `phuong_xa NVARCHAR(100) NULL`, `quan_huyen NVARCHAR(100) NULL`, `tinh_thanh NVARCHAR(100) NULL`.
 
 Không trả `mat_khau`. Các cột địa chỉ nullable ở result để có thể đọc an toàn dữ liệu cũ trước khi backfill; create/update mới vẫn bắt buộc đủ địa chỉ.
@@ -236,7 +250,6 @@ Input theo thứ tự:
 - `p_hoc_van NVARCHAR(50)`;
 - `p_ma_tt TINYINT`;
 - `p_mat_khau_hash VARCHAR(255)`;
-- `p_ma_vt INT`;
 - `p_anh_dai_dien VARCHAR(255) NULL`;
 - `OUT p_ma_nv VARCHAR(5)`.
 
@@ -248,8 +261,9 @@ Hành vi trong transaction ngoài:
 2. cấp mã tiếp theo;
 3. chuẩn hóa các trường cần thiết;
 4. kiểm tra tuổi, format định danh, foreign key và trạng thái;
-5. insert nhân viên với hash đã nhận;
-6. trả mã đã cấp.
+5. khóa/resolve đúng một role `NHAN_VIEN_MAC_DINH`, xác nhận role không có quyền;
+6. insert nhân viên với hash đã nhận;
+7. trả mã đã cấp.
 
 Procedure không hash plaintext và không nhận plaintext. Procedure từ chối trạng thái `DA_NGHI` khi tạo mới.
 
@@ -270,10 +284,9 @@ Input theo thứ tự:
 - `p_cccd VARCHAR(12)`;
 - `p_noi_cap_cccd NVARCHAR(50)`;
 - `p_hoc_van NVARCHAR(50)`;
-- `p_ma_tt TINYINT`;
-- `p_ma_vt INT`.
+- `p_ma_tt TINYINT`.
 
-Việc sửa hồ sơ phải giữ nguyên hash và avatar hiện tại. Mã nhân viên không được đổi. Procedure cấm chuyển từ trạng thái đang làm sang `DA_NGHI` hoặc từ `DA_NGHI` trở lại trạng thái active; các chuyển đổi đó không được đi vòng qua flow kết thúc làm việc. Một nhân viên đã nghỉ vẫn có thể được sửa thông tin nếu giữ nguyên `DA_NGHI` và ngày nghỉ cũ; nhân viên chưa nghỉ phải luôn có `ngay_nghi_viec IS NULL`.
+Việc sửa hồ sơ phải giữ nguyên role, hash và avatar hiện tại. Mã nhân viên không được đổi. Procedure chỉ cho sửa target đang giữ role `NHAN_VIEN_MAC_DINH`; role khác trả `NV_PRIVILEGED_TARGET`. Procedure cấm chuyển từ trạng thái đang làm sang `DA_NGHI` hoặc từ `DA_NGHI` trở lại trạng thái active; các chuyển đổi đó không được đi vòng qua flow kết thúc làm việc. Một nhân viên đã nghỉ vẫn có thể được sửa thông tin nếu giữ nguyên `DA_NGHI` và ngày nghỉ cũ; nhân viên chưa nghỉ phải luôn có `ngay_nghi_viec IS NULL`.
 
 ### 7.5. `sp_dia_chi_nhan_vien_luu`
 
@@ -285,13 +298,17 @@ Nhận `p_ma_nv VARCHAR(5)`, `p_anh_moi VARCHAR(255) NULL` và trả `OUT p_anh_
 
 ### 7.7. `sp_nhan_vien_xoa_hoac_nghi_viec`
 
-Nhận `p_ma_nv VARCHAR(5)`, `p_ngay_nghi_viec DATE`; trả `OUT p_hanh_dong VARCHAR(12)` bằng `DELETED` hoặc `TERMINATED` và `OUT p_anh_cu VARCHAR(255)`. Procedure khóa nhân viên, kiểm tra đủ năm bảng phụ thuộc, tìm trạng thái bằng `ky_hieu = 'DA_NGHI'`, và không tự commit. Với `TERMINATED`, cả trạng thái và ngày nghỉ được cập nhật cùng lúc. Nếu nhân viên đã `DA_NGHI`, gọi lại là idempotent và giữ nguyên ngày nghỉ đầu tiên. Đường dẫn cũ chỉ được service xóa sau khi action `DELETED` đã commit.
+Nhận `p_ma_nv VARCHAR(5)`, `p_ngay_nghi_viec DATE`; trả `OUT p_hanh_dong VARCHAR(12)` bằng `DELETED` hoặc `TERMINATED` và `OUT p_anh_cu VARCHAR(255)`. Procedure khóa nhân viên, từ chối target không giữ role `NHAN_VIEN_MAC_DINH`, kiểm tra đủ năm bảng phụ thuộc, tìm trạng thái bằng `ky_hieu = 'DA_NGHI'`, và không tự commit. Với `TERMINATED`, cả trạng thái và ngày nghỉ được cập nhật cùng lúc. Nếu nhân viên mặc định đã `DA_NGHI`, gọi lại là idempotent và giữ nguyên ngày nghỉ đầu tiên. Đường dẫn cũ chỉ được service xóa sau khi action `DELETED` đã commit.
 
 ### 7.8. `sp_nhan_vien_dat_lai_mat_khau`
 
-Nhận `p_ma_nv VARCHAR(5)` và `p_mat_khau_hash VARCHAR(255)`. Hash do Laravel tạo. Procedure không trả hash.
+Nhận `p_ma_nv VARCHAR(5)` và `p_mat_khau_hash VARCHAR(255)`. Procedure khóa target, chỉ chấp nhận role `NHAN_VIEN_MAC_DINH`; hash do Laravel tạo và procedure không trả hash.
 
-### 7.9. `sp_nhan_vien_lay_tai_khoan_dang_nhap`
+### 7.9. `sp_nhan_vien_cap_nhat_hash_xac_thuc`
+
+Nhận `p_ma_nv VARCHAR(5)`, `p_hash_hien_tai VARCHAR(255)` và `p_hash_moi VARCHAR(255)`. Đây là compare-and-swap nội bộ cho custom `UserProvider`: khóa tài khoản ở mọi role, chỉ update khi hash hiện tại trong database khớp `p_hash_hien_tai`, và trả lỗi miền chung nếu tài khoản/hash đã thay đổi. Procedure chỉ được repository auth gọi sau khi `Hash::check` thành công; không có route/controller/service web nào expose contract này và không nhận plaintext.
+
+### 7.10. `sp_nhan_vien_lay_tai_khoan_dang_nhap`
 
 Nhận `p_dinh_danh NVARCHAR(100)` đã trim. Tìm chính xác theo `ma_nv` viết hoa hoặc email đã normalize chữ thường. Trả tối đa một dòng cho tầng auth phía server:
 
@@ -304,9 +321,19 @@ Nhận `p_dinh_danh NVARCHAR(100)` đã trim. Tìm chính xác theo `ma_nv` vi�
 
 Không phân biệt thông báo “không tồn tại” và “sai mật khẩu” ở giao diện đăng nhập.
 
-### 7.10. Lỗi procedure
+### 7.11. `sp_nhan_vien_gan_vai_tro_noi_bo`
 
-Procedure báo lỗi miền bằng đúng mẫu `SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '<MA_LOI>'`. SQLSTATE luôn là `45000`; mã ổn định nằm trong `MESSAGE_TEXT` để Laravel ánh xạ sang tiếng Việt an toàn, ví dụ:
+Nhận `p_ma_nv VARCHAR(5)` và `p_ma_vt INT`. Procedure khóa nhân viên, chỉ cho chuyển từ `NHAN_VIEN_MAC_DINH` sang một role khác tồn tại, và không tự điều khiển transaction. Đây là contract nội bộ duy nhất cho bootstrap local/testing có guard; repository đặt tên method rõ `assignRoleForBootstrap`, còn controller, route và service web không được gọi hoặc expose contract này.
+
+### 7.12. `sp_cham_cong_nhan_vien_phan_trang`
+
+Procedure compatibility này thay contract đang được controller gọi nhưng không tồn tại. Nhận `p_tu_khoa NVARCHAR(100) NULL`, `p_ma_pb INT NULL`, `p_thang TINYINT`, `p_nam SMALLINT`, `p_trang INT`, `p_so_dong INT`, `OUT p_tong_so BIGINT`; tháng bắt buộc `1..12`, năm `2000..2100`, trang `>=1`, số dòng `1..100`. Result set tường minh gồm `ma_nv, ho_ten, gioi_tinh, sdt, email, ma_pb, ten_pb, ma_cv, ten_cv, so_lan_vao_muon, so_lan_ve_som, so_ngay_cham_cong` của đúng tháng/năm, không có hash; thứ tự `ma_nv ASC`.
+
+Aggregate chỉ dùng row `cham_cong` trong đúng tháng/năm: `so_lan_vao_muon = SUM(vao_muon = 1)`, `so_lan_ve_som = SUM(ve_som = 1)`, và mỗi ngày đóng góp `1` nếu `so_gio_lam >= 8`, `0.5` nếu `4 <= so_gio_lam < 8`, còn lại `0`. Cột legacy `so_gio_lam SMALLINT` chỉ chứa giờ nguyên, nên boundary MariaDB bắt buộc test `3,4,7,8,9`; slice này không đổi kiểu cột hoặc dùng function legacy có rule `=4/=8` khác UI hiện tại. Nhân viên không có chấm công trong tháng vẫn xuất hiện với ba aggregate bằng `0`. Repository/service nhân viên sở hữu lời gọi; `ChamCongController` không gọi raw SQL. MariaDB integration test phải khóa result shape, aggregate, filter, pagination và OUT total trước khi endpoint được coi là tương thích.
+
+### 7.13. Lỗi procedure
+
+Procedure báo lỗi miền bằng `SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_NOT_FOUND'` hoặc một mã cụ thể khác trong whitelist dưới đây. SQLSTATE luôn là `45000`; mã ổn định nằm trong `MESSAGE_TEXT` để Laravel ánh xạ sang tiếng Việt an toàn:
 
 - `NV_NOT_FOUND`;
 - `NV_EMAIL_DUPLICATE`;
@@ -314,6 +341,9 @@ Procedure báo lỗi miền bằng đúng mẫu `SIGNAL SQLSTATE '45000' SET MES
 - `NV_REFERENCE_INVALID`;
 - `NV_CODE_EXHAUSTED`;
 - `NV_STATUS_MISSING`;
+- `NV_DEFAULT_ROLE_INVALID`;
+- `NV_PRIVILEGED_TARGET`;
+- `NV_AUTH_HASH_STALE`;
 - `NV_PAGINATION_INVALID`.
 
 Controller/API không trả raw exception, SQL text hoặc stack trace. Race condition duplicate cuối cùng vẫn phải được unique constraint bắt và ánh xạ về đúng lỗi field.
@@ -388,8 +418,8 @@ Các route hiện tại đang map sai `PUT .../{id}` vào action `show`; việc 
 - ngày vào làm;
 - phòng ban;
 - chức vụ;
-- vai trò;
 - trạng thái làm việc;
+- thông báo tài khoản nhận vai trò mặc định không có quyền; phân vai được thực hiện ở flow quản trị riêng;
 - thông báo “Mã nhân viên được hệ thống cấp khi lưu”;
 - hiển thị quy ước mật khẩu mặc định, không có ô nhập mật khẩu.
 
@@ -410,7 +440,8 @@ Laravel kiểm tra trước; procedure kiểm tra lại invariant quan trọng.
 - email hợp lệ, tối đa 100 ký tự, normalize chữ thường và duy nhất;
 - số điện thoại đúng 10 chữ số, bắt đầu bằng `0`;
 - họ tên, dân tộc, nơi cấp CCCD, học vấn và bốn thành phần địa chỉ không rỗng;
-- phòng ban, chức vụ, vai trò và trạng thái phải tồn tại;
+- phòng ban, chức vụ và trạng thái phải tồn tại;
+- client không được gửi `ma_vt`; create resolve role mặc định phía server, update giữ nguyên role;
 - ảnh tùy chọn, chỉ JPG/PNG/WebP, tối đa 2 MB;
 - `ma_nv` lấy từ route/procedure, không tin input ẩn của client.
 
@@ -441,7 +472,7 @@ Các màn hình phải có đầy đủ:
 - label, accessible name, focus keyboard và contrast phù hợp;
 - responsive ở desktop, tablet và mobile.
 
-Nếu thiếu master data, nút lưu bị khóa và thông báo chỉ rõ thiếu phòng ban, chức vụ, vai trò hay trạng thái.
+Nếu thiếu master data, nút lưu bị khóa và thông báo chỉ rõ thiếu phòng ban, chức vụ hoặc trạng thái. Nếu role `NHAN_VIEN_MAC_DINH` thiếu/có quyền/mơ hồ, server fail closed và không cho tạo.
 
 Trang nhân viên phải tương thích với quyết định shell `Header + Sidebar + Main + Footer`, không global navbar, nhưng slice này không tự thay global layout hoặc lấy code từ nhánh khác.
 
@@ -460,11 +491,12 @@ Auth được giao thành một slice riêng nhưng contract thuộc tiêu chí 
 - Dùng custom `NhanVienUserProvider`, không để Eloquent provider tự query bảng nhân viên.
 - `retrieveByCredentials` và `retrieveById` đều gọi repository bọc `sp_nhan_vien_lay_tai_khoan_dang_nhap`; session lưu `ma_nv` và mỗi request nạp lại tài khoản bằng mã này.
 - Provider từ chối tài khoản có `ky_hieu = 'DA_NGHI'`, kể cả session được tạo trước khi nhân viên nghỉ.
-- `validateCredentials` dùng `Hash::check`; nếu cần rehash do cấu hình cost thay đổi thì Laravel tạo hash mới và lưu qua procedure cập nhật hash, không đưa plaintext xuống database.
+- `validateCredentials` dùng `Hash::check`; nếu cần rehash do cấu hình cost thay đổi thì Laravel tạo hash mới và gọi compare-and-swap `sp_nhan_vien_cap_nhat_hash_xac_thuc` với hash hiện tại đã nạp. Flow này áp dụng cả tài khoản đặc quyền nhưng chỉ nằm trong provider/repository auth, không đi qua action reset web và không đưa plaintext xuống database. Nếu compare-and-swap trả `NV_AUTH_HASH_STALE` do reset/đăng nhập đồng thời, provider bỏ rehash, log mã sự kiện an toàn và vẫn cho credential vừa kiểm tra hợp lệ đăng nhập; lỗi kết nối/hệ thống khác fail closed bằng thông báo đăng nhập chung, không thành raw `500`.
 - Model map `getAuthPasswordName()`/`getAuthPassword()` tới `mat_khau`.
 - Không hỗ trợ “ghi nhớ đăng nhập” trong phạm vi này: form không có remember checkbox, model không có remember-token column, provider không phát/persist remember token.
 - Sai mã/email, sai mật khẩu và tài khoản đã nghỉ đều trả cùng thông báo đăng nhập chung; log không chứa credential/hash.
 - Toàn bộ route `/admin`, bao gồm module nhân viên, nằm sau middleware `auth`; từng action còn phải qua quyền tương ứng.
+- Ngoài quyền hành động, update/delete/reset phải authorize target đang ở role `NHAN_VIEN_MAC_DINH`; procedure kiểm tra lại sau row lock. Vì role mặc định luôn zero quyền, người có quyền quản trị không thể tự tác động chính tài khoản đặc quyền của mình qua flow này.
 
 Quyền nghiệp vụ:
 
@@ -476,6 +508,8 @@ Quyền nghiệp vụ:
 
 Auth/RBAC là một vertical slice riêng trong kế hoạch triển khai. Trước khi slice này hoàn thành, UI/API nhân viên chỉ được mô tả là prototype hoặc verified hẹp, không được gọi là an toàn để public.
 
+Năm quyền trên không bao gồm quyền phân vai. Việc gán/chuyển role ngoài bootstrap guarded là `planned` cho module quản trị vai trò riêng.
+
 ## 15. Ranh giới với module hợp đồng
 
 Module nhân viên phải chạy hoàn chỉnh khi controller/service/procedure/UI hợp đồng chưa tồn tại. Policy xóa vẫn phụ thuộc interface database ổn định là bảng `hop_dong` có cột `ma_nv`; mọi thay đổi schema này của đồng nghiệp phải được phối hợp như một contract DB.
@@ -484,7 +518,7 @@ Module nhân viên phải chạy hoàn chỉnh khi controller/service/procedure/
 - Không tạo controller, service, repository, procedure hay route hợp đồng giả.
 - Hợp đồng liên kết với nhân viên chỉ bằng `ma_nv` sau khi nhân viên đã commit.
 - Nếu tạo hợp đồng về sau thất bại, nhân viên vẫn tồn tại; người dùng thử lại flow hợp đồng riêng.
-- Trước khi tích hợp, thông báo thành công ghi “Đã tạo nhân viên; có thể bổ sung hợp đồng sau”.
+- Trước khi tích hợp, thông báo thành công ghi đúng “Đã tạo nhân viên; có thể bổ sung hợp đồng sau.”
 - Khi module thật của đồng nghiệp đã sẵn sàng, một commit tích hợp riêng mới thêm CTA/redirect/handoff sang hợp đồng.
 - Không merge nhánh đồng nghiệp trong phạm vi module nhân viên.
 
@@ -501,6 +535,7 @@ Test procedure và constraint trên database MariaDB có thể xóa/tạo lại,
 - rollback có thể dùng lại số chưa commit;
 - dừng rõ ràng khi vượt `NV999`;
 - email/CCCD trùng, kể cả race condition;
+- race duplicate email và race duplicate CCCD được chạy thành hai case độc lập;
 - lookup không tồn tại;
 - danh sách, filter, phân trang, tổng số và trang rỗng;
 - detail/list không có `mat_khau`;
@@ -512,6 +547,9 @@ Test procedure và constraint trên database MariaDB có thể xóa/tạo lại,
 - gọi lại action trên nhân viên đã `DA_NGHI` vẫn trả `TERMINATED`, giữ ngày nghỉ đầu tiên và không hard-delete dù phụ thuộc đã bị dọn;
 - lookup đăng nhập bằng mã và email normalize;
 - reset password nhận hash Laravel;
+- create web luôn nhận role mặc định zero quyền; crafted `ma_vt` bị từ chối;
+- update/delete/reset target đặc quyền bị chặn cả ở authorization và procedure;
+- procedure tổng hợp nhân viên chấm công tồn tại thật và trả đúng aggregate/pagination;
 - transaction rollback và xử lý file bù trừ ở tầng service.
 
 SQLite in-memory của `phpunit.xml` không chứng minh được procedure, lock, trigger, collation hoặc foreign key MariaDB.
@@ -536,6 +574,7 @@ Kiểm tra thủ công hoặc tự động trên trình duyệt thật:
 
 - tạo, sửa, tìm kiếm/lọc, chi tiết, delete/terminate và reset;
 - loading, empty, error, success;
+- lỗi miền thật từ stale form trên database disposable hiển thị an toàn, không lộ SQL/exception;
 - focus sau validation;
 - desktop, tablet, mobile;
 - keyboard navigation;
@@ -555,7 +594,7 @@ Chức năng quản lý nhân viên chỉ được xem là hoàn thành khi:
 5. sửa không reset mật khẩu;
 6. delete/terminate trả và hiển thị đúng hai kết quả;
 7. đăng nhập mã/email hoạt động, `DA_NGHI` bị chặn;
-8. authorization theo năm quyền được kiểm thử;
+8. authorization theo năm quyền và target-role boundary được kiểm thử; CRUD không expose phân vai;
 9. UI đủ trạng thái và qua browser acceptance;
 10. module chạy độc lập với hợp đồng;
 11. test, build, lint/diff check liên quan đều pass, hoặc blocker cũ được ghi rõ;
@@ -575,6 +614,7 @@ Chức năng quản lý nhân viên chỉ được xem là hoàn thành khi:
 
 - Không gian mã chỉ có 999 nhân viên; thay đổi định dạng cần một quyết định/migration riêng.
 - Mật khẩu mặc định có thể đoán được và không có cờ đổi mật khẩu; chỉ chấp nhận cho demo nội bộ.
+- Phân vai ngoài bootstrap guarded chưa thuộc CRUD này; cần module/quyền riêng trước khi mở cho người dùng.
 - Master data live hiện trống nên cần seed/fixture được duyệt trước acceptance end-to-end.
 - Procedure cũ có caller chéo module; thay chữ ký không đồng bộ sẽ gây regression.
 - Database và filesystem không có distributed transaction; phải dựa vào quy trình bù trừ và test lỗi.
