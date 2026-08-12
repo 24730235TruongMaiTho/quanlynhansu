@@ -1,128 +1,101 @@
 # Website quản lý nhân sự
 
-Đây là đồ án nhóm xây dựng một website quản lý nhân sự và được dùng làm sản phẩm nộp cho hai môn học:
+Đồ án nhóm xây dựng hệ thống quản lý nhân sự bằng Laravel, phục vụ đồng thời hai môn:
 
-1. **Lập trình Web Application**: tập trung vào kiến trúc Laravel, xử lý nghiệp vụ, xác thực, CRUD, MySQL và kiểm thử.
-2. **Thiết kế giao diện người dùng**: tập trung vào luồng sử dụng, bố cục, tính nhất quán, responsive, accessibility và phản hồi trạng thái trên giao diện.
+- **Lập trình Web Application**: Laravel MVC, API, validation, MySQL/MariaDB, xác thực, phân quyền và kiểm thử.
+- **Thiết kế giao diện người dùng**: luồng thao tác, design system, responsive, accessibility và phản hồi trạng thái.
 
-Sản phẩm hướng tới một hệ thống quản trị nội bộ, hỗ trợ quản lý hồ sơ nhân viên và các nghiệp vụ nhân sự cơ bản trong cùng một giao diện web.
+> **Trạng thái ngày 2026-08-11:** repository đang ở mức **prototype tích hợp**, chưa phải sản phẩm hoàn chỉnh. Code đã có UI và API cho một số nghiệp vụ, nhưng test nghiệp vụ còn thiếu, một số route/Blade bị lỗi và bốn stored procedure mà code gọi chưa tồn tại trong SQL dump hoặc database local.
 
-## Mục tiêu đồ án
+## Bắt đầu từ đâu
 
-### Môn Lập trình Web Application
+Đọc theo thứ tự sau trước khi nhận task:
 
-- Tổ chức ứng dụng theo Laravel MVC.
-- Xây dựng đăng nhập, đăng xuất, session và phân quyền theo vai trò.
-- Thực hiện CRUD có validation cho các module nghiệp vụ.
-- Kết nối MySQL và sử dụng stored procedure khi phù hợp với thiết kế database hiện có.
-- Xử lý lỗi, thông báo kết quả và bảo vệ các route quản trị.
-- Có test tối thiểu cho các luồng nghiệp vụ quan trọng.
+1. [README tài liệu](docs/README.md) — bản đồ toàn bộ tài liệu.
+2. [Trạng thái dự án](docs/PROJECT_STATUS.md) — module nào đã có, đang lỗi hoặc mới là kế hoạch.
+3. [Kiến trúc](docs/ARCHITECTURE.md) — luồng web/API, lớp code và asset.
+4. [Database](docs/DATABASE.md) — schema, stored procedure, cách import an toàn và các lệch hợp đồng.
+5. [Hướng dẫn phát triển](docs/DEVELOPMENT_GUIDE.md) — setup, workflow và kiểm tra.
+6. [Frontend](docs/FRONTEND_GUIDE.md) — layout hiện tại, shell mục tiêu và checklist UI.
+7. [Roadmap](docs/ROADMAP.md) — thứ tự xử lý phụ thuộc.
+8. [Handoff cho phiên tiếp theo](docs/CODEX_NEXT_HANDOFF.md) — snapshot kỹ thuật ngắn, có thể thay đổi theo HEAD.
 
-### Môn Thiết kế giao diện người dùng
+Code và database live luôn có độ ưu tiên cao hơn snapshot trong tài liệu. Khi HEAD thay đổi, phải chạy lại route, test, build và kiểm tra hợp đồng database.
 
-- Xây dựng hệ thống layout, màu sắc, typography và component nhất quán.
-- Thiết kế rõ luồng đăng nhập, dashboard, danh sách, form và trang chi tiết.
-- Hỗ trợ desktop, tablet và mobile.
-- Bảo đảm form dễ hiểu, có trạng thái loading, empty, success và error.
-- Chú ý khả năng truy cập: semantic HTML, label, keyboard focus và độ tương phản.
-- Chuẩn bị tài liệu thiết kế như sitemap, user flow, wireframe/mockup và slide thuyết trình.
+## Hiện trạng đã xác minh
 
-## Phạm vi chức năng dự kiến
+Snapshot này được đo trên nhánh `main`, HEAD `643563c029e10a49636f1a6f2e70b4e427f1dc7e`.
 
-| Module | Mục tiêu chính |
+| Hạng mục | Kết quả |
 | --- | --- |
-| Xác thực và phân quyền | Đăng nhập, đăng xuất, bảo vệ route, vai trò và quyền |
-| Nhân viên | Hồ sơ nhân viên, tìm kiếm, thêm, sửa, xem chi tiết, xóa |
-| Phòng ban | Danh sách và CRUD phòng ban |
-| Chức vụ | Danh sách và CRUD chức vụ, hệ số/phụ cấp liên quan |
-| Hợp đồng | Quản lý loại hợp đồng, thời hạn và cảnh báo hết hạn |
-| Nghỉ phép | Tạo đơn, duyệt đơn và theo dõi trạng thái |
-| Chấm công | Theo dõi ngày công, đi muộn, về sớm, import/export khi khả thi |
-| Lương | Hệ số lương, kỳ lương, tính lương và lịch sử lương |
-| Báo cáo | Thống kê nhân sự, chấm công, nghỉ phép và lương |
-| Sao lưu/khôi phục | Thực hiện bằng công cụ MySQL hoặc quy trình server an toàn |
+| Git | `main` đồng bộ `origin/main`; worktree sạch trước khi viết lại tài liệu |
+| Laravel | 12.62.0 trên PHP 8.5.0; project target PHP 8.2+ |
+| Route ứng dụng | 44 route: 17 web `/admin/*`, 27 API `/api/v1/*` |
+| Frontend build | `npm run build` pass; Vite 7.3.6 build 6 entry JavaScript của lương/chấm công/nghỉ phép |
+| Test | 1 pass, 1 fail; test mặc định gọi `/` nhưng ứng dụng chưa có route này |
+| Database local | MariaDB 10.4.32; 14 bảng, 1 view, 8 function, 10 trigger, 63 procedure |
+| Auth/RBAC | Chưa có route đăng nhập, middleware auth hoặc kiểm tra quyền |
 
-## Hiện trạng repository
+`route:list`, một response `200` hoặc Vite build thành công chỉ chứng minh phạm vi hẹp; không chứng minh workflow nghiệp vụ chạy đúng.
 
-> Cập nhật theo code ngày 2026-07-15. Xem chi tiết kỹ thuật và lỗi đã biết tại [`docs/CODEX_NEXT_HANDOFF.md`](docs/CODEX_NEXT_HANDOFF.md).
+## Trạng thái module
 
-| Hạng mục | Trạng thái |
-| --- | --- |
-| Trang chủ | Đã có landing page responsive ở mức demo |
-| Dashboard | Có route/controller/view, giao diện mới là placeholder |
-| Phòng ban | Có CRUD sơ khai nhưng route, controller, Blade và stored procedure chưa đồng bộ |
-| Các module còn lại | Phần lớn controller/view/model chưa có hoặc còn rỗng |
-| Đăng nhập/phân quyền | Chưa triển khai; đang tồn tại hai hướng dữ liệu `users` và `nhan_vien` chưa được thống nhất |
-| Database nghiệp vụ | Có SQL dump gồm bảng, view, function, trigger và stored procedure |
-| Kiểm thử | Chỉ có 2 test mẫu mặc định, chưa bao phủ nghiệp vụ |
-| Frontend build | Vite build được; giao diện frontend và backend chưa dùng chung một design system hoàn chỉnh |
+| Module | Trạng thái | Ghi chú ngắn |
+| --- | --- | --- |
+| Dashboard | Prototype | Route và Blade render được, chưa có dữ liệu nghiệp vụ |
+| Lương | Prototype — blocked | API danh sách phụ thuộc procedure không tồn tại; write contract chưa chặn trùng kỳ; export/đối soát chưa có handler đầy đủ |
+| Chấm công | Prototype — blocked | Hai procedure phân trang không tồn tại; validation có thể trả sai status; import/export chưa có workflow an toàn |
+| Nghỉ phép | Prototype | Có UI/API CRUD và duyệt; chưa có test nghiệp vụ hoặc kiểm chứng mutation đầy đủ |
+| Hệ số lương | Prototype | Có API đọc/thêm/sửa; JavaScript delete không có route DELETE; validation và schema còn lệch |
+| Nhân viên | Prototype | Danh sách đang dùng dữ liệu hard-code; store chưa lưu; edit/update/delete chưa có method tương ứng |
+| Phòng ban | Prototype — blocked | Route/controller/Blade/procedure chưa khớp |
+| Chức vụ | Prototype — unreachable | Có controller/service/repository/request/model nhưng chưa có route |
+| Hợp đồng, vai trò, quyền, tài khoản | Planned | Nhiều controller rỗng, chưa có workflow |
+| Đăng nhập/phân quyền | Planned — critical | Cần chốt nguồn tài khoản và chiến lược hash/session |
+| Báo cáo, backup/restore | Planned — unsafe legacy procedures | Procedure backup/restore hiện sinh cú pháp SQL Server, không dùng được cho MariaDB |
 
-Không xem danh sách chức năng dự kiến là chức năng đã hoàn thành. Trước khi nhận task, luôn kiểm tra route, controller, model, view và SQL tương ứng.
+Chi tiết và bằng chứng nằm trong [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
 
-## Công nghệ đang sử dụng
-
-| Thành phần | Công nghệ |
-| --- | --- |
-| Backend | PHP 8.2+, Laravel 12 |
-| Giao diện server-rendered | Blade |
-| Database | MySQL; schema nghiệp vụ trong `quan_ly_nhan_su.session.sql` |
-| Frontend tooling | Vite 7, JavaScript, Axios |
-| CSS/UI | CSS tùy chỉnh, Tailwind CSS 4; layout backend hiện còn dùng Bootstrap 5 CDN |
-| Test | PHPUnit thông qua `php artisan test` |
-| Quản lý source | Git và GitHub |
-
-Thư viện biểu đồ chưa được chốt. README cũ đề cập Recharts, nhưng repository chưa dùng React nên không thể sử dụng Recharts trực tiếp nếu chưa bổ sung React. Khi làm báo cáo, nhóm cần chọn giải pháp phù hợp với Blade hoặc thống nhất việc tích hợp React trước.
-
-## Kiến trúc tổng quát
+## Kiến trúc hiện tại
 
 ```text
-Trình duyệt
-    ↓
-routes/web.php
-    ↓
-Controller Laravel
-    ↓
-Validation / Model / Query Builder / Stored Procedure
-    ↓
-MySQL
-
-Controller Laravel
-    ↓
-Blade view + Vite assets
-    ↓
-HTML/CSS/JavaScript trả về trình duyệt
+Blade page (/admin/*)
+    └── JavaScript theo module
+            └── JSON API (/api/v1/*)
+                    └── Controller
+                          ├── Service → Repository
+                          └── Query Builder / stored procedure trực tiếp
+                                  └── MariaDB
 ```
 
-Các thư mục quan trọng:
+Code đang dùng hai hướng truy cập dữ liệu song song: service/repository và gọi `DB::select()/DB::statement()` trực tiếp. Chưa nên nhân rộng một hướng mới trước khi chốt chuẩn cho từng module.
+
+Các thư mục chính:
 
 ```text
-app/
-├── Http/Controllers/Backend/    # Chức năng quản trị
-├── Http/Controllers/Frontend/   # Trang dành cho người dùng
-├── Models/                      # Model ánh xạ bảng MySQL
-└── Services/                    # Nghiệp vụ dùng lại khi cần
-database/migrations/             # Hiện chủ yếu là migration mặc định Laravel
-resources/
-├── css/                         # CSS dùng chung và theo màn hình
-├── js/                          # Entrypoint Vite và JavaScript
-└── views/                       # Blade frontend/backend
-routes/web.php                   # Route web
-tests/                           # Unit và feature test
-quan_ly_nhan_su.session.sql      # Nguồn schema nghiệp vụ hiện tại
-AGENTS.md                        # Quy tắc bắt buộc cho Codex/AI agent
-.codex/                          # Tài sản quản lý codebase cho Codex
-docs/CODEX_NEXT_HANDOFF.md       # Snapshot và thứ tự công việc tiếp theo
+app/Http/Controllers/       Web/API controllers
+app/Http/Requests/          Validation request
+app/Models/                 Eloquent models
+app/Services/               Nghiệp vụ trung gian
+app/Repositories/           Truy cập stored procedure/query
+resources/views/            Blade
+resources/js/               JavaScript và Vite entry
+routes/web.php              Route quản trị
+routes/api.php              API v1
+quan_ly_nhan_su.session.sql Schema nghiệp vụ hiện tại
+tests/                      Hiện mới có 2 test mẫu
 ```
 
 ## Yêu cầu môi trường
 
-- PHP 8.2 trở lên và Composer.
-- Node.js, npm.
-- MySQL 8 hoặc MySQL đi kèm XAMPP tương thích với SQL dump.
+- PHP 8.2+ và Composer.
+- Node.js và npm.
+- Baseline hiện chỉ được kiểm tra hẹp trên MariaDB 10.4.32. Cài mới MariaDB hoặc dùng MySQL 8 đều cần clean-replay dump và integration test.
 - Git.
-- Có thể dùng IntelliJ IDEA, PhpStorm, Visual Studio Code hoặc công cụ tương đương.
 
-## Cài đặt local trên Windows/PowerShell
+Máy audit hiện dùng PHP 8.5.0, Composer 2.8.12, Node.js 24.13.0, npm 11.6.2 và MariaDB 10.4.32.
+
+## Cài đặt local an toàn trên Windows/PowerShell
 
 ```powershell
 git clone <repository-url>
@@ -136,24 +109,42 @@ npm install
 npm run build
 ```
 
-Sau đó cấu hình `.env` cho MySQL, tối thiểu gồm `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` và `DB_PASSWORD`.
+### Cấu hình môi trường
+
+`.env.example` hiện vẫn là cấu hình Laravel mặc định dùng SQLite và database-backed session/cache/queue; cấu hình đó **không đủ** cho các module gọi stored procedure. Trước khi chạy nghiệp vụ, chỉnh `.env` local theo nguyên tắc:
+
+```dotenv
+APP_LOCALE=vi
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=quan_ly_nhan_su
+DB_USERNAME=<tai-khoan-local>
+DB_PASSWORD=<mat-khau-local>
+
+SESSION_DRIVER=file
+CACHE_STORE=file
+QUEUE_CONNECTION=sync
+```
+
+Không commit `.env` hoặc thông tin đăng nhập.
 
 ### Chuẩn bị database
 
-File `quan_ly_nhan_su.session.sql` hiện có lệnh `DROP DATABASE IF EXISTS quan_ly_nhan_su`. Chỉ import vào database local/disposable và không chạy trên database có dữ liệu cần giữ.
+`quan_ly_nhan_su.session.sql` bắt đầu bằng:
 
-Thứ tự khuyến nghị:
+```sql
+DROP DATABASE IF EXISTS quan_ly_nhan_su;
+```
 
-1. Khởi động MySQL/XAMPP.
-2. Kiểm tra SQL dump và import vào môi trường local an toàn bằng phpMyAdmin, MySQL Workbench hoặc MySQL CLI.
-3. Cấu hình `.env` trỏ tới database vừa tạo.
-4. Chạy `php artisan migrate` sau khi import dump nếu cần bổ sung các bảng hạ tầng Laravel như session, cache và jobs.
+Chỉ import vào database local/disposable không chứa dữ liệu cần giữ. Dump sẽ tạo lại schema nghiệp vụ nhưng không có business seed đầy đủ. Chưa chạy `php artisan db:seed`: seeder mặc định tham chiếu model `App\Models\User` không tồn tại.
 
-Không commit `.env` hoặc thông tin đăng nhập database lên GitHub.
+Quy trình chi tiết: [docs/DATABASE.md](docs/DATABASE.md).
 
 ## Chạy dự án
 
-Cách đơn giản với hai terminal:
+Dùng hai terminal:
 
 ```powershell
 # Terminal 1
@@ -163,88 +154,51 @@ php artisan serve
 npm run dev
 ```
 
-Hoặc chạy quy trình phát triển đã khai báo trong Composer:
+Các trang có route hiện nằm dưới `/admin`; repository chưa có route `/`.
+
+Không dùng `composer setup` như một lệnh “cài tất cả” ở trạng thái hiện tại, vì script này tự chạy migrations trong khi chiến lược import dump/migrations chưa được chốt.
+
+## Kiểm tra
 
 ```powershell
-composer run dev
+php artisan route:list --except-vendor
+php artisan test
+npm run build
+composer validate --no-check-publish
+git diff --check
+git status --short
 ```
 
-## Lệnh kiểm tra thường dùng
+Baseline hiện tại:
 
-| Lệnh | Mục đích |
-| --- | --- |
-| `php artisan route:list --except-vendor` | Kiểm tra route ứng dụng |
-| `php artisan test` | Chạy test Laravel |
-| `php -l <file.php>` | Kiểm tra cú pháp một file PHP |
-| `npm run build` | Kiểm tra bundle CSS/JavaScript |
-| `git diff --check` | Tìm lỗi whitespace trong thay đổi Git |
-| `git status --short` | Kiểm tra phạm vi file đã thay đổi |
+- Route list: pass, 44 route.
+- Build: pass.
+- Composer metadata: hợp lệ.
+- Test: đang fail 1 test do `/` trả 404.
 
-## Quy trình làm việc nhóm với GitHub
+Ngoài ra, `phpunit.xml` ép test dùng SQLite in-memory. Kể cả khi suite này xanh, nó vẫn không chứng minh stored procedure/trigger MariaDB hoạt động; cần một integration suite riêng trên database disposable.
 
-Mỗi thành viên làm việc trên một branch ngắn hạn, bắt đầu từ branch chung mà nhóm đã thống nhất (ví dụ `main`). Không đưa `.env`, `vendor`, `node_modules` hoặc `public/build` lên repository.
+Không sửa test để “xanh” bằng cách bỏ assertion; hãy chốt route home mong muốn rồi cập nhật route và test cùng nhau.
 
-```text
-main (ví dụ branch chung)
-├── feature/phong-ban-crud
-├── feature/dang-nhap
-├── feature/giao-dien-dashboard
-├── fix/phong-ban-update-route
-└── docs/cap-nhat-readme
-```
+## Các blocker ưu tiên
 
-Quy trình cho một task:
+1. Đồng bộ `.env.example`, DBMS, timezone và quy trình database/migrations.
+2. Tạo master data/seed tối thiểu cho phòng ban, chức vụ, trạng thái, vai trò, quyền và loại phép.
+3. Bổ sung hoặc thay thế bốn procedure còn thiếu:
+   `sp_phong_ban_chi_tiet`, `sp_cham_cong_nhan_vien_phan_trang`,
+   `sp_cham_cong_chi_tiet_phan_trang`, `sp_luong_tim_kiem_phan_trang`.
+4. Sửa route/action/Blade, API naming và validation/error contract.
+5. Khóa cả read/write contract lương, gồm unique `(ma_nv, ky_luong)`.
+6. Chốt auth/RBAC trước khi coi route quản trị là an toàn.
+7. Viết feature/integration test trên database disposable cho các module đã có UI/API.
+8. Xử lý tích hợp nhánh `frontend` như một workstream UI riêng; không merge tự động.
 
-1. Đồng bộ branch gốc và kiểm tra `git status` trước khi sửa.
-2. Tạo branch theo loại công việc: `feature/`, `fix/`, `docs/`, `test/` hoặc `refactor/`.
-3. Chỉ sửa đúng phạm vi task và commit theo từng thay đổi logic nhỏ.
-4. Commit message nên rõ mục đích, ví dụ `feat: add department creation form`.
-5. Chạy test/build phù hợp trước khi push.
-6. Tạo pull request, mô tả file đã sửa, cách kiểm tra và ảnh giao diện nếu có.
-7. Thành viên khác review trước khi merge vào branch chung.
+## Làm việc nhóm
 
-Không dùng force push lên branch dùng chung và không tự ý ghi đè thay đổi chưa commit của bạn cùng nhóm.
+- Mỗi task dùng branch ngắn hạn: `feature/*`, `fix/*`, `docs/*`, `test/*`.
+- Không force-push lên branch dùng chung.
+- Không tự động fetch/merge/rebase/push hoặc tạo upstream khi chưa được yêu cầu.
+- Một module chỉ được gọi là hoàn thành khi route, validation, data contract, UI states, auth, test và browser acceptance phù hợp đều có bằng chứng.
+- Pull request phải ghi phạm vi, cách kiểm tra, rủi ro còn lại và ảnh giao diện khi có thay đổi UI.
 
-## Tiêu chí hoàn thành một module
-
-Một module chỉ được đánh dấu hoàn thành khi có đủ phần liên quan:
-
-- Route có tên nhất quán.
-- Controller đúng namespace và action.
-- Validation phía server.
-- Model/query/stored procedure khớp schema MySQL.
-- Blade view có các trạng thái danh sách, form, lỗi và thông báo thành công.
-- Route quản trị được bảo vệ khi hệ thống auth đã có.
-- Feature test hoặc ít nhất kiểm tra thủ công có ghi lại kết quả.
-- Giao diện responsive và có focus/label/contrast phù hợp.
-- `php artisan test` và `npm run build` không lỗi.
-
-## Thứ tự phát triển đề xuất
-
-1. Chuẩn hóa môi trường MySQL và kiểm tra SQL dump trên database local an toàn.
-2. Hoàn thiện trọn vẹn CRUD phòng ban làm module mẫu.
-3. Hoàn thiện layout backend và chốt design system dùng chung.
-4. Chốt nguồn tài khoản, triển khai đăng nhập và phân quyền.
-5. Làm các danh mục: chức vụ, trạng thái làm việc, vai trò và quyền.
-6. Làm nhân viên, hợp đồng và lịch sử hệ số lương.
-7. Làm nghỉ phép, chấm công, lương và báo cáo.
-8. Hoàn thiện test, tài liệu thiết kế, báo cáo và slide.
-9. Chỉ làm import/export/backup/restore sau khi các luồng chính ổn định.
-
-## Làm việc với Codex
-
-- `AGENTS.md` là hướng dẫn gốc bắt buộc đọc trước khi sửa code.
-- `.codex/USAGE.md` giải thích cách dùng instruction, prompt, agent role và skill riêng của dự án.
-- `docs/CODEX_NEXT_HANDOFF.md` lưu trạng thái kỹ thuật gần nhất và thứ tự tiếp tục.
-- `.agents/skills/` chứa các workflow kỹ thuật dùng chung; `.codex/` chứa ngữ cảnh và workflow riêng cho đồ án này.
-
-Khi giao task cho Codex, nên nêu rõ module, kết quả mong muốn và file/màn hình liên quan. Codex cần đọc code hiện tại trước, giữ thay đổi nhỏ, báo rõ lỗi sẵn có và chạy kiểm tra phù hợp sau khi sửa.
-
-## Quy ước chính
-
-- PHP namespace theo chuẩn `App\\...` và PSR-4.
-- Route name theo dạng `backend.<module>.<action>`.
-- Blade path viết chữ thường theo đúng thư mục thật.
-- Tên bảng/cột MySQL viết chữ thường và `snake_case`.
-- File dùng UTF-8, LF, 4 spaces và có newline cuối file.
-- Ưu tiên code hiện tại khi tài liệu mâu thuẫn, sau đó cập nhật lại tài liệu.
+Xem checklist đầy đủ tại [docs/DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md).

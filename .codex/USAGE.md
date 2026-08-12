@@ -30,11 +30,12 @@ Skill dự án có cấu trúc giống mẫu trong ảnh tham chiếu:
 
 1. `../AGENTS.md` — quy tắc bắt buộc.
 2. `../docs/CODEX_NEXT_HANDOFF.md` — snapshot và điểm tiếp tục gần nhất.
-3. Code và SQL liên quan trực tiếp tới task.
-4. `instructions/` và skill dự án.
-5. `../README.md` — mục tiêu, setup và workflow nhóm.
+3. `../docs/PROJECT_STATUS.md` cùng tài liệu chuyên đề trong `../docs/`.
+4. Code, route, test và SQL/database liên quan trực tiếp tới task.
+5. `instructions/` và skill dự án.
+6. `../README.md` — onboarding, setup và workflow nhóm.
 
-Nếu tài liệu mâu thuẫn với code, ưu tiên code hiện tại và cập nhật tài liệu trong cùng task khi phù hợp.
+Nếu tài liệu mâu thuẫn với code hoặc kiểm tra live, ưu tiên bằng chứng hiện tại và cập nhật tài liệu trong cùng task khi phù hợp. Khi HEAD đổi, phải chạy lại Git status, route, test và build; không coi handoff cũ là trạng thái hiện hành.
 
 ## Cách dùng
 
@@ -53,3 +54,6 @@ Nếu tài liệu mâu thuẫn với code, ưu tiên code hiện tại và cập
 3. Đọc prompt phù hợp, sửa theo một lát cắt nhỏ rồi chạy test/build.
 4. Cập nhật handoff khi trạng thái hoặc ưu tiên dự án thay đổi đáng kể.
 5. Không lưu secret hoặc dữ liệu cá nhân trong prompt, log hay tài liệu Codex.
+6. Không tự fetch, merge, rebase, push, tạo upstream hoặc worktree khi người dùng chưa yêu cầu.
+
+Main và local branch `frontend` đang phân kỳ. Trước mọi thay đổi layout hoặc tích hợp branch, đọc `../docs/FRONTEND_GUIDE.md` và `../docs/decisions/ADR-001-admin-shell.md`.

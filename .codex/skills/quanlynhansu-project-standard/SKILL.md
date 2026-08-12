@@ -11,9 +11,10 @@ Giữ mọi thay đổi bám code hiện tại, phù hợp đồ án nhóm và c
 
 1. Đọc `AGENTS.md`.
 2. Đọc `docs/CODEX_NEXT_HANDOFF.md` nếu file tồn tại.
-3. Đọc route, controller, model, view và test liên quan trực tiếp tới task.
-4. Đọc `quan_ly_nhan_su.session.sql` trước mọi thay đổi phụ thuộc database hoặc stored procedure.
-5. Đọc instruction phù hợp trong `.codex/instructions/` khi task liên quan backend, UI, database hoặc Git.
+3. Đọc `docs/PROJECT_STATUS.md` và tài liệu chuyên đề liên quan.
+4. Đọc route, controller, request, service/repository, model, view/JavaScript và test liên quan trực tiếp tới task.
+5. Đọc `quan_ly_nhan_su.session.sql` và `docs/DATABASE.md` trước mọi thay đổi phụ thuộc database hoặc stored procedure.
+6. Đọc instruction phù hợp trong `.codex/instructions/` khi task liên quan backend, UI, database hoặc Git.
 
 Ưu tiên code hiện tại khi README mâu thuẫn. Nêu rõ giả định nếu chưa thể xác minh bằng code hoặc database local.
 
@@ -35,12 +36,15 @@ Giữ mọi thay đổi bám code hiện tại, phù hợp đồ án nhóm và c
 - Không giả định login đã tồn tại. Nguồn tài khoản `users` và `nhan_vien` chưa được thống nhất.
 - Không commit `.env`, secrets, `vendor`, `node_modules` hoặc `public/build`.
 - Không đánh dấu module hoàn thành chỉ vì có tên trong README.
+- Main và local branch `frontend` đang phân kỳ; không tự fetch/merge/rebase/cherry-pick/push hoặc tạo worktree/upstream.
+- Với UI, phân biệt layout runtime `backend.layouts.app` trên main và shell mục tiêu `backend.layout.app` trong ADR-001; không coi shell branch frontend là đã merge.
 
 ## Kiểm tra tối thiểu
 
 - PHP: `php -l <file.php>`.
 - Route/boot: `php artisan route:list --except-vendor`.
 - Laravel: `php artisan test`.
+- MariaDB integration: suite mặc định dùng SQLite in-memory, nên phải có test DB disposable riêng cho stored procedure/trigger.
 - Frontend/Blade asset: `npm run build`.
 - Git hygiene: `git diff --check` và `git status --short`.
 

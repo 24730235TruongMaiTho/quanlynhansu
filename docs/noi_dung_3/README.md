@@ -1,5 +1,7 @@
 # Bộ giao diện HR theo Primer
 
+> **Phân loại: prototype/reference.** Các file trong thư mục này là HTML tĩnh để tham khảo UI, không phải Blade/Vite runtime của ứng dụng trên `main` và không chứng minh API/nghiệp vụ đã hoạt động.
+
 Gồm 3 màn hình:
 
 - `01-bang-luong.html`
@@ -17,7 +19,9 @@ Giải nén toàn bộ thư mục rồi mở từng file HTML bằng trình duy�
 
 ## Cách đưa vào Laravel Blade
 
-Giữ file CSS/JS trong `public`, sau đó copy phần:
+Không copy nguyên CSS/JS vào `public` hoặc tạo thêm một layout riêng. Trước tiên đọc `../FRONTEND_GUIDE.md` và quyết định shell/asset strategy đang được tích hợp.
+
+Khi chuyển một prototype thành Blade, chỉ giữ phần nội dung page tương đương:
 
 ```html
 <main class="hr-page">
@@ -25,7 +29,7 @@ Giữ file CSS/JS trong `public`, sau đó copy phần:
 </main>
 ```
 
-vào view Blade. Ba màn không chứa header, sidebar hoặc footer.
+Ba màn không chứa header, sidebar hoặc footer. Route, API contract, loading/error state, auth và test phải được triển khai riêng trước khi gọi màn hình là hoàn thành.
 
 ## Tính năng demo
 

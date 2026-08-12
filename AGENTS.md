@@ -1,106 +1,116 @@
 # AGENTS.md
 
-Hướng dẫn này dành cho Codex và các agent AI khi làm việc trong repo đồ án môn học `quanlynhansu`.
-Đọc file này trước khi sửa code. Nếu thông tin trong code khác với README, ưu tiên code hiện tại và ghi rõ giả định trong câu trả lời khi cần.
+Hướng dẫn bắt buộc cho Codex và AI agent làm việc trong repository `quanlynhansu`.
 
-## Tổng Quan Dự Án
+Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu tiên bằng chứng live rồi cập nhật lại tài liệu. Không suy rộng một response `200`, Vite build hoặc test mẫu thành “nghiệp vụ hoàn thành”.
 
-- Tên đồ án: website quản lý nhân sự.
-- Stack chính: Laravel 12, PHP 8.2+, MySQL, Blade, Bootstrap 5, Vite, Tailwind CSS 4.
-- Mục tiêu nghiệp vụ trong README: quản lý nhân viên, phòng ban, chức vụ, chấm công, lương, nghỉ phép, hợp đồng, vai trò/phân quyền, báo cáo, sao lưu/khôi phục.
-- Repo hiện tại mới có một phần khung Laravel và module `phong_ban`; nhiều controller/view đang rỗng hoặc chưa hợp lệ.
-- Database dump chính hiện nằm ở `quan_ly_nhan_su.session.sql`; migrations trong `database/migrations` vẫn là migrations mặc định của Laravel.
+## Tổng quan
 
-## Cấu Trúc Cần Biết
+- Đồ án: website quản lý nhân sự cho hai môn Web Application và UI/UX.
+- Stack: Laravel 12, PHP 8.2+, Blade, JavaScript, Vite 7, Tailwind CSS 4, Bootstrap, MariaDB/MySQL.
+- Schema nghiệp vụ hiện nằm trong `quan_ly_nhan_su.session.sql`.
+- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban/nhân viên còn lỗi hoặc hard-code; auth/RBAC chưa có.
+- Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
-- `routes/web.php`: khai báo route web. Hiện mới có dashboard và phòng ban.
-- `app/Http/Controllers/Backend`: controller backend. `PhongBanController` là controller có logic nhiều nhất.
-- `app/Http/Controllers/Frontend`: hiện các file frontend controller đang rỗng.
-- `app/Models`: hiện mới có `PhongBan`.
-- `resources/views/backend`: Blade layout, dashboard và phòng ban.
-- `resources/css/app.css`, `resources/js/app.js`: entrypoint Vite.
-- `quan_ly_nhan_su.session.sql`: tạo database, bảng, view, function, trigger và stored procedure.
+## Thứ tự đọc
 
-## Tài Sản Quản Lý Codebase Cho Codex
+1. File này.
+2. `docs/CODEX_NEXT_HANDOFF.md`.
+3. `docs/PROJECT_STATUS.md` và tài liệu chuyên đề liên quan.
+4. Route, controller, request, service/repository, model, Blade/JavaScript và test của task.
+5. `quan_ly_nhan_su.session.sql` trước mọi thay đổi dùng database.
+6. Instruction/skill phù hợp trong `.codex/`.
 
-- `docs/CODEX_NEXT_HANDOFF.md`: snapshot kỹ thuật, lỗi chặn và thứ tự công việc tiếp theo. Đọc file này khi tiếp tục một phiên cũ.
-- `.codex/USAGE.md`: cách dùng instruction, prompt, agent role và skill riêng của đồ án.
-- `.codex/instructions/`: các quy tắc theo backend, UI, database và Git.
-- `.codex/prompts/`: prompt mẫu cho các workflow lặp lại.
-- `.codex/agents/`: vai trò tập trung cho phiên làm webapp, UI/UX hoặc review pull request.
-- `.codex/skills/quanlynhansu-project-standard/`: skill chuẩn của dự án; đọc khi sửa hoặc review code trong repo.
-- `.agents/skills/`: thư viện workflow kỹ thuật dùng chung đã có sẵn trong repository.
+Khi HEAD thay đổi, chạy lại Git status, route, test và build trước khi tin snapshot.
 
-## Lệnh Hay Dùng
+## Bản đồ code
 
-Chạy trong PowerShell tại root repo:
+- `routes/web.php`: web route dưới `/admin`.
+- `routes/api.php`: JSON API v1 cho lương, chấm công và nghỉ phép.
+- `app/Http/Controllers/Backend`: controller web/API.
+- `app/Http/Requests`: validation requests.
+- `app/Services`, `app/Repositories`: một phần data/business layer.
+- `app/Models`: model nghiệp vụ, mức hoàn thiện không đồng đều.
+- `resources/views/backend`: dashboard và page quản trị.
+- `resources/js/frontend`: API clients/UI logic theo module.
+- `docs/`: kiến trúc, trạng thái, DB, frontend, roadmap và handoff.
+
+## Git và bảo toàn thay đổi
+
+- Chạy `git status --short --branch` trước/sau khi sửa.
+- Bảo toàn mọi thay đổi không thuộc task.
+- Không tự động fetch, merge, rebase, push, tạo upstream hoặc worktree.
+- Không force-push branch dùng chung.
+- Không commit `.env`, secret, dữ liệu cá nhân, `vendor`, `node_modules` hoặc `public/build`.
+- `docs/CODEX_FRONTEND_HANDOFF.md` là local-only và không được stage.
+
+Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa được merge. Đọc `docs/decisions/ADR-001-admin-shell.md` trước mọi thay đổi layout hoặc tích hợp branch.
+
+## Quy ước Laravel
+
+- Namespace dùng `App\...`.
+- Controller extend base controller Laravel.
+- Route name dùng `backend.<module>.<action>` hoặc `api.v1.<module>.<action>`.
+- Không lặp prefix `backend.backend.*`.
+- Runtime hiện còn resource API names không có `api.v1` prefix và route nghỉ phép chưa đặt tên; xem đây là drift cần sửa, không phải convention mới.
+- Blade path phải khớp chính xác thư mục (`layout` và `layouts` là hai path khác nhau).
+- Validate ở server và trả lỗi an toàn; không trả raw exception/SQL message.
+- Model phải map đúng table, primary key, casts và timestamps.
+- Không tạo file/class rỗng chỉ để đánh dấu module.
+
+## Database
+
+- Đọc `docs/DATABASE.md`.
+- Dump có `DROP DATABASE IF EXISTS quan_ly_nhan_su`; không import vào DB có dữ liệu cần giữ.
+- Runtime audit là MariaDB 10.4.32; chưa mặc định tuyên bố tương thích MySQL 8.
+- Migrations chỉ là hạ tầng Laravel và chưa tạo bảng nghiệp vụ.
+- Trước khi gọi procedure, kiểm tra tên, số tham số, thứ tự và result shape trong dump/live schema.
+- Bốn procedure code đang gọi hiện không tồn tại; không tự tạo bằng phỏng đoán.
+- Chốt cùng timezone cho Laravel và DB trước các logic dùng `now()`/`CURDATE()`.
+- Chỉ test mutation trên database test/disposable.
+- Không dùng procedure backup/restore/import/export hiện tại từ web.
+- Không trả password/hash từ view/query ra UI/API.
+
+## Frontend/UI
+
+- Đọc `docs/FRONTEND_GUIDE.md`.
+- Runtime main hiện dùng `backend.layouts.app`; shell mục tiêu `backend.layout.app` chỉ ở branch `frontend`.
+- Quyết định mục tiêu: Header + Sidebar + Main + Footer, không global navbar.
+- Không thêm design system/asset strategy mới khi chưa chốt tích hợp.
+- UI phải có loading, empty, success, validation error, server error và disabled/submitting.
+- Dùng semantic HTML, label, keyboard focus, accessible name, contrast và responsive.
+- Build/test tự động không thay thế browser acceptance.
+
+## Cách triển khai tính năng
+
+1. Chọn một vertical slice nhỏ.
+2. Khóa contract route/request/JSON/database.
+3. Viết hoặc cập nhật test thể hiện hành vi mong muốn.
+4. Sửa đúng phạm vi: route → validation → controller → data → Blade/JS.
+5. Kiểm tra auth/permission.
+6. Chạy test/build/browser phù hợp.
+7. Cập nhật `PROJECT_STATUS.md`/handoff nếu trạng thái thay đổi.
+
+Không sửa hàng loạt lỗi ngoài scope; ghi chúng thành blocker có file và bằng chứng.
+
+## Lệnh kiểm tra
 
 ```powershell
-composer install
-Copy-Item .env.example .env
-php artisan key:generate
-npm install
-npm run build
+php -l <file.php>
+php artisan route:list --except-vendor
 php artisan test
+npm run build
+composer validate --no-check-publish
+git diff --check
+git status --short
 ```
 
-Khi chạy local:
+Baseline 2026-08-11 có 44 route, build pass và 1/2 test pass. `phpunit.xml` dùng SQLite in-memory nên full suite xanh cũng không chứng minh procedure MariaDB. Nếu baseline đổi, cập nhật `docs/PROJECT_STATUS.md`; không che lỗi cũ bằng cách xóa assertion.
 
-```powershell
-php artisan serve
-npm run dev
-```
+## Giao tiếp
 
-Nếu cần dùng database thật, cấu hình `.env` sang MySQL và import `quan_ly_nhan_su.session.sql` vào MySQL trước khi test các màn hình dùng stored procedure.
-
-## Quy Ước Code
-
-- Trả lời và ghi chú giải thích cho người dùng bằng tiếng Việt, ngắn gọn và rõ việc đã làm.
-- Giữ định dạng theo `.editorconfig`: UTF-8, LF, 4 spaces, có newline cuối file.
-- PHP namespace phải đúng chuẩn Laravel, ví dụ `App\Http\Controllers\Backend`, không dùng `app/Http/...`.
-- Controller nên extend `App\Http\Controllers\Controller` hoặc base controller Laravel đúng chuẩn.
-- Route name nên theo dạng `backend.<module>.<action>`, ví dụ `backend.phongban.index`.
-- Blade view nên dùng lowercase path theo thư mục thật, ví dụ `backend.phongban.index`.
-- Tên bảng/cột MySQL dùng chữ thường và `snake_case`, theo README.
-- Không sửa file trong `vendor`, `storage/framework`, `bootstrap/cache` trừ khi có lý do rõ ràng.
-- Không commit hoặc đưa thông tin nhạy cảm vào `.env`.
-
-## Hướng Dẫn Làm Việc Với Database
-
-- Code hiện tại đang gọi stored procedure bằng `DB::select()` và `DB::statement()`.
-- Trước khi gọi một stored procedure, kiểm tra chữ ký tham số trong `quan_ly_nhan_su.session.sql`.
-- Khi thêm model cho bảng trong SQL dump, đặt đúng tên bảng và khóa chính nếu khác mặc định Laravel. Ví dụ `phong_ban` có khóa chính `ma_pb`, không phải `id`.
-- Nếu viết query trực tiếp, ưu tiên query builder/Eloquent nếu phù hợp; nếu đồ án đang yêu cầu dùng stored procedure thì giữ nhất quán với stored procedure.
-- Cần cảnh giác với SQL dump: một số đoạn có cú pháp dễ bị sai trong MySQL như `NVARCHAR(MAX)`, `BACKUP DATABASE`, `RESTORE DATABASE`. Hãy verify bằng MySQL/XAMPP trước khi kết luận là chạy được.
-
-## Hiện Trạng Lỗi/Thiếu Cần Lưu Ý
-
-Những điểm này không nhất thiết phải sửa nếu không liên quan đến yêu cầu, nhưng phải biết để không đưa ra giả định sai:
-
-- `app/Services/NhanVienService.php` chưa có `<?php` và namespace sai.
-- `app/Http/Controllers/Backend/NhanVienController.php` chưa có `<?php`, namespace sai, view path sai.
-- Nhiều controller backend/frontend đang rỗng: chức vụ, chấm công, lương, nghỉ phép, frontend lương, chi tiết nhân viên.
-- `PhongBanController@index` gán biến `$danh_sach_phong_ban` nhưng view lại nhận `compact('phongban')`.
-- `PhongBanController` có method `detroy` sai chính tả, trong khi route gọi `destroy`.
-- Route update phòng ban đang map `PUT /phong-ban/{id}` vào `show`, nhưng controller có `update`.
-- `resources/views/backend/phongban/index.blade.php` có cú pháp Blade sai: `@extends(...);`, `@section(...);`, `@foreach($pb in $phongban)`.
-- `resources/views/backend/phongban/create.blade.php` mới có placeholder `@form`.
-- Layout backend thiếu thẻ `<head>` rõ ràng và sidebar/main content mới là comment.
-
-## Cách Tiếp Cận Khi Sửa Tính Năng
-
-1. Đọc route, controller, model, view và stored procedure liên quan trước khi sửa.
-2. Nếu sửa module đã có code, sửa đúng lượng nhỏ nhất để làm module chạy được.
-3. Nếu thêm module mới, tạo đủ các phần tối thiểu: route, controller, model nếu cần, view Blade, validation, redirect/flash message, và test nếu khả thi.
-4. Nếu làm CRUD dùng stored procedure, map đúng các action: danh sách, chi tiết, thêm, sửa, xóa.
-5. Sau khi sửa PHP, chạy `php -l` với các file PHP đã sửa nếu chưa chạy được full test.
-6. Sau khi sửa Blade/frontend, chạy `npm run build` nếu dependencies sẵn sàng.
-7. Chạy `php artisan test` khi `vendor` và `.env` sẵn sàng; nếu không chạy được, báo rõ lý do.
-
-## Nguyên Tắc Giao Tiếp Với Người Dùng
-
-- Người dùng là sinh viên đang làm đồ án nhóm; giải thích thẳng vào vấn đề, không nói quá dài.
-- Khi phát hiện lỗi sẵn có trong repo, ghi rõ file và lý do; không tự ý sửa hàng loạt lỗi ngoài phạm vi yêu cầu.
-- Nếu cần lựa chọn kiến trúc, đề xuất phương án thực dụng phù hợp với trình độ đồ án môn học.
-- Trước khi thay đổi nhiều file, tóm tắt ngắn gọn phạm vi sẽ sửa.
-- Sau khi hoàn thành, nói rõ file đã tạo/sửa và lệnh đã dùng để kiểm tra.
+- Trả lời người dùng bằng tiếng Việt, ngắn gọn và có bằng chứng.
+- Trước thay đổi nhiều file, nêu phạm vi.
+- Sau khi hoàn thành, liệt kê file đã sửa, kiểm tra đã chạy, kết quả và giới hạn.
+- Phân biệt rõ: verified hẹp, prototype, blocked, planned.
+- Không commit/push/merge nếu người dùng chưa yêu cầu.
