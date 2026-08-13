@@ -4,6 +4,9 @@ namespace Tests\Feature\Backend\NhanVien;
 
 use App\Contracts\NhanVienServiceContract;
 use App\Exceptions\NhanVienDomainException;
+use App\Http\Controllers\Backend\ChamCongController;
+use App\Http\Controllers\Backend\NghiPhepController;
+use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 use App\Services\NhanVienService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Route as RoutingRoute;
@@ -27,6 +30,16 @@ class NhanVienIndexTest extends TestCase
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
+        });
+        $this->mock(ChamCongController::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('getMiddleware')->zeroOrMoreTimes()->andReturn([]);
+            $mock->shouldNotReceive('employees');
+        });
+        $this->mock(NghiPhepController::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('getMiddleware')->zeroOrMoreTimes()->andReturn([]);
+            $mock->shouldNotReceive('employees');
+            $mock->shouldNotReceive('storeEmployee');
+            $mock->shouldNotReceive('updateEmployee');
         });
 
         $this->get('/admin/nhan-vien')->assertNotFound();
@@ -70,7 +83,9 @@ class NhanVienIndexTest extends TestCase
             ->assertDontSee('mat_khau')
             ->assertDontSee('Thêm mới')
             ->assertDontSee('Chỉnh sửa')
-            ->assertDontSee('Xóa nhân viên');
+            ->assertDontSee('Xóa nhân viên')
+            ->assertDontSee('Thao tác')
+            ->assertDontSee('Chưa khả dụng');
     }
 
     public function test_enabled_index_passes_integer_filters_and_keeps_them_in_pagination_links(): void
@@ -133,6 +148,29 @@ class NhanVienIndexTest extends TestCase
             ->assertOk()
             ->assertSee('Không tìm thấy nhân viên phù hợp')
             ->assertDontSee('Chưa có nhân viên trong hệ thống');
+    }
+
+    public function test_empty_current_page_with_existing_results_has_a_truthful_distinct_state(): void
+    {
+        $this->enableEmployeeModule();
+        $service = $this->mock(NhanVienServiceContract::class);
+        $service->shouldReceive('paginate')->twice()->andReturn(
+            $this->employeePaginator([], 11, 20, 999),
+            $this->employeePaginator([], 11, 20, 999),
+        );
+        $service->shouldReceive('lookups')->twice()->andReturn($this->employeeLookups());
+
+        foreach ([
+            '/admin/nhan-vien?page=999',
+            '/admin/nhan-vien?tu_khoa=NV001&page=999',
+        ] as $uri) {
+            $this->get($uri)
+                ->assertOk()
+                ->assertSee('Trang kết quả hiện tại không có dữ liệu')
+                ->assertSee('11 nhân viên')
+                ->assertDontSee('Chưa có nhân viên trong hệ thống')
+                ->assertDontSee('Không tìm thấy nhân viên phù hợp');
+        }
     }
 
     public function test_domain_exception_is_rendered_as_a_safe_error_state(): void
@@ -209,6 +247,27 @@ class NhanVienIndexTest extends TestCase
 
         foreach ($employeeRoutes as $route) {
             $this->assertSame(['GET', 'HEAD'], $route->methods());
+        }
+    }
+
+    public function test_every_scoped_employee_api_route_has_the_rollout_guard(): void
+    {
+        $expected = [
+            ['api/v1/cham-cong/nhan-vien', ['GET', 'HEAD'], ChamCongController::class.'@employees'],
+            ['api/v1/nghi-phep/nhan-vien', ['GET', 'HEAD'], NghiPhepController::class.'@employees'],
+            ['api/v1/nghi-phep/nhan-vien', ['POST'], NghiPhepController::class.'@storeEmployee'],
+            ['api/v1/nghi-phep/nhan-vien/{ma_nv}', ['PUT', 'PATCH'], NghiPhepController::class.'@updateEmployee'],
+        ];
+
+        foreach ($expected as [$uri, $methods, $action]) {
+            $route = collect(Route::getRoutes()->getRoutes())->first(
+                fn (RoutingRoute $candidate): bool => $candidate->uri() === $uri
+                    && $candidate->methods() === $methods
+                    && $candidate->getActionName() === $action,
+            );
+
+            $this->assertInstanceOf(RoutingRoute::class, $route, "Missing guarded route [{$action}].");
+            $this->assertContains(EnsureNhanVienModuleEnabled::class, $route->gatherMiddleware());
         }
     }
 

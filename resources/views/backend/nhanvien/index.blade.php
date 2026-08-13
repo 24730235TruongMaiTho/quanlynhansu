@@ -8,6 +8,9 @@
             || filled($filters['ma_pb'])
             || filled($filters['ma_cv'])
             || filled($filters['ma_tt']);
+        $hasEmptyCurrentPage = ! $employeeError
+            && $employees->total() > 0
+            && $employees->count() === 0;
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="page-title">
@@ -164,7 +167,6 @@
                                 <th scope="col">Phòng ban</th>
                                 <th scope="col">Chức vụ</th>
                                 <th scope="col">Trạng thái</th>
-                                <th scope="col">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -197,11 +199,25 @@
                                     <td>
                                         <span class="badge text-bg-light border fw-normal">{{ $employee->ten_tt }}</span>
                                     </td>
-                                    <td><span class="small text-secondary">Chưa khả dụng</span></td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+            @elseif ($hasEmptyCurrentPage)
+                <div class="card-body text-center py-5" role="status">
+                    <i class="bi bi-file-earmark-x fs-1 text-secondary" aria-hidden="true"></i>
+                    <h3 class="h6 mt-3 mb-1">Trang kết quả hiện tại không có dữ liệu</h3>
+                    <p class="text-secondary mb-3">
+                        @if ($hasFilters)
+                            Bộ lọc hiện tại có {{ number_format($employees->total(), 0, ',', '.') }} nhân viên,
+                            nhưng trang {{ $employees->currentPage() }} không chứa dòng nào.
+                        @else
+                            Danh sách có {{ number_format($employees->total(), 0, ',', '.') }} nhân viên,
+                            nhưng trang {{ $employees->currentPage() }} không chứa dòng nào.
+                        @endif
+                    </p>
+                    <a class="btn btn-outline-secondary" href="{{ $employees->url(1) }}">Về trang đầu tiên</a>
                 </div>
             @elseif (! $employeeError)
                 <div class="card-body text-center py-5" role="status">
