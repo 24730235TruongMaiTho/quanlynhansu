@@ -51,8 +51,10 @@ final class NhanVienProcedureExceptionMapper
 
     private function hasConstraintName(string $databaseMessage, string $constraintName): bool
     {
+        $quotedConstraintName = preg_quote($constraintName, '/');
+
         return preg_match(
-            '/(?<![A-Za-z0-9_])'.preg_quote($constraintName, '/').'(?![A-Za-z0-9_])/i',
+            "/(?<![A-Za-z0-9_])(['`]){$quotedConstraintName}\\1(?![A-Za-z0-9_])/i",
             $databaseMessage,
         ) === 1;
     }

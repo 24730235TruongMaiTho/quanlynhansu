@@ -93,6 +93,26 @@ class NhanVienProcedureExceptionMapperTest extends TestCase
         ];
     }
 
+    #[DataProvider('undelimitedConstraintNames')]
+    public function test_it_does_not_map_constraint_names_without_a_supported_delimiter(string $databaseMessage): void
+    {
+        $mapped = (new NhanVienProcedureExceptionMapper())->map($this->queryException($databaseMessage));
+
+        $this->assertSame('NV_DATABASE_ERROR', $mapped->domainCode);
+        $this->assertSame('Không thể xử lý yêu cầu nhân viên. Vui lòng thử lại.', $mapped->getMessage());
+        $this->assertNull($mapped->field);
+    }
+
+    public static function undelimitedConstraintNames(): array
+    {
+        return [
+            'bare email' => ['Duplicate entry for key uq_nhan_vien_email'],
+            'bare cccd' => ['Duplicate entry for key uq_nhan_vien_cccd'],
+            'double quoted email' => ['Duplicate entry for key "uq_nhan_vien_email"'],
+            'double quoted cccd' => ['Duplicate entry for key "uq_nhan_vien_cccd"'],
+        ];
+    }
+
     public function test_privileged_target_race_returns_the_same_safe_authorization_message(): void
     {
         $mapped = (new NhanVienProcedureExceptionMapper())->map($this->queryException('NV_PRIVILEGED_TARGET'));
