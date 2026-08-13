@@ -31,7 +31,7 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
         );
     }
 
-    public function test_canonical_dump_replays_only_under_a_guarded_name_and_matches_task_three_contracts(): void
+    public function test_canonical_dump_replays_only_under_a_guarded_name_and_matches_employee_contracts(): void
     {
         $dump = $this->canonicalDump();
 
@@ -53,8 +53,8 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $this->assertSame($guardedDatabase, $this->pdo()->query('SELECT DATABASE()')->fetchColumn());
             $this->assertFoundationSchema();
             $this->assertSafeView();
-            $this->assertLegacyRoutineSignatures();
-            $this->assertLegacyEmployeeRoutineResultsAreSafe();
+            $this->assertRoutineSignatures();
+            $this->assertEmployeeReadRoutineResultsAreSafe();
         } finally {
             try {
                 DisposableMariaDbGuard::assertSafeDatabaseName($guardedDatabase);
@@ -199,12 +199,18 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
         $this->assertNotContains('mat_khau', $columns);
     }
 
-    private function assertLegacyRoutineSignatures(): void
+    private function assertRoutineSignatures(): void
     {
         $expected = [
-            'sp_nhan_vien_tim_kiem' => ['IN:p_tu_khoa:varchar(100)', 'IN:p_ma_pb:int(11)', 'IN:p_ma_cv:int(11)', 'IN:p_ma_tt:tinyint(4)'],
-            'sp_nhan_vien_danh_sach' => [],
+            'sp_nhan_vien_danh_sach_phan_trang' => [
+                'IN:p_tu_khoa:varchar(100)', 'IN:p_ma_pb:int(11)', 'IN:p_ma_cv:int(11)', 'IN:p_ma_tt:tinyint(4)',
+                'IN:p_trang:int(11)', 'IN:p_so_dong:int(11)', 'OUT:p_tong_so:bigint(20)',
+            ],
             'sp_nhan_vien_chi_tiet' => ['IN:p_ma_nv:varchar(5)'],
+            'sp_cham_cong_nhan_vien_phan_trang' => [
+                'IN:p_tu_khoa:varchar(100)', 'IN:p_ma_pb:int(11)', 'IN:p_thang:int(11)', 'IN:p_nam:int(11)',
+                'IN:p_trang:int(11)', 'IN:p_so_dong:int(11)', 'OUT:p_tong_so:bigint(20)',
+            ],
             'sp_nhan_vien_them' => [
                 'IN:p_ma_nv:varchar(5)', 'IN:p_ho_ten:varchar(50)', 'IN:p_ngay_sinh:date', 'IN:p_gioi_tinh:tinyint(4)',
                 'IN:p_sdt:varchar(15)', 'IN:p_email:varchar(50)', 'IN:p_ngay_vao_lam:date', 'IN:p_ma_pb:int(11)',
@@ -241,9 +247,18 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $exists->execute([$routine, 'PROCEDURE']);
             $this->assertSame(1, (int) $exists->fetchColumn(), "Missing procedure {$routine}.");
         }
+
+        foreach (['sp_nhan_vien_tim_kiem', 'sp_nhan_vien_danh_sach'] as $removedRoutine) {
+            $statement = $this->pdo()->prepare(
+                'SELECT COUNT(*) FROM information_schema.ROUTINES
+                 WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = ? AND ROUTINE_TYPE = ?'
+            );
+            $statement->execute([$removedRoutine, 'PROCEDURE']);
+            $this->assertSame(0, (int) $statement->fetchColumn(), "Legacy procedure {$removedRoutine} must be removed.");
+        }
     }
 
-    private function assertLegacyEmployeeRoutineResultsAreSafe(): void
+    private function assertEmployeeReadRoutineResultsAreSafe(): void
     {
         $this->pdo()->exec("INSERT INTO phong_ban (ten_pb) VALUES ('Phòng canonical')");
         $department = (int) $this->pdo()->lastInsertId();
@@ -264,21 +279,34 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $status, str_repeat('a', 64), $role,
         ]);
 
+        $this->pdo()->exec('SET @canonical_employee_total = 0');
         $calls = [
-            ['CALL sp_nhan_vien_tim_kiem(?, ?, ?, ?)', ['', null, null, null]],
-            ['CALL sp_nhan_vien_danh_sach()', []],
-            ['CALL sp_nhan_vien_chi_tiet(?)', ['NV001']],
+            [
+                'CALL sp_nhan_vien_danh_sach_phan_trang(?, ?, ?, ?, ?, ?, @canonical_employee_total)',
+                [null, null, null, null, 1, 20],
+                $this->employeeListColumns(),
+            ],
+            ['CALL sp_nhan_vien_chi_tiet(?)', ['NV001'], $this->employeeDetailColumns()],
+            [
+                'CALL sp_cham_cong_nhan_vien_phan_trang(?, ?, ?, ?, ?, ?, @canonical_attendance_total)',
+                [null, null, 8, 2026, 1, 20],
+                $this->attendanceColumns(),
+            ],
         ];
-        foreach ($calls as [$sql, $bindings]) {
+        $this->pdo()->exec('SET @canonical_attendance_total = 0');
+        foreach ($calls as [$sql, $bindings, $columns]) {
             $routine = $this->pdo()->prepare($sql);
             $routine->execute($bindings);
             $row = $routine->fetch(PDO::FETCH_ASSOC);
             $routine->closeCursor();
 
             $this->assertIsArray($row);
-            $this->assertSame($this->safeEmployeeColumns(), array_keys($row));
+            $this->assertSame($columns, array_keys($row));
             $this->assertArrayNotHasKey('mat_khau', $row);
         }
+
+        $this->assertSame(1, (int) $this->pdo()->query('SELECT @canonical_employee_total')->fetchColumn());
+        $this->assertSame(1, (int) $this->pdo()->query('SELECT @canonical_attendance_total')->fetchColumn());
     }
 
     private function assertUnsafeDumpRejected(string $dump): void
@@ -307,14 +335,30 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
         return $dump;
     }
 
-    private function safeEmployeeColumns(): array
+    private function employeeListColumns(): array
     {
         return [
-            'ma_nv', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'gioi_tinh_hien_thi',
-            'sdt', 'email', 'ngay_vao_lam', 'ma_pb', 'ten_pb', 'ma_cv', 'ten_cv',
-            'he_so_phu_cap', 'dan_toc', 'cccd', 'noi_cap_cccd', 'hoc_van', 'ma_tt',
-            'ky_hieu', 'ten_tt', 'ngay_nghi_viec', 'ma_vt', 'ky_hieu_vai_tro',
-            'ten_vt', 'anh_dai_dien',
+            'ma_nv', 'ho_ten', 'sdt', 'email', 'ngay_vao_lam', 'anh_dai_dien',
+            'ma_pb', 'ten_pb', 'ma_cv', 'ten_cv', 'ma_tt', 'ky_hieu', 'ten_tt',
+        ];
+    }
+
+    private function employeeDetailColumns(): array
+    {
+        return [
+            'ma_nv', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'sdt', 'email', 'ngay_vao_lam',
+            'ma_pb', 'ten_pb', 'ma_cv', 'ten_cv', 'dan_toc', 'cccd', 'noi_cap_cccd',
+            'hoc_van', 'ma_tt', 'ky_hieu', 'ten_tt', 'ngay_nghi_viec', 'ma_vt',
+            'ky_hieu_vai_tro', 'ten_vt', 'anh_dai_dien', 'dia_chi_cu_the', 'phuong_xa',
+            'quan_huyen', 'tinh_thanh',
+        ];
+    }
+
+    private function attendanceColumns(): array
+    {
+        return [
+            'ma_nv', 'ho_ten', 'gioi_tinh', 'sdt', 'email', 'ma_pb', 'ten_pb',
+            'ma_cv', 'ten_cv', 'so_lan_vao_muon', 'so_lan_ve_som', 'so_ngay_cham_cong',
         ];
     }
 }
