@@ -1,0 +1,333 @@
+<?php
+
+namespace Tests\Feature\Backend\NhanVien;
+
+use App\Contracts\NhanVienRepositoryContract;
+use App\Http\Requests\StoreNhanVienRequest;
+use App\Http\Requests\UpdateNhanVienRequest;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Route;
+use Mockery;
+use Tests\Support\CreatesEmployeeFeatureSchema;
+use Tests\TestCase;
+
+class NhanVienValidationTest extends TestCase
+{
+    use CreatesEmployeeFeatureSchema;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->createEmployeeFeatureSchema();
+        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ky_hieu' => 'DANG_LAM']);
+
+        Route::post('/_tests/nhan-vien', function (StoreNhanVienRequest $request) {
+            return response()->json(array_merge(
+                $request->safe()->except('anh_dai_dien'),
+                ['avatar_uploaded' => $request->validated('anh_dai_dien') instanceof UploadedFile],
+            ));
+        });
+        Route::put('/_tests/nhan-vien/{ma_nv}', function (UpdateNhanVienRequest $request) {
+            return response()->json($request->safe()->except('anh_dai_dien'));
+        });
+    }
+
+    protected function tearDown(): void
+    {
+        $this->dropEmployeeFeatureSchema();
+
+        parent::tearDown();
+    }
+
+    public function test_store_normalizes_unicode_strings_email_cccd_and_numeric_identifiers(): void
+    {
+        $response = $this->postJson('/_tests/nhan-vien', $this->validPayload([
+            'ho_ten' => '  Nguyễn An  ',
+            'gioi_tinh' => '0',
+            'email' => '  NHANVIEN@EXAMPLE.TEST  ',
+            'ma_pb' => '1',
+            'ma_cv' => '1',
+            'cccd' => '  001200000001  ',
+            'ma_tt' => '1',
+            'dia_chi_cu_the' => '  1 Nguyễn Trãi  ',
+        ]));
+
+        $response->assertOk()->assertJson([
+            'ho_ten' => 'Nguyễn An',
+            'gioi_tinh' => 0,
+            'email' => 'nhanvien@example.test',
+            'ma_pb' => 1,
+            'ma_cv' => 1,
+            'cccd' => '001200000001',
+            'ma_tt' => 1,
+            'dia_chi_cu_the' => '1 Nguyễn Trãi',
+        ]);
+    }
+
+    public function test_store_accepts_exact_eighteen_and_rejects_the_day_before(): void
+    {
+        $this->postJson('/_tests/nhan-vien', $this->validPayload([
+            'ngay_sinh' => '2008-08-12',
+            'ngay_vao_lam' => '2026-08-12',
+        ]))->assertOk();
+
+        $this->postJson('/_tests/nhan-vien', $this->validPayload([
+            'ngay_sinh' => '2008-08-13',
+            'ngay_vao_lam' => '2026-08-12',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('ngay_sinh');
+    }
+
+    public function test_invalid_iso_dates_are_owned_by_date_validation_without_crashing_age_rule(): void
+    {
+        foreach ([
+            ['ngay_sinh' => '2024-02-31'],
+            ['ngay_vao_lam' => '31/12/2026'],
+        ] as $invalid) {
+            $this->postJson('/_tests/nhan-vien', $this->validPayload($invalid))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(array_key_first($invalid));
+        }
+    }
+
+    public function test_store_email_is_unique_after_case_and_whitespace_normalization(): void
+    {
+        $this->insertEmployeeIdentity();
+
+        $this->postJson('/_tests/nhan-vien', $this->validPayload([
+            'email' => '  EXISTING@EXAMPLE.TEST ',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('email');
+    }
+
+    public function test_store_cccd_is_unique_after_whitespace_normalization(): void
+    {
+        $this->insertEmployeeIdentity();
+
+        $this->postJson('/_tests/nhan-vien', $this->validPayload([
+            'cccd' => ' 001200000099 ',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('cccd');
+    }
+
+    public function test_store_accepts_active_and_probation_status_but_rejects_terminated_status(): void
+    {
+        foreach ([1, 2] as $status) {
+            $this->postJson('/_tests/nhan-vien', $this->validPayload(['ma_tt' => $status]))
+                ->assertOk();
+        }
+
+        $this->postJson('/_tests/nhan-vien', $this->validPayload(['ma_tt' => 3]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('ma_tt');
+    }
+
+    public function test_store_rejects_each_missing_lookup(): void
+    {
+        foreach (['ma_pb', 'ma_cv', 'ma_tt'] as $field) {
+            $this->postJson('/_tests/nhan-vien', $this->validPayload([$field => 999]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($field);
+        }
+    }
+
+    public function test_phone_cccd_gender_and_email_formats_are_enforced(): void
+    {
+        foreach ([
+            ['sdt' => '1900123456'],
+            ['sdt' => '090123456'],
+            ['sdt' => '090123456a'],
+            ['cccd' => '00120000001'],
+            ['cccd' => '00120000000a'],
+            ['gioi_tinh' => 2],
+            ['email' => 'not-an-email'],
+        ] as $invalid) {
+            $field = array_key_first($invalid);
+            $this->postJson('/_tests/nhan-vien', $this->validPayload($invalid))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($field);
+        }
+    }
+
+    public function test_profile_and_address_length_limits_are_enforced(): void
+    {
+        foreach ([
+            'ho_ten' => 51,
+            'dan_toc' => 51,
+            'noi_cap_cccd' => 51,
+            'hoc_van' => 51,
+            'email' => 101,
+            'dia_chi_cu_the' => 256,
+            'phuong_xa' => 101,
+            'quan_huyen' => 101,
+            'tinh_thanh' => 101,
+        ] as $field => $length) {
+            $value = $field === 'email'
+                ? str_repeat('a', 89).'@example.test'
+                : str_repeat('ă', $length);
+
+            $this->postJson('/_tests/nhan-vien', $this->validPayload([$field => $value]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($field);
+        }
+    }
+
+    public function test_all_four_address_parts_are_required_after_trimming(): void
+    {
+        foreach (['dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh'] as $field) {
+            $this->postJson('/_tests/nhan-vien', $this->validPayload([$field => '   ']))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($field);
+        }
+    }
+
+    public function test_avatar_accepts_supported_images_and_rejects_wrong_type_or_oversize(): void
+    {
+        foreach (['jpg', 'png', 'webp'] as $extension) {
+            $this->post('/_tests/nhan-vien', $this->validPayload([
+                'anh_dai_dien' => $this->fakeImage("avatar.{$extension}"),
+            ]), ['Accept' => 'application/json'])
+                ->assertOk()
+                ->assertJson(['avatar_uploaded' => true]);
+        }
+
+        $this->post('/_tests/nhan-vien', $this->validPayload([
+            'anh_dai_dien' => UploadedFile::fake()->create('avatar.gif', 100, 'image/gif'),
+        ]), ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('anh_dai_dien');
+
+        $this->post('/_tests/nhan-vien', $this->validPayload([
+            'anh_dai_dien' => $this->fakeImage('avatar.jpg')->size(2049),
+        ]), ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('anh_dai_dien');
+    }
+
+    public function test_store_rejects_every_system_owned_field_and_avatar_removal_flag(): void
+    {
+        foreach ([
+            'ma_nv' => 'NV999',
+            'ma_vt' => 9,
+            'mat_khau' => 'plaintext',
+            'mat_khau_hash' => 'crafted-hash',
+            'ngay_nghi_viec' => '2026-08-12',
+            'xoa_anh_dai_dien' => true,
+        ] as $field => $value) {
+            $this->postJson('/_tests/nhan-vien', $this->validPayload([$field => $value]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($field);
+        }
+    }
+
+    public function test_update_rejects_every_system_owned_field(): void
+    {
+        foreach ([
+            'ma_nv' => 'NV999',
+            'ma_vt' => 9,
+            'mat_khau' => 'plaintext',
+            'mat_khau_hash' => 'crafted-hash',
+            'ngay_nghi_viec' => '2026-08-12',
+        ] as $field => $value) {
+            $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload([$field => $value]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($field);
+        }
+    }
+
+    public function test_update_unique_rules_ignore_only_the_exact_route_employee_code(): void
+    {
+        $this->insertEmployeeIdentity();
+
+        $sameEmployee = $this->validPayload([
+            'email' => ' EXISTING@EXAMPLE.TEST ',
+            'cccd' => ' 001200000099 ',
+        ]);
+
+        $this->putJson('/_tests/nhan-vien/NV001', $sameEmployee)->assertOk();
+        $this->putJson('/_tests/nhan-vien/NV002', $sameEmployee)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['email', 'cccd']);
+    }
+
+    public function test_update_enforces_active_and_terminated_lifecycle_invariants(): void
+    {
+        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ky_hieu' => 'DANG_LAM']);
+        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 2]))->assertOk();
+        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 3]))
+            ->assertUnprocessable()->assertJsonValidationErrors('ma_tt');
+
+        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ky_hieu' => 'DA_NGHI']);
+        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 3]))->assertOk();
+        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 1]))
+            ->assertUnprocessable()->assertJsonValidationErrors('ma_tt');
+    }
+
+    public function test_update_returns_validation_error_when_route_employee_does_not_exist(): void
+    {
+        $this->bindCurrentEmployee(null);
+
+        $this->putJson('/_tests/nhan-vien/NV404', $this->validPayload())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('ma_nv');
+    }
+
+    public function test_update_accepts_string_zero_for_boolean_flag_and_rejects_avatar_remove_conflict(): void
+    {
+        $this->put('/_tests/nhan-vien/NV001', $this->validPayload([
+            'xoa_anh_dai_dien' => '0',
+            'anh_dai_dien' => $this->fakeImage('avatar.jpg'),
+        ]), ['Accept' => 'application/json'])->assertOk();
+
+        $this->put('/_tests/nhan-vien/NV001', $this->validPayload([
+            'xoa_anh_dai_dien' => true,
+            'anh_dai_dien' => $this->fakeImage('avatar.jpg'),
+        ]), ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('xoa_anh_dai_dien');
+    }
+
+    private function validPayload(array $overrides = []): array
+    {
+        return array_replace([
+            'ho_ten' => 'Nguyễn An',
+            'ngay_sinh' => '2000-08-12',
+            'gioi_tinh' => 1,
+            'sdt' => '0901234567',
+            'email' => 'nhanvien@example.test',
+            'ngay_vao_lam' => '2026-08-12',
+            'ma_pb' => 1,
+            'ma_cv' => 1,
+            'dan_toc' => 'Kinh',
+            'cccd' => '001200000001',
+            'noi_cap_cccd' => 'Cục CSQLHC',
+            'hoc_van' => 'Đại học',
+            'ma_tt' => 1,
+            'dia_chi_cu_the' => '1 Nguyễn Trãi',
+            'phuong_xa' => 'Bến Thành',
+            'quan_huyen' => 'Quận 1',
+            'tinh_thanh' => 'TP Hồ Chí Minh',
+        ], $overrides);
+    }
+
+    private function bindCurrentEmployee(?object $employee): void
+    {
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('find')->andReturn($employee);
+        $this->app->instance(NhanVienRepositoryContract::class, $repository);
+    }
+
+    private function fakeImage(string $name): UploadedFile
+    {
+        $images = [
+            'jpg' => '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABAf/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPxB//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPxB//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxB//9k=',
+            'png' => 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+            'webp' => 'UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEAAUAmJaQAA3AA/v3AgAA=',
+        ];
+        $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        $content = base64_decode(
+            $images[$extension] ?? $images['png'],
+            true,
+        );
+
+        return UploadedFile::fake()->createWithContent($name, $content);
+    }
+}
