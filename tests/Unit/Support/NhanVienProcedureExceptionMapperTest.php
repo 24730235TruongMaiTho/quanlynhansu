@@ -63,6 +63,36 @@ class NhanVienProcedureExceptionMapperTest extends TestCase
         $this->assertSame('cccd', $mapped->field);
     }
 
+    public function test_it_maps_backtick_quoted_unique_constraint_to_the_email_field(): void
+    {
+        $mapped = (new NhanVienProcedureExceptionMapper())->map(
+            $this->queryException('Duplicate entry for key `uq_nhan_vien_email`')
+        );
+
+        $this->assertSame('NV_EMAIL_DUPLICATE', $mapped->domainCode);
+        $this->assertSame('email', $mapped->field);
+    }
+
+    #[DataProvider('lookalikeConstraintNames')]
+    public function test_it_does_not_map_lookalike_constraint_names(string $databaseMessage): void
+    {
+        $mapped = (new NhanVienProcedureExceptionMapper())->map($this->queryException($databaseMessage));
+
+        $this->assertSame('NV_DATABASE_ERROR', $mapped->domainCode);
+        $this->assertSame('Không thể xử lý yêu cầu nhân viên. Vui lòng thử lại.', $mapped->getMessage());
+        $this->assertNull($mapped->field);
+    }
+
+    public static function lookalikeConstraintNames(): array
+    {
+        return [
+            'email suffix in single quotes' => ["Duplicate entry for key 'uq_nhan_vien_email_backup'"],
+            'email prefix in backticks' => ['Duplicate entry for key `legacy_uq_nhan_vien_email`'],
+            'cccd suffix in backticks' => ['Duplicate entry for key `uq_nhan_vien_cccd_legacy`'],
+            'cccd prefix in single quotes' => ["Duplicate entry for key 'legacy_uq_nhan_vien_cccd'"],
+        ];
+    }
+
     public function test_privileged_target_race_returns_the_same_safe_authorization_message(): void
     {
         $mapped = (new NhanVienProcedureExceptionMapper())->map($this->queryException('NV_PRIVILEGED_TARGET'));

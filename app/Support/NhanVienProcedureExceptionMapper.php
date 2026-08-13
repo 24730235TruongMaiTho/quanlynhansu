@@ -28,11 +28,11 @@ final class NhanVienProcedureExceptionMapper
             return $this->domainException($matches[1]);
         }
 
-        if (str_contains(strtolower($databaseMessage), 'uq_nhan_vien_email')) {
+        if ($this->hasConstraintName($databaseMessage, 'uq_nhan_vien_email')) {
             return $this->domainException('NV_EMAIL_DUPLICATE');
         }
 
-        if (str_contains(strtolower($databaseMessage), 'uq_nhan_vien_cccd')) {
+        if ($this->hasConstraintName($databaseMessage, 'uq_nhan_vien_cccd')) {
             return $this->domainException('NV_CCCD_DUPLICATE');
         }
 
@@ -47,5 +47,13 @@ final class NhanVienProcedureExceptionMapper
         [$message, $field] = self::ERRORS[$domainCode];
 
         return new NhanVienDomainException($message, $domainCode, $field);
+    }
+
+    private function hasConstraintName(string $databaseMessage, string $constraintName): bool
+    {
+        return preg_match(
+            '/(?<![A-Za-z0-9_])'.preg_quote($constraintName, '/').'(?![A-Za-z0-9_])/i',
+            $databaseMessage,
+        ) === 1;
     }
 }
