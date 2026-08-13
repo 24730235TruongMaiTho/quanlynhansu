@@ -29,3 +29,16 @@ Script read contract cho MariaDB 10.4:
 - không dùng dynamic SQL và không tự `DROP DATABASE`, `CREATE DATABASE` hoặc `USE`.
 
 Chạy sau script `001`. Mọi replay/mutation chỉ thực hiện qua disposable MariaDB guard; script không được chạy trực tiếp trên database live.
+
+## `2026_08_12_003_create_routines.sql`
+
+Script mutation tạo nhân viên cho MariaDB 10.4:
+
+- thay `sp_nhan_vien_them` legacy bằng contract 15 `IN` + một `OUT`, tự cấp mã tuần tự dưới row lock và không nhận vai trò từ client;
+- gán đúng role hệ thống `NHAN_VIEN_MAC_DINH` khi role tồn tại duy nhất và không có quyền;
+- nhận nguyên hash Laravel, không nhận hoặc hash mật khẩu plaintext;
+- chuẩn hóa email/CCCD và fail closed bằng mã lỗi `NV_*` ổn định;
+- thêm `sp_dia_chi_nhan_vien_luu` để upsert địa chỉ một-một;
+- không procedure nào tự mở, commit hoặc rollback transaction.
+
+Chạy sau script `001` và `002`. Transaction tạo hồ sơ + địa chỉ thuộc về service Laravel trên cùng default connection. Chỉ chạy mutation qua disposable MariaDB guard cho tới khi có quy trình rollout riêng.

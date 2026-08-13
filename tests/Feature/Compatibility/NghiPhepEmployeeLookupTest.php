@@ -113,4 +113,13 @@ class NghiPhepEmployeeLookupTest extends TestCase
                 'message' => 'Không thể tải danh sách nhân viên.',
             ]);
     }
+
+    public function test_legacy_employee_mutations_are_removed_with_stable_http_semantics(): void
+    {
+        $this->enableEmployeeModule();
+
+        $this->postJson('/api/v1/nghi-phep/nhan-vien')->assertMethodNotAllowed();
+        $this->putJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();
+        $this->patchJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();
+    }
 }

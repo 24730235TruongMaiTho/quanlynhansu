@@ -12,6 +12,8 @@ interface NhanVienServiceContract
 
     public function findOrFail(string $maNv): object;
 
+    public function create(array $validated): string;
+
     /**
      * @return array{phong_ban: array, chuc_vu: array, trang_thai: array}
      */

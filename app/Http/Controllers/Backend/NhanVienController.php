@@ -5,15 +5,16 @@ namespace App\Http\Controllers\Backend;
 use App\Contracts\NhanVienServiceContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Requests\ListNhanVienRequest;
+use App\Http\Requests\StoreNhanVienRequest;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\View\View;
+use Throwable;
 
 class NhanVienController extends Controller
 {
-    public function __construct(private NhanVienServiceContract $employees)
-    {
-    }
+    public function __construct(private NhanVienServiceContract $employees) {}
 
     public function index(ListNhanVienRequest $request): View
     {
@@ -56,5 +57,32 @@ class NhanVienController extends Controller
         return view('backend.nhanvien.show', [
             'employee' => $this->employees->findOrFail($ma_nv),
         ]);
+    }
+
+    public function store(StoreNhanVienRequest $request): RedirectResponse
+    {
+        try {
+            $maNv = $this->employees->create($request->validated());
+        } catch (NhanVienDomainException $exception) {
+            return back()
+                ->withInput($request->safe()->except('anh_dai_dien'))
+                ->withErrors([
+                    $exception->field ?? 'nhan_vien' => $exception->getMessage(),
+                ]);
+        } catch (Throwable) {
+            return back()
+                ->withInput($request->safe()->except('anh_dai_dien'))
+                ->withErrors([
+                    'nhan_vien' => 'Không thể tạo nhân viên lúc này. Vui lòng thử lại sau.',
+                ]);
+        }
+
+        return redirect()
+            ->route('backend.nhanvien.show', ['ma_nv' => $maNv])
+            ->with([
+                'success' => 'Đã tạo nhân viên; có thể bổ sung hợp đồng sau.',
+                'created_employee_code' => $maNv,
+                'password_convention' => 'Tài khoản dùng quy ước mật khẩu demo nhom3@{năm tạo}.',
+            ]);
     }
 }

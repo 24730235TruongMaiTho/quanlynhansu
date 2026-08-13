@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Contracts\NhanVienRepositoryContract;
+use App\Exceptions\NhanVienDomainException;
 use App\Support\NhanVienProcedureExceptionMapper;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
@@ -14,8 +15,7 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     public function __construct(
         private DatabaseManager $database,
         private NhanVienProcedureExceptionMapper $exceptions,
-    ) {
-    }
+    ) {}
 
     public function paginate(array $filters): LengthAwarePaginator
     {
@@ -85,6 +85,65 @@ final class NhanVienRepository implements NhanVienRepositoryContract
             );
 
             return $sets[0][0] ?? null;
+        });
+    }
+
+    public function create(array $profile, string $passwordHash, ?string $avatarPath): string
+    {
+        return $this->databaseOperation(function () use ($profile, $passwordHash, $avatarPath): string {
+            $connection = $this->connection();
+            $connection->statement('SET @nv_ma = NULL');
+            $this->call(
+                $connection,
+                'CALL sp_nhan_vien_them(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @nv_ma)',
+                [
+                    $profile['ho_ten'],
+                    $profile['ngay_sinh'],
+                    $profile['gioi_tinh'],
+                    $profile['sdt'],
+                    $profile['email'],
+                    $profile['ngay_vao_lam'],
+                    $profile['ma_pb'],
+                    $profile['ma_cv'],
+                    $profile['dan_toc'],
+                    $profile['cccd'],
+                    $profile['noi_cap_cccd'],
+                    $profile['hoc_van'],
+                    $profile['ma_tt'],
+                    $passwordHash,
+                    $avatarPath,
+                ],
+            );
+            $result = $connection->selectOne('SELECT @nv_ma AS ma_nv', [], false);
+            $maNv = is_object($result) && is_string($result->ma_nv ?? null)
+                ? $result->ma_nv
+                : '';
+
+            if (preg_match('/\ANV[0-9]{3}\z/', $maNv) !== 1) {
+                throw new NhanVienDomainException(
+                    'Không thể tạo nhân viên. Vui lòng thử lại.',
+                    'NV_CREATE_RESULT_INVALID',
+                );
+            }
+
+            return $maNv;
+        });
+    }
+
+    public function upsertAddress(string $maNv, array $address): void
+    {
+        $this->databaseOperation(function () use ($maNv, $address): void {
+            $this->call(
+                $this->connection(),
+                'CALL sp_dia_chi_nhan_vien_luu(?, ?, ?, ?, ?)',
+                [
+                    $maNv,
+                    $address['dia_chi_cu_the'],
+                    $address['phuong_xa'],
+                    $address['quan_huyen'],
+                    $address['tinh_thanh'],
+                ],
+            );
         });
     }
 

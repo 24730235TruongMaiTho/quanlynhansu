@@ -39,15 +39,13 @@ class NhanVienIndexTest extends TestCase
         $this->mock(NghiPhepController::class, function (MockInterface $mock): void {
             $mock->shouldReceive('getMiddleware')->zeroOrMoreTimes()->andReturn([]);
             $mock->shouldNotReceive('employees');
-            $mock->shouldNotReceive('storeEmployee');
-            $mock->shouldNotReceive('updateEmployee');
         });
 
         $this->get('/admin/nhan-vien')->assertNotFound();
         $this->get('/admin/nhan-vien/danh-sach-nhan-vien')->assertNotFound();
         $this->getJson('/api/v1/cham-cong/nhan-vien')->assertNotFound();
         $this->getJson('/api/v1/nghi-phep/nhan-vien')->assertNotFound();
-        $this->postJson('/api/v1/nghi-phep/nhan-vien')->assertNotFound();
+        $this->postJson('/api/v1/nghi-phep/nhan-vien')->assertMethodNotAllowed();
         $this->putJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();
         $this->patchJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();
     }
@@ -236,13 +234,17 @@ class NhanVienIndexTest extends TestCase
             ->values();
 
         $this->assertSame(
-            ['admin/nhan-vien/danh-sach-nhan-vien', 'admin/nhan-vien', 'admin/nhan-vien/{ma_nv}'],
+            ['admin/nhan-vien/danh-sach-nhan-vien', 'admin/nhan-vien', 'admin/nhan-vien', 'admin/nhan-vien/{ma_nv}'],
             $employeeRoutes->pluck('uri')->all(),
         );
         $this->assertSame(1, $employeeRoutes->where('action.as', 'backend.nhanvien.index')->count());
         $this->assertNull($employeeRoutes->firstWhere('uri', 'admin/nhan-vien/danh-sach-nhan-vien')->getName());
         $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.create'));
-        $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.store'));
+        $storeRoute = Route::getRoutes()->getByName('backend.nhanvien.store');
+        $this->assertInstanceOf(RoutingRoute::class, $storeRoute);
+        $this->assertSame(['POST'], $storeRoute->methods());
+        $this->assertSame(NhanVienController::class.'@store', $storeRoute->getActionName());
+        $this->assertContains(EnsureNhanVienModuleEnabled::class, $storeRoute->gatherMiddleware());
         $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.edit'));
         $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.destroy'));
 
@@ -253,9 +255,9 @@ class NhanVienIndexTest extends TestCase
         $this->assertSame('NV[0-9]{3}', $showRoute->wheres['ma_nv']);
         $this->assertContains(EnsureNhanVienModuleEnabled::class, $showRoute->gatherMiddleware());
 
-        foreach ($employeeRoutes as $route) {
-            $this->assertSame(['GET', 'HEAD'], $route->methods());
-        }
+        $this->assertSame(3, $employeeRoutes->filter(
+            fn (RoutingRoute $route): bool => $route->methods() === ['GET', 'HEAD'],
+        )->count());
     }
 
     public function test_every_scoped_employee_api_route_has_the_rollout_guard(): void
@@ -263,8 +265,6 @@ class NhanVienIndexTest extends TestCase
         $expected = [
             ['api/v1/cham-cong/nhan-vien', ['GET', 'HEAD'], ChamCongController::class.'@employees'],
             ['api/v1/nghi-phep/nhan-vien', ['GET', 'HEAD'], NghiPhepController::class.'@employees'],
-            ['api/v1/nghi-phep/nhan-vien', ['POST'], NghiPhepController::class.'@storeEmployee'],
-            ['api/v1/nghi-phep/nhan-vien/{ma_nv}', ['PUT', 'PATCH'], NghiPhepController::class.'@updateEmployee'],
         ];
 
         foreach ($expected as [$uri, $methods, $action]) {
@@ -288,7 +288,6 @@ class NhanVienIndexTest extends TestCase
         });
 
         $this->get('/admin/nhan-vien/them-nhan-vien')->assertNotFound();
-        $this->post('/admin/nhan-vien')->assertMethodNotAllowed();
         $this->get('/admin/nhan-vien/NV001/sua')->assertNotFound();
         $this->put('/admin/nhan-vien/NV001')->assertMethodNotAllowed();
         $this->delete('/admin/nhan-vien/NV001')->assertMethodNotAllowed();

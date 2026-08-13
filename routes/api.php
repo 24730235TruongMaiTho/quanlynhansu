@@ -65,17 +65,6 @@ Route::middleware('api')
                 )
                 ->middleware(EnsureNhanVienModuleEnabled::class);
 
-                Route::post(
-                    'nhan-vien',
-                    [NghiPhepController::class, 'storeEmployee']
-                )->middleware(EnsureNhanVienModuleEnabled::class);
-
-                Route::match(
-                    ['PUT', 'PATCH'],
-                    'nhan-vien/{ma_nv}',
-                    [NghiPhepController::class, 'updateEmployee']
-                )->middleware(EnsureNhanVienModuleEnabled::class);
-
                 Route::get(
                     'phong-ban',
                     [NghiPhepController::class, 'phongBan']

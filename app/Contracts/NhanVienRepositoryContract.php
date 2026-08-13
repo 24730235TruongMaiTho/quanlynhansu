@@ -12,6 +12,10 @@ interface NhanVienRepositoryContract
 
     public function find(string $maNv): ?object;
 
+    public function create(array $profile, string $passwordHash, ?string $avatarPath): string;
+
+    public function upsertAddress(string $maNv, array $address): void;
+
     /**
      * @return array{phong_ban: array, chuc_vu: array, trang_thai: array}
      */

@@ -212,10 +212,15 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
                 'IN:p_trang:int(11)', 'IN:p_so_dong:int(11)', 'OUT:p_tong_so:bigint(20)',
             ],
             'sp_nhan_vien_them' => [
-                'IN:p_ma_nv:varchar(5)', 'IN:p_ho_ten:varchar(50)', 'IN:p_ngay_sinh:date', 'IN:p_gioi_tinh:tinyint(4)',
-                'IN:p_sdt:varchar(15)', 'IN:p_email:varchar(50)', 'IN:p_ngay_vao_lam:date', 'IN:p_ma_pb:int(11)',
+                'IN:p_ho_ten:varchar(50)', 'IN:p_ngay_sinh:date', 'IN:p_gioi_tinh:tinyint(4)',
+                'IN:p_sdt:varchar(15)', 'IN:p_email:varchar(100)', 'IN:p_ngay_vao_lam:date', 'IN:p_ma_pb:int(11)',
                 'IN:p_ma_cv:int(11)', 'IN:p_dan_toc:varchar(50)', 'IN:p_cccd:varchar(12)', 'IN:p_noi_cap_cccd:varchar(50)',
-                'IN:p_hoc_van:varchar(50)', 'IN:p_ma_tt:tinyint(4)', 'IN:p_mat_khau:varchar(255)', 'IN:p_ma_vt:int(11)',
+                'IN:p_hoc_van:varchar(50)', 'IN:p_ma_tt:tinyint(4)', 'IN:p_mat_khau_hash:varchar(255)',
+                'IN:p_anh_dai_dien:varchar(255)', 'OUT:p_ma_nv:varchar(5)',
+            ],
+            'sp_dia_chi_nhan_vien_luu' => [
+                'IN:p_ma_nv:varchar(5)', 'IN:p_dia_chi_cu_the:varchar(255)', 'IN:p_phuong_xa:varchar(100)',
+                'IN:p_quan_huyen:varchar(100)', 'IN:p_tinh_thanh:varchar(100)',
             ],
             'sp_nhan_vien_sua' => [
                 'IN:p_ma_nv:varchar(5)', 'IN:p_ho_ten:varchar(50)', 'IN:p_ngay_sinh:date', 'IN:p_gioi_tinh:tinyint(4)',

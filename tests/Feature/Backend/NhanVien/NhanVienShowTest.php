@@ -5,6 +5,8 @@ namespace Tests\Feature\Backend\NhanVien;
 use App\Contracts\NhanVienRepositoryContract;
 use App\Contracts\NhanVienServiceContract;
 use App\Services\NhanVienService;
+use Illuminate\Contracts\Hashing\Hasher;
+use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
@@ -23,7 +25,12 @@ class NhanVienShowTest extends TestCase
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->once()->with('NV001')->andReturn($employee);
 
-        $service = new NhanVienService($repository);
+        $service = new NhanVienService(
+            $this->app->make('db'),
+            $repository,
+            $this->app->make(FilesystemManager::class),
+            $this->app->make(Hasher::class),
+        );
 
         $this->assertSame($employee, $service->findOrFail('NV001'));
     }
@@ -36,7 +43,12 @@ class NhanVienShowTest extends TestCase
         $this->expectException(NotFoundHttpException::class);
         $this->expectExceptionMessage('');
 
-        (new NhanVienService($repository))->findOrFail('NV404');
+        (new NhanVienService(
+            $this->app->make('db'),
+            $repository,
+            $this->app->make(FilesystemManager::class),
+            $this->app->make(Hasher::class),
+        ))->findOrFail('NV404');
     }
 
     public function test_enabled_show_renders_the_complete_safe_profile_and_whitelisted_back_link(): void
@@ -145,7 +157,7 @@ class NhanVienShowTest extends TestCase
     {
         $this->enableEmployeeModule();
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('findOrFail')->once()->with('NV404')->andThrow(new NotFoundHttpException());
+            $mock->shouldReceive('findOrFail')->once()->with('NV404')->andThrow(new NotFoundHttpException);
         });
 
         $this->get('/admin/nhan-vien/NV404')
