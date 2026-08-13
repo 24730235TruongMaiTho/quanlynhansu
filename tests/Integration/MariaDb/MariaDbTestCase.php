@@ -16,6 +16,10 @@ abstract class MariaDbTestCase extends TestCase
     {
         parent::setUp();
 
+        $this->assertSame('sqlite', getenv('DB_CONNECTION'));
+        $this->assertSame(':memory:', getenv('DB_DATABASE'));
+        $this->assertSame('', getenv('DB_URL'));
+        $this->assertSame('', getenv('DB_SOCKET'));
         $this->assertSame('sqlite', config('database.default'));
         $this->assertSame(':memory:', config('database.connections.sqlite.database'));
         $this->assertSame('', config('database.connections.mysql.url'));
@@ -23,6 +27,13 @@ abstract class MariaDbTestCase extends TestCase
         $this->assertArrayNotHasKey('mysql', DB::getConnections());
         $this->assertArrayNotHasKey('mariadb', DB::getConnections());
         $this->assertArrayNotHasKey('employee_test', DB::getConnections());
+        foreach (DB::getConnections() as $name => $connection) {
+            $this->assertNotContains(
+                $connection->getDriverName(),
+                ['mysql', 'mariadb'],
+                "Resolved connection [{$name}] must not use MySQL/MariaDB before the disposable guard."
+            );
+        }
 
         $this->createDisposableMariaDb();
     }
