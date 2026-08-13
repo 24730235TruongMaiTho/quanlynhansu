@@ -98,4 +98,41 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         $this->assertStringNotContainsString('CALL', $body);
         $this->assertStringNotContainsString('mat_khau', $body);
     }
+
+    public function test_exists_validation_database_failure_returns_only_the_stable_public_error(): void
+    {
+        $this->enableEmployeeModule();
+        Schema::drop('phong_ban');
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('paginateForAttendance');
+        });
+
+        $response = $this->getJson(
+            '/api/v1/cham-cong/nhan-vien?ma_pb=2&thang=8&nam=2026',
+        );
+
+        $response
+            ->assertStatus(500)
+            ->assertExactJson([
+                'success' => false,
+                'message' => 'Không thể tải danh sách nhân viên.',
+            ]);
+
+        $body = $response->getContent();
+        $this->assertStringNotContainsString('SQLSTATE', $body);
+        $this->assertStringNotContainsString('phong_ban', $body);
+        $this->assertStringNotContainsString('select count', strtolower($body));
+    }
+
+    public function test_ordinary_invalid_filter_still_returns_laravel_validation_errors(): void
+    {
+        $this->enableEmployeeModule();
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('paginateForAttendance');
+        });
+
+        $this->getJson('/api/v1/cham-cong/nhan-vien?thang=13')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['thang']);
+    }
 }
