@@ -23,6 +23,9 @@
             0 => 'Nữ',
             default => 'Khác',
         };
+        $avatarUrl = filled($employee->anh_dai_dien)
+            ? \Illuminate\Support\Facades\Storage::disk('public')->url($employee->anh_dai_dien)
+            : null;
     @endphp
 
     <main class="container container-lg py-4" aria-labelledby="page-title">
@@ -36,10 +39,10 @@
 
         <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4">
             <div class="d-flex align-items-center gap-3">
-                @if (filled($employee->anh_dai_dien))
+                @if ($avatarUrl)
                     <img
                         class="rounded-circle border object-fit-cover"
-                        src="{{ asset(ltrim($employee->anh_dai_dien, '/')) }}"
+                        src="{{ $avatarUrl }}"
                         alt="Ảnh đại diện của {{ $employee->ho_ten }}"
                         width="72"
                         height="72"

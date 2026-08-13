@@ -6,6 +6,7 @@ use App\Contracts\NhanVienRepositoryContract;
 use App\Contracts\NhanVienServiceContract;
 use App\Services\NhanVienService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Mockery\MockInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -83,7 +84,7 @@ class NhanVienShowTest extends TestCase
             ->assertSee('Đang làm việc')
             ->assertSee('Nhân viên')
             ->assertSee('<dl', false)
-            ->assertSee('src="'.asset('storage/nhan-vien/nv001.jpg').'"', false)
+            ->assertSee('src="'.Storage::disk('public')->url($this->employee()->anh_dai_dien).'"', false)
             ->assertSee('alt="Ảnh đại diện của Nguyễn An"', false)
             ->assertSee('href="'.e($backUrl).'"', false)
             ->assertDontSee('evil.example')
@@ -109,6 +110,35 @@ class NhanVienShowTest extends TestCase
             ->assertSee('aria-label="Ảnh đại diện của Nguyễn An"', false)
             ->assertSee('>NA<', false)
             ->assertDontSee('<img', false);
+    }
+
+    public function test_show_never_renders_an_external_avatar_origin(): void
+    {
+        $this->enableEmployeeModule();
+        $employees = collect([
+            'https://tracker.example/pixel.png',
+            '//tracker.example/pixel.png',
+        ])->map(function (string $avatarPath): object {
+            $employee = $this->employee();
+            $employee->anh_dai_dien = $avatarPath;
+
+            return $employee;
+        });
+
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employees): void {
+            $mock->shouldReceive('findOrFail')
+                ->twice()
+                ->with('NV001')
+                ->andReturn($employees[0], $employees[1]);
+        });
+
+        foreach ($employees as $employee) {
+            $this->get('/admin/nhan-vien/NV001')
+                ->assertOk()
+                ->assertSee('src="'.Storage::disk('public')->url($employee->anh_dai_dien).'"', false)
+                ->assertDontSee('src="https://tracker.example', false)
+                ->assertDontSee('src="//tracker.example', false);
+        }
     }
 
     public function test_missing_employee_returns_404_without_leaking_internal_details(): void
@@ -203,7 +233,7 @@ class NhanVienShowTest extends TestCase
             'ma_vt' => 3,
             'ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH',
             'ten_vt' => 'Nhân viên',
-            'anh_dai_dien' => '/storage/nhan-vien/nv001.jpg',
+            'anh_dai_dien' => 'nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png',
             'dia_chi_cu_the' => '12 Nguyễn Huệ',
             'phuong_xa' => 'Phường Bến Nghé',
             'quan_huyen' => 'Quận 1',
