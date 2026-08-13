@@ -59,6 +59,61 @@ class NhanVienController extends Controller
         ]);
     }
 
+    public function create(): View
+    {
+        $emptyLookups = [
+            'phong_ban' => [],
+            'chuc_vu' => [],
+            'trang_thai' => [],
+        ];
+        $lookups = $emptyLookups;
+        $lookupError = null;
+
+        try {
+            $lookups = array_replace($lookups, $this->employees->lookups());
+            $lookups['trang_thai'] = array_values(array_filter(
+                $lookups['trang_thai'],
+                fn (mixed $status): bool => data_get($status, 'ky_hieu') !== 'DA_NGHI',
+            ));
+        } catch (Throwable) {
+            $lookups = $emptyLookups;
+            $lookupError = 'Không thể tải dữ liệu danh mục lúc này. Vui lòng thử lại sau.';
+        }
+
+        $lookupLabels = [
+            'phong_ban' => 'Phòng ban',
+            'chuc_vu' => 'Chức vụ',
+            'trang_thai' => 'Trạng thái làm việc',
+        ];
+        $missingLookups = [];
+
+        foreach ($lookupLabels as $key => $label) {
+            if ($lookups[$key] === []) {
+                $missingLookups[] = $label;
+            }
+        }
+
+        $errorBag = view()->shared('errors');
+        $errorFields = $errorBag?->getBag('default')->keys() ?? [];
+        $firstErrorField = $errorFields[0] ?? null;
+        $stepTwoFields = ['ngay_vao_lam', 'ma_pb', 'ma_cv', 'ma_tt'];
+        $firstErrorStep = $firstErrorField === null
+            ? 1
+            : (in_array($firstErrorField, $stepTwoFields, true) ? 2 : 1);
+
+        if ($firstErrorField === 'nhan_vien') {
+            $firstErrorStep = 3;
+        }
+
+        return view('backend.nhanvien.create', [
+            'lookups' => $lookups,
+            'lookupError' => $lookupError,
+            'missingLookups' => $missingLookups,
+            'firstErrorField' => $firstErrorField,
+            'firstErrorStep' => $firstErrorStep,
+        ]);
+    }
+
     public function store(StoreNhanVienRequest $request): RedirectResponse
     {
         try {

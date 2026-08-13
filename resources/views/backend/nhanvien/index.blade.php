@@ -30,6 +30,10 @@
             </div>
             <h1 class="h3 fw-semibold mb-1" id="page-title">Danh sách nhân viên</h1>
             <p class="text-secondary mb-0">Tra cứu thông tin nhân viên theo phòng ban, chức vụ và trạng thái làm việc.</p>
+            <a class="btn btn-primary mt-3" href="{{ route('backend.nhanvien.create') }}">
+                <i class="bi bi-person-plus" aria-hidden="true"></i>
+                Thêm nhân viên
+            </a>
         </section>
 
         @if (session('success'))
@@ -258,3 +262,7 @@
         </section>
     </main>
 @endsection
+
+@push('scripts')
+    @vite('resources/js/frontend/nhanvien/nhanvien.js')
+@endpush

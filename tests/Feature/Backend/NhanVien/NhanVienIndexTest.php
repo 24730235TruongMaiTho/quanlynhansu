@@ -9,10 +9,12 @@ use App\Http\Controllers\Backend\NghiPhepController;
 use App\Http\Controllers\Backend\NhanVienController;
 use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 use App\Services\NhanVienService;
+use Illuminate\Foundation\Vite;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 use Mockery\MockInterface;
 use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
@@ -20,6 +22,23 @@ use Tests\TestCase;
 class NhanVienIndexTest extends TestCase
 {
     use InteractsWithEmployeeModule;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->app->instance(Vite::class, new class extends Vite
+        {
+            public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+            {
+                $entries = is_array($entrypoints) ? $entrypoints : [$entrypoints];
+
+                return new HtmlString(collect($entries)->map(
+                    fn (string $entry): string => '<script type="module" src="/build/'.basename($entry).'"></script>',
+                )->implode(''));
+            }
+        });
+    }
 
     public function test_provider_binds_the_service_contract_to_the_concrete_service(): void
     {
@@ -44,6 +63,8 @@ class NhanVienIndexTest extends TestCase
 
         $this->get('/admin/nhan-vien')->assertNotFound();
         $this->get('/admin/nhan-vien/danh-sach-nhan-vien')->assertNotFound();
+        $this->get('/admin/nhan-vien/create')->assertNotFound();
+        $this->get('/admin/nhan-vien/them-nhan-vien')->assertNotFound();
         $this->getJson('/api/v1/cham-cong/nhan-vien')->assertNotFound();
         $this->getJson('/api/v1/nghi-phep/nhan-vien')->assertNotFound();
         $this->postJson('/api/v1/nghi-phep/nhan-vien')->assertMethodNotAllowed();
@@ -66,7 +87,9 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
 
-        $this->get('/admin/nhan-vien?tu_khoa=NV001&ma_pb=&ma_cv=&ma_tt=&page=&so_dong=')
+        $response = $this->get('/admin/nhan-vien?tu_khoa=NV001&ma_pb=&ma_cv=&ma_tt=&page=&so_dong=');
+
+        $response
             ->assertOk()
             ->assertViewIs('backend.nhanvien.index')
             ->assertViewHas('filters', [
@@ -86,7 +109,11 @@ class NhanVienIndexTest extends TestCase
             ->assertDontSee('Xóa nhân viên')
             ->assertSee('Thao tác')
             ->assertSee('Xem')
+            ->assertSee('href="'.route('backend.nhanvien.create').'"', false)
+            ->assertSee('/build/nhanvien.js', false)
             ->assertDontSee('Chưa khả dụng');
+
+        $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
     }
 
     public function test_index_uses_public_disk_url_for_canonical_relative_avatar_path(): void
@@ -276,12 +303,23 @@ class NhanVienIndexTest extends TestCase
             ->values();
 
         $this->assertSame(
-            ['admin/nhan-vien/danh-sach-nhan-vien', 'admin/nhan-vien', 'admin/nhan-vien', 'admin/nhan-vien/{ma_nv}'],
+            [
+                'admin/nhan-vien/danh-sach-nhan-vien',
+                'admin/nhan-vien/them-nhan-vien',
+                'admin/nhan-vien',
+                'admin/nhan-vien/create',
+                'admin/nhan-vien',
+                'admin/nhan-vien/{ma_nv}',
+            ],
             $employeeRoutes->pluck('uri')->all(),
         );
         $this->assertSame(1, $employeeRoutes->where('action.as', 'backend.nhanvien.index')->count());
         $this->assertNull($employeeRoutes->firstWhere('uri', 'admin/nhan-vien/danh-sach-nhan-vien')->getName());
-        $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.create'));
+        $createRoute = Route::getRoutes()->getByName('backend.nhanvien.create');
+        $this->assertInstanceOf(RoutingRoute::class, $createRoute);
+        $this->assertSame('admin/nhan-vien/create', $createRoute->uri());
+        $this->assertSame(NhanVienController::class.'@create', $createRoute->getActionName());
+        $this->assertContains(EnsureNhanVienModuleEnabled::class, $createRoute->gatherMiddleware());
         $storeRoute = Route::getRoutes()->getByName('backend.nhanvien.store');
         $this->assertInstanceOf(RoutingRoute::class, $storeRoute);
         $this->assertSame(['POST'], $storeRoute->methods());
@@ -297,7 +335,7 @@ class NhanVienIndexTest extends TestCase
         $this->assertSame('NV[0-9]{3}', $showRoute->wheres['ma_nv']);
         $this->assertContains(EnsureNhanVienModuleEnabled::class, $showRoute->gatherMiddleware());
 
-        $this->assertSame(3, $employeeRoutes->filter(
+        $this->assertSame(5, $employeeRoutes->filter(
             fn (RoutingRoute $route): bool => $route->methods() === ['GET', 'HEAD'],
         )->count());
     }
@@ -329,7 +367,7 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldNotReceive('lookups');
         });
 
-        $this->get('/admin/nhan-vien/them-nhan-vien')->assertNotFound();
+        $this->get('/admin/nhan-vien/them-nhan-vien')->assertStatus(301);
         $this->get('/admin/nhan-vien/NV001/sua')->assertNotFound();
         $this->put('/admin/nhan-vien/NV001')->assertMethodNotAllowed();
         $this->delete('/admin/nhan-vien/NV001')->assertMethodNotAllowed();

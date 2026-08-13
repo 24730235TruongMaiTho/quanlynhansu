@@ -156,3 +156,7 @@
         </div>
     </main>
 @endsection
+
+@push('scripts')
+    @vite('resources/js/frontend/nhanvien/nhanvien.js')
+@endpush

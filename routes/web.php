@@ -36,6 +36,10 @@ Route::get('/admin/nhan-vien/danh-sach-nhan-vien', function (Request $request) {
     return redirect()->route('backend.nhanvien.index', $request->query(), 301);
 })->middleware(EnsureNhanVienModuleEnabled::class);
 
+Route::get('/admin/nhan-vien/them-nhan-vien', function (Request $request) {
+    return redirect()->route('backend.nhanvien.create', $request->query(), 301);
+})->middleware(EnsureNhanVienModuleEnabled::class);
+
 Route::prefix('admin')->name('backend.')->group(function () {
 #                   url                                  tên hàm trong controller        tên file view
     Route::get('/bang-dieu-khien', [BangDieuKhienController::class, 'index'])->name('bangdieukhien.index');
@@ -59,6 +63,10 @@ Route::prefix('admin')->name('backend.')->group(function () {
     Route::get('/nhan-vien', [NhanVienController::class, 'index'])
         ->middleware(EnsureNhanVienModuleEnabled::class)
         ->name('nhanvien.index');
+
+    Route::get('/nhan-vien/create', [NhanVienController::class, 'create'])
+        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->name('nhanvien.create');
 
     Route::post('/nhan-vien', [NhanVienController::class, 'store'])
         ->middleware(EnsureNhanVienModuleEnabled::class)

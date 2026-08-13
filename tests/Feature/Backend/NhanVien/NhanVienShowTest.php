@@ -7,8 +7,10 @@ use App\Contracts\NhanVienServiceContract;
 use App\Services\NhanVienService;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Foundation\Vite;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 use Mockery;
 use Mockery\MockInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -18,6 +20,23 @@ use Tests\TestCase;
 class NhanVienShowTest extends TestCase
 {
     use InteractsWithEmployeeModule;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->app->instance(Vite::class, new class extends Vite
+        {
+            public function __invoke($entrypoints, $buildDirectory = null): HtmlString
+            {
+                $entries = is_array($entrypoints) ? $entrypoints : [$entrypoints];
+
+                return new HtmlString(collect($entries)->map(
+                    fn (string $entry): string => '<script type="module" src="/build/'.basename($entry).'"></script>',
+                )->implode(''));
+            }
+        });
+    }
 
     public function test_service_returns_the_repository_employee(): void
     {
@@ -67,7 +86,7 @@ class NhanVienShowTest extends TestCase
             'so_dong' => '20',
         ]);
 
-        $this->get('/admin/nhan-vien/NV001?'.http_build_query([
+        $response = $this->get('/admin/nhan-vien/NV001?'.http_build_query([
             'tu_khoa' => 'Nguyễn An',
             'ma_pb' => 1,
             'ma_cv' => 2,
@@ -76,7 +95,9 @@ class NhanVienShowTest extends TestCase
             'so_dong' => 20,
             'redirect' => 'https://evil.example/steal',
             'return_to' => 'https://evil.example/return',
-        ]))
+        ]));
+
+        $response
             ->assertOk()
             ->assertViewIs('backend.nhanvien.show')
             ->assertViewHas('employee', fn (object $employee): bool => $employee->ma_nv === 'NV001')
@@ -104,7 +125,10 @@ class NhanVienShowTest extends TestCase
             ->assertDontSee('mat_khau')
             ->assertDontSee('Chỉnh sửa')
             ->assertDontSee('Xóa nhân viên')
-            ->assertDontSee('Đặt lại mật khẩu');
+            ->assertDontSee('Đặt lại mật khẩu')
+            ->assertSee('/build/nhanvien.js', false);
+
+        $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
     }
 
     public function test_show_renders_initials_when_the_employee_has_no_avatar(): void
@@ -166,14 +190,14 @@ class NhanVienShowTest extends TestCase
             ->assertDontSee('sp_nhan_vien_chi_tiet');
     }
 
-    public function test_invalid_employee_codes_and_reserved_create_path_do_not_dispatch_show(): void
+    public function test_invalid_employee_codes_do_not_dispatch_show(): void
     {
         $this->enableEmployeeModule();
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('findOrFail');
         });
 
-        foreach (['NV1', 'NV0001', 'nv001', 'create'] as $code) {
+        foreach (['NV1', 'NV0001', 'nv001'] as $code) {
             $this->get('/admin/nhan-vien/'.$code)->assertNotFound();
         }
     }
