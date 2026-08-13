@@ -311,6 +311,7 @@ class NhanVienServiceCreateTest extends TestCase
         $hasher->shouldReceive('make')->once()->andReturn('laravel-hash');
         $disk = Mockery::mock(FilesystemAdapter::class);
         $temporaryPath = null;
+        $finalPath = null;
         $deleted = [];
         $disk->shouldReceive('putFileAs')->once()->andReturnUsing(function (
             string $directory,
@@ -319,7 +320,14 @@ class NhanVienServiceCreateTest extends TestCase
         ) use (&$temporaryPath): string {
             return $temporaryPath = $directory.'/'.$name;
         });
-        $disk->shouldReceive('move')->once()->andThrow(new RuntimeException('move unavailable'));
+        $disk->shouldReceive('move')->once()->andReturnUsing(function (
+            string $from,
+            string $to,
+        ) use (&$finalPath): never {
+            $finalPath = $to;
+
+            throw new RuntimeException('move unavailable');
+        });
         $disk->shouldReceive('delete')->twice()->andReturnUsing(function (string $path) use (&$deleted): bool {
             $deleted[] = $path;
             if (count($deleted) === 1) {
@@ -339,8 +347,7 @@ class NhanVienServiceCreateTest extends TestCase
             $this->assertSame('NV_AVATAR_MOVE_FAILED', $exception->domainCode);
         }
 
-        $this->assertCount(2, $deleted);
-        $this->assertContains($temporaryPath, $deleted);
+        $this->assertEqualsCanonicalizing([$temporaryPath, $finalPath], $deleted);
     }
 
     public function test_unowned_returned_put_path_is_never_deleted(): void

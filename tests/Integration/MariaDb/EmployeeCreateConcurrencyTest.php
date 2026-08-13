@@ -93,10 +93,11 @@ class EmployeeCreateConcurrencyTest extends MariaDbTestCase
         )->fetchColumn());
     }
 
-    public function test_cccd_whitespace_race_commits_exactly_one_normalized_identity(): void
+    public function test_cccd_duplicate_race_commits_exactly_one_identity(): void
     {
+        // p_cccd is VARCHAR(12): race the exact canonical interface value.
         $results = $this->runRace(
-            $this->profile(['email' => 'cccd-one@example.test', 'cccd' => '001200000021 ']),
+            $this->profile(['email' => 'cccd-one@example.test', 'cccd' => '001200000021']),
             $this->profile(['email' => 'cccd-two@example.test', 'cccd' => '001200000021']),
         );
 
