@@ -33,8 +33,13 @@ CREATE TABLE chuc_vu (
 CREATE TABLE vai_tro (
     ma_vt INT AUTO_INCREMENT PRIMARY KEY,
     ten_vt NVARCHAR(100) NOT NULL,
-    mo_ta NVARCHAR(255) NULL
+    mo_ta NVARCHAR(255) NULL,
+    ky_hieu VARCHAR(50) NULL,
+    CONSTRAINT uq_vai_tro_ky_hieu UNIQUE (ky_hieu)
 );
+
+INSERT INTO vai_tro (ten_vt, mo_ta, ky_hieu)
+VALUES (N'Nhân viên mặc định', N'Vai trò hệ thống mặc định không có quyền', 'NHAN_VIEN_MAC_DINH');
 
 /* --------------------------------------
    Bảng quyền
@@ -62,8 +67,15 @@ CREATE TABLE vai_tro_quyen (
    -------------------------------------- */
 CREATE TABLE trang_thai_lam_viec (
     ma_tt TINYINT AUTO_INCREMENT PRIMARY KEY,
-    ten_tt NVARCHAR(50) NOT NULL
+    ten_tt NVARCHAR(50) NOT NULL,
+    ky_hieu VARCHAR(20) NOT NULL,
+    CONSTRAINT uq_trang_thai_lam_viec_ky_hieu UNIQUE (ky_hieu)
 );
+
+INSERT INTO trang_thai_lam_viec (ten_tt, ky_hieu) VALUES
+    (N'Đang làm việc', 'DANG_LAM'),
+    (N'Thử việc', 'THU_VIEC'),
+    (N'Đã nghỉ', 'DA_NGHI');
 
 /* --------------------------------------
    Bảng nhân viên
@@ -85,11 +97,39 @@ CREATE TABLE nhan_vien (
     ma_tt TINYINT NOT NULL,
     mat_khau VARCHAR(255) NOT NULL,
     ma_vt INT NOT NULL,
+    anh_dai_dien VARCHAR(255) NULL,
+    ngay_nghi_viec DATE NULL,
     CONSTRAINT fk_nhan_vien_chuc_vu FOREIGN KEY (ma_cv) REFERENCES chuc_vu(ma_cv),
     CONSTRAINT fk_nhan_vien_phong_ban FOREIGN KEY (ma_pb) REFERENCES phong_ban(ma_pb),
     CONSTRAINT fk_nhan_vien_trang_thai_lam_viec FOREIGN KEY (ma_tt) REFERENCES trang_thai_lam_viec(ma_tt),
-    CONSTRAINT fk_nhan_vien_vai_tro FOREIGN KEY (ma_vt) REFERENCES vai_tro(ma_vt)
+    CONSTRAINT fk_nhan_vien_vai_tro FOREIGN KEY (ma_vt) REFERENCES vai_tro(ma_vt),
+    CONSTRAINT uq_nhan_vien_email UNIQUE (email),
+    CONSTRAINT uq_nhan_vien_cccd UNIQUE (cccd)
 );
+
+/* --------------------------------------
+   Bảng địa chỉ nhân viên
+   -------------------------------------- */
+CREATE TABLE dia_chi_nhan_vien (
+    ma_nv VARCHAR(5) PRIMARY KEY,
+    dia_chi_cu_the NVARCHAR(255) NOT NULL,
+    phuong_xa NVARCHAR(100) NOT NULL,
+    quan_huyen NVARCHAR(100) NOT NULL,
+    tinh_thanh NVARCHAR(100) NOT NULL,
+    CONSTRAINT fk_dia_chi_nhan_vien_nhan_vien
+        FOREIGN KEY (ma_nv) REFERENCES nhan_vien(ma_nv) ON DELETE CASCADE
+);
+
+/* --------------------------------------
+   Bộ đếm mã nhân viên không tái sử dụng
+   -------------------------------------- */
+CREATE TABLE bo_dem_ma_nhan_vien (
+    ten_bo_dem VARCHAR(30) PRIMARY KEY,
+    so_da_cap SMALLINT UNSIGNED NOT NULL
+);
+
+INSERT INTO bo_dem_ma_nhan_vien (ten_bo_dem, so_da_cap)
+VALUES ('NHAN_VIEN', 0);
 
 /* --------------------------------------
    Bảng loại hợp đồng
@@ -194,7 +234,8 @@ SELECT nv.ma_nv, nv.ho_ten, nv.ngay_sinh, nv.gioi_tinh,
     CASE nv.gioi_tinh WHEN 1 THEN N'Nam' WHEN 0 THEN N'Nữ' ELSE N'Khác' END AS gioi_tinh_hien_thi,
     nv.sdt, nv.email, nv.ngay_vao_lam, nv.ma_pb, pb.ten_pb, nv.ma_cv, cv.ten_cv, cv.he_so_phu_cap, 
     nv.dan_toc, nv.cccd, nv.noi_cap_cccd, nv.hoc_van,
-    nv.ma_tt, ttlv.ten_tt, nv.mat_khau, nv.ma_vt, vt.ten_vt 
+    nv.ma_tt, ttlv.ky_hieu, ttlv.ten_tt, nv.ngay_nghi_viec,
+    nv.ma_vt, vt.ky_hieu AS ky_hieu_vai_tro, vt.ten_vt, nv.anh_dai_dien
 FROM nhan_vien nv
 LEFT JOIN phong_ban pb ON pb.ma_pb = nv.ma_pb
 LEFT JOIN chuc_vu cv ON cv.ma_cv = nv.ma_cv
