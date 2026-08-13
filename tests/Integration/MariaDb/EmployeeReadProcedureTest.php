@@ -96,6 +96,14 @@ class EmployeeReadProcedureTest extends MariaDbTestCase
         }
     }
 
+    public function test_employee_list_returns_empty_page_and_out_total_for_a_large_positive_page(): void
+    {
+        [$rows, $total] = $this->employeePage(null, null, null, null, 21_474_838, 100);
+
+        $this->assertSame(2, $total);
+        $this->assertSame([], $rows);
+    }
+
     public function test_employee_detail_has_exact_safe_columns_and_nullable_legacy_address(): void
     {
         $statement = $this->pdo()->prepare('CALL sp_nhan_vien_chi_tiet(?)');
@@ -149,6 +157,31 @@ class EmployeeReadProcedureTest extends MariaDbTestCase
         [$outside, $outsideTotal] = $this->attendancePage(null, null, 8, 2026, 3, 1);
         $this->assertSame(2, $outsideTotal);
         $this->assertSame([], $outside);
+    }
+
+    public function test_attendance_day_credit_thresholds_are_mapped_individually(): void
+    {
+        $this->seedAttendanceThresholdsByMonth();
+
+        foreach ([1 => 0.0, 2 => 0.5, 3 => 0.5, 4 => 1.0, 5 => 1.0] as $month => $expectedDays) {
+            [$rows, $total] = $this->attendancePage('NV001', null, $month, 2026, 1, 20);
+
+            $this->assertSame(1, $total, "Unexpected total for threshold month [{$month}].");
+            $this->assertSame('NV001', $rows[0]['ma_nv']);
+            $this->assertSame(
+                $expectedDays,
+                (float) $rows[0]['so_ngay_cham_cong'],
+                "Unexpected day credit for threshold month [{$month}].",
+            );
+        }
+    }
+
+    public function test_attendance_list_returns_empty_page_and_out_total_for_a_large_positive_page(): void
+    {
+        [$rows, $total] = $this->attendancePage(null, null, 8, 2026, 21_474_838, 100);
+
+        $this->assertSame(2, $total);
+        $this->assertSame([], $rows);
     }
 
     public function test_attendance_list_rejects_invalid_month_year_page_and_page_size(): void
@@ -258,6 +291,17 @@ class EmployeeReadProcedureTest extends MariaDbTestCase
                  VALUES (?, ?, ?, b'{$late}', b'{$early}')"
             );
             $statement->execute(['NV001', $date, $hours]);
+        }
+    }
+
+    private function seedAttendanceThresholdsByMonth(): void
+    {
+        foreach ([1 => 3, 2 => 4, 3 => 7, 4 => 8, 5 => 9] as $month => $hours) {
+            $statement = $this->pdo()->prepare(
+                "INSERT INTO cham_cong (ma_nv, ngay_lam, so_gio_lam, vao_muon, ve_som)
+                 VALUES (?, ?, ?, b'0', b'0')"
+            );
+            $statement->execute(['NV001', sprintf('2026-%02d-01', $month), $hours]);
         }
     }
 

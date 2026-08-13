@@ -1094,7 +1094,7 @@ CREATE PROCEDURE sp_nhan_vien_danh_sach_phan_trang(
 )
 BEGIN
     DECLARE v_tu_khoa NVARCHAR(100);
-    DECLARE v_vi_tri INT;
+    DECLARE v_vi_tri BIGINT;
 
     IF p_trang IS NULL OR p_trang < 1
        OR p_so_dong IS NULL OR p_so_dong < 1 OR p_so_dong > 100 THEN
@@ -1213,7 +1213,7 @@ CREATE PROCEDURE sp_cham_cong_nhan_vien_phan_trang(
 )
 BEGIN
     DECLARE v_tu_khoa NVARCHAR(100);
-    DECLARE v_vi_tri INT;
+    DECLARE v_vi_tri BIGINT;
 
     IF p_thang IS NULL OR p_thang < 1 OR p_thang > 12
        OR p_nam IS NULL OR p_nam < 2000 OR p_nam > 2100
