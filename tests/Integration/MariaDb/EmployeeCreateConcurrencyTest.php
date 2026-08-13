@@ -56,6 +56,16 @@ class EmployeeCreateConcurrencyTest extends MariaDbTestCase
         }
     }
 
+    public function test_worker_source_requires_ready_handshake_and_passes_raw_identity_inputs(): void
+    {
+        $source = file_get_contents(base_path('tests/Support/MariaDbEmployeeCreateWorker.php'));
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString("requiredEnvironment('MARIADB_TEST_READY')", $source);
+        $this->assertStringNotContainsString('strtolower(trim((string) $profile[4]))', $source);
+        $this->assertStringNotContainsString('trim((string) $profile[9])', $source);
+    }
+
     public function test_concurrent_creates_receive_unique_consecutive_codes(): void
     {
         [$first, $second] = $this->runRace(
@@ -86,7 +96,7 @@ class EmployeeCreateConcurrencyTest extends MariaDbTestCase
     public function test_cccd_whitespace_race_commits_exactly_one_normalized_identity(): void
     {
         $results = $this->runRace(
-            $this->profile(['email' => 'cccd-one@example.test', 'cccd' => ' 001200000021 ']),
+            $this->profile(['email' => 'cccd-one@example.test', 'cccd' => '001200000021 ']),
             $this->profile(['email' => 'cccd-two@example.test', 'cccd' => '001200000021']),
         );
 
@@ -103,12 +113,35 @@ class EmployeeCreateConcurrencyTest extends MariaDbTestCase
             throw new RuntimeException('Unable to reserve worker barrier.');
         }
         unlink($barrier);
+        $firstReady = tempnam(sys_get_temp_dir(), 'nv-ready-');
+        $secondReady = tempnam(sys_get_temp_dir(), 'nv-ready-');
+        if ($firstReady === false || $secondReady === false) {
+            throw new RuntimeException('Unable to reserve worker ready markers.');
+        }
+        unlink($firstReady);
+        unlink($secondReady);
 
         try {
-            $first = $this->newWorker($this->workerEnvironment($firstProfile, $barrier));
-            $second = $this->newWorker($this->workerEnvironment($secondProfile, $barrier));
+            $first = $this->newWorker($this->workerEnvironment($firstProfile, $barrier, $firstReady));
+            $second = $this->newWorker($this->workerEnvironment($secondProfile, $barrier, $secondReady));
             $first->start();
             $second->start();
+
+            $deadline = microtime(true) + 15;
+            while (! (is_file($firstReady) && is_file($secondReady))) {
+                if (! $first->isRunning() || ! $second->isRunning()) {
+                    throw new RuntimeException('A worker exited before the ready handshake completed.');
+                }
+                if (microtime(true) >= $deadline) {
+                    throw new RuntimeException('Worker ready handshake timed out.');
+                }
+                usleep(10_000);
+            }
+
+            if (! $first->isRunning() || ! $second->isRunning()) {
+                throw new RuntimeException('A worker exited after ready but before barrier release.');
+            }
+
             file_put_contents($barrier, 'go');
             $first->wait();
             $second->wait();
@@ -117,6 +150,11 @@ class EmployeeCreateConcurrencyTest extends MariaDbTestCase
         } finally {
             if (is_file($barrier)) {
                 unlink($barrier);
+            }
+            foreach ([$firstReady, $secondReady] as $ready) {
+                if (is_file($ready)) {
+                    unlink($ready);
+                }
             }
         }
     }
@@ -142,7 +180,7 @@ class EmployeeCreateConcurrencyTest extends MariaDbTestCase
         ], $overrides));
     }
 
-    private function workerEnvironment(array $profile, ?string $barrier = null): array
+    private function workerEnvironment(array $profile, ?string $barrier = null, ?string $ready = null): array
     {
         $testEnvironment = DisposableMariaDbGuard::environment();
 
@@ -154,6 +192,7 @@ class EmployeeCreateConcurrencyTest extends MariaDbTestCase
             'MARIADB_TEST_PASSWORD' => $testEnvironment['password'],
             'MARIADB_TEST_DATABASE' => $this->databaseName(),
             'MARIADB_TEST_BARRIER' => $barrier ?? base_path('composer.json'),
+            'MARIADB_TEST_READY' => $ready ?? base_path('composer.lock'),
             'MARIADB_TEST_PROFILE' => json_encode($profile, JSON_THROW_ON_ERROR),
             'DB_DATABASE' => 'quan_ly_nhan_su',
             'DB_HOST' => '203.0.113.253',

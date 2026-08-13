@@ -30,14 +30,12 @@ try {
     }
 
     $barrier = requiredEnvironment('MARIADB_TEST_BARRIER');
+    $ready = requiredEnvironment('MARIADB_TEST_READY');
     $profileJson = requiredEnvironment('MARIADB_TEST_PROFILE');
     $profile = json_decode($profileJson, true, flags: JSON_THROW_ON_ERROR);
     if (! is_array($profile) || count($profile) !== 15) {
         throw new RuntimeException('MARIADB_TEST_PROFILE is invalid.');
     }
-    $profile[4] = strtolower(trim((string) $profile[4]));
-    $profile[9] = trim((string) $profile[9]);
-
     $pdo = new PDO(
         sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $host, $port, $database),
         $username,
@@ -45,6 +43,19 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION],
     );
     $pdo->exec("SET time_zone = '+07:00'");
+
+    $pdo->beginTransaction();
+    $pdo->exec('SET @nv_ma = NULL');
+    $statement = $pdo->prepare(
+        'CALL sp_nhan_vien_them(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @nv_ma)'
+    );
+
+    $readyHandle = @fopen($ready, 'x');
+    if ($readyHandle === false) {
+        throw new RuntimeException('Worker ready marker could not be created.');
+    }
+    fwrite($readyHandle, 'ready');
+    fclose($readyHandle);
 
     $deadline = microtime(true) + 15;
     while (! is_file($barrier)) {
@@ -54,11 +65,6 @@ try {
         usleep(10_000);
     }
 
-    $pdo->beginTransaction();
-    $pdo->exec('SET @nv_ma = NULL');
-    $statement = $pdo->prepare(
-        'CALL sp_nhan_vien_them(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @nv_ma)'
-    );
     $statement->execute(array_values($profile));
     $statement->closeCursor();
     $maNv = (string) $pdo->query('SELECT @nv_ma')->fetchColumn();

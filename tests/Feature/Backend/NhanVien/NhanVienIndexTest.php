@@ -12,6 +12,7 @@ use App\Services\NhanVienService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Mockery\MockInterface;
 use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
@@ -86,6 +87,47 @@ class NhanVienIndexTest extends TestCase
             ->assertSee('Thao tác')
             ->assertSee('Xem')
             ->assertDontSee('Chưa khả dụng');
+    }
+
+    public function test_index_uses_public_disk_url_for_canonical_relative_avatar_path(): void
+    {
+        $this->enableEmployeeModule();
+        config()->set('filesystems.disks.public.url', '/storage');
+        $employee = $this->employeePaginator()->items()[0];
+        $employee->anh_dai_dien = 'nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png';
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator([(array) $employee]));
+            $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
+        });
+
+        $this->get('/admin/nhan-vien')
+            ->assertOk()
+            ->assertSee('src="'.Storage::disk('public')->url($employee->anh_dai_dien).'"', false)
+            ->assertSee('src="/storage/nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png"', false);
+    }
+
+    public function test_index_avatar_payload_cannot_create_an_external_origin_src(): void
+    {
+        $this->enableEmployeeModule();
+        config()->set('filesystems.disks.public.url', '/storage');
+        $employees = collect(['https://evil.example/avatar.png', '//evil.example/avatar.png'])
+            ->map(function (string $payload): array {
+                $employee = (array) $this->employeePaginator()->items()[0];
+                $employee['anh_dai_dien'] = $payload;
+
+                return $employee;
+            })->all();
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employees): void {
+            $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator($employees));
+            $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
+        });
+
+        $this->get('/admin/nhan-vien')
+            ->assertOk()
+            ->assertDontSee('src="https://evil.example/avatar.png"', false)
+            ->assertDontSee('src="//evil.example/avatar.png"', false)
+            ->assertSee('src="/storage/https://evil.example/avatar.png"', false)
+            ->assertSee('src="/storage/evil.example/avatar.png"', false);
     }
 
     public function test_enabled_index_passes_integer_filters_and_keeps_them_in_pagination_links(): void

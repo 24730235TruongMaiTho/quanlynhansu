@@ -185,7 +185,7 @@
                                         @if (filled($employee->anh_dai_dien))
                                             <img
                                                 class="rounded-circle object-fit-cover"
-                                                src="{{ asset(ltrim($employee->anh_dai_dien, '/')) }}"
+                                                src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($employee->anh_dai_dien) }}"
                                                 alt="Ảnh đại diện của {{ $employee->ho_ten }}"
                                                 width="40"
                                                 height="40"

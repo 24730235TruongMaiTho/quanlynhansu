@@ -82,7 +82,7 @@ final class NhanVienService implements NhanVienServiceContract
             });
         } catch (Throwable $exception) {
             if ($disk instanceof FilesystemAdapter && $finalAvatarPath !== null) {
-                $disk->delete($avatarPath->assertOwnedFile($finalAvatarPath));
+                $this->deleteOwnedAvatarCandidates($disk, $avatarPath, [], [$finalAvatarPath]);
             }
 
             throw $exception;
@@ -100,6 +100,9 @@ final class NhanVienService implements NhanVienServiceContract
     private function storeAvatar(UploadedFile $avatar, NhanVienAvatarPath $paths): array
     {
         $disk = $this->files->disk('public');
+        $temporaryPath = null;
+        $finalPath = null;
+        $storedPath = null;
 
         try {
             $extension = strtolower($avatar->extension());
@@ -111,8 +114,7 @@ final class NhanVienService implements NhanVienServiceContract
                 basename($temporaryPath),
             );
 
-            if (! is_string($storedPath)
-                || $paths->assertOwnedTemporaryFile($storedPath) !== $temporaryPath) {
+            if (! is_string($storedPath)) {
                 throw new NhanVienDomainException(
                     'Không thể lưu ảnh đại diện. Vui lòng thử lại.',
                     'NV_AVATAR_WRITE_FAILED',
@@ -120,7 +122,23 @@ final class NhanVienService implements NhanVienServiceContract
                 );
             }
 
-            if (! $disk->move($temporaryPath, $finalPath)) {
+            try {
+                $ownedStoredPath = $paths->assertOwnedTemporaryFile($storedPath);
+            } catch (Throwable) {
+                $ownedStoredPath = null;
+            }
+
+            if ($ownedStoredPath !== $temporaryPath) {
+                throw new NhanVienDomainException(
+                    'Không thể lưu ảnh đại diện. Vui lòng thử lại.',
+                    'NV_AVATAR_WRITE_FAILED',
+                    'anh_dai_dien',
+                );
+            }
+
+            try {
+                $moved = $disk->move($temporaryPath, $finalPath);
+            } catch (Throwable) {
                 throw new NhanVienDomainException(
                     'Không thể lưu ảnh đại diện. Vui lòng thử lại.',
                     'NV_AVATAR_MOVE_FAILED',
@@ -128,13 +146,22 @@ final class NhanVienService implements NhanVienServiceContract
                 );
             }
 
-            $temporaryPath = null;
+            if (! $moved) {
+                throw new NhanVienDomainException(
+                    'Không thể lưu ảnh đại diện. Vui lòng thử lại.',
+                    'NV_AVATAR_MOVE_FAILED',
+                    'anh_dai_dien',
+                );
+            }
 
             return [$disk, $finalPath];
         } catch (Throwable $exception) {
-            if (isset($temporaryPath) && is_string($temporaryPath)) {
-                $disk->delete($paths->assertOwnedTemporaryFile($temporaryPath));
-            }
+            $this->deleteOwnedAvatarCandidates(
+                $disk,
+                $paths,
+                [$storedPath, $temporaryPath],
+                [$finalPath],
+            );
 
             if ($exception instanceof NhanVienDomainException) {
                 throw $exception;
@@ -145,6 +172,60 @@ final class NhanVienService implements NhanVienServiceContract
                 'NV_AVATAR_WRITE_FAILED',
                 'anh_dai_dien',
             );
+        }
+    }
+
+    /**
+     * Cleanup is deliberately best-effort so storage failures never replace the
+     * database or domain exception which triggered compensation.
+     *
+     * @param  array<int, mixed>  $temporaryCandidates
+     * @param  array<int, mixed>  $finalCandidates
+     */
+    private function deleteOwnedAvatarCandidates(
+        FilesystemAdapter $disk,
+        NhanVienAvatarPath $paths,
+        array $temporaryCandidates,
+        array $finalCandidates,
+    ): void {
+        $owned = [];
+
+        foreach ($temporaryCandidates as $candidate) {
+            if (! is_string($candidate)) {
+                continue;
+            }
+
+            try {
+                $path = $paths->assertOwnedTemporaryFile($candidate);
+                if ($path !== null) {
+                    $owned[$path] = true;
+                }
+            } catch (Throwable) {
+                // Never compensate a path that is not proven to be ours.
+            }
+        }
+
+        foreach ($finalCandidates as $candidate) {
+            if (! is_string($candidate)) {
+                continue;
+            }
+
+            try {
+                $path = $paths->assertOwnedFile($candidate);
+                if ($path !== null) {
+                    $owned[$path] = true;
+                }
+            } catch (Throwable) {
+                // Never compensate a path that is not proven to be ours.
+            }
+        }
+
+        foreach (array_keys($owned) as $path) {
+            try {
+                $disk->delete($path);
+            } catch (Throwable) {
+                // Cleanup must remain non-throwing and must not expose paths/PII.
+            }
         }
     }
 }

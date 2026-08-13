@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Mockery\MockInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 class NhanVienServiceCreateTest extends TestCase
@@ -136,7 +137,7 @@ class NhanVienServiceCreateTest extends TestCase
         $this->assertSame([], Storage::disk('public')->allFiles('nhan-vien'));
     }
 
-    public function test_move_failure_deletes_only_the_generated_owned_temporary_path(): void
+    public function test_move_failure_deletes_generated_owned_temporary_and_final_paths(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldNotReceive('create');
@@ -160,9 +161,10 @@ class NhanVienServiceCreateTest extends TestCase
 
             return true;
         })->andReturnFalse();
-        $disk->shouldReceive('delete')->once()->withArgs(function (string $path) use (&$temporaryPath): bool {
-            $this->assertSame($temporaryPath, $path);
-            $this->assertStringContainsString('/tmp/', $path);
+        $disk->shouldReceive('delete')->twice()->withArgs(function (string $path) use (&$temporaryPath): bool {
+            $this->assertTrue(
+                $path === $temporaryPath || preg_match('#\Anhan-vien/avatars/[0-9a-f-]{36}\.png\z#', $path) === 1,
+            );
 
             return true;
         })->andReturnTrue();
@@ -179,6 +181,196 @@ class NhanVienServiceCreateTest extends TestCase
         $this->expectException(NhanVienDomainException::class);
         $this->expectExceptionMessage('Không thể lưu ảnh đại diện. Vui lòng thử lại.');
         $service->create($this->validPayload(['anh_dai_dien' => $this->fakePng()]));
+    }
+
+    public function test_unexpected_owned_put_path_cleans_both_returned_and_generated_temporary_files(): void
+    {
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldNotReceive('create');
+        $repository->shouldNotReceive('upsertAddress');
+        $hasher = Mockery::mock(Hasher::class);
+        $hasher->shouldReceive('make')->once()->andReturn('laravel-hash');
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $generatedPath = null;
+        $returnedPath = 'nhan-vien/avatars/tmp/550e8400-e29b-41d4-a716-446655440000.png';
+        $deleted = [];
+        $disk->shouldReceive('putFileAs')->once()->andReturnUsing(function (
+            string $directory,
+            UploadedFile $file,
+            string $name,
+        ) use (&$generatedPath, $returnedPath): string {
+            $generatedPath = $directory.'/'.$name;
+
+            return $returnedPath;
+        });
+        $disk->shouldNotReceive('move');
+        $disk->shouldReceive('delete')->times(3)->andReturnUsing(function (string $path) use (&$deleted): bool {
+            $deleted[] = $path;
+
+            return false;
+        });
+        $files = Mockery::mock(FilesystemManager::class);
+        $files->shouldReceive('disk')->once()->with('public')->andReturn($disk);
+
+        try {
+            (new NhanVienService($this->app->make('db'), $repository, $files, $hasher))
+                ->create($this->validPayload(['anh_dai_dien' => $this->fakePng()]));
+            $this->fail('Unexpected put path must fail closed.');
+        } catch (NhanVienDomainException $exception) {
+            $this->assertSame('NV_AVATAR_WRITE_FAILED', $exception->domainCode);
+        }
+
+        $this->assertContains($generatedPath, $deleted);
+        $this->assertContains($returnedPath, $deleted);
+        $this->assertCount(3, $deleted);
+        $this->assertSame(1, count(array_filter(
+            $deleted,
+            fn (string $path): bool => preg_match('#\Anhan-vien/avatars/[0-9a-f-]{36}\.png\z#', $path) === 1,
+        )));
+    }
+
+    public function test_move_failure_attempts_cleanup_of_temporary_and_possible_partial_final_without_masking_error(): void
+    {
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldNotReceive('create');
+        $repository->shouldNotReceive('upsertAddress');
+        $hasher = Mockery::mock(Hasher::class);
+        $hasher->shouldReceive('make')->once()->andReturn('laravel-hash');
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $temporaryPath = null;
+        $finalPath = null;
+        $deleted = [];
+        $disk->shouldReceive('putFileAs')->once()->andReturnUsing(function (
+            string $directory,
+            UploadedFile $file,
+            string $name,
+        ) use (&$temporaryPath): string {
+            return $temporaryPath = $directory.'/'.$name;
+        });
+        $disk->shouldReceive('move')->once()->andReturnUsing(function (string $from, string $to) use (&$finalPath): bool {
+            $finalPath = $to;
+
+            return false;
+        });
+        $disk->shouldReceive('delete')->twice()->andReturnUsing(function (string $path) use (&$deleted): bool {
+            $deleted[] = $path;
+
+            return false;
+        });
+        $files = Mockery::mock(FilesystemManager::class);
+        $files->shouldReceive('disk')->once()->with('public')->andReturn($disk);
+
+        try {
+            (new NhanVienService($this->app->make('db'), $repository, $files, $hasher))
+                ->create($this->validPayload(['anh_dai_dien' => $this->fakePng()]));
+            $this->fail('Move failure must abort employee creation.');
+        } catch (NhanVienDomainException $exception) {
+            $this->assertSame('NV_AVATAR_MOVE_FAILED', $exception->domainCode);
+        }
+
+        $this->assertEqualsCanonicalizing([$temporaryPath, $finalPath], $deleted);
+    }
+
+    public function test_cleanup_delete_throw_never_masks_the_original_database_exception(): void
+    {
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $original = new NhanVienDomainException('Email đã được sử dụng.', 'NV_EMAIL_DUPLICATE', 'email');
+        $repository->shouldReceive('create')->once()->andThrow($original);
+        $repository->shouldNotReceive('upsertAddress');
+        $hasher = Mockery::mock(Hasher::class);
+        $hasher->shouldReceive('make')->once()->andReturn('laravel-hash');
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $temporaryPath = null;
+        $disk->shouldReceive('putFileAs')->once()->andReturnUsing(function (
+            string $directory,
+            UploadedFile $file,
+            string $name,
+        ) use (&$temporaryPath): string {
+            return $temporaryPath = $directory.'/'.$name;
+        });
+        $disk->shouldReceive('move')->once()->andReturnTrue();
+        $disk->shouldReceive('delete')->once()->andThrow(new RuntimeException('storage unavailable'));
+        $files = Mockery::mock(FilesystemManager::class);
+        $files->shouldReceive('disk')->once()->with('public')->andReturn($disk);
+
+        try {
+            (new NhanVienService($this->app->make('db'), $repository, $files, $hasher))
+                ->create($this->validPayload(['anh_dai_dien' => $this->fakePng()]));
+            $this->fail('Database failure must be rethrown.');
+        } catch (\Throwable $exception) {
+            $this->assertSame($original, $exception);
+        }
+    }
+
+    public function test_move_throw_still_attempts_all_cleanup_and_preserves_the_safe_move_error(): void
+    {
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldNotReceive('create');
+        $repository->shouldNotReceive('upsertAddress');
+        $hasher = Mockery::mock(Hasher::class);
+        $hasher->shouldReceive('make')->once()->andReturn('laravel-hash');
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $temporaryPath = null;
+        $deleted = [];
+        $disk->shouldReceive('putFileAs')->once()->andReturnUsing(function (
+            string $directory,
+            UploadedFile $file,
+            string $name,
+        ) use (&$temporaryPath): string {
+            return $temporaryPath = $directory.'/'.$name;
+        });
+        $disk->shouldReceive('move')->once()->andThrow(new RuntimeException('move unavailable'));
+        $disk->shouldReceive('delete')->twice()->andReturnUsing(function (string $path) use (&$deleted): bool {
+            $deleted[] = $path;
+            if (count($deleted) === 1) {
+                throw new RuntimeException('delete unavailable');
+            }
+
+            return false;
+        });
+        $files = Mockery::mock(FilesystemManager::class);
+        $files->shouldReceive('disk')->once()->with('public')->andReturn($disk);
+
+        try {
+            (new NhanVienService($this->app->make('db'), $repository, $files, $hasher))
+                ->create($this->validPayload(['anh_dai_dien' => $this->fakePng()]));
+            $this->fail('Move exception must abort employee creation.');
+        } catch (NhanVienDomainException $exception) {
+            $this->assertSame('NV_AVATAR_MOVE_FAILED', $exception->domainCode);
+        }
+
+        $this->assertCount(2, $deleted);
+        $this->assertContains($temporaryPath, $deleted);
+    }
+
+    public function test_unowned_returned_put_path_is_never_deleted(): void
+    {
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldNotReceive('create');
+        $repository->shouldNotReceive('upsertAddress');
+        $hasher = Mockery::mock(Hasher::class);
+        $hasher->shouldReceive('make')->once()->andReturn('laravel-hash');
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $deleted = [];
+        $disk->shouldReceive('putFileAs')->once()->andReturn('https://evil.example/avatar.png');
+        $disk->shouldNotReceive('move');
+        $disk->shouldReceive('delete')->twice()->andReturnUsing(function (string $path) use (&$deleted): bool {
+            $deleted[] = $path;
+
+            return true;
+        });
+        $files = Mockery::mock(FilesystemManager::class);
+        $files->shouldReceive('disk')->once()->with('public')->andReturn($disk);
+
+        try {
+            (new NhanVienService($this->app->make('db'), $repository, $files, $hasher))
+                ->create($this->validPayload(['anh_dai_dien' => $this->fakePng()]));
+            $this->fail('Unowned put path must fail closed.');
+        } catch (NhanVienDomainException $exception) {
+            $this->assertSame('NV_AVATAR_WRITE_FAILED', $exception->domainCode);
+        }
+
+        $this->assertNotContains('https://evil.example/avatar.png', $deleted);
     }
 
     private function service(MockInterface $repository, MockInterface $hasher): NhanVienService
