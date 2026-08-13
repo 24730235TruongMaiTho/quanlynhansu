@@ -104,7 +104,10 @@ CREATE TABLE nhan_vien (
     CONSTRAINT fk_nhan_vien_trang_thai_lam_viec FOREIGN KEY (ma_tt) REFERENCES trang_thai_lam_viec(ma_tt),
     CONSTRAINT fk_nhan_vien_vai_tro FOREIGN KEY (ma_vt) REFERENCES vai_tro(ma_vt),
     CONSTRAINT uq_nhan_vien_email UNIQUE (email),
-    CONSTRAINT uq_nhan_vien_cccd UNIQUE (cccd)
+    CONSTRAINT uq_nhan_vien_cccd UNIQUE (cccd),
+    CONSTRAINT ck_nhan_vien_ma_nv CHECK (
+        BINARY ma_nv REGEXP '^NV(00[1-9]|0[1-9][0-9]|[1-9][0-9]{2})$'
+    )
 );
 
 /* --------------------------------------

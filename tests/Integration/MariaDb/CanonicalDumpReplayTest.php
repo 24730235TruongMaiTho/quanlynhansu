@@ -4,18 +4,36 @@ namespace Tests\Integration\MariaDb;
 
 use App\Support\DisposableMariaDbGuard;
 use PDO;
+use PHPUnit\Framework\AssertionFailedError;
 use RuntimeException;
 use Tests\Support\SqlScriptRunner;
 
 class CanonicalDumpReplayTest extends MariaDbTestCase
 {
+    public function test_guarded_rewrite_rejects_an_extra_production_use_with_leading_whitespace(): void
+    {
+        $this->assertUnsafeDumpRejected($this->canonicalDump()."\n  USE quan_ly_nhan_su;\n");
+    }
+
+    public function test_guarded_rewrite_rejects_database_qualified_ddl_and_dml(): void
+    {
+        $unsafe = $this->canonicalDump()
+            ."\nCREATE TABLE quan_ly_nhan_su.nv_guard_probe (id INT);\n"
+            ."INSERT INTO quan_ly_nhan_su.nv_guard_probe (id) VALUES (1);\n";
+
+        $this->assertUnsafeDumpRejected($unsafe);
+    }
+
+    public function test_guarded_rewrite_rejects_an_extra_database_level_statement(): void
+    {
+        $this->assertUnsafeDumpRejected(
+            $this->canonicalDump()."\nALTER DATABASE quan_ly_nhan_su CHARACTER SET utf8mb4;\n"
+        );
+    }
+
     public function test_canonical_dump_replays_only_under_a_guarded_name_and_matches_task_three_contracts(): void
     {
-        $dumpPath = base_path('quan_ly_nhan_su.session.sql');
-        $dump = file_get_contents($dumpPath);
-        if ($dump === false) {
-            throw new RuntimeException('Unable to read canonical SQL dump.');
-        }
+        $dump = $this->canonicalDump();
 
         $guardedDatabase = 'quan_ly_nhan_su_employee_test_'.bin2hex(random_bytes(6));
         DisposableMariaDbGuard::assertSafeDatabaseName($guardedDatabase);
@@ -36,6 +54,7 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $this->assertFoundationSchema();
             $this->assertSafeView();
             $this->assertLegacyRoutineSignatures();
+            $this->assertLegacyEmployeeRoutineResultsAreSafe();
         } finally {
             try {
                 DisposableMariaDbGuard::assertSafeDatabaseName($guardedDatabase);
@@ -68,13 +87,6 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $this->assertSame(1, $count);
         }
 
-        $productionIdentifier = '(?<![A-Za-z0-9_])`?quan_ly_nhan_su`?(?![A-Za-z0-9_])';
-        $this->assertDoesNotMatchRegularExpression(
-            '/^(?:DROP\s+DATABASE(?:\s+IF\s+EXISTS)?|CREATE\s+DATABASE|USE)\b[^;]*'.$productionIdentifier.'[^;]*;\s*$/mi',
-            $dump,
-            'A production database identifier remained in a database-level statement.'
-        );
-
         $withoutBlockComments = preg_replace('/\/\*.*?\*\//s', '', $dump);
         if ($withoutBlockComments === null) {
             throw new RuntimeException('Unable to remove block comments from guarded replay copy.');
@@ -84,6 +96,13 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
         if ($withoutLineComments === null) {
             throw new RuntimeException('Unable to remove line comments from guarded replay copy.');
         }
+
+        $productionIdentifier = '(?<![A-Za-z0-9_])`?quan_ly_nhan_su`?(?![A-Za-z0-9_])';
+        $this->assertDoesNotMatchRegularExpression(
+            '/'.$productionIdentifier.'/i',
+            $withoutLineComments,
+            'A production database identifier remained in executable rewritten SQL.'
+        );
 
         return $withoutLineComments;
     }
@@ -156,6 +175,14 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $statement->execute([$table, $index]);
             $this->assertSame(1, (int) $statement->fetchColumn());
         }
+
+        $this->assertSame(1, (int) $this->pdo()->query(
+            "SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS
+             WHERE CONSTRAINT_SCHEMA = DATABASE()
+               AND CONSTRAINT_NAME = 'ck_nhan_vien_ma_nv'
+               AND CHECK_CLAUSE LIKE '%00[1-9]%'
+               AND CHECK_CLAUSE LIKE '%[1-9][0-9]{2}%'"
+        )->fetchColumn());
     }
 
     private function assertSafeView(): void
@@ -214,5 +241,80 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $exists->execute([$routine, 'PROCEDURE']);
             $this->assertSame(1, (int) $exists->fetchColumn(), "Missing procedure {$routine}.");
         }
+    }
+
+    private function assertLegacyEmployeeRoutineResultsAreSafe(): void
+    {
+        $this->pdo()->exec("INSERT INTO phong_ban (ten_pb) VALUES ('Phòng canonical')");
+        $department = (int) $this->pdo()->lastInsertId();
+        $this->pdo()->exec("INSERT INTO chuc_vu (ten_cv, he_so_phu_cap) VALUES ('Chuyên viên', 0.10)");
+        $position = (int) $this->pdo()->lastInsertId();
+        $status = (int) $this->pdo()->query("SELECT ma_tt FROM trang_thai_lam_viec WHERE BINARY ky_hieu = BINARY 'DANG_LAM'")->fetchColumn();
+        $role = (int) $this->pdo()->query("SELECT ma_vt FROM vai_tro WHERE BINARY ky_hieu = BINARY 'NHAN_VIEN_MAC_DINH'")->fetchColumn();
+
+        $statement = $this->pdo()->prepare(
+            'INSERT INTO nhan_vien (
+                ma_nv, ho_ten, ngay_sinh, gioi_tinh, sdt, email, ngay_vao_lam,
+                ma_pb, ma_cv, dan_toc, cccd, noi_cap_cccd, hoc_van, ma_tt, mat_khau, ma_vt
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $statement->execute([
+            'NV001', 'Nhân viên canonical', '1990-01-01', 1, '0900000000', 'canonical@example.test',
+            '2020-01-01', $department, $position, 'Kinh', '123456789012', 'TP HCM', 'Đại học',
+            $status, str_repeat('a', 64), $role,
+        ]);
+
+        $calls = [
+            ['CALL sp_nhan_vien_tim_kiem(?, ?, ?, ?)', ['', null, null, null]],
+            ['CALL sp_nhan_vien_danh_sach()', []],
+            ['CALL sp_nhan_vien_chi_tiet(?)', ['NV001']],
+        ];
+        foreach ($calls as [$sql, $bindings]) {
+            $routine = $this->pdo()->prepare($sql);
+            $routine->execute($bindings);
+            $row = $routine->fetch(PDO::FETCH_ASSOC);
+            $routine->closeCursor();
+
+            $this->assertIsArray($row);
+            $this->assertSame($this->safeEmployeeColumns(), array_keys($row));
+            $this->assertArrayNotHasKey('mat_khau', $row);
+        }
+    }
+
+    private function assertUnsafeDumpRejected(string $dump): void
+    {
+        try {
+            $this->rewriteDatabaseStatements($dump, 'quan_ly_nhan_su_employee_test_abcdef');
+        } catch (AssertionFailedError $exception) {
+            $this->assertStringContainsString(
+                'production database identifier',
+                strtolower($exception->getMessage())
+            );
+
+            return;
+        }
+
+        $this->fail('Unsafe production database token should be rejected before replay.');
+    }
+
+    private function canonicalDump(): string
+    {
+        $dump = file_get_contents(base_path('quan_ly_nhan_su.session.sql'));
+        if ($dump === false) {
+            throw new RuntimeException('Unable to read canonical SQL dump.');
+        }
+
+        return $dump;
+    }
+
+    private function safeEmployeeColumns(): array
+    {
+        return [
+            'ma_nv', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'gioi_tinh_hien_thi',
+            'sdt', 'email', 'ngay_vao_lam', 'ma_pb', 'ten_pb', 'ma_cv', 'ten_cv',
+            'he_so_phu_cap', 'dan_toc', 'cccd', 'noi_cap_cccd', 'hoc_van', 'ma_tt',
+            'ky_hieu', 'ten_tt', 'ngay_nghi_viec', 'ma_vt', 'ky_hieu_vai_tro',
+            'ten_vt', 'anh_dai_dien',
+        ];
     }
 }

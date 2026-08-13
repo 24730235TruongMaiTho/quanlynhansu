@@ -81,6 +81,14 @@ class EmployeeSchemaMigrationTest extends MariaDbTestCase
         $this->assertMigrationFails('NV_MIGRATION_CCCD_INVALID');
     }
 
+    public function test_employee_code_nv000_fails_before_ddl(): void
+    {
+        $ids = $this->seedReferences();
+        $this->insertEmployee('NV000', 'an@example.test', '123456789012', $ids);
+
+        $this->assertMigrationFails('NV_MIGRATION_CCCD_INVALID');
+    }
+
     public function test_missing_status_mapping_fails_before_ddl(): void
     {
         $this->insertStatuses(['Đang làm việc', 'Thử việc']);
@@ -98,6 +106,13 @@ class EmployeeSchemaMigrationTest extends MariaDbTestCase
     public function test_unrecognized_extra_status_fails_before_ddl(): void
     {
         $this->insertStatuses(['Đang làm việc', 'Thử việc', 'Đã nghỉ', 'Đang công tác']);
+
+        $this->assertMigrationFails('NV_MIGRATION_STATUS_AMBIGUOUS');
+    }
+
+    public function test_status_label_with_missing_accent_is_not_mapped_as_a_system_status(): void
+    {
+        $this->insertStatuses(['Đang lam việc', 'Thử việc', 'Đã nghỉ']);
 
         $this->assertMigrationFails('NV_MIGRATION_STATUS_AMBIGUOUS');
     }
@@ -143,6 +158,17 @@ class EmployeeSchemaMigrationTest extends MariaDbTestCase
         $this->assertFoundationObjectsAbsent(true);
     }
 
+    public function test_case_variant_default_symbol_on_a_different_role_fails_before_ddl(): void
+    {
+        $this->pdo()->exec('ALTER TABLE vai_tro ADD ky_hieu VARCHAR(50) NULL');
+        $this->pdo()->exec(
+            "INSERT INTO vai_tro (ten_vt, mo_ta, ky_hieu) VALUES ('Quản trị', NULL, 'nhan_vien_mac_dinh')"
+        );
+
+        $this->assertMigrationFails('NV_MIGRATION_ROLE_AMBIGUOUS');
+        $this->assertFoundationObjectsAbsent(true);
+    }
+
     public function test_existing_default_role_candidate_with_a_conflicting_symbol_fails_before_ddl(): void
     {
         $this->pdo()->exec('ALTER TABLE vai_tro ADD ky_hieu VARCHAR(50) NULL');
@@ -152,6 +178,23 @@ class EmployeeSchemaMigrationTest extends MariaDbTestCase
 
         $this->assertMigrationFails('NV_MIGRATION_ROLE_AMBIGUOUS');
         $this->assertFoundationObjectsAbsent(true);
+    }
+
+    public function test_default_role_label_with_missing_accent_is_not_claimed_as_the_system_role(): void
+    {
+        $this->pdo()->exec("INSERT INTO vai_tro (ten_vt, mo_ta) VALUES ('Nhân viên mac định', 'Legacy')");
+        $legacyRoleId = (int) $this->pdo()->lastInsertId();
+
+        $this->runMigration();
+
+        $statement = $this->pdo()->prepare('SELECT ky_hieu FROM vai_tro WHERE ma_vt = ?');
+        $statement->execute([$legacyRoleId]);
+        $this->assertNull($statement->fetchColumn());
+        $this->assertSame(1, (int) $this->pdo()->query(
+            "SELECT COUNT(*) FROM vai_tro
+             WHERE BINARY LOWER(TRIM(ten_vt)) = BINARY 'nhân viên mặc định'
+               AND BINARY ky_hieu = BINARY 'NHAN_VIEN_MAC_DINH'"
+        )->fetchColumn());
     }
 
     public function test_clean_empty_legacy_schema_gains_the_employee_foundation(): void
@@ -298,6 +341,14 @@ class EmployeeSchemaMigrationTest extends MariaDbTestCase
             $statement->execute([$table, $index]);
             $this->assertSame(1, (int) $statement->fetchColumn(), "Missing unique index {$index}.");
         }
+
+        $this->assertSame(1, (int) $this->pdo()->query(
+            "SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS
+             WHERE CONSTRAINT_SCHEMA = DATABASE()
+               AND CONSTRAINT_NAME = 'ck_nhan_vien_ma_nv'
+               AND CHECK_CLAUSE LIKE '%00[1-9]%'
+               AND CHECK_CLAUSE LIKE '%[1-9][0-9]{2}%'"
+        )->fetchColumn());
     }
 
     private function assertAddressCascade(): void
