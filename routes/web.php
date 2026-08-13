@@ -60,6 +60,11 @@ Route::prefix('admin')->name('backend.')->group(function () {
         ->middleware(EnsureNhanVienModuleEnabled::class)
         ->name('nhanvien.index');
 
+    Route::get('/nhan-vien/{ma_nv}', [NhanVienController::class, 'show'])
+        ->where('ma_nv', 'NV[0-9]{3}')
+        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->name('nhanvien.show');
+
     // Lương
     Route::get('/luong', function () {
         return view('backend.luong.index');

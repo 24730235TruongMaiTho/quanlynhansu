@@ -22,6 +22,15 @@ final class NhanVienService implements NhanVienServiceContract
         return $this->repository->paginateAttendance($filters);
     }
 
+    public function findOrFail(string $maNv): object
+    {
+        $employee = $this->repository->find($maNv);
+
+        abort_if($employee === null, 404);
+
+        return $employee;
+    }
+
     public function lookups(): array
     {
         return $this->repository->lookups();

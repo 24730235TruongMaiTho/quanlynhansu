@@ -10,6 +10,8 @@ interface NhanVienServiceContract
 
     public function paginateForAttendance(array $filters): LengthAwarePaginator;
 
+    public function findOrFail(string $maNv): object;
+
     /**
      * @return array{phong_ban: array, chuc_vu: array, trang_thai: array}
      */

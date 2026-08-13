@@ -11,6 +11,14 @@
         $hasEmptyCurrentPage = ! $employeeError
             && $employees->total() > 0
             && $employees->count() === 0;
+        $listQuery = request()->only([
+            'tu_khoa',
+            'ma_pb',
+            'ma_cv',
+            'ma_tt',
+            'page',
+            'so_dong',
+        ]);
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="page-title">
@@ -167,6 +175,7 @@
                                 <th scope="col">Phòng ban</th>
                                 <th scope="col">Chức vụ</th>
                                 <th scope="col">Trạng thái</th>
+                                <th scope="col">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -198,6 +207,15 @@
                                     <td>{{ $employee->ten_cv }}</td>
                                     <td>
                                         <span class="badge text-bg-light border fw-normal">{{ $employee->ten_tt }}</span>
+                                    </td>
+                                    <td>
+                                        <a
+                                            class="btn btn-sm btn-outline-primary"
+                                            href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}"
+                                            aria-label="Xem hồ sơ {{ $employee->ho_ten }}"
+                                        >
+                                            Xem
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach

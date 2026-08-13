@@ -50,4 +50,11 @@ class NhanVienController extends Controller
             'employeeError' => $employeeError,
         ]);
     }
+
+    public function show(string $ma_nv): View
+    {
+        return view('backend.nhanvien.show', [
+            'employee' => $this->employees->findOrFail($ma_nv),
+        ]);
+    }
 }
