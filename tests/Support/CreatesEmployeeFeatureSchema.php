@@ -42,6 +42,7 @@ trait CreatesEmployeeFeatureSchema
             ['ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm việc'],
             ['ma_tt' => 2, 'ky_hieu' => 'THU_VIEC', 'ten_tt' => 'Thử việc'],
             ['ma_tt' => 3, 'ky_hieu' => 'DA_NGHI', 'ten_tt' => 'Đã nghỉ'],
+            ['ma_tt' => 4, 'ky_hieu' => 'OTHER', 'ten_tt' => 'Trạng thái khác'],
         ]);
     }
 

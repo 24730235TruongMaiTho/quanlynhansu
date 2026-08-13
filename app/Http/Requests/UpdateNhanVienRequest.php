@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Contracts\NhanVienRepositoryContract;
+use App\Exceptions\NhanVienDomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
@@ -25,6 +26,20 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
     public function after(NhanVienRepositoryContract $employees): array
     {
         return [function (Validator $validator) use ($employees): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            if ($this->hasFile('anh_dai_dien')
+                && in_array($this->input('xoa_anh_dai_dien'), [true, 1, '1'], true)) {
+                $validator->errors()->add(
+                    'xoa_anh_dai_dien',
+                    'Không thể đồng thời tải ảnh mới và yêu cầu xóa ảnh đại diện.',
+                );
+
+                return;
+            }
+
             $maNv = $this->route('ma_nv');
 
             if (! is_string($maNv) || $maNv === '') {
@@ -33,7 +48,17 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
                 return;
             }
 
-            $employee = $employees->find($maNv);
+            try {
+                $employee = $employees->find($maNv);
+            } catch (NhanVienDomainException $exception) {
+                if ($exception->domainCode !== 'NV_NOT_FOUND') {
+                    throw $exception;
+                }
+
+                $validator->errors()->add('ma_nv', 'Nhân viên không tồn tại.');
+
+                return;
+            }
 
             if ($employee === null) {
                 $validator->errors()->add('ma_nv', 'Nhân viên không tồn tại.');
@@ -52,13 +77,6 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
                 );
             }
 
-            if ($this->hasFile('anh_dai_dien')
-                && in_array($this->input('xoa_anh_dai_dien'), [true, 1, '1'], true)) {
-                $validator->errors()->add(
-                    'xoa_anh_dai_dien',
-                    'Không thể đồng thời tải ảnh mới và yêu cầu xóa ảnh đại diện.',
-                );
-            }
         }];
     }
 
@@ -77,6 +95,11 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
     protected function statusExistsRule(): Exists
     {
         return Rule::exists('trang_thai_lam_viec', 'ma_tt');
+    }
+
+    protected function ignoredEmployeeCodeForEmailUniqueness(): ?string
+    {
+        return $this->routeEmployeeCode();
     }
 
     private function routeEmployeeCode(): string
