@@ -1,4 +1,6 @@
 <?php
+use App\Http\Middleware\EnsureNhanVienModuleEnabled;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +32,10 @@ use App\Http\Controllers\Backend\ {
     VaiTroController
 };
 
+Route::get('/admin/nhan-vien/danh-sach-nhan-vien', function (Request $request) {
+    return redirect()->route('backend.nhanvien.index', $request->query(), 301);
+})->middleware(EnsureNhanVienModuleEnabled::class);
+
 Route::prefix('admin')->name('backend.')->group(function () {
 #                   url                                  tên hàm trong controller        tên file view
     Route::get('/bang-dieu-khien', [BangDieuKhienController::class, 'index'])->name('bangdieukhien.index');
@@ -50,19 +56,9 @@ Route::prefix('admin')->name('backend.')->group(function () {
     // Xóa phòng ban
     Route::delete('/phong-ban/{id}', [PhongBanController::class, 'destroy'])->name('phongban.destroy');
 
-    // Tìm kiếm nhân viên
-    Route::get('/nhan-vien/danh-sach-nhan-vien', [NhanVienController::class, 'index'])->name('nhanvien.index');
-
-    // Tạo mới phòng ban
-    Route::get('/nhan-vien/them-nhan-vien', [NhanVienController::class, 'create'])->name('nhanvien.create');
-    Route::post('/nhan-vien', [NhanVienController::class, 'store'])->name('nhanvien.store');
-
-    // Sửa phòng ban
-    Route::get('/nhan-vien/{id}/sua', [NhanVienController::class, 'edit'])->name('nhanvien.edit');
-    Route::put('/nhan-vien/{id}', [NhanVienController::class, 'show'])->name('nhanvien.show');
-
-    // Xóa phòng ban
-    Route::delete('/nhan-vien/{id}', [NhanVienController::class, 'destroy'])->name('nhanvien.destroy');
+    Route::get('/nhan-vien', [NhanVienController::class, 'index'])
+        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->name('nhanvien.index');
 
     // Lương
     Route::get('/luong', function () {
