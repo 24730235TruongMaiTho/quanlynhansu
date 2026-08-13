@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Controllers\Backend;
+
+use App\Contracts\NhanVienServiceContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,6 +16,10 @@ use Illuminate\Database\QueryException;
 
 class ChamCongController extends Controller
 {
+    public function __construct(private NhanVienServiceContract $nhanVienService)
+    {
+    }
+
     /**
      * =========================================================
      * DANH SÁCH NHÂN VIÊN + TỔNG HỢP CHẤM CÔNG
@@ -33,130 +39,36 @@ class ChamCongController extends Controller
     public function employees(
         Request $request
     ): JsonResponse {
+        $validated = $request->validate([
+            'tu_khoa' => ['nullable', 'string', 'max:255'],
+            'ma_pb' => ['nullable', 'integer', 'exists:phong_ban,ma_pb'],
+            'thang' => ['nullable', 'integer', 'between:1,12'],
+            'nam' => ['nullable', 'integer', 'between:2000,2100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $filters = [
+            'tu_khoa' => $this->nullIfEmpty($validated['tu_khoa'] ?? null),
+            'ma_pb' => isset($validated['ma_pb']) ? (int) $validated['ma_pb'] : null,
+            'thang' => (int) ($validated['thang'] ?? now()->month),
+            'nam' => (int) ($validated['nam'] ?? now()->year),
+            'page' => (int) ($validated['page'] ?? 1),
+            'so_dong' => (int) ($validated['per_page'] ?? 15),
+        ];
+
         try {
-            $validated = $request->validate([
-                'tu_khoa' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                ],
-
-                'ma_pb' => [
-                    'nullable',
-                    'integer',
-                    'exists:phong_ban,ma_pb',
-                ],
-
-                'thang' => [
-                    'nullable',
-                    'integer',
-                    'between:1,12',
-                ],
-
-                'nam' => [
-                    'nullable',
-                    'integer',
-                    'between:2000,2100',
-                ],
-
-                'page' => [
-                    'nullable',
-                    'integer',
-                    'min:1',
-                ],
-
-                'per_page' => [
-                    'nullable',
-                    'integer',
-                    'min:1',
-                    'max:100',
-                ],
-            ]);
-
-            $tuKhoa = $this->nullIfEmpty(
-                $validated['tu_khoa'] ?? null
-            );
-
-            $maPhongBan =
-                $validated['ma_pb'] ?? null;
-
-            $thang =
-                $validated['thang'] ??
-                (int) now()->month;
-
-            $nam =
-                $validated['nam'] ??
-                (int) now()->year;
-
-            $page = max(
-                1,
-                (int) ($validated['page'] ?? 1)
-            );
-
-            $perPage = min(
-                100,
-                max(
-                    1,
-                    (int) (
-                        $validated['per_page'] ?? 15
-                    )
-                )
-            );
-
-            /*
-             * SP:
-             *
-             * sp_cham_cong_nhan_vien_phan_trang(
-             *     tu_khoa,
-             *     ma_pb,
-             *     thang,
-             *     nam,
-             *     page,
-             *     per_page
-             * )
-             */
-            $rows = collect(
-                DB::select(
-                    '
-                    CALL sp_cham_cong_nhan_vien_phan_trang(
-                        ?, ?, ?, ?, ?, ?
-                    )
-                    ',
-                    [
-                        $tuKhoa,
-                        $maPhongBan,
-                        $thang,
-                        $nam,
-                        $page,
-                        $perPage,
-                    ]
-                )
-            );
-
-            $paginator =
-                $this->makePaginator(
-                    $rows,
-                    $page,
-                    $perPage
-                );
+            $paginator = $this->nhanVienService->paginateForAttendance($filters);
+            $paginator->withPath($request->url())->appends($request->query());
 
             return response()->json([
                 'success' => true,
                 'data' => $paginator,
             ]);
-
-        } catch (QueryException $exception) {
-
-            return $this->queryError(
-                $exception,
-                'Không thể tải danh sách nhân viên.'
-            );
-
-        } catch (\Throwable $exception) {
-
+        } catch (\Throwable) {
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage(),
+                'message' => 'Không thể tải danh sách nhân viên.',
             ], 500);
         }
     }

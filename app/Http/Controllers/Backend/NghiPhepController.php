@@ -2,20 +2,22 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Contracts\NhanVienServiceContract;
 use App\Http\Requests\StoreNghiPhepRequest;
 use App\Http\Requests\UpdateNghiPhepRequest;
 use App\Services\NghiPhepService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 class NghiPhepController extends Controller
 {
     protected $service;
 
-    public function __construct(NghiPhepService $service)
-    {
+    public function __construct(
+        NghiPhepService $service,
+        private NhanVienServiceContract $nhanVienService,
+    ) {
         $this->service = $service;
     }
 
@@ -75,80 +77,39 @@ class NghiPhepController extends Controller
         return response()->json($result);
     }
 
-    /**
-     * Danh sách nhân viên (paging) dùng stored procedure sp_luong_tim_kiem_phan_trang
-     */
     public function employees(Request $request)
     {
-        $page = max((int) ($request->query('page', 1)), 1);
-        $perPage = min(max((int) ($request->query('per_page', 15)), 1), 100);
+        $validated = $request->validate([
+            'tu_khoa' => ['nullable', 'string', 'max:255'],
+            'ma_pb' => ['nullable', 'integer', 'min:1'],
+            'ma_cv' => ['nullable', 'integer', 'min:1'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
 
-        $tu_khoa = $request->query('tu_khoa', null);
-        $ma_pb = $request->query('ma_pb', null);
-        $ma_cv = $request->query('ma_cv', null);
+        $keyword = isset($validated['tu_khoa'])
+            ? trim($validated['tu_khoa'])
+            : null;
 
-        $tu_khoa = $tu_khoa === '' ? null : $tu_khoa;
-        $ma_pb = is_numeric($ma_pb) ? (int) $ma_pb : null;
-        $ma_cv = is_numeric($ma_cv) ? (int) $ma_cv : null;
+        $filters = [
+            'tu_khoa' => $keyword === '' ? null : $keyword,
+            'ma_pb' => isset($validated['ma_pb']) ? (int) $validated['ma_pb'] : null,
+            'ma_cv' => isset($validated['ma_cv']) ? (int) $validated['ma_cv'] : null,
+            'ma_tt' => null,
+            'page' => (int) ($validated['page'] ?? 1),
+            'so_dong' => (int) ($validated['per_page'] ?? 15),
+        ];
 
         try {
-            // The stored procedure sp_luong_tim_kiem_phan_trang may return multiple rows per
-            // employee when ky_luong is NULL (one row per lương record), causing duplicates.
-            // Use vw_danh_sach_nhan_vien_chi_tiet and group by ma_nv to return unique employees.
-
-            $whereClauses = [];
-            $bindings = [];
-
-            if ($tu_khoa !== null && $tu_khoa !== '') {
-                $whereClauses[] = "(ma_nv LIKE ? OR ho_ten LIKE ? OR sdt LIKE ? OR email LIKE ? OR cccd LIKE ? OR ten_pb LIKE ? OR ten_cv LIKE ? )";
-                $like = '%' . $tu_khoa . '%';
-                $bindings = array_merge($bindings, array_fill(0, 7, $like));
-            }
-
-            if ($ma_pb !== null) {
-                $whereClauses[] = "ma_pb = ?";
-                $bindings[] = $ma_pb;
-            }
-
-            if ($ma_cv !== null) {
-                $whereClauses[] = "ma_cv = ?";
-                $bindings[] = $ma_cv;
-            }
-
-            $whereSql = $whereClauses ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
-
-            // total distinct employees matching filters
-            $countSql = "SELECT COUNT(DISTINCT ma_nv) AS total FROM vw_danh_sach_nhan_vien_chi_tiet " . $whereSql;
-            $countRow = collect(DB::select($countSql, $bindings))->first();
-            $total = (int) ($countRow->total ?? 0);
-
-            // fetch unique employees with pagination
-            $offset = ($page - 1) * $perPage;
-
-            $selectSql = "SELECT ma_nv, ho_ten, ngay_sinh, gioi_tinh_hien_thi AS gioi_tinh, sdt, email, ngay_vao_lam, ma_pb, ten_pb, ma_cv, ten_cv, hoc_van, ten_tt FROM vw_danh_sach_nhan_vien_chi_tiet "
-                . $whereSql . " GROUP BY ma_nv ORDER BY ma_nv ASC LIMIT ? OFFSET ?";
-
-            $rows = collect(DB::select($selectSql, array_merge($bindings, [$perPage, $offset])));
-
-            $items = $rows->map(function ($row) {
-                return (object) $row;
-            })->values();
-
-            $paginator = new LengthAwarePaginator(
-                $items,
-                $total,
-                $perPage,
-                $page,
-                [
-                    'path' => LengthAwarePaginator::resolveCurrentPath(),
-                    'query' => request()->query(),
-                    'pageName' => 'page',
-                ]
-            );
+            $paginator = $this->nhanVienService->paginate($filters);
+            $paginator->withPath($request->url())->appends($request->query());
 
             return response()->json(['success' => true, 'data' => $paginator]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        } catch (\Throwable) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể tải danh sách nhân viên.',
+            ], 500);
         }
     }
 

@@ -17,6 +17,11 @@ final class NhanVienService implements NhanVienServiceContract
         return $this->repository->paginate($filters);
     }
 
+    public function paginateForAttendance(array $filters): LengthAwarePaginator
+    {
+        return $this->repository->paginateAttendance($filters);
+    }
+
     public function lookups(): array
     {
         return $this->repository->lookups();

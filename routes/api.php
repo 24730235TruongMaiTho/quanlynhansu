@@ -27,7 +27,9 @@ Route::middleware('api')
                 Route::get(
                     'nhan-vien',
                     [ChamCongController::class, 'employees']
-                )->middleware(EnsureNhanVienModuleEnabled::class)->name(
+                )
+                ->middleware(EnsureNhanVienModuleEnabled::class)
+                ->name(
                     'api.v1.cham-cong.nhan-vien'
                 );
 
@@ -60,7 +62,8 @@ Route::middleware('api')
                 Route::get(
                     'nhan-vien',
                     [NghiPhepController::class, 'employees']
-                )->middleware(EnsureNhanVienModuleEnabled::class);
+                )
+                ->middleware(EnsureNhanVienModuleEnabled::class);
 
                 Route::post(
                     'nhan-vien',
