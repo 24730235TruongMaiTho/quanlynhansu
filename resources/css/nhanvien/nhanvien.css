@@ -1,0 +1,131 @@
+.employee-page .employee-stepper {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0;
+    list-style: none;
+}
+
+.employee-page .employee-stepper li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.875rem;
+}
+
+.employee-page .employee-stepper li span {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 50%;
+    background: var(--bs-body-bg);
+    font-weight: 600;
+}
+
+.employee-page .employee-stepper li[aria-current="step"] {
+    color: var(--bs-primary-text-emphasis);
+    font-weight: 600;
+}
+
+.employee-page .employee-stepper li[aria-current="step"] span {
+    border-color: var(--bs-primary);
+    background: var(--bs-primary);
+    color: var(--bs-white);
+}
+
+.employee-page .employee-step + .employee-step {
+    margin-top: 2rem !important;
+    padding-top: 2rem !important;
+    border-top: 1px solid var(--bs-border-color) !important;
+}
+
+.employee-page.is-enhanced .employee-step[hidden] {
+    display: none;
+}
+
+.employee-page.is-enhanced .employee-step + .employee-step {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
+}
+
+.employee-page .employee-form-section {
+    padding: 1rem 0;
+}
+
+.employee-page .employee-form-section + .employee-form-section {
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.employee-page .employee-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+}
+
+.employee-page .employee-field {
+    min-width: 0;
+}
+
+.employee-page .employee-step-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.employee-page .employee-review dt,
+.employee-page .employee-review dd {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+.employee-page .employee-review dt {
+    color: var(--bs-secondary-color);
+    font-weight: 500;
+}
+
+.employee-page :is(a, button, input, select, textarea):focus-visible {
+    outline: 0.2rem solid rgba(var(--bs-primary-rgb), 0.35);
+    outline-offset: 0.15rem;
+}
+
+@media (min-width: 768px) {
+    .employee-page .employee-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .employee-page .employee-field-wide {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .employee-page .employee-stepper {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .employee-page .employee-step-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .employee-page *,
+    .employee-page *::before,
+    .employee-page *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}

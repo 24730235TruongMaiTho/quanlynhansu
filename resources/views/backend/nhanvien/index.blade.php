@@ -1,735 +1,268 @@
 @extends('backend.layouts.app')
-@section('title', 'Danh sách nhân viên - Quản lý nhân sự')
+
+@section('title', 'Danh sách nhân viên')
+
 @section('content')
-<!-- ===== CONTENT AREA ===== -->
-<div class="content-area">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="left">
-            <div>
-                <h1><i class="bi bi-people-fill text-danger me-2"></i>Danh sách nhân viên</h1>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="#">Trang chủ</a></li>
-                        <li class="breadcrumb-item"><a href="#">Nhân sự</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Danh sách nhân viên</li>
-                    </ol>
-                </nav>
+    @php
+        $hasFilters = filled($filters['tu_khoa'])
+            || filled($filters['ma_pb'])
+            || filled($filters['ma_cv'])
+            || filled($filters['ma_tt']);
+        $hasEmptyCurrentPage = ! $employeeError
+            && $employees->total() > 0
+            && $employees->count() === 0;
+        $listQuery = request()->only([
+            'tu_khoa',
+            'ma_pb',
+            'ma_cv',
+            'ma_tt',
+            'page',
+            'so_dong',
+        ]);
+    @endphp
+
+    <main class="container-fluid container-xxl py-4" aria-labelledby="page-title">
+        <section class="mb-4">
+            <div class="d-flex align-items-center gap-2 mb-1 small text-secondary" aria-label="Đường dẫn trang">
+                <span>Nhân sự</span>
+                <span aria-hidden="true">/</span>
+                <span>Danh sách nhân viên</span>
             </div>
-        </div>
-        <div>
-            <a href="#" class="btn-primary-custom" id="addEmployeeBtn">
-                <i class="bi bi-person-plus-fill"></i> Thêm nhân viên
+            <h1 class="h3 fw-semibold mb-1" id="page-title">Danh sách nhân viên</h1>
+            <p class="text-secondary mb-0">Tra cứu thông tin nhân viên theo phòng ban, chức vụ và trạng thái làm việc.</p>
+            <a class="btn btn-primary mt-3" href="{{ route('backend.nhanvien.create') }}">
+                <i class="bi bi-person-plus" aria-hidden="true"></i>
+                Thêm nhân viên
             </a>
-        </div>
-    </div>
+        </section>
 
-    <!-- Filter Section -->
-    <div class="filter-section">
-        <div class="filter-group">
-            <label for="filterDepartment"><i class="bi bi-building"></i> Phòng ban</label>
-            <select class="form-select" id="filterDepartment">
-                <option value="">Tất cả</option>
-                <option value="it">Kỹ thuật</option>
-                <option value="sales">Kinh doanh</option>
-                <option value="hr">Nhân sự</option>
-                <option value="finance">Tài chính</option>
-                <option value="marketing">Marketing</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label for="filterStatus"><i class="bi bi-circle"></i> Trạng thái</label>
-            <select class="form-select" id="filterStatus">
-                <option value="">Tất cả</option>
-                <option value="active">Đang làm việc</option>
-                <option value="probation">Thử việc</option>
-                <option value="inactive">Đã nghỉ</option>
-            </select>
-        </div>
-        <div class="filter-group" style="flex: 1; min-width: 200px;">
-            <input type="text" class="search-input" id="searchEmployee" placeholder="Tìm kiếm nhân viên...">
-        </div>
-        <div class="filter-group">
-            <button class="btn-filter" id="filterBtn">Lọc</button>
-            <button class="btn-reset" id="resetFilterBtn">Đặt lại</button>
-        </div>
-    </div>
-
-    <!-- Table -->
-    <div class="table-wrapper">
-        <div class="table-header">
-            <div class="info">
-                Hiển thị <strong id="startCount">1</strong> - <strong id="endCount">10</strong> trong tổng số <strong id="totalCount">0</strong> nhân viên
+        @if (session('success'))
+            <div class="alert alert-success" role="status">
+                {{ session('success') }}
             </div>
-            <div>
-                <select class="form-select" id="pageSizeSelect" style="width: auto; display: inline-block; padding: 6px 30px 6px 14px; font-size: 14px; border-radius: 10px; border: 1.5px solid #e0e0e0;">
-                    <option value="5">5 / trang</option>
-                    <option value="10" selected>10 / trang</option>
-                    <option value="20">20 / trang</option>
-                    <option value="50">50 / trang</option>
-                </select>
+        @endif
+
+        @if ($errors->any())
+            <div class="alert alert-danger" role="alert">
+                <p class="fw-semibold mb-1">Bộ lọc chưa hợp lệ.</p>
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
-        </div>
+        @endif
 
-        <table class="table" id="employeeTable">
-            <thead>
-                <tr>
-                    <th data-sort="name" style="min-width: 200px;">
-                        Nhân viên <i class="bi bi-arrow-up-short sort-icon"></i>
-                    </th>
-                    <th data-sort="department">
-                        Phòng ban <i class="bi bi-arrow-up-short sort-icon"></i>
-                    </th>
-                    <th data-sort="position">
-                        Chức vụ <i class="bi bi-arrow-up-short sort-icon"></i>
-                    </th>
-                    <th data-sort="status">
-                        Trạng thái <i class="bi bi-arrow-up-short sort-icon"></i>
-                    </th>
-                    <th data-sort="salary">
-                        Lương <i class="bi bi-arrow-up-short sort-icon"></i>
-                    </th>
-                    <th style="text-align: center;">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody id="employeeTableBody">
-                <!-- Dữ liệu sẽ được render bằng JavaScript -->
-            </tbody>
-        </table>
-
-        <!-- Pagination -->
-        <div class="pagination-wrapper">
-            <div class="info" id="paginationInfo">
-                Hiển thị 1-10 trong tổng số 0 nhân viên
+        @if ($employeeError)
+            <div class="alert alert-danger" role="alert">
+                <p class="fw-semibold mb-1">Không tải được dữ liệu</p>
+                <p class="mb-0">{{ $employeeError }}</p>
             </div>
-            <ul class="pagination" id="pagination">
-                <!-- Pagination sẽ được render bằng JavaScript -->
-            </ul>
-        </div>
-    </div>
-</div>
-@endsection
-@push('styles')
-<style>
-    /* Filter Section */
-        .filter-section {
-            background: #fff;
-            padding: 20px 25px;
-            border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-            margin-bottom: 25px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-        }
+        @endif
 
-        .filter-section .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        <section class="card shadow-sm mb-3" aria-labelledby="employee-filter-title">
+            <div class="card-header bg-white py-3">
+                <h2 class="h6 fw-semibold mb-0" id="employee-filter-title">Bộ lọc nhân viên</h2>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ route('backend.nhanvien.index') }}" aria-busy="false">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label" for="tu_khoa">Từ khóa</label>
+                            <input
+                                class="form-control @error('tu_khoa') is-invalid @enderror"
+                                id="tu_khoa"
+                                name="tu_khoa"
+                                type="search"
+                                maxlength="100"
+                                value="{{ $filters['tu_khoa'] }}"
+                                placeholder="Mã, tên, email hoặc số điện thoại"
+                            >
+                            @error('tu_khoa')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-        .filter-section .filter-group label {
-            font-weight: 500;
-            color: #495057;
-            font-size: 14px;
-            margin: 0;
-            white-space: nowrap;
-        }
+                        <div class="col-12 col-sm-6 col-lg-2">
+                            <label class="form-label" for="ma_pb">Phòng ban</label>
+                            <select class="form-select @error('ma_pb') is-invalid @enderror" id="ma_pb" name="ma_pb">
+                                <option value="">Tất cả phòng ban</option>
+                                @foreach ($lookups['phong_ban'] as $department)
+                                    <option value="{{ $department->ma_pb }}" @selected($filters['ma_pb'] === (int) $department->ma_pb)>
+                                        {{ $department->ten_pb }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('ma_pb')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-        .filter-section .form-select {
-            border-radius: 10px;
-            border: 1.5px solid #e0e0e0;
-            padding: 8px 30px 8px 14px;
-            font-size: 14px;
-            min-width: 150px;
-            background-color: #f8f9fa;
-            cursor: pointer;
-        }
+                        <div class="col-12 col-sm-6 col-lg-2">
+                            <label class="form-label" for="ma_cv">Chức vụ</label>
+                            <select class="form-select @error('ma_cv') is-invalid @enderror" id="ma_cv" name="ma_cv">
+                                <option value="">Tất cả chức vụ</option>
+                                @foreach ($lookups['chuc_vu'] as $position)
+                                    <option value="{{ $position->ma_cv }}" @selected($filters['ma_cv'] === (int) $position->ma_cv)>
+                                        {{ $position->ten_cv }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('ma_cv')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-        .filter-section .form-select:focus {
-            border-color: #e94560;
-            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.1);
-            outline: none;
-        }
+                        <div class="col-12 col-sm-6 col-lg-2">
+                            <label class="form-label" for="ma_tt">Trạng thái</label>
+                            <select class="form-select @error('ma_tt') is-invalid @enderror" id="ma_tt" name="ma_tt">
+                                <option value="">Tất cả trạng thái</option>
+                                @foreach ($lookups['trang_thai'] as $status)
+                                    <option value="{{ $status->ma_tt }}" @selected($filters['ma_tt'] === (int) $status->ma_tt)>
+                                        {{ $status->ten_tt }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('ma_tt')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-        .filter-section .btn-filter {
-            background: #e94560;
-            color: #fff;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 10px;
-            font-weight: 500;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+                        <div class="col-12 col-sm-6 col-lg-2">
+                            <label class="form-label" for="so_dong">Số dòng</label>
+                            <select class="form-select" id="so_dong" name="so_dong">
+                                @foreach ([5, 10, 20, 50, 100] as $pageSize)
+                                    <option value="{{ $pageSize }}" @selected($filters['so_dong'] === $pageSize)>{{ $pageSize }}</option>
+                                @endforeach
+                            </select>
+                        </div>
 
-        .filter-section .btn-filter:hover {
-            background: #d63851;
-        }
+                        <div class="col-12 d-flex flex-wrap gap-2">
+                            <button
+                                class="btn btn-success"
+                                type="submit"
+                                aria-disabled="false"
+                                data-disable-on-submit
+                                data-submitting-text="Đang lọc..."
+                            >
+                                Áp dụng bộ lọc
+                            </button>
+                            @if ($hasFilters)
+                                <a class="btn btn-outline-secondary" href="{{ route('backend.nhanvien.index') }}">Xóa bộ lọc</a>
+                            @endif
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
 
-        .filter-section .btn-reset {
-            background: #f8f9fa;
-            border: 1.5px solid #e0e0e0;
-            padding: 8px 20px;
-            border-radius: 10px;
-            font-weight: 500;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: #495057;
-        }
+        <section class="card shadow-sm overflow-hidden" aria-labelledby="employee-table-title">
+            <div class="card-header bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
+                <div>
+                    <h2 class="h6 fw-semibold mb-1" id="employee-table-title">Kết quả tra cứu</h2>
+                    <p class="small text-secondary mb-0">
+                        Có {{ number_format($employees->total(), 0, ',', '.') }} nhân viên phù hợp.
+                    </p>
+                </div>
+            </div>
 
-        .filter-section .btn-reset:hover {
-            background: #f0f0f0;
-        }
-
-        .filter-section .search-input {
-            padding: 8px 16px 8px 36px;
-            border: 1.5px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 14px;
-            min-width: 200px;
-            background: #f8f9fa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E") no-repeat 12px center;
-            transition: all 0.3s ease;
-        }
-
-        .filter-section .search-input:focus {
-            border-color: #e94560;
-            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.1);
-            outline: none;
-            background-color: #fff;
-            min-width: 250px;
-        }
-
-        /* Table */
-        .table-wrapper {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            overflow-x: auto;
-        }
-
-        .table-wrapper .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .table-wrapper .table-header .info {
-            font-size: 14px;
-            color: #6c757d;
-        }
-
-        .table-wrapper .table-header .info strong {
-            color: #1a1a2e;
-        }
-
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-
-        .table thead th {
-            background: #f8f9fa;
-            padding: 12px 16px;
-            text-align: left;
-            font-weight: 600;
-            color: #495057;
-            border-bottom: 2px solid #e9ecef;
-            white-space: nowrap;
-            cursor: pointer;
-            user-select: none;
-            position: relative;
-        }
-
-        .table thead th:hover {
-            background: #f0f0f0;
-        }
-
-        .table thead th .sort-icon {
-            margin-left: 4px;
-            font-size: 12px;
-            opacity: 0.3;
-        }
-
-        .table thead th.active .sort-icon {
-            opacity: 1;
-            color: #e94560;
-        }
-
-        .table tbody td {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f0f0f0;
-            vertical-align: middle;
-            color: #495057;
-        }
-
-        .table tbody tr:hover {
-            background: rgba(233, 69, 96, 0.03);
-        }
-
-        .table .avatar-cell {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .table .avatar-cell .avatar-img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #e94560;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .table .avatar-cell .avatar-img img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .table .avatar-cell .name-info .name {
-            font-weight: 500;
-            color: #1a1a2e;
-        }
-
-        .table .avatar-cell .name-info .code {
-            font-size: 12px;
-            color: #adb5bd;
-        }
-
-        .table .badge-status {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            display: inline-block;
-        }
-
-        .table .badge-status.active {
-            background: rgba(40, 167, 69, 0.15);
-            color: #28a745;
-        }
-
-        .table .badge-status.inactive {
-            background: rgba(220, 53, 69, 0.15);
-            color: #dc3545;
-        }
-
-        .table .badge-status.probation {
-            background: rgba(255, 193, 7, 0.15);
-            color: #ffc107;
-        }
-
-        .table .btn-action {
-            background: transparent;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: #6c757d;
-            font-size: 16px;
-        }
-
-        .table .btn-action:hover {
-            background: rgba(233, 69, 96, 0.08);
-            color: #e94560;
-        }
-
-        .table .btn-action.delete:hover {
-            background: rgba(220, 53, 69, 0.08);
-            color: #dc3545;
-        }
-
-        /* Pagination */
-        .pagination-wrapper {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 20px;
-            border-top: 1px solid #f0f0f0;
-            margin-top: 20px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .pagination-wrapper .info {
-            font-size: 14px;
-            color: #6c757d;
-        }
-
-        .pagination-wrapper .pagination {
-            display: flex;
-            gap: 6px;
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .pagination-wrapper .pagination li {
-            display: inline-block;
-        }
-
-        .pagination-wrapper .pagination a {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            padding: 0 10px;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-            color: #495057;
-            text-decoration: none;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
-
-        .pagination-wrapper .pagination a:hover {
-            background: rgba(233, 69, 96, 0.08);
-            border-color: #e94560;
-            color: #e94560;
-        }
-
-        .pagination-wrapper .pagination .active a {
-            background: #e94560;
-            border-color: #e94560;
-            color: #fff;
-        }
-
-        .pagination-wrapper .pagination .active a:hover {
-            background: #d63851;
-            border-color: #d63851;
-        }
-
-        .pagination-wrapper .pagination .disabled a {
-            opacity: 0.5;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-</style>
-@endpush
-@push('scripts')
-<script>
-(function(){
-// ===== DATA =====
-    const employees = [
-        { id: 1, name: 'Nguyễn Văn An', code: 'EMP001', department: 'it', departmentLabel: 'Kỹ thuật', position: 'Trưởng phòng', status: 'active', statusLabel: 'Đang làm việc', salary: 25000000, avatar: '' },
-        { id: 2, name: 'Trần Thị Bình', code: 'EMP002', department: 'sales', departmentLabel: 'Kinh doanh', position: 'Nhân viên', status: 'active', statusLabel: 'Đang làm việc', salary: 15000000, avatar: '' },
-        { id: 3, name: 'Lê Văn Cường', code: 'EMP003', department: 'hr', departmentLabel: 'Nhân sự', position: 'Nhân viên', status: 'probation', statusLabel: 'Thử việc', salary: 12000000, avatar: '' },
-        { id: 4, name: 'Phạm Thị Dung', code: 'EMP004', department: 'finance', departmentLabel: 'Tài chính', position: 'Trưởng phòng', status: 'active', statusLabel: 'Đang làm việc', salary: 22000000, avatar: '' },
-        { id: 5, name: 'Hoàng Văn Em', code: 'EMP005', department: 'marketing', departmentLabel: 'Marketing', position: 'Nhân viên', status: 'active', statusLabel: 'Đang làm việc', salary: 14000000, avatar: '' },
-        { id: 6, name: 'Vũ Thị Phương', code: 'EMP006', department: 'it', departmentLabel: 'Kỹ thuật', position: 'Nhân viên', status: 'active', statusLabel: 'Đang làm việc', salary: 18000000, avatar: '' },
-        { id: 7, name: 'Đặng Văn Giang', code: 'EMP007', department: 'sales', departmentLabel: 'Kinh doanh', position: 'Trưởng phòng', status: 'inactive', statusLabel: 'Đã nghỉ', salary: 20000000, avatar: '' },
-        { id: 8, name: 'Ngô Thị Hạnh', code: 'EMP008', department: 'hr', departmentLabel: 'Nhân sự', position: 'Trưởng phòng', status: 'active', statusLabel: 'Đang làm việc', salary: 21000000, avatar: '' },
-        { id: 9, name: 'Lý Văn Ích', code: 'EMP009', department: 'finance', departmentLabel: 'Tài chính', position: 'Nhân viên', status: 'probation', statusLabel: 'Thử việc', salary: 13000000, avatar: '' },
-        { id: 10, name: 'Mai Thị Kim', code: 'EMP010', department: 'marketing', departmentLabel: 'Marketing', position: 'Trưởng phòng', status: 'active', statusLabel: 'Đang làm việc', salary: 23000000, avatar: '' },
-        { id: 11, name: 'Trịnh Văn Lâm', code: 'EMP011', department: 'it', departmentLabel: 'Kỹ thuật', position: 'Nhân viên', status: 'active', statusLabel: 'Đang làm việc', salary: 16000000, avatar: '' },
-        { id: 12, name: 'Hoàng Thị Mai', code: 'EMP012', department: 'sales', departmentLabel: 'Kinh doanh', position: 'Nhân viên', status: 'active', statusLabel: 'Đang làm việc', salary: 14000000, avatar: '' },
-        { id: 13, name: 'Phan Văn Nam', code: 'EMP013', department: 'hr', departmentLabel: 'Nhân sự', position: 'Nhân viên', status: 'inactive', statusLabel: 'Đã nghỉ', salary: 11000000, avatar: '' },
-        { id: 14, name: 'Lê Thị Oanh', code: 'EMP014', department: 'finance', departmentLabel: 'Tài chính', position: 'Nhân viên', status: 'active', statusLabel: 'Đang làm việc', salary: 15000000, avatar: '' },
-        { id: 15, name: 'Trần Văn Phúc', code: 'EMP015', department: 'marketing', departmentLabel: 'Marketing', position: 'Nhân viên', status: 'probation', statusLabel: 'Thử việc', salary: 12000000, avatar: '' }
-    ];
-
-    // ===== STATE =====
-    let currentPage = 1;
-    let pageSize = 10;
-    let sortField = 'name';
-    let sortDirection = 'asc';
-    let filteredData = [...employees];
-
-    // ===== DOM ELEMENTS =====
-    const sidebar = document.getElementById('sidebar');
-    const toggleBtn = document.getElementById('toggleSidebar');
-    const toggleIcon = document.getElementById('toggleIcon');
-    const backdrop = document.getElementById('sidebarBackdrop');
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const employeeTableBody = document.getElementById('employeeTableBody');
-    const pagination = document.getElementById('pagination');
-    const paginationInfo = document.getElementById('paginationInfo');
-    const startCount = document.getElementById('startCount');
-    const endCount = document.getElementById('endCount');
-    const totalCount = document.getElementById('totalCount');
-    const pageSizeSelect = document.getElementById('pageSizeSelect');
-    const filterDepartment = document.getElementById('filterDepartment');
-    const filterStatus = document.getElementById('filterStatus');
-    const searchEmployee = document.getElementById('searchEmployee');
-    const filterBtn = document.getElementById('filterBtn');
-    const resetFilterBtn = document.getElementById('resetFilterBtn');
-    const addEmployeeBtn = document.getElementById('addEmployeeBtn');
-
-
-    // ===== TABLE FUNCTIONS =====
-            function getStatusBadge(status) {
-                const statusMap = {
-                    'active': '<span class="badge-status active">● Đang làm việc</span>',
-                    'probation': '<span class="badge-status probation">● Thử việc</span>',
-                    'inactive': '<span class="badge-status inactive">● Đã nghỉ</span>'
-                };
-                return statusMap[status] || status;
-            }
-
-            function getAvatarInitials(name) {
-                const parts = name.split(' ');
-                if (parts.length >= 2) {
-                    return parts[0].charAt(0) + parts[parts.length - 1].charAt(0);
-                }
-                return name.charAt(0);
-            }
-
-            function formatSalary(salary) {
-                return new Intl.NumberFormat('vi-VN', {
-                    style: 'currency',
-                    currency: 'VND',
-                    minimumFractionDigits: 0
-                }).format(salary);
-            }
-
-            function renderTable() {
-                // Filter
-                const department = filterDepartment.value;
-                const status = filterStatus.value;
-                const search = searchEmployee.value.toLowerCase().trim();
-
-                filteredData = employees.filter(function(emp) {
-                    let match = true;
-                    if (department && emp.department !== department) match = false;
-                    if (status && emp.status !== status) match = false;
-                    if (search) {
-                        const searchStr = (emp.name + ' ' + emp.code + ' ' + emp.departmentLabel).toLowerCase();
-                        if (!searchStr.includes(search)) match = false;
-                    }
-                    return match;
-                });
-
-                // Sort
-                filteredData.sort(function(a, b) {
-                    let valA = a[sortField];
-                    let valB = b[sortField];
-                    if (typeof valA === 'string') {
-                        valA = valA.toLowerCase();
-                        valB = valB.toLowerCase();
-                    }
-                    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-                    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-                    return 0;
-                });
-
-                // Paginate
-                const total = filteredData.length;
-                const totalPages = Math.ceil(total / pageSize) || 1;
-                if (currentPage > totalPages) currentPage = totalPages;
-                const start = (currentPage - 1) * pageSize;
-                const end = Math.min(start + pageSize, total);
-                const pageData = filteredData.slice(start, end);
-
-                // Update info
-                startCount.textContent = total > 0 ? start + 1 : 0;
-                endCount.textContent = end;
-                totalCount.textContent = total;
-                paginationInfo.textContent = 'Hiển thị ' + (total > 0 ? start + 1 : 0) + '-' + end + ' trong tổng số ' + total + ' nhân viên';
-
-                // Render table rows
-                if (pageData.length === 0) {
-                    employeeTableBody.innerHTML = `
-                        <tr>
-                            <td colspan="6" style="text-align: center; padding: 40px 20px; color: #6c757d;">
-                                <i class="bi bi-inbox" style="font-size: 48px; display: block; margin-bottom: 10px; opacity: 0.3;"></i>
-                                Không có nhân viên nào phù hợp
-                            </td>
-                        </tr>
-                    `;
-                } else {
-                    employeeTableBody.innerHTML = pageData.map(function(emp) {
-                        return `
+            @if (! $employeeError && $employees->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <caption class="visually-hidden">Danh sách nhân viên theo bộ lọc hiện tại</caption>
+                        <thead class="table-light">
                             <tr>
-                                <td>
-                                    <div class="avatar-cell">
-                                        <div class="avatar-img">
-                                            ${emp.avatar ? `<img src="${emp.avatar}" alt="${emp.name}">` : getAvatarInitials(emp.name)}
-                                        </div>
-                                        <div class="name-info">
-                                            <div class="name">${emp.name}</div>
-                                            <div class="code">${emp.code}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>${emp.departmentLabel}</td>
-                                <td>${emp.position}</td>
-                                <td>${getStatusBadge(emp.status)}</td>
-                                <td>${formatSalary(emp.salary)}</td>
-                                <td style="text-align: center; white-space: nowrap;">
-                                    <button class="btn-action" data-id="${emp.id}" title="Xem chi tiết">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    <button class="btn-action" data-id="${emp.id}" title="Sửa">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="btn-action delete" data-id="${emp.id}" title="Xóa">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
-                                </td>
+                                <th scope="col">Ảnh đại diện</th>
+                                <th scope="col">Mã nhân viên</th>
+                                <th scope="col">Họ tên</th>
+                                <th scope="col">Liên hệ</th>
+                                <th scope="col">Phòng ban</th>
+                                <th scope="col">Chức vụ</th>
+                                <th scope="col">Trạng thái</th>
+                                <th scope="col">Thao tác</th>
                             </tr>
-                        `;
-                    }).join('');
-                }
+                        </thead>
+                        <tbody>
+                            @foreach ($employees as $employee)
+                                <tr>
+                                    <td>
+                                        @if (filled($employee->anh_dai_dien))
+                                            <img
+                                                class="rounded-circle object-fit-cover"
+                                                src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($employee->anh_dai_dien) }}"
+                                                alt="Ảnh đại diện của {{ $employee->ho_ten }}"
+                                                width="40"
+                                                height="40"
+                                            >
+                                        @else
+                                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light border text-secondary p-2 lh-1" aria-hidden="true">
+                                                <i class="bi bi-person"></i>
+                                            </span>
+                                            <span class="visually-hidden">Chưa có ảnh đại diện</span>
+                                        @endif
+                                    </td>
+                                    <th scope="row" class="text-nowrap">{{ $employee->ma_nv }}</th>
+                                    <td class="fw-medium">{{ $employee->ho_ten }}</td>
+                                    <td>
+                                        <div>{{ $employee->sdt ?: 'Chưa cập nhật' }}</div>
+                                        <div class="small text-secondary">{{ $employee->email ?: 'Chưa cập nhật email' }}</div>
+                                    </td>
+                                    <td>{{ $employee->ten_pb }}</td>
+                                    <td>{{ $employee->ten_cv }}</td>
+                                    <td>
+                                        <span class="badge text-bg-light border fw-normal">{{ $employee->ten_tt }}</span>
+                                    </td>
+                                    <td>
+                                        <a
+                                            class="btn btn-sm btn-outline-primary"
+                                            href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}"
+                                            aria-label="Xem hồ sơ {{ $employee->ho_ten }}"
+                                        >
+                                            Xem
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @elseif ($hasEmptyCurrentPage)
+                <div class="card-body text-center py-5" role="status">
+                    <i class="bi bi-file-earmark-x fs-1 text-secondary" aria-hidden="true"></i>
+                    <h3 class="h6 mt-3 mb-1">Trang kết quả hiện tại không có dữ liệu</h3>
+                    <p class="text-secondary mb-3">
+                        @if ($hasFilters)
+                            Bộ lọc hiện tại có {{ number_format($employees->total(), 0, ',', '.') }} nhân viên,
+                            nhưng trang {{ $employees->currentPage() }} không chứa dòng nào.
+                        @else
+                            Danh sách có {{ number_format($employees->total(), 0, ',', '.') }} nhân viên,
+                            nhưng trang {{ $employees->currentPage() }} không chứa dòng nào.
+                        @endif
+                    </p>
+                    <a class="btn btn-outline-secondary" href="{{ $employees->url(1) }}">Về trang đầu tiên</a>
+                </div>
+            @elseif (! $employeeError)
+                <div class="card-body text-center py-5" role="status">
+                    <i class="bi bi-people fs-1 text-secondary" aria-hidden="true"></i>
+                    @if ($hasFilters)
+                        <h3 class="h6 mt-3 mb-1">Không tìm thấy nhân viên phù hợp</h3>
+                        <p class="text-secondary mb-0">Hãy điều chỉnh hoặc xóa bộ lọc để xem thêm kết quả.</p>
+                    @else
+                        <h3 class="h6 mt-3 mb-1">Chưa có nhân viên trong hệ thống</h3>
+                        <p class="text-secondary mb-0">Danh sách sẽ hiển thị khi dữ liệu nhân viên được bổ sung.</p>
+                    @endif
+                </div>
+            @endif
 
-                // Render pagination
-                renderPagination(currentPage, totalPages);
+            @if ($employees->hasPages())
+                <div class="card-footer bg-white d-flex justify-content-center py-3">
+                    {{ $employees->links('pagination::bootstrap-5') }}
+                </div>
+            @endif
+        </section>
+    </main>
+@endsection
 
-                // Update sort indicators
-                document.querySelectorAll('#employeeTable thead th').forEach(function(th) {
-                    th.classList.remove('active');
-                    const field = th.getAttribute('data-sort');
-                    if (field === sortField) {
-                        th.classList.add('active');
-                        const icon = th.querySelector('.sort-icon');
-                        if (icon) {
-                            icon.className = sortDirection === 'asc' ? 'bi bi-arrow-up-short sort-icon' : 'bi bi-arrow-down-short sort-icon';
-                        }
-                    }
-                });
-            }
-
-            function renderPagination(current, totalPages) {
-                let html = '';
-                // Previous
-                html += `<li class="${current <= 1 ? 'disabled' : ''}">
-                    <a href="#" data-page="${current - 1}"><i class="bi bi-chevron-left"></i></a>
-                </li>`;
-
-                // Pages
-                let startPage = Math.max(1, current - 2);
-                let endPage = Math.min(totalPages, current + 2);
-                if (startPage > 1) {
-                    html += `<li><a href="#" data-page="1">1</a></li>`;
-                    if (startPage > 2) {
-                        html += `<li class="disabled"><a href="#">...</a></li>`;
-                    }
-                }
-                for (let i = startPage; i <= endPage; i++) {
-                    html += `<li class="${i === current ? 'active' : ''}">
-                        <a href="#" data-page="${i}">${i}</a>
-                    </li>`;
-                }
-                if (endPage < totalPages) {
-                    if (endPage < totalPages - 1) {
-                        html += `<li class="disabled"><a href="#">...</a></li>`;
-                    }
-                    html += `<li><a href="#" data-page="${totalPages}">${totalPages}</a></li>`;
-                }
-
-                // Next
-                html += `<li class="${current >= totalPages ? 'disabled' : ''}">
-                    <a href="#" data-page="${current + 1}"><i class="bi bi-chevron-right"></i></a>
-                </li>`;
-
-                pagination.innerHTML = html;
-
-                // Pagination click handlers
-                pagination.querySelectorAll('a[data-page]').forEach(function(link) {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const page = parseInt(this.getAttribute('data-page'));
-                        if (page >= 1 && page <= totalPages && page !== currentPage) {
-                            currentPage = page;
-                            renderTable();
-                        }
-                    });
-                });
-            }
-
-            // ===== TABLE EVENT LISTENERS =====
-            // Sort
-            document.querySelectorAll('#employeeTable thead th[data-sort]').forEach(function(th) {
-                th.addEventListener('click', function() {
-                    const field = this.getAttribute('data-sort');
-                    if (field === sortField) {
-                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        sortField = field;
-                        sortDirection = 'asc';
-                    }
-                    currentPage = 1;
-                    renderTable();
-                });
-            });
-
-            // Page size
-            pageSizeSelect.addEventListener('change', function() {
-                pageSize = parseInt(this.value);
-                currentPage = 1;
-                renderTable();
-            });
-
-            // Filter
-            filterBtn.addEventListener('click', function() {
-                currentPage = 1;
-                renderTable();
-            });
-
-            resetFilterBtn.addEventListener('click', function() {
-                filterDepartment.value = '';
-                filterStatus.value = '';
-                searchEmployee.value = '';
-                currentPage = 1;
-                renderTable();
-            });
-
-            // Search with Enter key
-            searchEmployee.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    currentPage = 1;
-                    renderTable();
-                }
-            });
-
-            // Add employee
-            addEmployeeBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                alert('📝 Chuyển đến trang thêm nhân viên mới!');
-            });
-
-            // Row actions (delegation)
-            employeeTableBody.addEventListener('click', function(e) {
-                const btn = e.target.closest('.btn-action');
-                if (!btn) return;
-
-                const id = parseInt(btn.getAttribute('data-id'));
-                const employee = employees.find(function(emp) { return emp.id === id; });
-                if (!employee) return;
-
-                if (btn.classList.contains('delete')) {
-                    if (confirm('Bạn có chắc chắn muốn xóa nhân viên "' + employee.name + '"?')) {
-                        const index = employees.indexOf(employee);
-                        if (index > -1) {
-                            employees.splice(index, 1);
-                            renderTable();
-                            alert('✅ Đã xóa nhân viên "' + employee.name + '"');
-                        }
-                    }
-                } else if (btn.querySelector('.bi-eye')) {
-                    alert('👁️ Xem chi tiết nhân viên: ' + employee.name);
-                } else if (btn.querySelector('.bi-pencil')) {
-                    alert('✏️ Sửa thông tin nhân viên: ' + employee.name);
-                }
-            });
-});
-</script>
+@push('scripts')
+    @vite('resources/js/frontend/nhanvien/nhanvien.js')
 @endpush

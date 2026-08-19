@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreNghiPhepRequest extends FormRequest
 {
@@ -14,7 +15,13 @@ class StoreNghiPhepRequest extends FormRequest
     public function rules()
     {
         return [
-            'ma_nv' => 'required|string|max:5|exists:nhan_vien,ma_nv',
+            'ma_nv' => [
+                'required',
+                'string',
+                'regex:/\ANV[0-9]{3}\z/',
+                'max:5',
+                Rule::exists('nhan_vien', 'ma_nv'),
+            ],
             'tu_ngay' => 'required|date',
             'den_ngay' => 'required|date|after_or_equal:tu_ngay',
             'ma_lp' => 'required|integer',

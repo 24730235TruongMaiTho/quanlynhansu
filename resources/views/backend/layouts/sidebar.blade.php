@@ -43,13 +43,6 @@
                     </li>
                 </ul>
             </li>
-        <!-- Chấm công -->
-        <li class="nav-item">
-            <a href="/admin/cham-cong" class="nav-link">
-                <i class="bi bi-calendar-check-fill"></i>
-                <span class="nav-title">Chấm công</span>
-            </a>
-        </li>
         </ul>
     </div>
 </nav>

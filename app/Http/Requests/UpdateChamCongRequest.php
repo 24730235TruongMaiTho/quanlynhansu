@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateChamCongRequest extends FormRequest
 {
@@ -14,7 +15,13 @@ class UpdateChamCongRequest extends FormRequest
     public function rules()
     {
         return [
-            'ma_nv' => 'sometimes|required|integer|exists:nhan_vien,ma_nv',
+            'ma_nv' => [
+                'required',
+                'string',
+                'regex:/\ANV[0-9]{3}\z/',
+                'max:5',
+                Rule::exists('nhan_vien', 'ma_nv'),
+            ],
             'ngay_ky' => 'sometimes|required|date',
             'so_gio_lam' => 'sometimes|required|numeric|min:0',
             'vao_muon' => 'nullable|integer|min:0',
