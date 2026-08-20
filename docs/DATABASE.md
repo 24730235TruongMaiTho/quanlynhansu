@@ -1,10 +1,10 @@
 # Database và stored procedure
 
-> Snapshot kiểm tra: 2026-08-11
+> Snapshot kiểm tra: 2026-08-20
 >
-> Runtime xác minh: MariaDB 10.4.32, schema `quan_ly_nhan_su`
+> Runtime tham chiếu: MariaDB 10.4.32, schema `quan_ly_nhan_su` (live không bị mutate; guarded disposable integration employee đã pass hẹp)
 >
-> Thao tác audit: ping, đọc metadata và đối chiếu tên object; không ghi dữ liệu.
+> Thao tác phiên này: đối chiếu caller/SQL/test và cập nhật contract employee-update; không ghi database live.
 
 ## Nguồn schema
 
@@ -59,11 +59,11 @@ View duy nhất là `vw_danh_sach_nhan_vien_chi_tiet`.
 | Lương | 7 |
 | Backup/restore | 2 |
 
-Tồn tại object không đồng nghĩa procedure đã được kiểm thử nghiệp vụ. Audit này chưa gọi các procedure ghi dữ liệu.
+Tồn tại object không đồng nghĩa procedure đã được kiểm thử nghiệp vụ. Các procedure employee update đã được gọi chỉ trên disposable schema qua guarded integration; không gọi routine ghi trên live schema.
 
 ## Registry các procedure PHP đang gọi
 
-Audit tìm thấy 12 tên procedure trong lệnh `CALL` của PHP:
+Snapshot caller hiện có 18 tên procedure trong lệnh `CALL` của PHP; bảng dưới đây nêu các contract đã audit và các lệch còn tồn tại:
 
 | Procedure | Tham số theo caller | Trạng thái trong dump/live DB | Contract kết quả |
 | --- | --- | --- | --- |
@@ -77,7 +77,13 @@ Audit tìm thấy 12 tên procedure trong lệnh `CALL` của PHP:
 | `sp_cham_cong_cap_nhat` | `ma_cc, ma_nv, ngay_lam, so_gio_lam, vao_muon, ve_som` | Có | Write; caller đọc lại table |
 | `sp_luong_tim_kiem_phan_trang` | `ma_nv, ky_luong, ma_pb, ma_cv, page, per_page` | **Thiếu** | Mỗi row phải có `total_count` |
 | `sp_nhan_vien_them` | 16 tham số theo SQL | Có; caller truyền 16 | Write, không result set |
-| `sp_nhan_vien_sua` | 16 tham số theo SQL | Có; caller truyền 16 | Write, không result set |
+| `sp_nhan_vien_sua` | 14 `IN`: `ma_nv` + hồ sơ | Có; script update 004 và dump canonical | Write, không result set; giữ mã/vai trò/hash/avatar/ngày nghỉ việc |
+| `sp_dia_chi_nhan_vien_luu` | `ma_nv` + 4 phần địa chỉ | Có; script create 003 và dump canonical | Upsert một-một, không result set |
+| `sp_nhan_vien_cap_nhat_anh` | `ma_nv, anh_moi`, `OUT anh_cu` | Có; script update 004 và dump canonical | Write + OUT path cũ; không result set |
+| `sp_nhan_vien_danh_sach_phan_trang` | filter + page/per-page + `OUT total` | Có; read routines 002 | Row danh sách an toàn + tổng số |
+| `sp_nhan_vien_chi_tiet` | `ma_nv` | Có; read routines 002 | Row hồ sơ/địa chỉ tường minh, không hash |
+| `sp_chuc_vu_danh_sach` | Không | Có | Row `ma_cv`, `ten_cv`, `he_so_phu_cap` |
+| `sp_trang_thai_lam_viec_danh_sach` | Không | Có | Row `ma_tt`, `ky_hieu`, `ten_tt` |
 | `sp_nghi_phep_duyet_phep` | `ma_np, ma_nv, trang_thai_duyet` | Có | Write, không result set |
 
 Result shape của bốn procedure thiếu mới chỉ là kỳ vọng suy ra từ caller, chưa phải hợp đồng đã được nhóm chấp thuận. Trước khi bổ sung SQL, cần viết fixture/test khóa tên cột, kiểu dữ liệu, pagination và error behavior.
@@ -205,8 +211,8 @@ Không vá bằng cách tạo procedure đoán mò. Trước tiên chốt respon
 
 ## Rủi ro dữ liệu và bảo mật
 
-- View nhân viên chứa `mat_khau`; nhiều procedure dùng `SELECT *` từ view. Không trả nguyên row ra UI/API.
-- Mật khẩu được hash SHA-256 không salt. `sp_nhan_vien_sua` có thể reset về hash của `123456` khi input rỗng.
+- View nhân viên hiện dùng danh sách cột tường minh, không chứa `mat_khau`; vẫn không trả nguyên row chưa rà soát ra UI/API.
+- Mật khẩu legacy có thể là hash SHA-256 không salt; contract `sp_nhan_vien_sua` mới không nhận mật khẩu và không reset hash khi cập nhật hồ sơ.
 - `sp_quyen_them` không cung cấp `ma_quyen` dù cột không auto-increment.
 - `sp_vai_tro_xoa` xóa nhân viên thuộc vai trò trước khi xóa vai trò.
 - `sp_cham_cong_import` luôn `SIGNAL` lỗi; đây là placeholder.
@@ -226,6 +232,12 @@ Không vá bằng cách tạo procedure đoán mò. Trước tiên chốt respon
 - Dùng database test/disposable cho mọi test ghi dữ liệu.
 - Không dùng procedure backup/restore/import/export hiện tại trong web request.
 - Không log hoặc trả password hash, SQL credential hay raw DB exception cho client.
+
+### Contract employee-update (2026-08-20)
+
+`database/sql/employee/2026_08_12_004_update_routines.sql` là script versioned để replay sau schema 001, read routines 002 và create routines 003. `sp_nhan_vien_sua` có 14 tham số `IN`; routine khóa target và chỉ cho role `NHAN_VIEN_MAC_DINH`, đồng thời giữ các cột hệ thống. `sp_nhan_vien_cap_nhat_anh` trả avatar cũ qua `OUT` để service xóa sau commit; không routine nào tự mở/commit/rollback transaction. Guarded disposable integration đã xác minh contract này với `20 tests, 436 assertions`; MySQL 8 chưa được claim.
+
+Scoped code/test re-review đã **Approve**, SQL lock/transaction-boundary notes đã ADDRESSED, và Task 12 scoped implementation đã delivered/pushed trong commit `3c07d88db59d3083e0728c4c2a71ce3b9039f75f`. Task13 lifecycle/auth DB contracts là bước kế tiếp nhưng chưa bắt đầu; Task18 auth/RBAC/Gates là prerequisite trước enablement.
 
 ## Backlog
 

@@ -5,7 +5,7 @@
 - **Lập trình Web Application**: Laravel MVC, API, validation, MySQL/MariaDB, xác thực, phân quyền và kiểm thử.
 - **Thiết kế giao diện người dùng**: luồng thao tác, design system, responsive, accessibility và phản hồi trạng thái.
 
-> **Trạng thái ngày 2026-08-11:** repository đang ở mức **prototype tích hợp**, chưa phải sản phẩm hoàn chỉnh. Code đã có UI và API cho một số nghiệp vụ, nhưng test nghiệp vụ còn thiếu, một số route/Blade bị lỗi và bốn stored procedure mà code gọi chưa tồn tại trong SQL dump hoặc database local.
+> **Trạng thái ngày 2026-08-20:** Task 12 scoped implementation commit `3c07d88db59d3083e0728c4c2a71ce3b9039f75f` đã được xác minh hiện diện/ancestor trên `origin/feature/quanly-nhan-vien` và đã được scoped code/test review **Approve**. Fresh pre-push evidence: PHP employee `84/907`, MariaDB disposable `20/436` cleanup count `0`, frontend `5`, build `13`, route `44`, Composer/lint pass; full Laravel còn baseline `158 pass, 1 fail` tại `ExampleTest` vì `/` trả 404. Repository vẫn là prototype tích hợp; module hard-disabled bằng literal `config/nhanvien.php:enabled = false` và không được bật trước auth/RBAC/Gates.
 
 ## Bắt đầu từ đâu
 
@@ -24,16 +24,16 @@ Code và database live luôn có độ ưu tiên cao hơn snapshot trong tài li
 
 ## Hiện trạng đã xác minh
 
-Snapshot này được đo trên nhánh `main`, HEAD `643563c029e10a49636f1a6f2e70b4e427f1dc7e`.
+Snapshot này được đo trên nhánh `feature/quanly-nhan-vien`; implementation commit `3c07d88db59d3083e0728c4c2a71ce3b9039f75f` đã được xác minh trên origin. Revalidate HEAD trước khi dùng snapshot vì docs delivery có thể nằm ở commit hiện tại khác.
 
 | Hạng mục | Kết quả |
 | --- | --- |
-| Git | `main` đồng bộ `origin/main`; worktree sạch trước khi viết lại tài liệu |
+| Git | Implementation commit `3c07d88db59d3083e0728c4c2a71ce3b9039f75f` đã push/được xác minh trên origin; revalidate current HEAD và worktree trước thao tác tiếp theo |
 | Laravel | 12.62.0 trên PHP 8.5.0; project target PHP 8.2+ |
 | Route ứng dụng | 44 route: 17 web `/admin/*`, 27 API `/api/v1/*` |
-| Frontend build | `npm run build` pass; Vite 7.3.6 build 6 entry JavaScript của lương/chấm công/nghỉ phép |
-| Test | 1 pass, 1 fail; test mặc định gọi `/` nhưng ứng dụng chưa có route này |
-| Database local | MariaDB 10.4.32; 14 bảng, 1 view, 8 function, 10 trigger, 63 procedure |
+| Frontend | `npm run test:frontend` 5 pass; `npm run build` pass; Vite 7.3.6, 13 modules transformed |
+| Test | Fresh employee Feature/Unit `84 pass, 907 assertions`; full Laravel `158 pass, 1 baseline fail` vì `/` chưa có route; Composer/lint pass |
+| Database local | MariaDB 10.4.32; guarded employee trio `20 tests, 436 assertions` pass, cleanup count `0`; không re-read/mutate `quan_ly_nhan_su` live |
 | Auth/RBAC | Chưa có route đăng nhập, middleware auth hoặc kiểm tra quyền |
 
 `route:list`, một response `200` hoặc Vite build thành công chỉ chứng minh phạm vi hẹp; không chứng minh workflow nghiệp vụ chạy đúng.
@@ -47,7 +47,7 @@ Snapshot này được đo trên nhánh `main`, HEAD `643563c029e10a49636f1a6f2e
 | Chấm công | Prototype — blocked | Hai procedure phân trang không tồn tại; validation có thể trả sai status; import/export chưa có workflow an toàn |
 | Nghỉ phép | Prototype | Có UI/API CRUD và duyệt; chưa có test nghiệp vụ hoặc kiểm chứng mutation đầy đủ |
 | Hệ số lương | Prototype | Có API đọc/thêm/sửa; JavaScript delete không có route DELETE; validation và schema còn lệch |
-| Nhân viên | Prototype | Danh sách đang dùng dữ liệu hard-code; store chưa lưu; edit/update/delete chưa có method tương ứng |
+| Nhân viên | Task 12 scoped delivery complete; hard-disabled; module chưa production-ready | Commit `3c07d88` đã push; Feature/Unit `84/907`, MariaDB `20/436` cleanup `0`, reviewer Approve. Browser/auth-RBAC chưa có; Task13 lifecycle/auth DB contracts là bước kế tiếp nhưng chưa bắt đầu. Không coi endpoint là public-safe khi bật cờ |
 | Phòng ban | Prototype — blocked | Route/controller/Blade/procedure chưa khớp |
 | Chức vụ | Prototype — unreachable | Có controller/service/repository/request/model nhưng chưa có route |
 | Hợp đồng, vai trò, quyền, tài khoản | Planned | Nhiều controller rỗng, chưa có workflow |
@@ -189,7 +189,7 @@ Không sửa test để “xanh” bằng cách bỏ assertion; hãy chốt rout
    `sp_cham_cong_chi_tiet_phan_trang`, `sp_luong_tim_kiem_phan_trang`.
 4. Sửa route/action/Blade, API naming và validation/error contract.
 5. Khóa cả read/write contract lương, gồm unique `(ma_nv, ky_luong)`.
-6. Chốt auth/RBAC trước khi coi route quản trị là an toàn.
+6. Giữ `config('nhanvien.enabled') === false` cho tới Task 18; hoàn tất auth/RBAC/Gates và kiểm tra quyền actor trước khi bật route nhân viên.
 7. Viết feature/integration test trên database disposable cho các module đã có UI/API.
 8. Xử lý tích hợp nhánh `frontend` như một workstream UI riêng; không merge tự động.
 

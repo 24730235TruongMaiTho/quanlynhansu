@@ -1,10 +1,10 @@
 # Trạng thái dự án
 
-> Snapshot: 2026-08-11
+> Snapshot: 2026-08-20
 >
-> Branch/HEAD: `main` / `643563c029e10a49636f1a6f2e70b4e427f1dc7e`
+> Branch: `feature/quanly-nhan-vien`
 >
-> Phạm vi: audit read-only code, route, render hẹp, build, test, SQL dump và MariaDB local.
+> Phạm vi: Task 12 scoped implementation đã delivered và pushed; commit `3c07d88db59d3083e0728c4c2a71ce3b9039f75f` được xác minh là ancestor trên origin. Không ghi database live; revalidate current HEAD trước khi dùng snapshot.
 
 ## Cách đọc trạng thái
 
@@ -20,13 +20,15 @@
 
 | Kiểm tra | Kết quả |
 | --- | --- |
-| Git | `main` đồng bộ `origin/main`; sạch trước thay đổi tài liệu |
+| Git | Implementation commit `3c07d88db59d3083e0728c4c2a71ce3b9039f75f` đã push/được xác minh trên origin; current HEAD và worktree phải được revalidate trước thao tác tiếp theo |
 | MCP code graph | 1.819 node, 2.454 edge; dùng để khám phá code, không dùng thay cho route runtime |
 | `php artisan route:list --except-vendor` | Pass; 44 route = 17 web + 27 API |
-| `php artisan test` | Fail; 1 pass, 1 fail vì `/` trả 404; `phpunit.xml` dùng SQLite in-memory nên không kiểm tra procedure MariaDB |
-| `npm run build` | Pass; Vite 7.3.6, 8 module transformed |
+| `php artisan test` | Fresh baseline: 158 pass, 1 fail vì `/` trả 404; employee Feature/Unit `84 pass, 907 assertions`; `phpunit.xml` dùng SQLite in-memory nên MariaDB được kiểm tra riêng |
+| `npm run test:frontend` | Pass; 5 tests |
+| `npm run build` | Pass; Vite 7.3.6, 13 modules transformed |
 | `composer validate --no-check-publish` | Pass |
-| MariaDB MCP ping | Pass; MariaDB 10.4.32, schema `quan_ly_nhan_su` |
+| MariaDB employee integration | **Pass hẹp**; guarded disposable trio (`EmployeeUpdateProcedureTest`, `CanonicalDumpReplayTest`, `NhanVienRepositoryReadTest`) `20 tests, 436 assertions`, exit `0`; cleanup count `0` |
+| Employee rollout flag | **Hard-disabled**; `config/nhanvien.php` dùng literal `'enabled' => false` |
 | `php artisan migrate:status` | Fail: chưa có bảng `migrations` |
 
 ## Ma trận module
@@ -36,7 +38,7 @@
 | Home/landing | Có named route `backend.frontend.home` tại `/admin`, nhưng target view `frontend.home` bị thiếu; không có route `/` | Không | Test `/` fail | **Blocked** |
 | Dashboard | `/admin/bang-dieu-khien` render 200 | Chưa có dữ liệu | Không | **Prototype** |
 | Phòng ban | Blade index/create lỗi | Controller gọi SP trực tiếp | Không | **Prototype — blocked**: route trỏ method thiếu, SP chi tiết thiếu, update sai placeholder |
-| Nhân viên | Hai trang render; dữ liệu danh sách hard-code; form chỉ alert/reset | `store()` chưa lưu; route edit/show/destroy trỏ method thiếu | Không | **Prototype — blocked** |
+| Nhân viên | Task 12 scoped delivery complete; **hard-disabled** | Update profile + địa chỉ + avatar trong transaction; role/identity/hash/ngày nghỉ được bảo vệ; routine versioned | Feature/Unit `84/907`; MariaDB `20/436`, cleanup `0`; reviewer Approve | **Delivered hẹp nhưng module chưa production-ready/không được bật**: auth/RBAC/Gates và browser còn thiếu; Task13 chưa bắt đầu |
 | Chức vụ | Chưa có route/view | Có controller/service/repository/request/model | Không | **Prototype — unreachable** |
 | Lương | Trang render, JS CRUD và hệ số được build | API resource + service/repository | Không | **Prototype — blocked**: thiếu procedure danh sách; write contract chưa ngăn trùng `(ma_nv, ky_luong)`; export/đối soát chưa có handler đầy đủ |
 | Hệ số lương | UI tích hợp trong trang lương | API đọc/thêm/sửa dùng Query Builder; JavaScript có delete nhưng API chưa có route DELETE | Không | **Prototype — blocked action**: validation lệch schema, mutation chưa xác minh |
@@ -48,15 +50,30 @@
 | Báo cáo | Nút/mục tiêu rời rạc | Chưa có workflow | Không | **Planned** |
 | Backup/restore | Không có workflow an toàn | SP legacy sinh cú pháp SQL Server | Không | **Planned — unsafe legacy procedures** |
 
+## Lát cắt cập nhật nhân viên (snapshot 2026-08-20)
+
+Phạm vi đã triển khai trên branch `feature/quanly-nhan-vien`: route `edit/update` có rollout guard và ràng buộc mã `NV###`; `UpdateNhanVienRequest` xác thực target trước validation, khóa trường hệ thống và giữ invariant trạng thái; service/repository cập nhật hồ sơ, địa chỉ và avatar trong một transaction trên write connection. Target role phải đúng `NHAN_VIEN_MAC_DINH`; mã, vai trò, hash mật khẩu và ngày nghỉ việc không nhận từ client.
+
+### Rollout safety gate (load-bearing)
+
+`config/nhanvien.php` hiện dùng literal `'enabled' => false`; đây là chốt fail-closed, không phải cờ triển khai đã được cấp quyền bật. `NhanVienUpdateTest` chứng minh edit/update trả 404 trước khi gọi service khi flag tắt. Không set flag thành `true`, không thêm env override và không deploy active trước Task 18 hoàn tất auth/RBAC/Gates với actor authorization. Nếu bật sớm, CSRF chỉ chống request giả mạo chứ không xác thực actor: anonymous có thể lấy form/CSRF, enumerate target/role và gửi mutation/đọc PII của nhân viên.
+
+Vì vậy lát cắt này không được mô tả là public-safe hoặc operationally complete. Task 12 scoped delivery đã complete tại commit `3c07d88db59d3083e0728c4c2a71ce3b9039f75f`, MariaDB disposable đã pass và scoped code/test review đã **Approve**. Task13 lifecycle/auth DB contracts là bước kế tiếp nhưng **chưa bắt đầu**; Task18 auth/RBAC/Gates là prerequisite trước enablement. Browser acceptance giữ ở Task20.
+
+SQL contract đi kèm gồm `sp_nhan_vien_sua` (14 `IN`), `sp_dia_chi_nhan_vien_luu` và `sp_nhan_vien_cap_nhat_anh` (2 `IN` + 1 `OUT`), được version trong `database/sql/employee/2026_08_12_004_update_routines.sql` và replay vào canonical dump. Avatar mới chỉ được giữ sau commit; avatar cũ chỉ xóa sau commit khi chứng minh thuộc prefix an toàn; rollback/failure có bù trừ best-effort.
+
+Verified hẹp: feature/unit employee tests 84 pass (907 assertions), guarded MariaDB trio 20 pass (436 assertions), frontend state tests 5 pass, hard-disable update test pass, route list 44 route, PHP lint **23 PHP files in slice** pass, Vite build pass và `git diff --check` pass. Chưa verified: browser acceptance, auth/RBAC thật và mutation trên database live. Vì vậy không gọi module Nhân viên là production-ready hoặc bật cờ rollout.
+
+Scoped re-review: SQL notes và service orchestration notes đã được reviewer xác nhận **ADDRESSED**, không còn Critical/Important mới; overall review **Approve**. Đây là approval và delivery của code/test scope, không phải production enablement; module vẫn literal false.
+
 ## Route và controller đang lệch
 
-Năm route web trỏ tới method không tồn tại:
+Hai route phòng ban vẫn trỏ tới method không tồn tại:
 
 - `PhongBanController@show`
 - `PhongBanController@destroy`
-- `NhanVienController@edit`
-- `NhanVienController@show`
-- `NhanVienController@destroy`
+
+Lát cắt nhân viên hiện đã có `edit`, `show` và `update`; chưa có route delete trong phạm vi task.
 
 Các route lương/chấm công/nghỉ phép nằm trong group đã có prefix tên `backend.` nhưng lại tự thêm `backend.`, tạo các tên:
 
@@ -100,11 +117,11 @@ Không merge/rebase/cherry-pick tự động. Xem [ADR-001](decisions/ADR-001-ad
 
 ## Điều chưa được xác minh
 
-- Không clean-replay SQL dump trong phiên audit này.
-- Không chạy mutation CRUD có thể thay đổi dữ liệu.
-- Không có integration test với MariaDB disposable.
+- Canonical dump replay đã chạy trên disposable schema qua `CanonicalDumpReplayTest`; không replay vào `quan_ly_nhan_su`.
+- Không chạy mutation CRUD trên database live; employee mutation chỉ chạy trong disposable schema do guard tạo và đã cleanup.
+- Integration test MariaDB employee đã pass hẹp: `20 tests, 436 assertions`.
 - Không có browser matrix cho desktop/tablet/mobile, focus, console hoặc network.
-- Database đang rỗng ở các bảng nghiệp vụ chính; response 200 trên danh sách rỗng không chứng minh logic với dữ liệu thật.
+- Không re-read hoặc mutate các bảng nghiệp vụ live trong phiên; response 200 trên danh sách rỗng (nếu có) không chứng minh logic với dữ liệu thật.
 - Chưa xác minh tương thích MySQL 8; runtime hiện tại chỉ là MariaDB 10.4.32.
 
 ## Khi nào được đổi trạng thái thành hoàn thành
