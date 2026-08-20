@@ -42,3 +42,15 @@ Script mutation tạo nhân viên cho MariaDB 10.4:
 - không procedure nào tự mở, commit hoặc rollback transaction.
 
 Chạy sau script `001` và `002`. Transaction tạo hồ sơ + địa chỉ thuộc về service Laravel trên cùng default connection. Chỉ chạy mutation qua disposable MariaDB guard cho tới khi có quy trình rollout riêng.
+
+## `2026_08_12_004_update_routines.sql`
+
+Script mutation cập nhật hồ sơ nhân viên cho MariaDB 10.4:
+
+- thay `sp_nhan_vien_sua` legacy bằng contract 14 `IN`, giữ nguyên mã, vai trò, hash, avatar và ngày nghỉ việc;
+- khóa target rồi kiểm tra exact role `NHAN_VIEN_MAC_DINH` trước mọi validation còn lại;
+- chỉ cho chuyển đổi giữa `DANG_LAM` và `THU_VIEC`, hoặc giữ nguyên cặp trạng thái/ngày nghỉ hợp lệ của nhân viên `DA_NGHI`;
+- thêm `sp_nhan_vien_cap_nhat_anh` để thay/xóa đường dẫn avatar và trả đường dẫn cũ qua `OUT` cho cleanup sau commit;
+- không procedure nào tự mở, commit hoặc rollback transaction.
+
+Chạy sau script `001`, `002` và `003`. Transaction hồ sơ + địa chỉ + avatar thuộc về service Laravel trên cùng default connection; filesystem cleanup chỉ diễn ra sau commit hoặc như bù trừ rollback. Chỉ chạy mutation qua disposable MariaDB guard.

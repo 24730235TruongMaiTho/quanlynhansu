@@ -1,4 +1,9 @@
-import { firstInvalidStep, nextStep, previousStep } from './wizard-state.js';
+import {
+    firstInvalidStep,
+    nextStep,
+    previousStep,
+    reconcileAvatarChoice,
+} from './wizard-state.js';
 
 function fieldValue(field) {
     if (field instanceof HTMLSelectElement) {
@@ -15,7 +20,6 @@ function fieldValue(field) {
 function initializeWizard(form) {
     const page = form.closest('.employee-page');
     const steps = [...form.querySelectorAll('[data-wizard-step]')];
-    const indicators = [...form.querySelectorAll('[data-step-indicator]')];
     const submitButton = form.querySelector('[data-submit-employee]');
     let currentStep = Math.min(3, Math.max(1, Number(form.dataset.initialStep) || 1));
     let submitting = false;
@@ -24,6 +28,10 @@ function initializeWizard(form) {
     if (!page || steps.length !== 3 || !submitButton) {
         return;
     }
+
+    const indicators = [...page.querySelectorAll('[data-step-indicator]')];
+    const avatarUpload = form.querySelector('[data-avatar-upload]');
+    const avatarDelete = form.querySelector('[data-avatar-delete]');
 
     page.classList.add('is-enhanced');
 
@@ -82,6 +90,26 @@ function initializeWizard(form) {
 
     form.addEventListener('input', updateReview);
     form.addEventListener('change', updateReview);
+    avatarUpload?.addEventListener('change', () => {
+        const state = reconcileAvatarChoice(
+            'file',
+            (avatarUpload.files?.length || 0) > 0,
+            avatarDelete?.checked || false,
+        );
+        if (avatarDelete) {
+            avatarDelete.checked = state.deleteChecked;
+        }
+    });
+    avatarDelete?.addEventListener('change', () => {
+        const state = reconcileAvatarChoice(
+            'delete',
+            (avatarUpload?.files?.length || 0) > 0,
+            avatarDelete.checked,
+        );
+        if (avatarUpload && !state.hasFile) {
+            avatarUpload.value = '';
+        }
+    });
     form.addEventListener('invalid', () => {
         if (invalidFrame !== null) {
             return;

@@ -85,6 +85,15 @@ class NhanVienShowTest extends TestCase
             'page' => '3',
             'so_dong' => '20',
         ]);
+        $editUrl = route('backend.nhanvien.edit', [
+            'ma_nv' => 'NV001',
+            'tu_khoa' => 'Nguyễn An',
+            'ma_pb' => '1',
+            'ma_cv' => '2',
+            'ma_tt' => '1',
+            'page' => '3',
+            'so_dong' => '20',
+        ]);
 
         $response = $this->get('/admin/nhan-vien/NV001?'.http_build_query([
             'tu_khoa' => 'Nguyễn An',
@@ -120,15 +129,35 @@ class NhanVienShowTest extends TestCase
             ->assertSee('src="'.Storage::disk('public')->url($this->employee()->anh_dai_dien).'"', false)
             ->assertSee('alt="Ảnh đại diện của Nguyễn An"', false)
             ->assertSee('href="'.e($backUrl).'"', false)
+            ->assertSee('href="'.e($editUrl).'"', false)
             ->assertDontSee('evil.example')
             ->assertDontSee('secret-hash-value')
             ->assertDontSee('mat_khau')
-            ->assertDontSee('Chỉnh sửa')
+            ->assertSee('Chỉnh sửa')
             ->assertDontSee('Xóa nhân viên')
             ->assertDontSee('Đặt lại mật khẩu')
             ->assertSee('/build/nhanvien.js', false);
 
         $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
+    }
+
+    public function test_show_hides_the_edit_action_for_a_privileged_employee(): void
+    {
+        $this->enableEmployeeModule();
+        $employee = $this->employee();
+        $employee->ky_hieu_vai_tro = 'QUAN_TRI';
+        $employee->ten_vt = 'Quản trị viên';
+
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
+        });
+
+        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => 'NV001']);
+
+        $this->get('/admin/nhan-vien/NV001')
+            ->assertOk()
+            ->assertDontSee('Chỉnh sửa')
+            ->assertDontSee('href="'.e($editUrl).'"', false);
     }
 
     public function test_show_renders_initials_when_the_employee_has_no_avatar(): void
@@ -175,6 +204,22 @@ class NhanVienShowTest extends TestCase
                 ->assertDontSee('src="https://tracker.example', false)
                 ->assertDontSee('src="//tracker.example', false);
         }
+    }
+
+    public function test_dynamic_employee_name_is_escaped_in_the_document_title(): void
+    {
+        $this->enableEmployeeModule();
+        $employee = $this->employee();
+        $employee->ho_ten = '</title><script>alert(1)</script>';
+
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
+        });
+
+        $this->get('/admin/nhan-vien/NV001')
+            ->assertOk()
+            ->assertSee('&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;', false)
+            ->assertDontSee('</title><script>alert(1)</script>', false);
     }
 
     public function test_missing_employee_returns_404_without_leaking_internal_details(): void

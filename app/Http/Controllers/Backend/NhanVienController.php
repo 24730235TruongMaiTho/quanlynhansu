@@ -6,9 +6,13 @@ use App\Contracts\NhanVienServiceContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Requests\ListNhanVienRequest;
 use App\Http\Requests\StoreNhanVienRequest;
+use App\Http\Requests\UpdateNhanVienRequest;
+use App\Support\NhanVienAvatarPath;
+use App\Support\NhanVienTargetGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Throwable;
 
@@ -139,5 +143,106 @@ class NhanVienController extends Controller
                 'created_employee_code' => $maNv,
                 'password_convention' => 'Tài khoản dùng quy ước mật khẩu demo nhom3@{năm tạo}.',
             ]);
+    }
+
+    public function edit(string $ma_nv, NhanVienTargetGuard $guard): View
+    {
+        $employee = $this->employees->findOrFail($ma_nv);
+        $guard->assertManageable($employee);
+
+        $emptyLookups = [
+            'phong_ban' => [],
+            'chuc_vu' => [],
+            'trang_thai' => [],
+        ];
+        $lookups = $emptyLookups;
+        $lookupError = null;
+
+        try {
+            $lookups = array_replace($lookups, $this->employees->lookups());
+            if (($employee->ky_hieu ?? null) !== 'DA_NGHI') {
+                $lookups['trang_thai'] = array_values(array_filter(
+                    $lookups['trang_thai'],
+                    fn (mixed $status): bool => data_get($status, 'ky_hieu') !== 'DA_NGHI',
+                ));
+            }
+        } catch (Throwable) {
+            $lookups = $emptyLookups;
+            $lookupError = 'Không thể tải dữ liệu danh mục lúc này. Vui lòng thử lại sau.';
+        }
+
+        $lookupLabels = [
+            'phong_ban' => 'Phòng ban',
+            'chuc_vu' => 'Chức vụ',
+            'trang_thai' => 'Trạng thái làm việc',
+        ];
+        $missingLookups = [];
+        foreach ($lookupLabels as $key => $label) {
+            if ($key === 'trang_thai' && ($employee->ky_hieu ?? null) === 'DA_NGHI') {
+                continue;
+            }
+
+            if ($lookups[$key] === []) {
+                $missingLookups[] = $label;
+            }
+        }
+
+        $errorBag = view()->shared('errors');
+        $errorFields = $errorBag?->getBag('default')->keys() ?? [];
+        $firstErrorField = $errorFields[0] ?? null;
+        $stepTwoFields = ['ngay_vao_lam', 'ma_pb', 'ma_cv', 'ma_tt'];
+        $firstErrorStep = $firstErrorField === null
+            ? 1
+            : (in_array($firstErrorField, $stepTwoFields, true) ? 2 : 1);
+        if ($firstErrorField === 'nhan_vien') {
+            $firstErrorStep = 3;
+        }
+
+        $avatarUrl = null;
+        try {
+            $ownedAvatar = (new NhanVienAvatarPath)->assertOwnedFile($employee->anh_dai_dien ?? null);
+            if ($ownedAvatar !== null) {
+                $avatarUrl = Storage::disk('public')->url($ownedAvatar);
+            }
+        } catch (Throwable) {
+            // Legacy or malformed paths are never rendered as an image source.
+        }
+
+        return view('backend.nhanvien.edit', [
+            'employee' => $employee,
+            'lookups' => $lookups,
+            'lookupError' => $lookupError,
+            'missingLookups' => $missingLookups,
+            'firstErrorField' => $firstErrorField,
+            'firstErrorStep' => $firstErrorStep,
+            'avatarUrl' => $avatarUrl,
+        ]);
+    }
+
+    public function update(UpdateNhanVienRequest $request, string $ma_nv): RedirectResponse
+    {
+        try {
+            $this->employees->update($ma_nv, $request->validated());
+        } catch (NhanVienDomainException $exception) {
+            if ($exception->domainCode === 'NV_PRIVILEGED_TARGET') {
+                abort(403);
+            }
+
+            return back()
+                ->withInput($request->safe()->except('anh_dai_dien'))
+                ->withErrors([
+                    $exception->field ?? 'nhan_vien' => $exception->getMessage(),
+                ]);
+        } catch (Throwable) {
+            return back()
+                ->withInput($request->safe()->except('anh_dai_dien'))
+                ->withErrors([
+                    'nhan_vien' => 'Không thể cập nhật nhân viên lúc này. Vui lòng thử lại sau.',
+                ]);
+        }
+
+        return redirect()
+            ->route('backend.nhanvien.show', ['ma_nv' => $ma_nv])
+            ->with('success', 'Đã cập nhật hồ sơ nhân viên.');
     }
 }

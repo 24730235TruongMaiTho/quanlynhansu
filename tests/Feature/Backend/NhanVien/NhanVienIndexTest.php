@@ -309,6 +309,8 @@ class NhanVienIndexTest extends TestCase
                 'admin/nhan-vien',
                 'admin/nhan-vien/create',
                 'admin/nhan-vien',
+                'admin/nhan-vien/{ma_nv}/edit',
+                'admin/nhan-vien/{ma_nv}',
                 'admin/nhan-vien/{ma_nv}',
             ],
             $employeeRoutes->pluck('uri')->all(),
@@ -325,7 +327,16 @@ class NhanVienIndexTest extends TestCase
         $this->assertSame(['POST'], $storeRoute->methods());
         $this->assertSame(NhanVienController::class.'@store', $storeRoute->getActionName());
         $this->assertContains(EnsureNhanVienModuleEnabled::class, $storeRoute->gatherMiddleware());
-        $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.edit'));
+        $editRoute = Route::getRoutes()->getByName('backend.nhanvien.edit');
+        $this->assertInstanceOf(RoutingRoute::class, $editRoute);
+        $this->assertSame(['GET', 'HEAD'], $editRoute->methods());
+        $this->assertSame(NhanVienController::class.'@edit', $editRoute->getActionName());
+        $this->assertContains(EnsureNhanVienModuleEnabled::class, $editRoute->gatherMiddleware());
+        $updateRoute = Route::getRoutes()->getByName('backend.nhanvien.update');
+        $this->assertInstanceOf(RoutingRoute::class, $updateRoute);
+        $this->assertSame(['PUT', 'PATCH'], $updateRoute->methods());
+        $this->assertSame(NhanVienController::class.'@update', $updateRoute->getActionName());
+        $this->assertContains(EnsureNhanVienModuleEnabled::class, $updateRoute->gatherMiddleware());
         $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.destroy'));
 
         $showRoute = Route::getRoutes()->getByName('backend.nhanvien.show');
@@ -335,7 +346,7 @@ class NhanVienIndexTest extends TestCase
         $this->assertSame('NV[0-9]{3}', $showRoute->wheres['ma_nv']);
         $this->assertContains(EnsureNhanVienModuleEnabled::class, $showRoute->gatherMiddleware());
 
-        $this->assertSame(5, $employeeRoutes->filter(
+        $this->assertSame(6, $employeeRoutes->filter(
             fn (RoutingRoute $route): bool => $route->methods() === ['GET', 'HEAD'],
         )->count());
     }
@@ -369,7 +380,6 @@ class NhanVienIndexTest extends TestCase
 
         $this->get('/admin/nhan-vien/them-nhan-vien')->assertStatus(301);
         $this->get('/admin/nhan-vien/NV001/sua')->assertNotFound();
-        $this->put('/admin/nhan-vien/NV001')->assertMethodNotAllowed();
         $this->delete('/admin/nhan-vien/NV001')->assertMethodNotAllowed();
     }
 

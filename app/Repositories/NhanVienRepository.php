@@ -130,6 +130,49 @@ final class NhanVienRepository implements NhanVienRepositoryContract
         });
     }
 
+    public function update(string $maNv, array $profile): void
+    {
+        $this->databaseOperation(function () use ($maNv, $profile): void {
+            $this->call(
+                $this->connection(),
+                'CALL sp_nhan_vien_sua(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    $maNv,
+                    $profile['ho_ten'],
+                    $profile['ngay_sinh'],
+                    $profile['gioi_tinh'],
+                    $profile['sdt'],
+                    $profile['email'],
+                    $profile['ngay_vao_lam'],
+                    $profile['ma_pb'],
+                    $profile['ma_cv'],
+                    $profile['dan_toc'],
+                    $profile['cccd'],
+                    $profile['noi_cap_cccd'],
+                    $profile['hoc_van'],
+                    $profile['ma_tt'],
+                ],
+            );
+        });
+    }
+
+    public function replaceAvatarPath(string $maNv, ?string $newPath): ?string
+    {
+        return $this->databaseOperation(function () use ($maNv, $newPath): ?string {
+            $connection = $this->connection();
+            $connection->statement('SET @nv_anh_cu = NULL');
+            $this->call(
+                $connection,
+                'CALL sp_nhan_vien_cap_nhat_anh(?, ?, @nv_anh_cu)',
+                [$maNv, $newPath],
+            );
+            $result = $connection->selectOne('SELECT @nv_anh_cu AS anh_cu', [], false);
+            $oldPath = is_object($result) ? ($result->anh_cu ?? null) : null;
+
+            return is_string($oldPath) ? $oldPath : null;
+        });
+    }
+
     public function upsertAddress(string $maNv, array $address): void
     {
         $this->databaseOperation(function () use ($maNv, $address): void {

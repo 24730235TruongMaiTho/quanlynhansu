@@ -1,17 +1,19 @@
 @extends('backend.layouts.app')
 
-@section('title', 'Hồ sơ ' . $employee->ho_ten)
+@section('title', 'Hồ sơ ' . e($employee->ho_ten))
 
 @section('content')
     @php
-        $backUrl = route('backend.nhanvien.index', request()->only([
+        $listQuery = request()->only([
             'tu_khoa',
             'ma_pb',
             'ma_cv',
             'ma_tt',
             'page',
             'so_dong',
-        ]));
+        ]);
+        $backUrl = route('backend.nhanvien.index', $listQuery);
+        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery);
         $nameParts = preg_split('/\s+/u', trim($employee->ho_ten), -1, PREG_SPLIT_NO_EMPTY);
         $firstInitial = mb_strtoupper(mb_substr($nameParts[0] ?? 'N', 0, 1));
         $lastInitial = count($nameParts) > 1
@@ -59,10 +61,18 @@
                     <p class="text-secondary mb-0">{{ $employee->ma_nv }} · {{ $employee->ten_cv }}</p>
                 </div>
             </div>
-            <a class="btn btn-outline-secondary align-self-start align-self-sm-center" href="{{ $backUrl }}">
-                <i class="bi bi-arrow-left" aria-hidden="true"></i>
-                Quay lại danh sách
-            </a>
+            <div class="d-flex flex-wrap gap-2 align-self-start align-self-sm-center">
+                @if (($employee->ky_hieu_vai_tro ?? null) === 'NHAN_VIEN_MAC_DINH')
+                    <a class="btn btn-primary" href="{{ $editUrl }}">
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                        Chỉnh sửa
+                    </a>
+                @endif
+                <a class="btn btn-outline-secondary" href="{{ $backUrl }}">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                    Quay lại danh sách
+                </a>
+            </div>
         </div>
 
         <div class="row g-3">

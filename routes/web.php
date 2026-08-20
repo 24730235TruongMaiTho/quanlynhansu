@@ -72,6 +72,16 @@ Route::prefix('admin')->name('backend.')->group(function () {
         ->middleware(EnsureNhanVienModuleEnabled::class)
         ->name('nhanvien.store');
 
+    Route::get('/nhan-vien/{ma_nv}/edit', [NhanVienController::class, 'edit'])
+        ->where('ma_nv', 'NV[0-9]{3}')
+        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->name('nhanvien.edit');
+
+    Route::match(['put', 'patch'], '/nhan-vien/{ma_nv}', [NhanVienController::class, 'update'])
+        ->where('ma_nv', 'NV[0-9]{3}')
+        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->name('nhanvien.update');
+
     Route::get('/nhan-vien/{ma_nv}', [NhanVienController::class, 'show'])
         ->where('ma_nv', 'NV[0-9]{3}')
         ->middleware(EnsureNhanVienModuleEnabled::class)

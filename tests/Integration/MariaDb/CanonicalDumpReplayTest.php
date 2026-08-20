@@ -54,6 +54,7 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $this->assertFoundationSchema();
             $this->assertSafeView();
             $this->assertRoutineSignatures();
+            $this->assertVersionedUpdateDefinitionsMatchCanonical();
             $this->assertEmployeeReadRoutineResultsAreSafe();
         } finally {
             try {
@@ -224,9 +225,12 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             ],
             'sp_nhan_vien_sua' => [
                 'IN:p_ma_nv:varchar(5)', 'IN:p_ho_ten:varchar(50)', 'IN:p_ngay_sinh:date', 'IN:p_gioi_tinh:tinyint(4)',
-                'IN:p_sdt:varchar(15)', 'IN:p_email:varchar(50)', 'IN:p_ngay_vao_lam:date', 'IN:p_ma_pb:int(11)',
+                'IN:p_sdt:varchar(15)', 'IN:p_email:varchar(100)', 'IN:p_ngay_vao_lam:date', 'IN:p_ma_pb:int(11)',
                 'IN:p_ma_cv:int(11)', 'IN:p_dan_toc:varchar(50)', 'IN:p_cccd:varchar(12)', 'IN:p_noi_cap_cccd:varchar(50)',
-                'IN:p_hoc_van:varchar(50)', 'IN:p_ma_tt:tinyint(4)', 'IN:p_mat_khau:varchar(255)', 'IN:p_ma_vt:int(11)',
+                'IN:p_hoc_van:varchar(50)', 'IN:p_ma_tt:tinyint(4)',
+            ],
+            'sp_nhan_vien_cap_nhat_anh' => [
+                'IN:p_ma_nv:varchar(5)', 'IN:p_anh_moi:varchar(255)', 'OUT:p_anh_cu:varchar(255)',
             ],
             'sp_nhan_vien_xoa' => ['IN:p_ma_nv:varchar(5)'],
             'sp_nhan_vien_dang_nhap' => ['IN:p_ten_dang_nhap:varchar(50)', 'IN:p_mat_khau:varchar(255)'],
@@ -261,6 +265,42 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $statement->execute([$removedRoutine, 'PROCEDURE']);
             $this->assertSame(0, (int) $statement->fetchColumn(), "Legacy procedure {$removedRoutine} must be removed.");
         }
+    }
+
+    private function assertVersionedUpdateDefinitionsMatchCanonical(): void
+    {
+        $procedures = ['sp_nhan_vien_sua', 'sp_nhan_vien_cap_nhat_anh'];
+        $canonical = [];
+        foreach ($procedures as $procedure) {
+            $canonical[$procedure] = $this->normalizedRoutineDefinition($procedure);
+        }
+
+        $this->runSql(base_path('database/sql/employee/2026_08_12_004_update_routines.sql'));
+
+        foreach ($procedures as $procedure) {
+            $this->assertSame(
+                $canonical[$procedure],
+                $this->normalizedRoutineDefinition($procedure),
+                "Canonical definition drift for {$procedure} versus script 004.",
+            );
+        }
+    }
+
+    private function normalizedRoutineDefinition(string $procedure): string
+    {
+        $statement = $this->pdo()->prepare(
+            'SELECT ROUTINE_DEFINITION FROM information_schema.ROUTINES
+             WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = ? AND ROUTINE_TYPE = ?'
+        );
+        $statement->execute([$procedure, 'PROCEDURE']);
+        $definition = (string) $statement->fetchColumn();
+        $normalized = preg_replace('/\s+/u', '', $definition);
+
+        if ($normalized === null || $normalized === '') {
+            throw new RuntimeException("Missing canonical procedure {$procedure}.");
+        }
+
+        return $normalized;
     }
 
     private function assertEmployeeReadRoutineResultsAreSafe(): void

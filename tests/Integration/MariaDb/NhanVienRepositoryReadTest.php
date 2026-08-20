@@ -12,6 +12,7 @@ use Illuminate\Database\QueryException;
 use Mockery;
 use PDO;
 use PDOException;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class NhanVienRepositoryReadTest extends MariaDbTestCase
 {
@@ -25,6 +26,16 @@ class NhanVienRepositoryReadTest extends MariaDbTestCase
         $readScript = base_path('database/sql/employee/2026_08_12_002_read_routines.sql');
         if (is_file($readScript)) {
             $this->runSql($readScript);
+        }
+
+        $createScript = base_path('database/sql/employee/2026_08_12_003_create_routines.sql');
+        if (is_file($createScript)) {
+            $this->runSql($createScript);
+        }
+
+        $updateScript = base_path('database/sql/employee/2026_08_12_004_update_routines.sql');
+        if (is_file($updateScript)) {
+            $this->runSql($updateScript);
         }
 
         $this->seedEmployee();
@@ -95,6 +106,123 @@ class NhanVienRepositoryReadTest extends MariaDbTestCase
     public function test_query_exception_at_out_select_is_mapped_without_leaking_sql(): void
     {
         $this->assertMappedFailureAt('out');
+    }
+
+    public function test_update_and_avatar_out_value_stay_on_the_write_connection(): void
+    {
+        $connection = $this->app->make(DatabaseManager::class)->connection();
+        $readPdo = $this->newReadPdo();
+        $connection->setReadPdo($readPdo);
+        $repository = $this->app->make(NhanVienRepositoryContract::class);
+        $department = (int) $this->pdo()->query('SELECT ma_pb FROM phong_ban ORDER BY ma_pb LIMIT 1')->fetchColumn();
+        $position = (int) $this->pdo()->query('SELECT ma_cv FROM chuc_vu ORDER BY ma_cv LIMIT 1')->fetchColumn();
+        $status = (int) $this->pdo()->query(
+            "SELECT ma_tt FROM trang_thai_lam_viec WHERE BINARY ky_hieu = BINARY 'THU_VIEC'"
+        )->fetchColumn();
+
+        $connection->getPdo()->exec("SET @nv_anh_cu = 'write-probe'");
+        $connection->getReadPdo()->exec("SET @nv_anh_cu = 'read-probe'");
+        $repository->update('NV001', [
+            'ho_ten' => 'Nguyễn An cập nhật',
+            'ngay_sinh' => '1990-01-01',
+            'gioi_tinh' => 1,
+            'sdt' => '0900000002',
+            'email' => 'updated@example.test',
+            'ngay_vao_lam' => '2020-01-01',
+            'ma_pb' => $department,
+            'ma_cv' => $position,
+            'dan_toc' => 'Kinh',
+            'cccd' => '123456789001',
+            'noi_cap_cccd' => 'TP HCM',
+            'hoc_van' => 'Cao học',
+            'ma_tt' => $status,
+        ]);
+
+        $newPath = 'nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png';
+        $this->assertNull($repository->replaceAvatarPath('NV001', $newPath));
+        $this->assertSame($newPath, $this->pdo()->query(
+            "SELECT anh_dai_dien FROM nhan_vien WHERE ma_nv = 'NV001'"
+        )->fetchColumn());
+        $this->assertSame('read-probe', $connection->selectOne(
+            'SELECT @nv_anh_cu AS path', [], true
+        )->path);
+        $this->assertSame('Nguyễn An cập nhật', $repository->find('NV001')?->ho_ten);
+        $this->assertSame($newPath, $repository->replaceAvatarPath('NV001', null));
+        $this->assertNull($this->pdo()->query(
+            "SELECT anh_dai_dien FROM nhan_vien WHERE ma_nv = 'NV001'"
+        )->fetchColumn());
+    }
+
+    #[DataProvider('avatarFailureStages')]
+    public function test_avatar_query_failures_are_mapped_without_leaking_sql(string $stage): void
+    {
+        $connection = Mockery::mock(Connection::class);
+        $database = Mockery::mock(DatabaseManager::class);
+        $database->shouldReceive('connection')->once()->andReturn($connection);
+        $exception = new QueryException(
+            'mysql',
+            "CALL avatar_secret_{$stage}('sensitive-sql')",
+            [],
+            new PDOException('SQLSTATE[HY000]: General error: 1234 private avatar path'),
+        );
+
+        if ($stage === 'set') {
+            $connection->shouldReceive('statement')
+                ->once()
+                ->with('SET @nv_anh_cu = NULL')
+                ->andThrow($exception);
+        } else {
+            $connection->shouldReceive('statement')
+                ->once()
+                ->with('SET @nv_anh_cu = NULL')
+                ->andReturnTrue();
+
+            if ($stage === 'call') {
+                $connection->shouldReceive('selectResultSets')
+                    ->once()
+                    ->with(
+                        'CALL sp_nhan_vien_cap_nhat_anh(?, ?, @nv_anh_cu)',
+                        ['NV001', null],
+                        false,
+                    )
+                    ->andThrow($exception);
+            } else {
+                $connection->shouldReceive('selectResultSets')
+                    ->once()
+                    ->with(
+                        'CALL sp_nhan_vien_cap_nhat_anh(?, ?, @nv_anh_cu)',
+                        ['NV001', null],
+                        false,
+                    )
+                    ->andReturn([[]]);
+                $connection->shouldReceive('selectOne')
+                    ->once()
+                    ->with('SELECT @nv_anh_cu AS anh_cu', [], false)
+                    ->andThrow($exception);
+            }
+        }
+
+        $repository = new NhanVienRepository($database, new NhanVienProcedureExceptionMapper);
+
+        try {
+            $repository->replaceAvatarPath('NV001', null);
+            $this->fail("Avatar QueryException at {$stage} should be mapped.");
+        } catch (NhanVienDomainException $mapped) {
+            $this->assertSame('NV_DATABASE_ERROR', $mapped->domainCode);
+            $this->assertSame('Không thể xử lý yêu cầu nhân viên. Vui lòng thử lại.', $mapped->getMessage());
+            $this->assertStringNotContainsString('avatar_secret', strtolower($mapped->getMessage()));
+            $this->assertStringNotContainsString('SQLSTATE', $mapped->getMessage());
+            $this->assertStringNotContainsString('private avatar path', $mapped->getMessage());
+        }
+    }
+
+    public static function avatarFailureStages(): array
+    {
+        return [
+            'SET session variable' => ['set'],
+            'CALL procedure' => ['call'],
+            'SELECT OUT value' => ['out'],
+        ];
     }
 
     private function seedEmployee(): void
@@ -178,7 +306,7 @@ class NhanVienRepositoryReadTest extends MariaDbTestCase
             }
         }
 
-        $repository = new NhanVienRepository($database, new NhanVienProcedureExceptionMapper());
+        $repository = new NhanVienRepository($database, new NhanVienProcedureExceptionMapper);
 
         try {
             $repository->paginate([

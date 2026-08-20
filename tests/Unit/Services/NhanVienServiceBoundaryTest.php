@@ -48,6 +48,27 @@ class NhanVienServiceBoundaryTest extends TestCase
             $repositoryCreate->getParameters(),
         ));
         $this->assertSame('string', (string) $repositoryCreate->getReturnType());
+
+        $serviceUpdate = new ReflectionMethod(NhanVienServiceContract::class, 'update');
+        $this->assertSame(['string', 'array'], array_map(
+            fn ($parameter): string => (string) $parameter->getType(),
+            $serviceUpdate->getParameters(),
+        ));
+        $this->assertSame('object', (string) $serviceUpdate->getReturnType());
+
+        $repositoryUpdate = new ReflectionMethod(NhanVienRepositoryContract::class, 'update');
+        $this->assertSame(['string', 'array'], array_map(
+            fn ($parameter): string => (string) $parameter->getType(),
+            $repositoryUpdate->getParameters(),
+        ));
+        $this->assertSame('void', (string) $repositoryUpdate->getReturnType());
+
+        $repositoryAvatar = new ReflectionMethod(NhanVienRepositoryContract::class, 'replaceAvatarPath');
+        $this->assertSame(['string', '?string'], array_map(
+            fn ($parameter): string => (string) $parameter->getType(),
+            $repositoryAvatar->getParameters(),
+        ));
+        $this->assertSame('?string', (string) $repositoryAvatar->getReturnType());
     }
 
     public function test_container_resolves_the_employee_service_without_any_employment_contract_module(): void
