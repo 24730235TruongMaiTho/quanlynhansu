@@ -5,7 +5,7 @@
 - **Lập trình Web Application**: Laravel MVC, API, validation, MySQL/MariaDB, xác thực, phân quyền và kiểm thử.
 - **Thiết kế giao diện người dùng**: luồng thao tác, design system, responsive, accessibility và phản hồi trạng thái.
 
-> **Trạng thái ngày 2026-08-21:** Module Nhân viên verified hẹp đã được tích hợp vào `main` qua merge `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f` (parents `1677f202f70e020ce75ef0fa88b11b9db44fa047` và `91bb7a106e6a4fae8a61c4eb383dad596bf2b199`), sau đó test attendance `9cd2c30`. Delivery evidence lịch sử nằm ở feature commits `ba6e0189e64eb3046164ae5183950afe0b5722be`, `18ea209d89efce38596dd1440151f6d55ca90156` và `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Full Laravel current sau vòng authorization/guard là **230 pass, 1 fail, 1809 assertions**; failure duy nhất là `ExampleTest` với `/` 404. Baseline trước vòng này là `224/1789`. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây rồi cleanup sạch, nên không claim pass; `165/3367` chỉ là historical Task 20. Frontend `15/15`, build, Composer validate/audit, routes và diff checks pass. Browser employee responsive `320/375/768/1024/1440` pass với console sạch; avatar upload/replacement còn **blocked/unverified** vì Chrome file URL access. Không claim production readiness.
+> **Trạng thái ngày 2026-08-21:** Module Nhân viên verified hẹp đã được tích hợp vào `main` qua merge `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f` (parents `1677f202f70e020ce75ef0fa88b11b9db44fa047` và `91bb7a106e6a4fae8a61c4eb383dad596bf2b199`), sau đó test attendance `9cd2c30`. Delivery evidence lịch sử nằm ở feature commits `ba6e0189e64eb3046164ae5183950afe0b5722be`, `18ea209d89efce38596dd1440151f6d55ca90156` và `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Full Laravel current sau vòng authorization/guard là **234 pass, 1 fail, 1815 assertions**; failure duy nhất là `ExampleTest` với `/` 404. Baseline trước vòng này là `224/1789`. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây rồi cleanup sạch, nên không claim pass; `165/3367` chỉ là historical Task 20. Frontend `15/15`, build, Composer validate/audit, routes và diff checks pass. Browser employee responsive `320/375/768/1024/1440` pass với console sạch; avatar upload/replacement còn **blocked/unverified** vì Chrome file URL access. Không claim production readiness.
 
 ## Bắt đầu từ đâu
 
@@ -49,7 +49,7 @@ Các số liệu Task 20 trong bảng là historical feature-branch evidence; h�
 | Laravel | 12.62.0 trên PHP 8.5.0; project target PHP 8.2+ |
 | Route ứng dụng | 49 route; có login/logout, toàn bộ `/admin` yêu cầu auth và route nhân viên dùng Gate theo quyền |
 | Frontend | `npm run test:frontend` 15 pass; `npm run build` pass; Vite 7.3.6, 16 modules transformed |
-| Test | Scoped employee/auth hiện tại `119 pass, 1141 assertions`; attendance compatibility `12 pass, 55 assertions`; full Laravel `230 pass, 1 fail, 1809 assertions` vì `/` chưa có route |
+| Test | Scoped employee/auth hiện tại `119 pass, 1141 assertions`; attendance compatibility `16 pass, 61 assertions`; full Laravel `234 pass, 1 fail, 1815 assertions` vì `/` chưa có route |
 | Database local | MariaDB 10.4.32; rollout environment-specific 16 tables/1 view/8 functions/10 triggers/69 procedures và demo 5 employee/5 address; guarded rerun sau tích hợp timeout khoảng 184 giây, cleanup sạch; không phải production |
 | Auth/RBAC | Custom employee provider, login/logout, session fail-closed và 5 quyền nhân viên đã wired/test; role mặc định có 0 quyền |
 
@@ -196,7 +196,7 @@ Baseline Task 20 trước delivery:
 - Route list: pass, 49 route.
 - Frontend: 15 pass; build pass, 16 modules.
 - Composer validate/install dry-run pass; audit không còn advisory sau khi nâng sáu dependency tương thích trong lockfile.
-- Full Laravel hiện tại: 230 pass, 1 fail, 1809 assertions; lỗi duy nhất do `/` trả 404. Baseline trước vòng authorization/guard là 224/1789.
+- Full Laravel hiện tại: 234 pass, 1 fail, 1815 assertions; lỗi duy nhất do `/` trả 404. Baseline trước vòng authorization/guard là 224/1789.
 - Guarded MariaDB rerun sau tích hợp: timeout khoảng 184 giây; process/schema/state đã cleanup sạch, không claim pass. Kết quả `165/3367` là historical Task 20.
 
 Ngoài ra, `phpunit.xml` ép test dùng SQLite in-memory. Kể cả khi suite này xanh, nó vẫn không chứng minh stored procedure/trigger MariaDB hoạt động; cần một integration suite riêng trên database disposable.

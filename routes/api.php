@@ -42,7 +42,14 @@ Route::middleware('api')
                 Route::get(
                     'phong-ban',
                     [ChamCongController::class, 'phongBan']
-                )->name(
+                )
+                ->middleware([
+                    'web',
+                    'auth',
+                    EnsureNhanVienModuleEnabled::class,
+                    'can:'.NhanVienPermission::Xem->value,
+                ])
+                ->name(
                     'api.v1.cham-cong.phong-ban'
                 );
             });

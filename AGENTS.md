@@ -105,7 +105,7 @@ git diff --check
 git status --short
 ```
 
-Evidence current trên main ngày 2026-08-21: 49 route, frontend `15/15`, build 16 modules, scoped employee/auth `119 tests/1141 assertions`, attendance compatibility `12 tests/55 assertions`, full Laravel `230 pass, 1 fail, 1809 assertions` do baseline `/` 404. Trước vòng authorization/guard, full baseline là `224/1789`; không cộng số cũ thay cho current run. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây và đã cleanup sạch, không claim pass; `165/3367` chỉ là historical Task 20. `phpunit.xml` dùng SQLite in-memory nên full suite xanh cũng không chứng minh procedure MariaDB. Nếu HEAD/baseline đổi, cập nhật `docs/PROJECT_STATUS.md`; không che lỗi cũ bằng cách xóa assertion.
+Evidence current trên main ngày 2026-08-21: 49 route, frontend `15/15`, build 16 modules, scoped employee/auth `119 tests/1141 assertions`, attendance compatibility `16 tests/61 assertions`, full Laravel `234 pass, 1 fail, 1815 assertions` do baseline `/` 404. Trước vòng authorization/guard, full baseline là `224/1789`; không cộng số cũ thay cho current run. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây và đã cleanup sạch, không claim pass; `165/3367` chỉ là historical Task 20. `phpunit.xml` dùng SQLite in-memory nên full suite xanh cũng không chứng minh procedure MariaDB. Nếu HEAD/baseline đổi, cập nhật `docs/PROJECT_STATUS.md`; không che lỗi cũ bằng cách xóa assertion.
 
 ## Giao tiếp
 

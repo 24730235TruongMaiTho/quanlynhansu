@@ -59,7 +59,44 @@ Các URL tương thích /admin/nhan-vien/danh-sach-nhan-vien và /admin/nhan-vie
 
 Chỉ chạy php artisan storage:link khi cần public avatar/storage link và chỉ khi link hiện tại chưa tồn tại hoặc đã được kiểm tra đúng đích storage/app/public. Không thay hoặc xóa link dùng chung một cách tùy tiện.
 
-### Demo local
+### Demo local và acceptance disposable
+
+Đường khuyến nghị cho thành viên mới là acceptance harness: nó provision một
+database disposable có tên guarded, chạy schema/routine cần thiết, tạo admin,
+khởi động server ở `http://127.0.0.1:8012` và trả JSON gồm `url`,
+`admin_ma_nv`, `admin_email`. Mật khẩu bootstrap dùng quy ước
+`nhom3@{năm thao tác}`; không ghi credential thật vào repository.
+
+```powershell
+$stateFile = 'storage/framework/testing/employee-acceptance.json'
+$mysqlPwdWasPresent = Test-Path Env:MYSQL_PWD
+$mysqlPwdPrevious = if ($mysqlPwdWasPresent) { $env:MYSQL_PWD } else { $null }
+try {
+    $startOutput = pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 `
+        -Action Start -StateFile $stateFile -EnableDisposableMariaDb
+    if ($LASTEXITCODE -ne 0) { throw 'Acceptance Start failed.' }
+    $startOutput
+    # Dùng URL/identity trong JSON và tạo thêm nhân viên qua UI/browser.
+}
+finally {
+    try {
+        pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 `
+            -Action Stop -StateFile $stateFile -EnableDisposableMariaDb
+    }
+    finally {
+        if ($mysqlPwdWasPresent) {
+            Set-Item -Path Env:MYSQL_PWD -Value $mysqlPwdPrevious
+        }
+        else {
+            Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+        }
+    }
+}
+```
+
+Luôn chạy `Stop` trong `finally` hoặc thủ công với **đúng StateFile** kể cả khi
+browser bị lỗi. Acceptance Start/Stop là đường browser disposable; không dùng
+nó để suy ra production readiness.
 
 Trong môi trường local đã được kiểm chứng, bộ seed hiện tạo các mã NV006–NV010: admin thường là NV006, bốn tài khoản còn lại là nhân viên thường. Các mã này **không ổn định** sau cleanup/reseed vì bộ đếm mã không giảm và không tái sử dụng mã cũ.
 
@@ -99,14 +136,15 @@ Rollout flag NHAN_VIEN_MODULE_ENABLED phải bật trước; sau đó vẫn bắ
 | --- | --- | --- |
 | Database mới, disposable/local trống | quan_ly_nhan_su.session.sql | Canonical dump có DROP DATABASE IF EXISTS; chỉ dùng khi dữ liệu có thể bị xóa |
 | Database đã tồn tại cần giữ dữ liệu | database/sql/employee/2026_08_12_001_schema.sql → 002 → 003 → 004 → 005 → 006 | Backup đầy đủ bằng công cụ MariaDB/MySQL, preflight whitelist, approval và dừng ngay khi một file lỗi |
-| Muốn có dữ liệu demo synthetic | database/sql/employee/invoke-demo.ps1 -Action seed -EnableLocalOnly | Helper tạo temporary marker + token random trong cùng connection rồi mới SOURCE; chỉ local/disposable |
-| Dọn bộ demo | database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableLocalOnly | Helper tạo marker mới cho invocation; chỉ xóa identity/master/role synthetic, không giảm hoặc tái sử dụng counter |
+| Muốn có dữ liệu demo qua browser | `tests/Support/employee-acceptance.ps1 -Action Start -StateFile storage/framework/testing/employee-acceptance.json -EnableDisposableMariaDb` | Đường khuyến nghị; dùng UI tạo thêm nhân viên, URL/identity lấy từ JSON stdout; luôn Stop đúng StateFile |
+| Đã có disposable DB guarded và cần bộ 5-row synthetic | `database/sql/employee/invoke-demo.ps1 -Action seed -EnableDisposableMariaDb` | Chỉ khi `MARIADB_TEST_ENABLED=1` và `MARIADB_TEST_DATABASE` khớp allowlist; helper không nhận canonical `quan_ly_nhan_su` |
+| Dọn bộ 5-row synthetic guarded | `database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableDisposableMariaDb` | Chỉ xóa identity/master/role synthetic trên disposable DB đã provision; không giảm hoặc tái sử dụng counter |
 
 Không dùng canonical dump trên database cần giữ dữ liệu. Scripts 001–006 chạy trên database đã chọn và không tự DROP DATABASE, CREATE DATABASE hay USE; phải xác nhận target, version MariaDB, read-only state, row counts và backup trước DDL. Demo SQL không được SOURCE trực tiếp: seed/cleanup fail-closed nếu thiếu marker phiên `employee_demo_guard`, token random và database khớp. Không chạy php artisan db:seed theo quán tính: seeder mặc định còn tham chiếu model User không phải identity của module.
 
 ### Kết quả rollout local đã kiểm chứng
 
-Đây là bằng chứng **environment-specific**, không phải production claim: local MariaDB có 16 bảng, 1 view, 8 function, 10 trigger và 69 stored procedure sau canonical/employee rollout; demo seed có 5 employee và 5 address; role admin demo có đúng 5 employee permission; bốn normal demo có zero employee permission. Database disposable/guarded và backup của lần rollout được quản lý ngoài Git; không đưa backup, hash hoặc credential vào index.
+Đây là bằng chứng **environment-specific**, không phải production claim: local MariaDB có 16 bảng, 1 view, 8 function, 10 trigger và 69 stored procedure sau canonical/employee rollout; demo seed có 5 employee và 5 address; role admin demo có đúng 5 employee permission; bốn normal demo có zero employee permission. Bộ 5-row trên canonical local là evidence của môi trường chủ repo, không phải lệnh peer nên chạy; người mới dùng acceptance harness và UI. Database disposable/guarded và backup của lần rollout được quản lý ngoài Git; không đưa backup, hash hoặc credential vào index.
 
 ### Hai file legacy trên main
 
@@ -164,16 +202,16 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
     git status --short
 
 Evidence hiện tại trên main: route inventory 49; scoped employee/auth
-`119 tests, 1141 assertions`; attendance compatibility `12 tests, 55
-assertions`; full Laravel `230 pass, 1 fail, 1809 assertions` với lỗi duy nhất
+`119 tests, 1141 assertions`; attendance compatibility `16 tests, 61
+assertions`; full Laravel `234 pass, 1 fail, 1815 assertions` với lỗi duy nhất
 `GET /` 404 trong `ExampleTest`. Trước vòng authorization/guard, baseline full
 suite là `224/1789`. Đây là kết quả SQLite/feature hiện tại; không thay thế
 MariaDB procedure gate.
 
-Integration stored procedure phải dùng wrapper guarded và switch bắt buộc, không trỏ vào database live. Demo local phải dùng `database/sql/employee/invoke-demo.ps1`; không copy lại lệnh `SOURCE` trực tiếp:
+Integration stored procedure phải dùng wrapper guarded và switch bắt buộc, không trỏ vào database live. Demo 5-row chỉ dùng trên disposable DB đã provision và phải dùng helper; không copy lại lệnh `SOURCE` trực tiếp:
 
     pwsh -NoProfile -File tests/Support/invoke-employee-mariadb-tests.ps1 -EnableDisposableMariaDb
-    pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action seed -EnableLocalOnly
+    pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action seed -EnableDisposableMariaDb
 
 Có thể thêm -Filter EmployeeReadProcedureTest|CanonicalDumpReplayTest cho vòng focused. Wrapper yêu cầu MARIADB_TEST_*, chỉ cho phép disposable target, khôi phục process environment và trả exit code test. phpunit.xml mặc định dùng SQLite in-memory nên suite Laravel xanh không chứng minh stored procedure, trigger hay MariaDB behavior; MariaDB wrapper mới là bằng chứng DB hẹp. Browser acceptance dùng tests/Support/employee-acceptance.ps1 với state disposable và luôn phải chạy action Stop; không báo browser pass nếu chưa chạy browser thật.
 

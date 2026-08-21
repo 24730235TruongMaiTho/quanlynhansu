@@ -12,7 +12,7 @@
 - `quan_ly_nhan_su` local đã được cập nhật có chủ đích qua rollout được approval và demo synthetic; đây là bằng chứng environment-specific, không phải production. Shape đã kiểm chứng: 16 bảng, 1 view, 8 function, 10 trigger, 69 procedure.
 - Demo hiện có 5 employee và 5 address; admin demo có đúng 5 employee permission; bốn normal demo zero employee permission. IDs local hiện `NV006`–`NV010` nhưng không ổn định sau cleanup/reseed. Backup nằm ngoài Git/ignored.
 - Hướng dẫn authoritative: [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md). Avatar browser vẫn blocked/unverified và chưa claim MySQL 8.
-- Current full Laravel sau vòng authorization/guard là `230 pass, 1 fail, 1809 assertions`; failure duy nhất là `Tests\Feature\ExampleTest` với `GET /` trả 404 (baseline trước vòng này `224/1789`). Scoped employee/auth là `119 pass, 1141 assertions`; attendance compatibility hiện là `12 pass, 55 assertions`. Frontend là `15/15`, build Vite 16 modules, route inventory 49. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây và cleanup sạch; không claim rerun pass.
+- Current full Laravel sau vòng authorization/guard là `234 pass, 1 fail, 1815 assertions`; failure duy nhất là `Tests\Feature\ExampleTest` với `GET /` trả 404 (baseline trước vòng này `224/1789`). Scoped employee/auth là `119 pass, 1141 assertions`; attendance compatibility hiện là `16 pass, 61 assertions`. Frontend là `15/15`, build Vite 16 modules, route inventory 49. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây và cleanup sạch; không claim rerun pass.
 
 ## Bằng chứng historical — Task 20 Phase E trước merge vào main (2026-08-21)
 
@@ -62,7 +62,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | Git | Main tích hợp merge `aa77419`, parents `1677f20`/`91bb7a1`; revalidate HEAD/upstream khi tiếp tục |
 | MCP code graph | 1.819 node, 2.454 edge; dùng để khám phá code, không dùng thay cho route runtime |
 | `php artisan route:list --except-vendor` | Pass; 49 route, gồm login/logout và employee lifecycle routes |
-| `php artisan test` | `230 pass, 1 fail, 1809 assertions`; failure duy nhất là baseline `/` trả 404; scoped employee/auth `119/1141`, attendance compatibility `12 pass/55 assertions` |
+| `php artisan test` | `234 pass, 1 fail, 1815 assertions`; failure duy nhất là baseline `/` trả 404; scoped employee/auth `119/1141`, attendance compatibility `16 pass/61 assertions` |
 | `npm run test:frontend` | Pass; 15 tests |
 | `npm run build` | Pass; Vite 7.3.6, 16 modules transformed |
 | Composer dependency gates | Validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates |
@@ -78,11 +78,11 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | Home/landing | Có named route `backend.frontend.home` tại `/admin`, nhưng target view `frontend.home` bị thiếu; không có route `/` | Không | Test `/` fail | **Blocked** |
 | Dashboard | `/admin/bang-dieu-khien` render 200 | Chưa có dữ liệu | Không | **Prototype** |
 | Phòng ban | Blade index/create lỗi | Controller gọi SP trực tiếp | Không | **Prototype — blocked**: route trỏ method thiếu, SP chi tiết thiếu, update sai placeholder |
-| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Scoped employee/auth `119/1141`; attendance `12/55`; frontend `15`; browser function/RBAC/responsive matrix; MariaDB current rerun timeout | **Verified hẹp và đã tích hợp vào main; chưa production-ready**: browser avatar upload còn blocked; full suite còn baseline `/` 404 |
+| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Scoped employee/auth `119/1141`; attendance `16/61`; frontend `15`; browser function/RBAC/responsive matrix; MariaDB current rerun timeout | **Verified hẹp và đã tích hợp vào main; chưa production-ready**: browser avatar upload còn blocked; full suite còn baseline `/` 404 |
 | Chức vụ | Chưa có route/view | Có controller/service/repository/request/model | Không | **Prototype — unreachable** |
 | Lương | Trang render, JS CRUD và hệ số được build | API resource + service/repository | Không | **Prototype — blocked**: thiếu procedure danh sách; write contract chưa ngăn trùng `(ma_nv, ky_luong)`; export/đối soát chưa có handler đầy đủ |
 | Hệ số lương | UI tích hợp trong trang lương | API đọc/thêm/sửa dùng Query Builder; JavaScript có delete nhưng API chưa có route DELETE | Không | **Prototype — blocked action**: validation lệch schema, mutation chưa xác minh |
-| Chấm công | Trang render, JS tải/cập nhật được nối | 4 API route; index Query Builder, lookup/read/update có auth + rollout + Gate | Attendance compatibility `12 pass, 55 assertions` | **Prototype — blocked**: import/export chưa có consumer an toàn; các module khác còn contract riêng |
+| Chấm công | Trang render, JS tải/cập nhật được nối | 4 API route; index Query Builder, lookup/read/update có auth + rollout + Gate | Attendance compatibility `16 pass, 61 assertions` | **Prototype — blocked**: import/export chưa có consumer an toàn; các module khác còn contract riêng |
 | Nghỉ phép | Trang render, JS CRUD/duyệt được nối | 12 API route, service/repository và một số query trực tiếp | Không | **Prototype**: lookup/danh sách hẹp trả 200 trên DB rỗng; mutation chưa xác minh |
 | Hợp đồng | Không | Controller rỗng, model shell | Không | **Planned** |
 | Vai trò/quyền/tài khoản | Chưa có UI quản trị | RBAC schema/routines và assignment nội bộ cho bootstrap đã có | Guarded MariaDB RBAC nằm trong wrapper | **Nền tảng verified hẹp; UI quản trị planned** |

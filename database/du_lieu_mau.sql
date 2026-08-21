@@ -1,8 +1,9 @@
 -- ============================================================================
 -- LEGACY / NOT AUTHORITATIVE for the current employee module.
 -- DO NOT RUN as the employee-module demo setup path.
--- Use database/sql/employee/invoke-demo.ps1 after the canonical/schema rollout
--- described in docs/EMPLOYEE_MODULE_GUIDE.md; do not SOURCE demo SQL directly.
+-- Do not use this file for the current employee demo. For a disposable database
+-- provisioned by the acceptance harness, see database/sql/employee/invoke-demo.ps1
+-- and docs/EMPLOYEE_MODULE_GUIDE.md; do not SOURCE demo SQL directly.
 -- ============================================================================
 
 USE quan_ly_nhan_su;

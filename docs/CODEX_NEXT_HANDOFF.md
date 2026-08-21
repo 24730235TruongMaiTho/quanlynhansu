@@ -41,9 +41,9 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
 ## Bằng chứng mới nhất
 
 - Full guarded MariaDB wrapper historical: `165 tests, 3367 assertions, 1 platform skip, exit 0`; rerun sau tích hợp timeout khoảng 184 giây, process/schema/state/marker cleanup sạch, không claim current pass.
-- Scoped employee/auth hiện tại: `119 tests, 1141 assertions`; attendance compatibility: `12 pass, 55 assertions`.
+- Scoped employee/auth hiện tại: `119 tests, 1141 assertions`; attendance compatibility: `16 pass, 61 assertions`.
 - Frontend: `15/15`; Vite 7.3.6 build pass với 16 modules.
-- Full Laravel current: `230 pass, 1 fail, 1809 assertions`; failure duy nhất là baseline `Tests\Feature\ExampleTest` kỳ vọng `GET /` 200 trong khi ứng dụng trả 404. Trước vòng authorization/guard là `224/1789`.
+- Full Laravel current: `234 pass, 1 fail, 1815 assertions`; failure duy nhất là baseline `Tests\Feature\ExampleTest` kỳ vọng `GET /` 200 trong khi ứng dụng trả 404. Trước vòng authorization/guard là `224/1789`.
 - Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `49` và `git diff --check` pass trong các gate tương ứng.
 - Task 19 process-identity/atomic-state regressions đều nằm trong full wrapper sạch; skip duy nhất là Windows từ chối tạo disposable state symlink.
 - Independent review của checkpoint trước đã được supersede bởi vòng authorization/guard này; kiểm tra mới phải dựa trên HEAD hiện tại.

@@ -18,8 +18,9 @@ abstract class MariaDbTestCase extends TestCase
 
         $this->assertSame('sqlite', getenv('DB_CONNECTION'));
         $this->assertSame(':memory:', getenv('DB_DATABASE'));
-        $this->assertSame('', getenv('DB_URL'));
-        $this->assertSame('', getenv('DB_SOCKET'));
+        // PHP 8.5 on Windows exposes empty process variables as false via getenv().
+        $this->assertSame('', getenv('DB_URL') ?: '');
+        $this->assertSame('', getenv('DB_SOCKET') ?: '');
         $this->assertSame('sqlite', config('database.default'));
         $this->assertSame(':memory:', config('database.connections.sqlite.database'));
         $this->assertSame('', config('database.connections.mysql.url'));

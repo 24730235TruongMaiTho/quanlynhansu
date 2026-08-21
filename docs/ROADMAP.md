@@ -12,10 +12,10 @@ Roadmap ưu tiên theo dependency và khả năng kiểm chứng, không theo s�
 ## Snapshot kiểm chứng hiện tại (2026-08-21)
 
 Module Nhân viên đã tích hợp vào `main` qua merge `aa77419`; hãy revalidate
-HEAD/upstream trước mỗi task. Current Laravel là `230 pass, 1 fail, 1809
+HEAD/upstream trước mỗi task. Current Laravel là `234 pass, 1 fail, 1815
 assertions` do baseline `/` 404; baseline trước vòng authorization/guard là
 `224/1789`; scoped employee/auth là `119/1141`,
-attendance compatibility là `12 pass/55 assertions`, frontend là `15/15`, build Vite 16
+attendance compatibility là `16 pass/61 assertions`, frontend là `15/15`, build Vite 16
 modules và route inventory 49. Guarded MariaDB rerun sau tích hợp timeout khoảng
 184 giây rồi cleanup sạch, nên không claim DB gate pass. `165/3367` chỉ là
 historical Task 20 evidence.

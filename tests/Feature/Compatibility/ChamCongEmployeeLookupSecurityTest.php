@@ -36,6 +36,11 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         ])->assertUnauthorized();
     }
 
+    public function test_guest_cannot_read_attendance_department_lookup(): void
+    {
+        $this->getJson('/api/v1/cham-cong/phong-ban')->assertUnauthorized();
+    }
+
     public function test_zero_permission_actor_cannot_read_or_update_attendance_api(): void
     {
         $this->actingAsEmployeeWithPermissions([]);
@@ -46,6 +51,41 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             'vao_muon' => false,
             've_som' => false,
         ])->assertForbidden();
+    }
+
+    public function test_zero_permission_actor_cannot_read_attendance_department_lookup(): void
+    {
+        $this->actingAsEmployeeWithPermissions([]);
+
+        $this->getJson('/api/v1/cham-cong/phong-ban')->assertForbidden();
+    }
+
+    public function test_xem_actor_can_read_attendance_department_lookup(): void
+    {
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+        ]);
+        DB::shouldReceive('select')
+            ->once()
+            ->with('CALL sp_phong_ban_danh_sach()')
+            ->andReturn([]);
+
+        $this->getJson('/api/v1/cham-cong/phong-ban')
+            ->assertOk()
+            ->assertExactJson([
+                'success' => true,
+                'data' => [],
+            ]);
+    }
+
+    public function test_rollout_disabled_hides_attendance_department_lookup(): void
+    {
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+        ]);
+        config()->set('nhanvien.enabled', false);
+
+        $this->getJson('/api/v1/cham-cong/phong-ban')->assertNotFound();
     }
 
     public function test_xem_only_actor_cannot_update_attendance_api(): void

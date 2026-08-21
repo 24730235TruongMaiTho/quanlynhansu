@@ -129,27 +129,42 @@ Demo SQL **không được chạy bằng `SOURCE` trực tiếp**. Mỗi invocat
 [invoke-demo.ps1](invoke-demo.ps1), helper này tạo `TEMPORARY TABLE
 employee_demo_guard` và token ngẫu nhiên trong cùng MariaDB connection trước khi
 `SOURCE` file. Seed/cleanup kiểm tra đúng một marker, token 64 ký tự và
-`DATABASE()` trước mọi transaction/mutation; thiếu hoặc sai marker sẽ fail-closed.
-Helper chỉ chấp nhận host local, database `quan_ly_nhan_su` và switch
-`-EnableLocalOnly`. Đây là đường local/disposable có chủ ý, không phải approval
-cho shared/production.
+`DATABASE()` trong chính block mutation trước mọi transaction/mutation; thiếu hoặc
+sai marker sẽ fail-closed kể cả khi MariaDB client tiếp tục sau lỗi statement.
+Helper chỉ chấp nhận database đã provision có tên khớp
+`^quan_ly_nhan_su_employee_test_[a-f0-9]+$`, yêu cầu `MARIADB_TEST_ENABLED=1`
+và switch `-EnableDisposableMariaDb`, lấy host/port/user/password từ
+`MARIADB_TEST_*`. Nó không bao giờ cấp marker cho database canonical
+`quan_ly_nhan_su`.
 
-Ví dụ dùng helper (đặt `MYSQL_PWD` trong process từ credential local, không ghi
-password thật vào shell history/repository):
+Đường dành cho người mới là acceptance harness tạo disposable DB, server và
+account; xem guide authoritative. Helper 5-row bên dưới chỉ dành cho disposable
+DB đã được provision/guard trước đó, không phải lệnh rollout local canonical.
+
+Ví dụ dùng helper trên target disposable đã có (đặt credential test trong process,
+không ghi password thật vào shell history/repository):
 
 ```powershell
-$env:DB_HOST = '127.0.0.1'
-$env:DB_PORT = '3306'
-$env:DB_DATABASE = 'quan_ly_nhan_su'
-$env:DB_USERNAME = '<tai-khoan-local>'
-$env:MYSQL_PWD = '<mat-khau-local>'
+$mysqlPwdWasPresent = Test-Path Env:MYSQL_PWD
+$mysqlPwdPrevious = if ($mysqlPwdWasPresent) { $env:MYSQL_PWD } else { $null }
 try {
-    pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action seed -EnableLocalOnly
+    $env:MARIADB_TEST_ENABLED = '1'
+    $env:MARIADB_TEST_DATABASE = 'quan_ly_nhan_su_employee_test_<hex>'
+    $env:MARIADB_TEST_HOST = '127.0.0.1'
+    $env:MARIADB_TEST_PORT = '3306'
+    $env:MARIADB_TEST_USERNAME = '<tai-khoan-test>'
+    $env:MARIADB_TEST_PASSWORD = '<mat-khau-test>'
+    pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action seed -EnableDisposableMariaDb
     # Khi cần dọn đúng bộ synthetic:
-    # pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableLocalOnly
+    # pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableDisposableMariaDb
 }
 finally {
-    Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+    if ($mysqlPwdWasPresent) {
+        Set-Item -Path Env:MYSQL_PWD -Value $mysqlPwdPrevious
+    }
+    else {
+        Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+    }
 }
 ```
 

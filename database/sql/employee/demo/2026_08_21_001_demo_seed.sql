@@ -8,7 +8,39 @@
 DELIMITER //
 
 BEGIN NOT ATOMIC
+    DECLARE v_count INT DEFAULT 0;
+    DECLARE v_role_id INT;
+    DECLARE v_role_symbol VARCHAR(50);
+    DECLARE v_role_name VARCHAR(100);
+    DECLARE v_status_dang_lam TINYINT;
+    DECLARE v_status_thu_viec TINYINT;
+    DECLARE v_pb_1 INT;
+    DECLARE v_pb_2 INT;
+    DECLARE v_pb_3 INT;
+    DECLARE v_pb_4 INT;
+    DECLARE v_pb_5 INT;
+    DECLARE v_cv_1 INT;
+    DECLARE v_cv_2 INT;
+    DECLARE v_cv_3 INT;
+    DECLARE v_cv_4 INT;
+    DECLARE v_cv_5 INT;
+    DECLARE v_quyen_xem INT;
+    DECLARE v_quyen_tao INT;
+    DECLARE v_quyen_sua INT;
+    DECLARE v_quyen_xoa INT;
+    DECLARE v_quyen_reset INT;
+    DECLARE v_ma_nv_1 VARCHAR(5);
+    DECLARE v_ma_nv_2 VARCHAR(5);
+    DECLARE v_ma_nv_3 VARCHAR(5);
+    DECLARE v_ma_nv_4 VARCHAR(5);
+    DECLARE v_ma_nv_5 VARCHAR(5);
     DECLARE v_guard_count INT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
 
     IF DATABASE() IS NULL OR (
         BINARY DATABASE() <> BINARY 'quan_ly_nhan_su'
@@ -37,41 +69,6 @@ BEGIN NOT ATOMIC
     IF v_guard_count <> 1 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_SEED_GUARD_MARKER_INVALID';
     END IF;
-END//
-
-BEGIN NOT ATOMIC
-    DECLARE v_count INT DEFAULT 0;
-    DECLARE v_role_id INT;
-    DECLARE v_role_symbol VARCHAR(50);
-    DECLARE v_role_name VARCHAR(100);
-    DECLARE v_status_dang_lam TINYINT;
-    DECLARE v_status_thu_viec TINYINT;
-    DECLARE v_pb_1 INT;
-    DECLARE v_pb_2 INT;
-    DECLARE v_pb_3 INT;
-    DECLARE v_pb_4 INT;
-    DECLARE v_pb_5 INT;
-    DECLARE v_cv_1 INT;
-    DECLARE v_cv_2 INT;
-    DECLARE v_cv_3 INT;
-    DECLARE v_cv_4 INT;
-    DECLARE v_cv_5 INT;
-    DECLARE v_quyen_xem INT;
-    DECLARE v_quyen_tao INT;
-    DECLARE v_quyen_sua INT;
-    DECLARE v_quyen_xoa INT;
-    DECLARE v_quyen_reset INT;
-    DECLARE v_ma_nv_1 VARCHAR(5);
-    DECLARE v_ma_nv_2 VARCHAR(5);
-    DECLARE v_ma_nv_3 VARCHAR(5);
-    DECLARE v_ma_nv_4 VARCHAR(5);
-    DECLARE v_ma_nv_5 VARCHAR(5);
-
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
 
     IF DATABASE() IS NULL OR (
         BINARY DATABASE() <> BINARY 'quan_ly_nhan_su'
