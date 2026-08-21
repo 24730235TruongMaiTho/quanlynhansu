@@ -2,12 +2,12 @@
 
 - Ngày chốt thiết kế: 2026-08-12
 - Nhánh triển khai: `feature/quanly-nhan-vien`
-- Trạng thái: đã triển khai và commit local trên branch; browser/MariaDB evidence đã có, chưa phải xác nhận production
+- Trạng thái: đã triển khai và Git-deliver trên feature branch; browser/MariaDB evidence đã có, chưa phải xác nhận production
 - Phạm vi bằng chứng hiện tại: repository, guarded MariaDB disposable và browser employee runtime; avatar browser upload còn blocked
 
 ## Cập nhật acceptance cuối (2026-08-21)
 
-Tasks 13–20 đã hoàn tất implementation trên branch, được kiểm chứng hẹp và đã commit local.
+Tasks 13–20 đã hoàn tất implementation trên branch, được kiểm chứng hẹp, commit và push.
 Full guarded MariaDB gate sau final-review fixes đạt `165 tests, 3367 assertions,
 1 platform skip, exit 0`; skip duy nhất do Windows từ chối tạo disposable state
 symlink, và hậu kiểm resource/schema đều về `0`. Browser employee đã xác minh login/logout,

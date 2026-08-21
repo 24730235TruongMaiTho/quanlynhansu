@@ -1785,7 +1785,7 @@ Phân loại từng hit hợp lệ (hash chỉ trong auth/write path; `hop_dong`
 
 Ghi procedure signatures/order/result shape và cách chạy MariaDB suite vào `DATABASE.md`; trạng thái module, test counts, browser matrix và giới hạn vào `PROJECT_STATUS.md`; quyết định tiếp theo/commit/upstream vào handoff; asset/page conventions, `php artisan storage:link` cho local và `Storage::url()` vào frontend guide. Đổi status của design spec theo đúng bằng chứng. Đánh dấu toàn bộ checkbox plan đã thực sự hoàn tất; checkbox browser giữ trống nếu bị policy chặn.
 
-- [ ] **Step 7: Final verification, documentation commit, and push**
+- [x] **Step 7: Final verification, documentation commit, and push**
 
 Đọc và dùng `superpowers:verification-before-completion` trước claim cuối. Chạy lại:
 
@@ -1799,17 +1799,21 @@ git diff --check
 git status --short --branch
 ```
 
-Stage đúng bốn tài liệu project, spec và plan; xem full staged diff, rồi:
+Stage đúng allowlist tài liệu thực sự thay đổi (13 file ở lần thực thi cuối), xem
+full staged diff, rồi:
 
 ```powershell
-git add -- docs/PROJECT_STATUS.md docs/DATABASE.md docs/CODEX_NEXT_HANDOFF.md docs/FRONTEND_GUIDE.md docs/superpowers/specs/2026-08-12-quan-ly-nhan-vien-design.md docs/superpowers/plans/2026-08-12-quan-ly-nhan-vien.md
 git diff --cached --check
 git diff --cached --stat
-git commit -m "docs(employee): record integrated acceptance evidence"
-git push
+git commit -m "docs: record employee module evidence and handoff"
+git push origin feature/quanly-nhan-vien
 ```
 
-- [ ] **Step 8: Prove remote handoff without merging**
+Kết quả delivery: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`,
+dependency locks `18ea209d89efce38596dd1440151f6d55ca90156` và documentation evidence
+`7bedcadf8c374b38d2e3451617f288bca6184d5f` đã push lên feature branch.
+
+- [x] **Step 8: Prove remote handoff without merging**
 
 ```powershell
 git rev-parse HEAD
@@ -1818,6 +1822,10 @@ git status --short --branch
 ```
 
 Expected: local/upstream SHA giống nhau sau push, worktree sạch, nhánh vẫn là `feature/quanly-nhan-vien`, `main` chưa merge. Không fetch, merge, rebase hoặc tạo PR.
+
+Đã xác minh checkpoint `7bedcadf8c374b38d2e3451617f288bca6184d5f`:
+local HEAD, tracking upstream và remote ref bằng nhau; worktree sạch; không merge
+vào `main`.
 
 ## Final Acceptance Checklist
 
@@ -1829,5 +1837,5 @@ Expected: local/upstream SHA giống nhau sau push, worktree sạch, nhánh vẫ
 - [x] Employee module hoạt động độc lập khi chưa có workflow quản trị hợp đồng; lifecycle chỉ đọc dependency hiện có.
 - [x] Caller cũ và mã `ma_nv` chéo module đã regression-test; lookup chấm công chạy procedure thật với aggregate/pagination.
 - [x] Automated gates và browser acceptance được báo đúng bằng chứng/giới hạn.
-- [ ] Mỗi vertical slice đã commit + push; không merge/rebase/force-push/PR.
+- [x] Mỗi vertical slice đã commit + push; không merge/rebase/force-push/PR.
 - [x] Configured live database và local-only frontend handoff không bị mutation/stage.

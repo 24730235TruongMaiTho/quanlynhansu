@@ -4,7 +4,7 @@
 >
 > Branch: `feature/quanly-nhan-vien`
 >
-> Phạm vi: Tasks 13–20 đã được kiểm chứng hẹp và đã thành commit local: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156`. Upstream trước delivery vẫn ở `723dac63983d04364c6f146662aec7bd5eb6d87a`; commit tài liệu và push còn chờ tại thời điểm soạn snapshot. Luôn revalidate HEAD/tracking; không ghi database live.
+> Phạm vi: Tasks 13–20 đã được kiểm chứng hẹp, commit và push lên `origin/feature/quanly-nhan-vien`: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156`, documentation evidence `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Local/upstream/remote đã trùng tại checkpoint `7bedcadf`; luôn revalidate vì commit trạng thái này nằm sau checkpoint. Không ghi database live.
 
 ## Bằng chứng hiện tại — Task 20 Phase E (2026-08-21)
 
@@ -31,9 +31,9 @@ truy nguyên nhưng không được dùng thay cho gate mới.
   listener `8012`, PHP acceptance child, `public/storage` và guarded schema đều
   `0`; `storage/app/public` được giữ nguyên. Không còn runtime resource thuộc
   harness.
-- Module nhân viên là **verified hẹp trên branch**, chưa phải production
-  readiness: avatar browser còn blocked, full-suite `/` baseline còn fail, và
-  các commit local chưa được push tại thời điểm soạn snapshot.
+- Module nhân viên là **verified hẹp và đã Git-deliver trên feature branch**,
+  chưa phải production readiness: avatar browser còn blocked và full-suite `/`
+  baseline còn fail.
 
 ## Cách đọc trạng thái
 
@@ -49,7 +49,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 
 | Kiểm tra | Kết quả |
 | --- | --- |
-| Git | Branch `feature/quanly-nhan-vien`; source `ba6e018`, dependency locks `18ea209`; local ahead upstream `723dac6`, commit tài liệu/push còn chờ tại snapshot |
+| Git | Branch `feature/quanly-nhan-vien`; source `ba6e018`, dependency locks `18ea209`, docs/evidence `7bedcad`; checkpoint đã push và xác minh local/upstream/remote bằng nhau |
 | MCP code graph | 1.819 node, 2.454 edge; dùng để khám phá code, không dùng thay cho route runtime |
 | `php artisan route:list --except-vendor` | Pass; 49 route, gồm login/logout và employee lifecycle routes |
 | `php artisan test` | `221 pass, 1 fail, 1772 assertions`; failure duy nhất là baseline `/` trả 404; Unit `95/633`, scoped Feature employee/auth/compatibility `107/1093` |
@@ -68,7 +68,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | Home/landing | Có named route `backend.frontend.home` tại `/admin`, nhưng target view `frontend.home` bị thiếu; không có route `/` | Không | Test `/` fail | **Blocked** |
 | Dashboard | `/admin/bang-dieu-khien` render 200 | Chưa có dữ liệu | Không | **Prototype** |
 | Phòng ban | Blade index/create lỗi | Controller gọi SP trực tiếp | Không | **Prototype — blocked**: route trỏ method thiếu, SP chi tiết thiếu, update sai placeholder |
-| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Unit `95/633`; scoped Feature `107/1093`; MariaDB `165/3367`; frontend `15`; browser function/RBAC/responsive matrix | **Verified hẹp trên branch; đã commit local, đang chờ push, chưa production-ready**: browser avatar upload còn blocked; full suite còn baseline `/` 404 |
+| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Unit `95/633`; scoped Feature `107/1093`; MariaDB `165/3367`; frontend `15`; browser function/RBAC/responsive matrix | **Verified hẹp và đã Git-deliver trên feature branch; chưa production-ready**: browser avatar upload còn blocked; full suite còn baseline `/` 404 |
 | Chức vụ | Chưa có route/view | Có controller/service/repository/request/model | Không | **Prototype — unreachable** |
 | Lương | Trang render, JS CRUD và hệ số được build | API resource + service/repository | Không | **Prototype — blocked**: thiếu procedure danh sách; write contract chưa ngăn trùng `(ma_nv, ky_luong)`; export/đối soát chưa có handler đầy đủ |
 | Hệ số lương | UI tích hợp trong trang lương | API đọc/thêm/sửa dùng Query Builder; JavaScript có delete nhưng API chưa có route DELETE | Không | **Prototype — blocked action**: validation lệch schema, mutation chưa xác minh |

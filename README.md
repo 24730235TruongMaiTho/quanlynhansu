@@ -5,7 +5,7 @@
 - **Lập trình Web Application**: Laravel MVC, API, validation, MySQL/MariaDB, xác thực, phân quyền và kiểm thử.
 - **Thiết kế giao diện người dùng**: luồng thao tác, design system, responsive, accessibility và phản hồi trạng thái.
 
-> **Trạng thái ngày 2026-08-21:** Tasks 13–20 đã được kiểm chứng hẹp và đã thành commit local: mã nguồn/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156`; branch **chưa push** tại thời điểm soạn snapshot này. Full guarded MariaDB wrapper đạt **165 tests, 3367 assertions, 1 platform skip, exit 0** và cleanup `0`; frontend `15/15`, build, Composer validate/audit, routes và diff checks pass. Browser employee responsive `320/375/768/1024/1440` pass với console sạch; avatar upload/replacement còn **blocked/unverified** vì Chrome file URL access. Full Laravel vẫn còn đúng baseline `/` 404 tại `ExampleTest`; không claim production readiness.
+> **Trạng thái ngày 2026-08-21:** Tasks 13–20 đã được kiểm chứng hẹp, commit và push lên `origin/feature/quanly-nhan-vien`. Delivery checkpoint `7bedcadf8c374b38d2e3451617f288bca6184d5f` chứa source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156` và tài liệu bằng chứng. Full guarded MariaDB wrapper đạt **165 tests, 3367 assertions, 1 platform skip, exit 0** và cleanup `0`; frontend `15/15`, build, Composer validate/audit, routes và diff checks pass. Browser employee responsive `320/375/768/1024/1440` pass với console sạch; avatar upload/replacement còn **blocked/unverified** vì Chrome file URL access. Full Laravel vẫn còn đúng baseline `/` 404 tại `ExampleTest`; không claim production readiness.
 
 ## Bắt đầu từ đâu
 
@@ -34,11 +34,11 @@ sau khi chuyển nghỉ việc được automated-test riêng. Avatar file
 upload chưa verify vì browser extension policy. Xem chi tiết ở
 [PROJECT_STATUS.md](docs/PROJECT_STATUS.md) và ignored Task20 reports.
 
-Snapshot này được đo trên nhánh `feature/quanly-nhan-vien`. Source commit là `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency-lock commit là `18ea209d89efce38596dd1440151f6d55ca90156`; upstream trước delivery vẫn ở `723dac63983d04364c6f146662aec7bd5eb6d87a`. Commit tài liệu và push còn chờ tại thời điểm soạn; luôn revalidate HEAD, upstream và worktree trước khi dùng snapshot.
+Snapshot này được đo trên nhánh `feature/quanly-nhan-vien`. Source commit là `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency-lock commit là `18ea209d89efce38596dd1440151f6d55ca90156`, documentation-evidence commit là `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Sau lần push đầu, local HEAD, tracking upstream và remote ref đã được xác minh cùng ở `7bedcadf`; luôn revalidate lại vì commit ghi trạng thái delivery này nằm sau checkpoint đó.
 
 | Hạng mục | Kết quả |
 | --- | --- |
-| Git | Branch `feature/quanly-nhan-vien`; source `ba6e018`, dependency locks `18ea209`; local ahead upstream `723dac6`, chưa push tại snapshot |
+| Git | Branch `feature/quanly-nhan-vien`; source `ba6e018`, dependency locks `18ea209`, docs/evidence `7bedcad`; checkpoint đã push và xác minh trên origin |
 | Laravel | 12.62.0 trên PHP 8.5.0; project target PHP 8.2+ |
 | Route ứng dụng | 49 route; có login/logout, toàn bộ `/admin` yêu cầu auth và route nhân viên dùng Gate theo quyền |
 | Frontend | `npm run test:frontend` 15 pass; `npm run build` pass; Vite 7.3.6, 16 modules transformed |
@@ -57,7 +57,7 @@ Snapshot này được đo trên nhánh `feature/quanly-nhan-vien`. Source commi
 | Chấm công | Prototype — blocked | Hai procedure phân trang không tồn tại; validation có thể trả sai status; import/export chưa có workflow an toàn |
 | Nghỉ phép | Prototype | Có UI/API CRUD và duyệt; chưa có test nghiệp vụ hoặc kiểm chứng mutation đầy đủ |
 | Hệ số lương | Prototype | Có API đọc/thêm/sửa; JavaScript delete không có route DELETE; validation và schema còn lệch |
-| Nhân viên | Verified hẹp trên branch; đã commit local, đang chờ push, chưa production-ready | List/create/detail/edit, avatar ở automated tests, delete-or-terminate, reset password, login/session, RBAC 5 quyền và responsive browser đã kiểm tra trên disposable MariaDB. Browser upload/thay avatar còn blocked do quyền Chrome; full suite còn baseline `/` 404 |
+| Nhân viên | Verified hẹp và đã Git-deliver trên feature branch; chưa production-ready | List/create/detail/edit, avatar ở automated tests, delete-or-terminate, reset password, login/session, RBAC 5 quyền và responsive browser đã kiểm tra trên disposable MariaDB. Browser upload/thay avatar còn blocked do quyền Chrome; full suite còn baseline `/` 404 |
 | Phòng ban | Prototype — blocked | Route/controller/Blade/procedure chưa khớp |
 | Chức vụ | Prototype — unreachable | Có controller/service/repository/request/model nhưng chưa có route |
 | Hợp đồng | Planned | Chưa có workflow quản trị; hiện chỉ được dùng làm dependency khi kiểm tra kết thúc làm việc |

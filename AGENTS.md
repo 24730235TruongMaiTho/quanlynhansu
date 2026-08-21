@@ -9,7 +9,7 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
 - Đồ án: website quản lý nhân sự cho hai môn Web Application và UI/UX.
 - Stack: Laravel 12, PHP 8.2+, Blade, JavaScript, Vite 7, Tailwind CSS 4, Bootstrap, MariaDB/MySQL.
 - Schema nghiệp vụ hiện nằm trong `quan_ly_nhan_su.session.sql`.
-- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban còn lỗi. Branch `feature/quanly-nhan-vien` có module nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và commit local; xem handoff để biết trạng thái delivery và giới hạn browser avatar.
+- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban còn lỗi. Branch `feature/quanly-nhan-vien` có module nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và Git-deliver trên feature branch; xem handoff để biết các SHA và giới hạn browser avatar.
 - Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
 ## Thứ tự đọc

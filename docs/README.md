@@ -17,7 +17,7 @@ Mọi số liệu route, test, build và Git đều là snapshot; phải đo l�
 Snapshot mới nhất của Tasks 13–20 nằm ở đầu [PROJECT_STATUS.md](PROJECT_STATUS.md)
 và [CODEX_NEXT_HANDOFF.md](CODEX_NEXT_HANDOFF.md). Browser employee đã có
 responsive evidence hẹp; avatar file upload vẫn blocked/unverified. Source và
-dependency locks đã commit local nhưng branch chưa push tại snapshot. Không dùng các đoạn lịch sử bên dưới để suy rộng thành
+dependency locks cùng tài liệu evidence đã push trên feature branch. Không dùng các đoạn lịch sử bên dưới để suy rộng thành
 production readiness.
 
 ## Bản đồ tài liệu

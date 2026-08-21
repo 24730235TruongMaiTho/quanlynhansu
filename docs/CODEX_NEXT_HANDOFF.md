@@ -8,7 +8,9 @@
 >
 > Source/test/SQL commit: `ba6e0189e64eb3046164ae5183950afe0b5722be`; dependency-lock commit: `18ea209d89efce38596dd1440151f6d55ca90156`.
 >
-> Trạng thái Git khi soạn snapshot: hai commit trên đã có local; commit tài liệu và push branch còn chờ. Luôn chạy lại Git status/HEAD/upstream sau khi đồng bộ.
+> Documentation-evidence commit: `7bedcadf8c374b38d2e3451617f288bca6184d5f`.
+>
+> Delivery checkpoint: sau lần push đầu, local HEAD, tracking upstream và remote ref cùng ở `7bedcadf`. Commit ghi trạng thái delivery này nằm sau checkpoint; luôn chạy lại Git status/HEAD/upstream sau khi đồng bộ.
 
 ## Đọc trước
 
@@ -69,10 +71,10 @@ Official `Stop` đã dọn sạch fixture: guarded schema, state/lock/probe/run/
 
 ## Việc còn lại
 
-1. Commit tài liệu và push Tasks 13–20 trên branch hiện tại; không merge vào `main` trong lượt này.
-2. Bật quyền file URL cho Chrome extension rồi chạy riêng avatar upload/replacement acceptance nếu cần đóng khoảng trống browser.
-3. Chốt route `/`/landing để sửa baseline `ExampleTest` 404 trong một task riêng.
-4. Lập quy trình rollout/master-data/backup trước khi dùng database thật.
+1. Bật quyền file URL cho Chrome extension rồi chạy riêng avatar upload/replacement acceptance nếu cần đóng khoảng trống browser.
+2. Chốt route `/`/landing để sửa baseline `ExampleTest` 404 trong một task riêng.
+3. Lập quy trình rollout/master-data/backup trước khi dùng database thật.
+4. Mở review/PR và merge feature branch khi nhóm duyệt; chưa merge vào `main` trong lượt này.
 5. Các module phòng ban/lương/chấm công/nghỉ phép vẫn có blocker riêng; không suy rộng trạng thái Nhân viên sang toàn dự án.
 
 ## Checklist tiếp tục
