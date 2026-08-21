@@ -36,12 +36,6 @@
                             <span class="nav-title">Danh sách nhân viên</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a href="{{ route('backend.nhanvien.create') }}" class="nav-link">
-                            <i class="bi bi-person-plus-fill"></i>
-                            <span class="nav-title">Thêm mới</span>
-                        </a>
-                    </li>
                 </ul>
             </li>
             @endif
