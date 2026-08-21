@@ -135,4 +135,95 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['thang']);
     }
+
+    public function test_attendance_detail_uses_query_builder_pagination_and_summary(): void
+    {
+        Schema::create('nhan_vien', function (Blueprint $table): void {
+            $table->string('ma_nv', 5)->primary();
+        });
+        Schema::create('cham_cong', function (Blueprint $table): void {
+            $table->increments('ma_cc');
+            $table->string('ma_nv', 5);
+            $table->date('ngay_lam');
+            $table->decimal('so_gio_lam', 5, 2);
+            $table->boolean('vao_muon');
+            $table->boolean('ve_som');
+        });
+
+        DB::table('nhan_vien')->insert(['ma_nv' => 'NV001']);
+        DB::table('cham_cong')->insert([
+            [
+                'ma_nv' => 'NV001',
+                'ngay_lam' => '2026-08-01',
+                'so_gio_lam' => 8,
+                'vao_muon' => 1,
+                've_som' => 0,
+            ],
+            [
+                'ma_nv' => 'NV001',
+                'ngay_lam' => '2026-08-02',
+                'so_gio_lam' => 4,
+                'vao_muon' => 0,
+                've_som' => 1,
+            ],
+            [
+                'ma_nv' => 'NV001',
+                'ngay_lam' => '2026-07-31',
+                'so_gio_lam' => 8,
+                'vao_muon' => 0,
+                've_som' => 0,
+            ],
+        ]);
+
+        $response = $this->getJson(
+            '/api/v1/cham-cong?ma_nv=NV001&thang=8&nam=2026&per_page=1',
+        );
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total', 2)
+            ->assertJsonPath('data.per_page', 1)
+            ->assertJsonPath('data.data.0.ngay_lam', '2026-08-01')
+            ->assertJsonPath('summary.tong_gio_lam', 12)
+            ->assertJsonPath('summary.so_lan_vao_muon', 1)
+            ->assertJsonPath('summary.so_lan_ve_som', 1)
+            ->assertJsonPath('summary.so_ngay_cham_cong', 1.5);
+    }
+
+    public function test_attendance_detail_query_failure_returns_stable_error_without_sql(): void
+    {
+        Schema::create('nhan_vien', function (Blueprint $table): void {
+            $table->string('ma_nv', 5)->primary();
+        });
+        DB::table('nhan_vien')->insert(['ma_nv' => 'NV001']);
+
+        $response = $this->getJson(
+            '/api/v1/cham-cong?ma_nv=NV001&thang=8&nam=2026',
+        );
+
+        $response
+            ->assertStatus(422)
+            ->assertExactJson([
+                'success' => false,
+                'message' => 'Không thể tải dữ liệu chấm công.',
+            ]);
+
+        $body = $response->getContent();
+        $this->assertStringNotContainsString('SQLSTATE', $body);
+        $this->assertStringNotContainsString('cham_cong', $body);
+        $this->assertStringNotContainsString('select', strtolower($body));
+    }
+
+    public function test_attendance_detail_invalid_filter_keeps_laravel_validation_contract(): void
+    {
+        Schema::create('nhan_vien', function (Blueprint $table): void {
+            $table->string('ma_nv', 5)->primary();
+        });
+        DB::table('nhan_vien')->insert(['ma_nv' => 'NV001']);
+
+        $this->getJson('/api/v1/cham-cong?ma_nv=NV001&thang=13&nam=2026')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['thang']);
+    }
 }
