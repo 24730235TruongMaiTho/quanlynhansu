@@ -2,25 +2,28 @@
 
 > Snapshot: 2026-08-21
 >
-> Historical Task 20 branch: `feature/quanly-nhan-vien`; current local integration branch: `main`
+> Historical Task 20 branch: `feature/quanly-nhan-vien`; current integrated branch: `main`
 >
-> Phạm vi historical: Tasks 13–20 đã được kiểm chứng hẹp, commit và push lên `origin/feature/quanly-nhan-vien`: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156`, documentation evidence `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Current local main đã fast-forward tới `origin/main` `1677f202f70e020ce75ef0fa88b11b9db44fa047` và merge feature tại `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f`; focused attendance tests ở `9cd2c30`. Không push trong task này.
+> Phạm vi historical: Tasks 13–20 đã được kiểm chứng hẹp, commit và push lên `origin/feature/quanly-nhan-vien`: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156`, documentation evidence `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Main đã fast-forward tới `origin/main` `1677f202f70e020ce75ef0fa88b11b9db44fa047` và merge feature tại `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f`; focused attendance tests ở `9cd2c30`. Khi tiếp tục phải revalidate HEAD/upstream, không dùng snapshot này để suy ra trạng thái remote.
 
-## Current local integration và rollout (2026-08-21)
+## Current integrated module và rollout (2026-08-21)
 
-- Local `main` là nguồn tích hợp hiện tại; merge `aa77419` có parents `1677f20` và `91bb7a1` (`feat(employee-db): add guarded local demo seed`).
+- Main là nguồn tích hợp hiện tại; merge `aa77419` có parents `1677f20` và `91bb7a1` (`feat(employee-db): add guarded local demo seed`).
 - `quan_ly_nhan_su` local đã được cập nhật có chủ đích qua rollout được approval và demo synthetic; đây là bằng chứng environment-specific, không phải production. Shape đã kiểm chứng: 16 bảng, 1 view, 8 function, 10 trigger, 69 procedure.
 - Demo hiện có 5 employee và 5 address; admin demo có đúng 5 employee permission; bốn normal demo zero employee permission. IDs local hiện `NV006`–`NV010` nhưng không ổn định sau cleanup/reseed. Backup nằm ngoài Git/ignored.
 - Hướng dẫn authoritative: [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md). Avatar browser vẫn blocked/unverified và chưa claim MySQL 8.
+- Current full Laravel sau vòng authorization/guard là `230 pass, 1 fail, 1809 assertions`; failure duy nhất là `Tests\Feature\ExampleTest` với `GET /` trả 404 (baseline trước vòng này `224/1789`). Scoped employee/auth là `119 pass, 1141 assertions`; attendance compatibility hiện là `12 pass, 55 assertions`. Frontend là `15/15`, build Vite 16 modules, route inventory 49. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây và cleanup sạch; không claim rerun pass.
 
-## Bằng chứng historical — Task 20 Phase E trước local integration (2026-08-21)
+## Bằng chứng historical — Task 20 Phase E trước merge vào main (2026-08-21)
 
 Đây là mục authoritative mới nhất; các số liệu lịch sử bên dưới được giữ để
 truy nguyên nhưng không được dùng thay cho gate mới.
 
 - Full guarded MariaDB wrapper đã pass với `165 tests, 3367 assertions, 1 platform skip,
-  exit 0`; mọi schema disposable được cleanup. Ở checkpoint historical này
-  runtime chỉ dùng database test có tên guarded; `quan_ly_nhan_su` chưa bị mutation.
+  exit 0`; mọi schema disposable được cleanup. Ở checkpoint historical trước
+  approved local rollout, runtime chỉ dùng database test có tên guarded và
+  `quan_ly_nhan_su` chưa bị mutation; phần Current rollout bên trên ghi nhận
+  mutation local đã được duyệt sau checkpoint đó.
 - Scoped employee Feature/Unit, frontend `15/15`, Vite build, Composer, route
   inventory và diff checks đã pass trong các gate Task20. Full Laravel vẫn có
   đúng một baseline failure: `Tests\\Feature\\ExampleTest` kỳ vọng `GET /` là
@@ -39,7 +42,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
   `0`; `storage/app/public` được giữ nguyên. Không còn runtime resource thuộc
   harness.
 - Historical module nhân viên là **verified hẹp và đã Git-deliver trên feature
-  branch**; code hiện đã tích hợp local vào `main`, chưa phải production
+  branch**; code hiện đã tích hợp vào `main`, chưa phải production
   readiness: avatar browser còn blocked và full-suite `/` baseline còn fail.
 
 ## Cách đọc trạng thái
@@ -56,15 +59,15 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 
 | Kiểm tra | Kết quả |
 | --- | --- |
-| Git | Historical feature checkpoint `7bedcad`; current local `main` merge `aa77419`, parents `1677f20`/`91bb7a1`, chưa push |
+| Git | Main tích hợp merge `aa77419`, parents `1677f20`/`91bb7a1`; revalidate HEAD/upstream khi tiếp tục |
 | MCP code graph | 1.819 node, 2.454 edge; dùng để khám phá code, không dùng thay cho route runtime |
 | `php artisan route:list --except-vendor` | Pass; 49 route, gồm login/logout và employee lifecycle routes |
-| `php artisan test` | `221 pass, 1 fail, 1772 assertions`; failure duy nhất là baseline `/` trả 404; Unit `95/633`, scoped Feature employee/auth/compatibility `107/1093` |
+| `php artisan test` | `230 pass, 1 fail, 1809 assertions`; failure duy nhất là baseline `/` trả 404; scoped employee/auth `119/1141`, attendance compatibility `12 pass/55 assertions` |
 | `npm run test:frontend` | Pass; 15 tests |
 | `npm run build` | Pass; Vite 7.3.6, 16 modules transformed |
 | Composer dependency gates | Validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates |
-| MariaDB employee integration | **Pass hẹp**; full guarded wrapper `165 tests, 3367 assertions, 1 platform skip, exit 0`; cleanup schema/state/lock/run/upload/listener/PHP/link `0` |
-| Task 19 harness regression/review | Process-identity/atomic-state regressions đều nằm trong full wrapper sạch; independent review **Spec PASS / Quality APPROVE**, không còn Critical/Important; skip duy nhất do Windows từ chối tạo disposable state symlink |
+| MariaDB employee integration | **Unverified sau tích hợp**; guarded rerun timeout khoảng 184 giây, process/schema/state/marker cleanup sạch; `165/3367` chỉ là historical Task 20 |
+| Task 19 harness regression/review | Historical Task 20 wrapper có process-identity/atomic-state evidence; rerun hiện tại chưa pass nên không suy rộng review cũ thành current DB gate |
 | Employee rollout flag | `env('NHAN_VIEN_MODULE_ENABLED', true)`; đặt `false` sẽ fail-closed 404 nhưng không thay thế auth/Gate |
 | `php artisan migrate:status` | Fail: chưa có bảng `migrations` |
 
@@ -75,11 +78,11 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | Home/landing | Có named route `backend.frontend.home` tại `/admin`, nhưng target view `frontend.home` bị thiếu; không có route `/` | Không | Test `/` fail | **Blocked** |
 | Dashboard | `/admin/bang-dieu-khien` render 200 | Chưa có dữ liệu | Không | **Prototype** |
 | Phòng ban | Blade index/create lỗi | Controller gọi SP trực tiếp | Không | **Prototype — blocked**: route trỏ method thiếu, SP chi tiết thiếu, update sai placeholder |
-| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Unit `95/633`; scoped Feature `107/1093`; MariaDB `165/3367`; frontend `15`; browser function/RBAC/responsive matrix | **Verified hẹp và đã tích hợp local vào main; chưa production-ready**: browser avatar upload còn blocked; full suite còn baseline `/` 404 |
+| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Scoped employee/auth `119/1141`; attendance `12/55`; frontend `15`; browser function/RBAC/responsive matrix; MariaDB current rerun timeout | **Verified hẹp và đã tích hợp vào main; chưa production-ready**: browser avatar upload còn blocked; full suite còn baseline `/` 404 |
 | Chức vụ | Chưa có route/view | Có controller/service/repository/request/model | Không | **Prototype — unreachable** |
 | Lương | Trang render, JS CRUD và hệ số được build | API resource + service/repository | Không | **Prototype — blocked**: thiếu procedure danh sách; write contract chưa ngăn trùng `(ma_nv, ky_luong)`; export/đối soát chưa có handler đầy đủ |
 | Hệ số lương | UI tích hợp trong trang lương | API đọc/thêm/sửa dùng Query Builder; JavaScript có delete nhưng API chưa có route DELETE | Không | **Prototype — blocked action**: validation lệch schema, mutation chưa xác minh |
-| Chấm công | Trang render, JS tải/cập nhật được nối | 4 API route | Không | **Prototype — blocked**: thiếu 2 SP phân trang; validation exception có thể bị trả 500 thay vì 422; import/export chưa có consumer an toàn |
+| Chấm công | Trang render, JS tải/cập nhật được nối | 4 API route; index Query Builder, lookup/read/update có auth + rollout + Gate | Attendance compatibility `12 pass, 55 assertions` | **Prototype — blocked**: import/export chưa có consumer an toàn; các module khác còn contract riêng |
 | Nghỉ phép | Trang render, JS CRUD/duyệt được nối | 12 API route, service/repository và một số query trực tiếp | Không | **Prototype**: lookup/danh sách hẹp trả 200 trên DB rỗng; mutation chưa xác minh |
 | Hợp đồng | Không | Controller rỗng, model shell | Không | **Planned** |
 | Vai trò/quyền/tài khoản | Chưa có UI quản trị | RBAC schema/routines và assignment nội bộ cho bootstrap đã có | Guarded MariaDB RBAC nằm trong wrapper | **Nền tảng verified hẹp; UI quản trị planned** |
@@ -89,7 +92,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 
 ## Module Nhân viên (snapshot 2026-08-21)
 
-Phạm vi đã triển khai trên branch `feature/quanly-nhan-vien`: list/filter/pagination, create, detail, update hồ sơ/địa chỉ/avatar, delete-or-terminate, reset password, custom authentication và năm Gate nhân viên. Route khóa mã `NV###`; request/service/repository không nhận role, mã, hash hoặc ngày nghỉ từ client. Target phải giữ exact role `NHAN_VIEN_MAC_DINH`; actor tự nhắm mình hoặc target non-baseline bị chặn trước mutation, và procedure lặp lại guard sau row lock để đóng race.
+Phạm vi đã tích hợp vào `main` từ branch historical `feature/quanly-nhan-vien`: list/filter/pagination, create, detail, update hồ sơ/địa chỉ/avatar, delete-or-terminate, reset password, custom authentication và năm Gate nhân viên. Route khóa mã `NV###`; request/service/repository không nhận role, mã, hash hoặc ngày nghỉ từ client. Target phải giữ exact role `NHAN_VIEN_MAC_DINH`; actor tự nhắm mình hoặc target non-baseline bị chặn trước mutation, và procedure lặp lại guard sau row lock để đóng race.
 
 ### Rollout và authorization
 
@@ -127,11 +130,14 @@ Không có route `/`. Route home hiện được khai báo bên trong prefix `ad
 
 ## Data contract đang lệch
 
-Code còn gọi ba procedure ngoài module nhân viên không có trong canonical dump:
+Code còn gọi hai procedure ngoài module nhân viên không có trong canonical dump:
 
 1. `sp_phong_ban_chi_tiet`
-2. `sp_cham_cong_chi_tiet_phan_trang`
-3. `sp_luong_tim_kiem_phan_trang`
+2. `sp_luong_tim_kiem_phan_trang`
+
+`ChamCongController@index` dùng Query Builder trên cột canonical vì
+`sp_cham_cong_chi_tiet_phan_trang` không tồn tại; không ghi procedure này vào
+backlog missing caller.
 
 Ngoài ra:
 
@@ -153,9 +159,9 @@ Không merge/rebase/cherry-pick tự động. Xem [ADR-001](decisions/ADR-001-ad
 
 ## Điều chưa được xác minh
 
-- Historical canonical dump replay đã chạy trên disposable schema qua `CanonicalDumpReplayTest`; local rollout hiện tại được ghi riêng ở phần Current local integration và không phải production acceptance.
+- Historical canonical dump replay đã chạy trên disposable schema qua `CanonicalDumpReplayTest`; rollout local hiện tại được ghi riêng ở phần Current integrated module và không phải production acceptance.
 - Không chạy mutation CRUD trên production/live cần giữ dữ liệu; local demo rollout có backup/preflight và synthetic scope, employee mutation tests vẫn chạy trong disposable schema do guard tạo và đã cleanup.
-- Guarded full employee wrapper đã pass hẹp: `165 tests, 3367 assertions, 1 platform skip`, cleanup schema/state/lock/run/upload/listener/PHP/link `0`.
+- Guarded full employee wrapper historical đã pass `165 tests, 3367 assertions, 1 platform skip`; rerun sau tích hợp timeout khoảng 184 giây và cleanup schema/state/marker/process sạch, nên current MariaDB gate là unverified.
 - Browser matrix chức năng/RBAC/responsive đã có; avatar upload/replacement còn blocked và separate simultaneous context không được browser-verified đầy đủ.
 - Không dùng local demo rollout hoặc response 200 trên danh sách rỗng để chứng minh production logic; cần rollout evidence/approval riêng cho môi trường thật.
 - Chưa xác minh tương thích MySQL 8; runtime hiện tại chỉ là MariaDB 10.4.32.

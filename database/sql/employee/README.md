@@ -125,28 +125,31 @@ Sau `006`, seed demo là tùy chọn:
 - `demo/2026_08_21_001_demo_seed.sql` tạo dữ liệu synthetic khoảng 5 nhân viên, 5 địa chỉ, 5 phòng ban/chức vụ, role `DEMO_QUAN_TRI_NHAN_VIEN` và đúng 5 quyền employee; email dùng `example.test`, phone/CCCD deterministic. Seed có guard target/schema/routine, transaction rollback và rerun idempotent. Hồ sơ/địa chỉ và mapping dùng các routine employee chính thức khi có contract phù hợp.
 - `demo/2026_08_21_002_demo_cleanup.sql` chỉ xóa đúng synthetic identities/masters/role của bộ trên rồi commit; không xóa quyền hệ thống và không giảm/reuse `bo_dem_ma_nhan_vien`. Rerun seed sẽ tạo lại dữ liệu với mã mới nếu counter đã tăng.
 
-Ví dụ chạy seed hoặc cleanup trên selected DB:
+Demo SQL **không được chạy bằng `SOURCE` trực tiếp**. Mỗi invocation phải dùng
+[invoke-demo.ps1](invoke-demo.ps1), helper này tạo `TEMPORARY TABLE
+employee_demo_guard` và token ngẫu nhiên trong cùng MariaDB connection trước khi
+`SOURCE` file. Seed/cleanup kiểm tra đúng một marker, token 64 ký tự và
+`DATABASE()` trước mọi transaction/mutation; thiếu hoặc sai marker sẽ fail-closed.
+Helper chỉ chấp nhận host local, database `quan_ly_nhan_su` và switch
+`-EnableLocalOnly`. Đây là đường local/disposable có chủ ý, không phải approval
+cho shared/production.
+
+Ví dụ dùng helper (đặt `MYSQL_PWD` trong process từ credential local, không ghi
+password thật vào shell history/repository):
 
 ```powershell
-$mysqlPwdWasPresent = Test-Path Env:MYSQL_PWD
-$mysqlPwdPrevious = $env:MYSQL_PWD
-function Invoke-EmployeeSql([string] $Path) {
-    & mariadb --abort-source-on-error --protocol=tcp --host=127.0.0.1 --port=3306 --user=root --database=quan_ly_nhan_su --execute="source $Path"
-    if ($LASTEXITCODE -ne 0) { throw "employee SQL failed: $Path" }
-}
+$env:DB_HOST = '127.0.0.1'
+$env:DB_PORT = '3306'
+$env:DB_DATABASE = 'quan_ly_nhan_su'
+$env:DB_USERNAME = '<tai-khoan-local>'
+$env:MYSQL_PWD = '<mat-khau-local>'
 try {
-    $env:MYSQL_PWD = '<local-password>'
-    Invoke-EmployeeSql 'database/sql/employee/demo/2026_08_21_001_demo_seed.sql'
-    # Khi cần dọn bộ synthetic:
-    # Invoke-EmployeeSql 'database/sql/employee/demo/2026_08_21_002_demo_cleanup.sql'
+    pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action seed -EnableLocalOnly
+    # Khi cần dọn đúng bộ synthetic:
+    # pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableLocalOnly
 }
 finally {
-    if ($mysqlPwdWasPresent) {
-        $env:MYSQL_PWD = $mysqlPwdPrevious
-    }
-    else {
-        Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
-    }
+    Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
 }
 ```
 
@@ -156,10 +159,11 @@ Sau seed, kiểm tra read-only: đúng 5 employee và 5 address, có cả `DANG_
 
 ## Evidence cập nhật Task 20 (2026-08-21)
 
-Full guarded wrapper đã chạy qua `tests/Support/invoke-employee-mariadb-tests.ps1
+Full guarded wrapper của Task 20 (historical, trước tích hợp/chỉnh sửa hiện tại)
+đã chạy qua `tests/Support/invoke-employee-mariadb-tests.ps1
 -EnableDisposableMariaDb`: `165 tests, 3367 assertions, 1 platform skip, exit 0`.
-Skip duy nhất do Windows từ chối tạo disposable state symlink; không phải skip
-procedure nghiệp vụ.
+Vòng rerun sau tích hợp đã timeout khoảng 184 giây; process, marker,
+acceptance state và guarded schema được cleanup, nên không claim rerun này pass.
 Các scripts `001`–`006` và canonical dump được replay trong database
 disposable; schema cleanup sau run là `0`. Acceptance/browser harness cũng chỉ
 dùng target guarded, state và upload prefix theo run; official Stop đã dọn

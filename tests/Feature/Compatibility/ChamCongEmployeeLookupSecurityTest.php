@@ -26,6 +26,55 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         DB::table('phong_ban')->insert(['ma_pb' => 2]);
     }
 
+    public function test_guest_cannot_read_or_update_attendance_api(): void
+    {
+        $this->getJson('/api/v1/cham-cong')->assertUnauthorized();
+        $this->putJson('/api/v1/cham-cong/1', [
+            'so_gio_lam' => 8,
+            'vao_muon' => false,
+            've_som' => false,
+        ])->assertUnauthorized();
+    }
+
+    public function test_zero_permission_actor_cannot_read_or_update_attendance_api(): void
+    {
+        $this->actingAsEmployeeWithPermissions([]);
+
+        $this->getJson('/api/v1/cham-cong')->assertForbidden();
+        $this->putJson('/api/v1/cham-cong/1', [
+            'so_gio_lam' => 8,
+            'vao_muon' => false,
+            've_som' => false,
+        ])->assertForbidden();
+    }
+
+    public function test_xem_only_actor_cannot_update_attendance_api(): void
+    {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+
+        $this->putJson('/api/v1/cham-cong/1', [
+            'so_gio_lam' => 8,
+            'vao_muon' => false,
+            've_som' => false,
+        ])->assertForbidden();
+    }
+
+    public function test_rollout_disabled_precedes_attendance_permissions(): void
+    {
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\NhanVienPermission::Sua,
+        ]);
+        config()->set('nhanvien.enabled', false);
+
+        $this->getJson('/api/v1/cham-cong')->assertNotFound();
+        $this->putJson('/api/v1/cham-cong/1', [
+            'so_gio_lam' => 8,
+            'vao_muon' => false,
+            've_som' => false,
+        ])->assertNotFound();
+    }
+
     public function test_enabled_lookup_maps_filters_and_preserves_attendance_aggregates(): void
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
@@ -138,6 +187,8 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_uses_query_builder_pagination_and_summary(): void
     {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
         });
@@ -193,6 +244,8 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_query_failure_returns_stable_error_without_sql(): void
     {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
         });
@@ -217,6 +270,8 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_invalid_filter_keeps_laravel_validation_contract(): void
     {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
         });
@@ -225,5 +280,44 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         $this->getJson('/api/v1/cham-cong?ma_nv=NV001&thang=13&nam=2026')
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['thang']);
+    }
+
+    public function test_authorized_update_reaches_controller_and_hides_database_error(): void
+    {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
+
+        Schema::create('cham_cong', function (Blueprint $table): void {
+            $table->increments('ma_cc');
+            $table->string('ma_nv', 5);
+            $table->date('ngay_lam');
+            $table->decimal('so_gio_lam', 5, 2);
+            $table->boolean('vao_muon');
+            $table->boolean('ve_som');
+        });
+        DB::table('cham_cong')->insert([
+            'ma_nv' => 'NV001',
+            'ngay_lam' => '2026-08-01',
+            'so_gio_lam' => 8,
+            'vao_muon' => 0,
+            've_som' => 0,
+        ]);
+
+        $response = $this->putJson('/api/v1/cham-cong/1', [
+            'so_gio_lam' => 7.5,
+            'vao_muon' => true,
+            've_som' => false,
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertExactJson([
+                'success' => false,
+                'message' => 'Không thể cập nhật chấm công.',
+            ]);
+
+        $body = $response->getContent();
+        $this->assertStringNotContainsString('SQLSTATE', $body);
+        $this->assertStringNotContainsString('CALL', $body);
+        $this->assertStringNotContainsString('cham_cong', $body);
     }
 }

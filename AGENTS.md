@@ -9,7 +9,7 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
 - Đồ án: website quản lý nhân sự cho hai môn Web Application và UI/UX.
 - Stack: Laravel 12, PHP 8.2+, Blade, JavaScript, Vite 7, Tailwind CSS 4, Bootstrap, MariaDB/MySQL.
 - Schema nghiệp vụ hiện nằm trong `quan_ly_nhan_su.session.sql`.
-- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban còn lỗi. Module nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp local vào `main`; xem handoff/guide để biết các SHA và giới hạn browser avatar.
+- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban còn lỗi. Module nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`; xem handoff/guide để biết các SHA và giới hạn browser avatar.
 - Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
 ## Thứ tự đọc
@@ -65,7 +65,7 @@ Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa đ�
 - Runtime audit là MariaDB 10.4.32; chưa mặc định tuyên bố tương thích MySQL 8.
 - Migrations chỉ là hạ tầng Laravel và chưa tạo bảng nghiệp vụ.
 - Trước khi gọi procedure, kiểm tra tên, số tham số, thứ tự và result shape trong dump/live schema.
-- Ba procedure ngoài module nhân viên code đang gọi hiện không tồn tại: `sp_phong_ban_chi_tiet`, `sp_cham_cong_chi_tiet_phan_trang`, `sp_luong_tim_kiem_phan_trang`; không tự tạo bằng phỏng đoán.
+- Hai procedure ngoài module nhân viên code đang gọi hiện không tồn tại: `sp_phong_ban_chi_tiet` và `sp_luong_tim_kiem_phan_trang`; không tự tạo bằng phỏng đoán. Chấm công chi tiết hiện dùng Query Builder trên cột canonical và không gọi `sp_cham_cong_chi_tiet_phan_trang`.
 - Chốt cùng timezone cho Laravel và DB trước các logic dùng `now()`/`CURDATE()`.
 - Chỉ test mutation trên database test/disposable.
 - Không dùng procedure backup/restore/import/export hiện tại từ web.
@@ -105,7 +105,7 @@ git diff --check
 git status --short
 ```
 
-Baseline Task 20 ngày 2026-08-21 trên branch nhân viên: 49 route, frontend `15/15`, build 16 modules, Unit `95/633`, scoped Feature employee/auth/compatibility `107/1093`, full Laravel `221 pass, 1 fail, 1772 assertions` do baseline `/` 404, guarded MariaDB `165/3367` với 1 platform skip và cleanup `0`. `phpunit.xml` dùng SQLite in-memory nên full suite xanh cũng không chứng minh procedure MariaDB. Nếu HEAD/baseline đổi, cập nhật `docs/PROJECT_STATUS.md`; không che lỗi cũ bằng cách xóa assertion.
+Evidence current trên main ngày 2026-08-21: 49 route, frontend `15/15`, build 16 modules, scoped employee/auth `119 tests/1141 assertions`, attendance compatibility `12 tests/55 assertions`, full Laravel `230 pass, 1 fail, 1809 assertions` do baseline `/` 404. Trước vòng authorization/guard, full baseline là `224/1789`; không cộng số cũ thay cho current run. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây và đã cleanup sạch, không claim pass; `165/3367` chỉ là historical Task 20. `phpunit.xml` dùng SQLite in-memory nên full suite xanh cũng không chứng minh procedure MariaDB. Nếu HEAD/baseline đổi, cập nhật `docs/PROJECT_STATUS.md`; không che lỗi cũ bằng cách xóa assertion.
 
 ## Giao tiếp
 

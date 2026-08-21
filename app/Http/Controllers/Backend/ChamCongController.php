@@ -6,9 +6,7 @@ use App\Contracts\NhanVienServiceContract;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -403,49 +401,6 @@ class ChamCongController extends Controller
                 'message' => 'Không thể cập nhật chấm công.',
             ], 500);
         }
-    }
-
-    /**
-     * =========================================================
-     * CREATE PAGINATOR TỪ RESULT STORED PROCEDURE
-     * =========================================================
-     *
-     * Stored procedure phải trả:
-     *
-     * total_count
-     */
-    private function makePaginator(
-        Collection $rows,
-        int $page,
-        int $perPage
-    ): LengthAwarePaginator {
-        $total = (int) (
-            $rows->first()->total_count ?? 0
-        );
-
-        $items = $rows
-            ->map(function ($row) {
-                unset(
-                    $row->total_count
-                );
-
-                return $row;
-            })
-            ->values();
-
-        return new LengthAwarePaginator(
-            $items,
-            $total,
-            $perPage,
-            $page,
-            [
-                'path' => LengthAwarePaginator::resolveCurrentPath(),
-
-                'query' => request()->query(),
-
-                'pageName' => 'page',
-            ]
-        );
     }
 
     /**

@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-08-21 (Asia/Saigon)
 >
-> Branch: `main` (local integration; not pushed by this task)
+> Branch: `main`; module employee đã tích hợp, luôn revalidate HEAD/upstream trước phiên mới
 >
 > Base HEAD/upstream trước Tasks 13–20: `723dac63983d04364c6f146662aec7bd5eb6d87a`
 >
@@ -12,7 +12,7 @@
 >
 > Delivery checkpoint: sau lần push đầu, local HEAD, tracking upstream và remote ref cùng ở `7bedcadf`. Commit ghi trạng thái delivery này nằm sau checkpoint; luôn chạy lại Git status/HEAD/upstream sau khi đồng bộ.
 
-> Current integration: local `main` fast-forwarded to `origin/main` `1677f202f70e020ce75ef0fa88b11b9db44fa047`, then merged `feature/quanly-nhan-vien` at `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f` with parents `1677f202f70e020ce75ef0fa88b11b9db44fa047` and `91bb7a106e6a4fae8a61c4eb383dad596bf2b199`. Local demo seed commit is `91bb7a1`; focused merged-attendance tests are `9cd2c30`. Root must review and push separately.
+> Integration evidence: `main` fast-forwarded to `origin/main` `1677f202f70e020ce75ef0fa88b11b9db44fa047`, then merged `feature/quanly-nhan-vien` at `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f` with parents `1677f202f70e020ce75ef0fa88b11b9db44fa047` and `91bb7a106e6a4fae8a61c4eb383dad596bf2b199`. Demo seed commit là `91bb7a1`; focused merged-attendance tests là `9cd2c30`. Revalidate remote state rather than relying on this snapshot.
 
 > Local rollout evidence (environment-specific, 2026-08-21): `quan_ly_nhan_su` was intentionally updated through the approved local rollout and demo seed. Verified local shape is 16 tables, 1 view, 8 functions, 10 triggers, 69 procedures; demo state is 5 employees/5 addresses, admin role 5 employee permissions, four normal identities zero employee permissions. Backup is ignored/outside Git. This is not production evidence.
 
@@ -29,7 +29,7 @@ Code, route, test và database đang được kiểm tra có ưu tiên cao hơn 
 
 ## Trạng thái module Nhân viên
 
-Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên feature branch**; sau đó code đã được tích hợp local vào `main`, chưa phải production-ready:
+Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên feature branch**; code hiện đã tích hợp vào `main`, chưa phải production-ready:
 
 - danh sách có filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar, xóa cứng hoặc chuyển nghỉ việc theo dependency, và reset mật khẩu;
 - custom employee auth provider, login/logout, session từ chối nhân viên `DA_NGHI`;
@@ -40,13 +40,13 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
 
 ## Bằng chứng mới nhất
 
-- Full guarded MariaDB wrapper: `165 tests, 3367 assertions, 1 platform skip, exit 0`; schema/state/lock/run/upload/listener/PHP/`public/storage` cleanup `0` và giữ nguyên `storage/app/public`.
-- Unit: `95 tests, 633 assertions`; scoped Feature employee/auth/compatibility: `107 tests, 1093 assertions`.
+- Full guarded MariaDB wrapper historical: `165 tests, 3367 assertions, 1 platform skip, exit 0`; rerun sau tích hợp timeout khoảng 184 giây, process/schema/state/marker cleanup sạch, không claim current pass.
+- Scoped employee/auth hiện tại: `119 tests, 1141 assertions`; attendance compatibility: `12 pass, 55 assertions`.
 - Frontend: `15/15`; Vite 7.3.6 build pass với 16 modules.
-- Full Laravel: `221 pass, 1 fail, 1772 assertions`; failure duy nhất là baseline `Tests\Feature\ExampleTest` kỳ vọng `GET /` 200 trong khi ứng dụng trả 404.
+- Full Laravel current: `230 pass, 1 fail, 1809 assertions`; failure duy nhất là baseline `Tests\Feature\ExampleTest` kỳ vọng `GET /` 200 trong khi ứng dụng trả 404. Trước vòng authorization/guard là `224/1789`.
 - Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `49` và `git diff --check` pass trong các gate tương ứng.
 - Task 19 process-identity/atomic-state regressions đều nằm trong full wrapper sạch; skip duy nhất là Windows từ chối tạo disposable state symlink.
-- Independent final review: **Spec PASS / Quality APPROVE**, không còn finding Critical/Important.
+- Independent review của checkpoint trước đã được supersede bởi vòng authorization/guard này; kiểm tra mới phải dựa trên HEAD hiện tại.
 
 `phpunit.xml` dùng SQLite in-memory; chỉ wrapper guarded MariaDB chứng minh stored procedure trên MariaDB 10.4.32. Local rollout/seed ở trên là bằng chứng environment-specific riêng; chưa claim production hoặc MySQL 8.
 
@@ -79,9 +79,8 @@ Official `Stop` đã dọn sạch fixture: guarded schema, state/lock/probe/run/
 1. Bật quyền file URL cho Chrome extension rồi chạy riêng avatar upload/replacement acceptance nếu cần đóng khoảng trống browser.
 2. Chốt route `/`/landing để sửa baseline `ExampleTest` 404 trong một task riêng.
 3. Lập quy trình rollout/master-data/backup trước khi dùng database thật.
-4. Root review merge/docs commits và push khi nhóm duyệt; task này không push.
-5. Chạy lại browser avatar upload khi Chrome file URL access được cấp; các module phòng ban/lương/chấm công/nghỉ phép vẫn có blocker riêng.
-6. Không suy rộng trạng thái Nhân viên sang toàn dự án.
+4. Chạy lại browser avatar upload khi Chrome file URL access được cấp; các module phòng ban/lương/chấm công/nghỉ phép vẫn có blocker riêng.
+5. Không suy rộng trạng thái Nhân viên sang toàn dự án.
 
 ## Checklist tiếp tục
 

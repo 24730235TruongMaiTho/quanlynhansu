@@ -1,8 +1,43 @@
 -- Optional synthetic demo seed for the employee module.
--- Target is deliberately fixed and the caller owns the selected database.
+-- Target is deliberately limited to quan_ly_nhan_su or a DisposableMariaDbGuard
+-- name; the caller owns the selected database and must use the guarded helper.
 -- This script stores only a Laravel-compatible bcrypt hash; it never stores plaintext.
+-- Direct SOURCE is intentionally rejected unless the same MariaDB session first
+-- creates employee_demo_guard and sets @employee_demo_guard_token.
 
 DELIMITER //
+
+BEGIN NOT ATOMIC
+    DECLARE v_guard_count INT DEFAULT 0;
+
+    IF DATABASE() IS NULL OR (
+        BINARY DATABASE() <> BINARY 'quan_ly_nhan_su'
+        AND BINARY DATABASE() NOT REGEXP BINARY '^quan_ly_nhan_su_employee_test_[a-f0-9]+$'
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_SEED_TARGET_INVALID';
+    END IF;
+
+    IF @employee_demo_guard_token IS NULL
+       OR CHAR_LENGTH(@employee_demo_guard_token) <> 64
+       OR BINARY @employee_demo_guard_token NOT REGEXP BINARY '^[a-f0-9]{64}$' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_SEED_GUARD_TOKEN_INVALID';
+    END IF;
+
+    SELECT COUNT(*) INTO v_guard_count
+    FROM employee_demo_guard;
+    IF v_guard_count <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_SEED_GUARD_MARKER_INVALID';
+    END IF;
+
+    SELECT COUNT(*) INTO v_guard_count
+    FROM employee_demo_guard
+    WHERE marker_id = 1
+      AND BINARY token = BINARY @employee_demo_guard_token
+      AND BINARY database_name = BINARY DATABASE();
+    IF v_guard_count <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_SEED_GUARD_MARKER_INVALID';
+    END IF;
+END//
 
 BEGIN NOT ATOMIC
     DECLARE v_count INT DEFAULT 0;
@@ -38,7 +73,10 @@ BEGIN NOT ATOMIC
         RESIGNAL;
     END;
 
-    IF DATABASE() IS NULL OR BINARY DATABASE() <> BINARY 'quan_ly_nhan_su' THEN
+    IF DATABASE() IS NULL OR (
+        BINARY DATABASE() <> BINARY 'quan_ly_nhan_su'
+        AND BINARY DATABASE() NOT REGEXP BINARY '^quan_ly_nhan_su_employee_test_[a-f0-9]+$'
+    ) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_SEED_TARGET_INVALID';
     END IF;
 
@@ -259,7 +297,7 @@ BEGIN NOT ATOMIC
     SELECT ma_cv INTO v_cv_5 FROM chuc_vu WHERE BINARY ten_cv = BINARY '[DEMO-2026-08-21] Dieu phoi';
 
     IF EXISTS (
-        SELECT email FROM nhan_vien
+        SELECT 1 FROM nhan_vien
         WHERE LOWER(TRIM(email)) IN (
             'demo.admin@employee.example.test', 'demo.a@employee.example.test',
             'demo.b@employee.example.test', 'demo.c@employee.example.test',

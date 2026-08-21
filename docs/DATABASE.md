@@ -2,9 +2,9 @@
 
 > Snapshot kiểm tra: 2026-08-21
 >
-> Runtime tham chiếu: MariaDB 10.4.32, schema `quan_ly_nhan_su` (local rollout đã được kiểm chứng environment-specific; guarded disposable integration employee đã pass hẹp)
+> Runtime tham chiếu: MariaDB 10.4.32, schema `quan_ly_nhan_su` (rollout đã được kiểm chứng environment-specific; guarded disposable integration Task 20 là historical, rerun sau tích hợp timeout khoảng 184 giây và cleanup sạch)
 >
-> Thao tác lịch sử Task 20: đối chiếu caller/SQL/test, hoàn tất acceptance disposable và cleanup. Current local rollout/demo được ghi ở mục dưới; không dùng làm production acceptance.
+> Thao tác lịch sử Task 20: đối chiếu caller/SQL/test, hoàn tất acceptance disposable và cleanup. Current rollout/demo được ghi ở mục dưới; không dùng làm production acceptance.
 
 ## Nguồn schema
 
@@ -18,7 +18,7 @@
 | Trigger | 10 |
 | Stored procedure | 69 |
 
-## Current local rollout (environment-specific, 2026-08-21)
+## Current rollout (environment-specific, 2026-08-21)
 
 Local `quan_ly_nhan_su` đã được cập nhật có chủ đích qua approved rollout và
 demo synthetic. Postcheck ghi nhận 16 bảng, 1 view, 8 function, 10 trigger,
@@ -90,7 +90,6 @@ Snapshot caller hiện có 27 tên procedure trong lệnh `CALL` của PHP; bả
 | `sp_phong_ban_xoa` | `ma_pb` | Có | Write, không result set |
 | `sp_phong_ban_chi_tiet` | `ma_pb` | **Thiếu** | Caller kỳ vọng một row phòng ban |
 | `sp_cham_cong_nhan_vien_phan_trang` | filter + page/per-page + `OUT total` | Có; read routines 002 và dump canonical | Aggregate nhân viên an toàn + tổng số |
-| `sp_cham_cong_chi_tiet_phan_trang` | `ma_nv, nam, thang, page, per_page` | **Thiếu** | Mỗi row phải có `total_count` |
 | `sp_cham_cong_cap_nhat` | `ma_cc, ma_nv, ngay_lam, so_gio_lam, vao_muon, ve_som` | Có | Write; caller đọc lại table |
 | `sp_luong_tim_kiem_phan_trang` | `ma_nv, ky_luong, ma_pb, ma_cv, page, per_page` | **Thiếu** | Mỗi row phải có `total_count` |
 | `sp_nhan_vien_them` | 16 tham số theo SQL | Có; caller truyền 16 | Write, không result set |
@@ -103,7 +102,7 @@ Snapshot caller hiện có 27 tên procedure trong lệnh `CALL` của PHP; bả
 | `sp_trang_thai_lam_viec_danh_sach` | Không | Có | Row `ma_tt`, `ky_hieu`, `ten_tt` |
 | `sp_nghi_phep_duyet_phep` | `ma_np, ma_nv, trang_thai_duyet` | Có | Write, không result set |
 
-Result shape của ba procedure còn thiếu mới chỉ là kỳ vọng suy ra từ caller, chưa phải hợp đồng đã được nhóm chấp thuận. Trước khi bổ sung SQL, cần viết fixture/test khóa tên cột, kiểu dữ liệu, pagination và error behavior.
+Result shape của hai procedure còn thiếu mới chỉ là kỳ vọng suy ra từ caller, chưa phải hợp đồng đã được nhóm chấp thuận. Chấm công chi tiết đã có Query Builder contract; trước khi bổ sung SQL cho procedure còn lại, cần viết fixture/test khóa tên cột, kiểu dữ liệu, pagination và error behavior.
 
 ## Setup local an toàn
 
@@ -197,7 +196,6 @@ SELECT expected.procedure_name AS missing_procedure
 FROM (
     SELECT 'sp_phong_ban_chi_tiet' AS procedure_name
     UNION ALL SELECT 'sp_cham_cong_nhan_vien_phan_trang'
-    UNION ALL SELECT 'sp_cham_cong_chi_tiet_phan_trang'
     UNION ALL SELECT 'sp_luong_tim_kiem_phan_trang'
 ) AS expected
 LEFT JOIN information_schema.ROUTINES AS actual
@@ -211,12 +209,11 @@ WHERE actual.ROUTINE_NAME IS NULL;
 
 ## Lệch hợp đồng code ↔ database
 
-Code còn gọi ba procedure không tồn tại trong canonical dump:
+Code còn gọi hai procedure không tồn tại trong canonical dump:
 
 | Procedure thiếu | Caller chính | Hậu quả |
 | --- | --- | --- |
 | `sp_phong_ban_chi_tiet` | `PhongBanController@edit` | Không tải được bản ghi sửa |
-| `sp_cham_cong_chi_tiet_phan_trang` | `ChamCongController@index` | Chi tiết chấm công lỗi |
 | `sp_luong_tim_kiem_phan_trang` | `LuongRepository@all` | API danh sách lương trả lỗi |
 
 `sp_phong_ban_sua(ma_pb, ten_pb)` có hai tham số nhưng controller hiện gọi `CALL sp_phong_ban_sua(?)` rồi truyền hai binding.
@@ -260,10 +257,12 @@ Task 13 tiếp tục bằng `2026_08_12_005_lifecycle_auth_routines.sql`: hard-d
 
 Scripts `001`–`006`, canonical `quan_ly_nhan_su.session.sql`, repository và
 caller tests hiện được kiểm chứng hẹp bằng full guarded wrapper:
-`165 tests, 3367 assertions, 1 platform skip, exit 0`. Skip duy nhất do Windows
-từ chối tạo disposable state symlink, không phải procedure nghiệp vụ. Compatibility extractor đã
-được đồng bộ với routine canonical phân trang; không bỏ qua assertion và không
-đổi schema live để làm xanh test. Các routine employee tiếp tục giữ contract
+Historical Task 20 wrapper đạt `165 tests, 3367 assertions, 1 platform skip,
+exit 0`. Rerun sau tích hợp timeout khoảng 184 giây; process/schema/state/marker
+cleanup sạch và không claim rerun pass. Compatibility extractor đã
+được đồng bộ với routine canonical phân trang; chấm công chi tiết hiện dùng
+Query Builder vì routine phân trang chi tiết không tồn tại. Không bỏ qua assertion
+và không đổi schema live để làm xanh test. Các routine employee tiếp tục giữ contract
 caller-owned transaction, procedure result shape không chứa `mat_khau`, auth
 lookup/hash chỉ ở server boundary, và role/permission mutation chỉ qua guarded
 flow.
@@ -281,7 +280,7 @@ runtime đã kiểm chứng; MySQL 8 chưa được claim.
 
 1. Chốt DBMS production: hiện chỉ MariaDB 10.4.32 được kiểm chứng; MySQL 8 chưa có bằng chứng.
 2. Thiết kế quy trình rollout/backup/restore không dùng canonical dump phá hủy trên database cần giữ dữ liệu.
-3. Version ba procedure còn thiếu ngoài module nhân viên hoặc thay caller: `sp_phong_ban_chi_tiet`, `sp_cham_cong_chi_tiet_phan_trang`, `sp_luong_tim_kiem_phan_trang`.
+3. Version hai procedure còn thiếu ngoài module nhân viên hoặc thay caller: `sp_phong_ban_chi_tiet`, `sp_luong_tim_kiem_phan_trang`. Chấm công chi tiết đã có caller Query Builder được test contract.
 4. Tạo business seeders/master-data tối thiểu cho môi trường triển khai.
 
 ### P1
@@ -292,6 +291,6 @@ runtime đã kiểm chứng; MySQL 8 chưa được claim.
 
 ## Giới hạn của snapshot
 
-- Canonical dump và scripts employee đã clean-replay/mutation-test trên schema disposable; local `quan_ly_nhan_su` hiện có rollout/demo synthetic được ghi ở mục Current local rollout, không phải production acceptance.
+- Canonical dump và scripts employee đã clean-replay/mutation-test trên schema disposable; database `quan_ly_nhan_su` hiện có rollout/demo synthetic được ghi ở mục Current rollout, không phải production acceptance.
 - Chưa checksum thân routine giữa live DB và dump; không dùng live DB làm nguồn acceptance.
 - Chưa xác minh MySQL 8.

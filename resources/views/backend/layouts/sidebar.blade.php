@@ -21,7 +21,8 @@
                     <span class="nav-title">Bảng điều khiển</span>
                 </a>
             </li>
-            @if (config('nhanvien.enabled') === true)
+            @can('NHAN_VIEN_XEM')
+                @if (config('nhanvien.enabled') === true)
                 <!-- Nhân sự -->
                 <li class="nav-item">
                     <a href="#" class="nav-link" data-toggle="submenu">
@@ -31,14 +32,15 @@
                     </a>
                     <ul class="sub-menu">
                         <li class="nav-item">
-                        <a href="{{ route('backend.nhanvien.index') }}" class="nav-link">
-                            <i class="bi bi-person-lines-fill"></i>
-                            <span class="nav-title">Danh sách nhân viên</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-            @endif
+                            <a href="{{ route('backend.nhanvien.index') }}" class="nav-link">
+                                <i class="bi bi-person-lines-fill"></i>
+                                <span class="nav-title">Danh sách nhân viên</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                @endif
+            @endcan
             <!-- Chấm công -->
             <li class="nav-item">
                 <a href="{{ route('backend.backend.chamcong.index') }}" class="nav-link">

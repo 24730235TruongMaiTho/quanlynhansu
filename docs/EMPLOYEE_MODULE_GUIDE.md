@@ -5,7 +5,7 @@
 
 ## 1. Đối tượng, trạng thái và thứ tự đọc
 
-Tài liệu này dành cho thành viên nhóm và AI agent tiếp tục module Nhân viên trên Laravel hiện tại. Module đã **verified hẹp** trên branch tích hợp local main: list/filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar, xóa hoặc chuyển nghỉ việc, reset mật khẩu, đăng nhập/session và RBAC năm quyền đã có test tự động; browser avatar upload vẫn blocked/unverified. Đây không phải claim production-ready, không phải approval rollout database thật và không claim tương thích MySQL 8.
+Tài liệu này dành cho thành viên nhóm và AI agent tiếp tục module Nhân viên trên Laravel hiện tại. Module đã **verified hẹp** trong main qua merge `aa77419`: list/filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar, xóa hoặc chuyển nghỉ việc, reset mật khẩu, đăng nhập/session và RBAC năm quyền đã có test tự động; browser avatar upload vẫn blocked/unverified. Đây không phải claim production-ready, không phải approval rollout database thật và không claim tương thích MySQL 8. Khi bắt đầu task mới, revalidate HEAD, upstream, route, test và build thay vì tin snapshot commit.
 
 Đọc theo thứ tự trước khi sửa:
 
@@ -99,10 +99,10 @@ Rollout flag NHAN_VIEN_MODULE_ENABLED phải bật trước; sau đó vẫn bắ
 | --- | --- | --- |
 | Database mới, disposable/local trống | quan_ly_nhan_su.session.sql | Canonical dump có DROP DATABASE IF EXISTS; chỉ dùng khi dữ liệu có thể bị xóa |
 | Database đã tồn tại cần giữ dữ liệu | database/sql/employee/2026_08_12_001_schema.sql → 002 → 003 → 004 → 005 → 006 | Backup đầy đủ bằng công cụ MariaDB/MySQL, preflight whitelist, approval và dừng ngay khi một file lỗi |
-| Muốn có dữ liệu demo synthetic | database/sql/employee/demo/2026_08_21_001_demo_seed.sql | Chỉ sau schema/routine đúng contract; target guard phải chấp nhận database local đã chọn |
-| Dọn bộ demo | database/sql/employee/demo/2026_08_21_002_demo_cleanup.sql | Chỉ xóa identity/master/role synthetic; không giảm hoặc tái sử dụng counter |
+| Muốn có dữ liệu demo synthetic | database/sql/employee/invoke-demo.ps1 -Action seed -EnableLocalOnly | Helper tạo temporary marker + token random trong cùng connection rồi mới SOURCE; chỉ local/disposable |
+| Dọn bộ demo | database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableLocalOnly | Helper tạo marker mới cho invocation; chỉ xóa identity/master/role synthetic, không giảm hoặc tái sử dụng counter |
 
-Không dùng canonical dump trên database cần giữ dữ liệu. Scripts 001–006 chạy trên database đã chọn và không tự DROP DATABASE, CREATE DATABASE hay USE; phải xác nhận target, version MariaDB, read-only state, row counts và backup trước DDL. Không chạy php artisan db:seed theo quán tính: seeder mặc định còn tham chiếu model User không phải identity của module.
+Không dùng canonical dump trên database cần giữ dữ liệu. Scripts 001–006 chạy trên database đã chọn và không tự DROP DATABASE, CREATE DATABASE hay USE; phải xác nhận target, version MariaDB, read-only state, row counts và backup trước DDL. Demo SQL không được SOURCE trực tiếp: seed/cleanup fail-closed nếu thiếu marker phiên `employee_demo_guard`, token random và database khớp. Không chạy php artisan db:seed theo quán tính: seeder mặc định còn tham chiếu model User không phải identity của module.
 
 ### Kết quả rollout local đã kiểm chứng
 
@@ -163,9 +163,17 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
     git diff --check
     git status --short
 
-Integration stored procedure phải dùng wrapper guarded và switch bắt buộc, không trỏ vào database live:
+Evidence hiện tại trên main: route inventory 49; scoped employee/auth
+`119 tests, 1141 assertions`; attendance compatibility `12 tests, 55
+assertions`; full Laravel `230 pass, 1 fail, 1809 assertions` với lỗi duy nhất
+`GET /` 404 trong `ExampleTest`. Trước vòng authorization/guard, baseline full
+suite là `224/1789`. Đây là kết quả SQLite/feature hiện tại; không thay thế
+MariaDB procedure gate.
+
+Integration stored procedure phải dùng wrapper guarded và switch bắt buộc, không trỏ vào database live. Demo local phải dùng `database/sql/employee/invoke-demo.ps1`; không copy lại lệnh `SOURCE` trực tiếp:
 
     pwsh -NoProfile -File tests/Support/invoke-employee-mariadb-tests.ps1 -EnableDisposableMariaDb
+    pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action seed -EnableLocalOnly
 
 Có thể thêm -Filter EmployeeReadProcedureTest|CanonicalDumpReplayTest cho vòng focused. Wrapper yêu cầu MARIADB_TEST_*, chỉ cho phép disposable target, khôi phục process environment và trả exit code test. phpunit.xml mặc định dùng SQLite in-memory nên suite Laravel xanh không chứng minh stored procedure, trigger hay MariaDB behavior; MariaDB wrapper mới là bằng chứng DB hẹp. Browser acceptance dùng tests/Support/employee-acceptance.ps1 với state disposable và luôn phải chạy action Stop; không báo browser pass nếu chưa chạy browser thật.
 

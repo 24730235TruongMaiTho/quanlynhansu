@@ -52,7 +52,23 @@ Route::middleware('api')
             ChamCongController::class
         )->only([
             'index',
+        ])->middleware([
+            'web',
+            'auth',
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Xem->value,
+        ]);
+
+        Route::apiResource(
+            'cham-cong',
+            ChamCongController::class
+        )->only([
             'update',
+        ])->middleware([
+            'web',
+            'auth',
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Sua->value,
         ]);
 
 

@@ -84,6 +84,30 @@ class NhanVienAuthorizationTest extends TestCase
         $this->getJson('/api/v1/cham-cong/nhan-vien')->assertNotFound();
     }
 
+    public function test_sidebar_requires_rollout_and_xem_but_keeps_attendance_visible(): void
+    {
+        $this->actingAsEmployeeWithPermissions([]);
+
+        $withoutXem = view('backend.layouts.sidebar')->render();
+
+        $this->assertStringNotContainsString('/admin/nhan-vien', $withoutXem);
+        $this->assertStringNotContainsString('Danh sách nhân viên', $withoutXem);
+        $this->assertStringContainsString(route('backend.backend.chamcong.index'), $withoutXem);
+
+        $this->actingAsEmployeeWithPermissions([NhanVienPermission::Xem]);
+        $withXem = view('backend.layouts.sidebar')->render();
+
+        $this->assertStringContainsString(route('backend.nhanvien.index'), $withXem);
+        $this->assertStringContainsString('Danh sách nhân viên', $withXem);
+        $this->assertStringContainsString(route('backend.backend.chamcong.index'), $withXem);
+
+        config()->set('nhanvien.enabled', false);
+        $disabled = view('backend.layouts.sidebar')->render();
+
+        $this->assertStringNotContainsString(route('backend.nhanvien.index'), $disabled);
+        $this->assertStringContainsString(route('backend.backend.chamcong.index'), $disabled);
+    }
+
     public function test_xem_only_actor_can_read_and_cannot_open_any_mutation(): void
     {
         $this->actingAsEmployeeWithPermissions([NhanVienPermission::Xem]);

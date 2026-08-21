@@ -9,6 +9,17 @@ Roadmap ưu tiên theo dependency và khả năng kiểm chứng, không theo s�
 - Tách UI render, API wiring và nghiệp vụ thật thành ba mức bằng chứng.
 - Không merge hai branch phân kỳ nếu chưa có plan/test cho xung đột.
 
+## Snapshot kiểm chứng hiện tại (2026-08-21)
+
+Module Nhân viên đã tích hợp vào `main` qua merge `aa77419`; hãy revalidate
+HEAD/upstream trước mỗi task. Current Laravel là `230 pass, 1 fail, 1809
+assertions` do baseline `/` 404; baseline trước vòng authorization/guard là
+`224/1789`; scoped employee/auth là `119/1141`,
+attendance compatibility là `12 pass/55 assertions`, frontend là `15/15`, build Vite 16
+modules và route inventory 49. Guarded MariaDB rerun sau tích hợp timeout khoảng
+184 giây rồi cleanup sạch, nên không claim DB gate pass. `165/3367` chỉ là
+historical Task 20 evidence.
+
 ## Milestone 0 — chốt baseline tích hợp
 
 Mục tiêu: tạo một nền `main` có setup lặp lại được và không còn mâu thuẫn tài liệu/runtime.
@@ -20,7 +31,7 @@ Mục tiêu: tạo một nền `main` có setup lặp lại được và không 
 - [ ] Chốt route home: `/`, `/admin` và landing mong muốn.
 - [ ] Chuẩn hóa web/API route names và validation/error status.
 - [ ] Sửa test mặc định theo contract đã chốt.
-- [x] Lập plan/ADR tích hợp shell từ branch `frontend`; chưa merge.
+- [x] Lập plan/ADR tích hợp shell từ branch `frontend`; shell chưa thuộc main.
 - [x] Thêm DB preflight/guarded harness cho employee schema/routines; module khác vẫn cần contract riêng.
 
 Điều kiện xong:
@@ -30,7 +41,7 @@ Mục tiêu: tạo một nền `main` có setup lặp lại được và không 
 
 ## Milestone 1 — khóa hợp đồng database
 
-- [ ] Bổ sung hoặc thay thế ba procedure còn thiếu: phòng ban chi tiết, chấm công chi tiết phân trang và lương tìm kiếm phân trang.
+- [ ] Bổ sung hoặc thay thế hai procedure còn thiếu: phòng ban chi tiết và lương tìm kiếm phân trang. Chấm công chi tiết đã dùng Query Builder theo contract đã test.
 - [ ] Sửa placeholder `sp_phong_ban_sua`.
 - [ ] Chuẩn hóa model table/key/timestamps.
 - [ ] Thống nhất kiểu `ma_nv`, ngày và hệ số giữa request/model/SQL/JSON.
@@ -93,7 +104,9 @@ Module này trở thành mẫu cho chức vụ và các danh mục.
 - [x] Automated test upload/replace/delete/ownership avatar; browser file chooser còn blocked.
 - [x] Test quyền và dữ liệu nhạy cảm.
 
-Milestone 5 là historical **verified hẹp và đã Git-deliver trên feature branch**; hiện đã tích hợp local vào `main`. Chưa đánh dấu production-ready vì browser avatar còn blocked và rollout database thật chưa được phê duyệt.
+Milestone 5 là historical **verified hẹp và đã Git-deliver trên feature branch**;
+hiện đã tích hợp vào `main`. Chưa đánh dấu production-ready vì browser avatar
+còn blocked và rollout database thật chưa được phê duyệt.
 
 ## Milestone 6 — lương, chấm công, nghỉ phép
 
@@ -109,7 +122,7 @@ Làm từng module độc lập:
 
 ### Chấm công
 
-- [ ] Bổ sung `sp_cham_cong_chi_tiet_phan_trang`; procedure aggregate nhân viên đã có trong employee read routines.
+- [x] Thay caller chấm công chi tiết bằng Query Builder trên cột canonical; không tạo `sp_cham_cong_chi_tiet_phan_trang` bằng phỏng đoán.
 - [ ] Chuẩn hóa `ngay_lam` và model.
 - [ ] Cập nhật record có concurrency/error handling.
 - [ ] Import/export thiết kế riêng; không bật button giả.

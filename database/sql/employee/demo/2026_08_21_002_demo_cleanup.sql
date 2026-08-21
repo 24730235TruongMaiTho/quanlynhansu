@@ -1,8 +1,42 @@
 -- Remove only the synthetic 2026-08-21 employee demo data.
 -- This is reversible by rerunning 2026_08_21_001_demo_seed.sql.
 -- It intentionally never decrements or reuses bo_dem_ma_nhan_vien.
+-- Direct SOURCE is intentionally rejected unless the same MariaDB session first
+-- creates employee_demo_guard and sets @employee_demo_guard_token.
 
 DELIMITER //
+
+BEGIN NOT ATOMIC
+    DECLARE v_guard_count INT DEFAULT 0;
+
+    IF DATABASE() IS NULL OR (
+        BINARY DATABASE() <> BINARY 'quan_ly_nhan_su'
+        AND BINARY DATABASE() NOT REGEXP BINARY '^quan_ly_nhan_su_employee_test_[a-f0-9]+$'
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_CLEANUP_TARGET_INVALID';
+    END IF;
+
+    IF @employee_demo_guard_token IS NULL
+       OR CHAR_LENGTH(@employee_demo_guard_token) <> 64
+       OR BINARY @employee_demo_guard_token NOT REGEXP BINARY '^[a-f0-9]{64}$' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_CLEANUP_GUARD_TOKEN_INVALID';
+    END IF;
+
+    SELECT COUNT(*) INTO v_guard_count
+    FROM employee_demo_guard;
+    IF v_guard_count <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_CLEANUP_GUARD_MARKER_INVALID';
+    END IF;
+
+    SELECT COUNT(*) INTO v_guard_count
+    FROM employee_demo_guard
+    WHERE marker_id = 1
+      AND BINARY token = BINARY @employee_demo_guard_token
+      AND BINARY database_name = BINARY DATABASE();
+    IF v_guard_count <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_CLEANUP_GUARD_MARKER_INVALID';
+    END IF;
+END//
 
 BEGIN NOT ATOMIC
     DECLARE v_count INT DEFAULT 0;
@@ -25,7 +59,10 @@ BEGIN NOT ATOMIC
         RESIGNAL;
     END;
 
-    IF DATABASE() IS NULL OR BINARY DATABASE() <> BINARY 'quan_ly_nhan_su' THEN
+    IF DATABASE() IS NULL OR (
+        BINARY DATABASE() <> BINARY 'quan_ly_nhan_su'
+        AND BINARY DATABASE() NOT REGEXP BINARY '^quan_ly_nhan_su_employee_test_[a-f0-9]+$'
+    ) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'DEMO_CLEANUP_TARGET_INVALID';
     END IF;
     IF (
@@ -53,7 +90,7 @@ BEGIN NOT ATOMIC
     START TRANSACTION;
 
     IF EXISTS (
-        SELECT email FROM nhan_vien
+        SELECT 1 FROM nhan_vien
         WHERE LOWER(TRIM(email)) IN (
             'demo.admin@employee.example.test', 'demo.a@employee.example.test',
             'demo.b@employee.example.test', 'demo.c@employee.example.test',
