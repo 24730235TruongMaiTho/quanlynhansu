@@ -68,20 +68,37 @@ khởi động server ở `http://127.0.0.1:8012` và trả JSON gồm `url`,
 `nhom3@{năm thao tác}`; không ghi credential thật vào repository.
 
 ```powershell
-$stateFile = 'storage/framework/testing/employee-acceptance.json'
+$runId = ([Guid]::NewGuid().ToString('N')).Substring(0, 12).ToLowerInvariant()
+$stateFile = "storage/framework/testing/employee-acceptance-$runId.json"
+if (Test-Path -LiteralPath $stateFile) {
+    throw "Generated acceptance StateFile already exists: $stateFile"
+}
+$stateOwned = $false
 $mysqlPwdWasPresent = Test-Path Env:MYSQL_PWD
 $mysqlPwdPrevious = if ($mysqlPwdWasPresent) { $env:MYSQL_PWD } else { $null }
 try {
-    $startOutput = pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 `
-        -Action Start -StateFile $stateFile -EnableDisposableMariaDb
-    if ($LASTEXITCODE -ne 0) { throw 'Acceptance Start failed.' }
-    $startOutput
+    try {
+        $startOutput = pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 `
+            -Action Start -StateFile $stateFile -EnableDisposableMariaDb
+        if ($LASTEXITCODE -ne 0) { throw 'Acceptance Start failed.' }
+        $stateOwned = $true
+        $startOutput
+    }
+    finally {
+        # Start can leave an owned state during a partial failure; the path was
+        # verified absent above, so only this invocation can own it.
+        if (-not $stateOwned -and (Test-Path -LiteralPath $stateFile)) {
+            $stateOwned = $true
+        }
+    }
     # Dùng URL/identity trong JSON và tạo thêm nhân viên qua UI/browser.
 }
 finally {
     try {
-        pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 `
-            -Action Stop -StateFile $stateFile -EnableDisposableMariaDb
+        if ($stateOwned -and (Test-Path -LiteralPath $stateFile)) {
+            pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 `
+                -Action Stop -StateFile $stateFile -EnableDisposableMariaDb
+        }
     }
     finally {
         if ($mysqlPwdWasPresent) {
@@ -94,9 +111,14 @@ finally {
 }
 ```
 
-Luôn chạy `Stop` trong `finally` hoặc thủ công với **đúng StateFile** kể cả khi
-browser bị lỗi. Acceptance Start/Stop là đường browser disposable; không dùng
-nó để suy ra production readiness.
+StateFile dùng suffix 12 hex nên mỗi invocation có namespace riêng; lệnh `Stop`
+chỉ chạy khi Start thành công hoặc invocation đã để lại đúng file state của nó,
+không thể dừng phiên người khác nếu Start bị từ chối vì state pre-existing.
+Nếu harness phải prompt `MARIADB_TEST_*` credential, nó snapshot/khôi phục các
+biến đó trong process harness; không đưa credential vào StateFile hoặc tài liệu.
+Luôn giữ cleanup trong `finally` hoặc chạy Stop thủ công với đúng StateFile sở
+hữu kể cả khi browser bị lỗi. Acceptance Start/Stop là đường browser disposable;
+không dùng nó để suy ra production readiness.
 
 Trong môi trường local đã được kiểm chứng, bộ seed hiện tạo các mã NV006–NV010: admin thường là NV006, bốn tài khoản còn lại là nhân viên thường. Các mã này **không ổn định** sau cleanup/reseed vì bộ đếm mã không giảm và không tái sử dụng mã cũ.
 

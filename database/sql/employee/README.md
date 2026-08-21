@@ -145,11 +145,21 @@ Ví dụ dùng helper trên target disposable đã có (đặt credential test t
 không ghi password thật vào shell history/repository):
 
 ```powershell
-$mysqlPwdWasPresent = Test-Path Env:MYSQL_PWD
-$mysqlPwdPrevious = if ($mysqlPwdWasPresent) { $env:MYSQL_PWD } else { $null }
+$demoEnvironmentNames = @(
+    'MARIADB_TEST_ENABLED', 'MARIADB_TEST_DATABASE', 'MARIADB_TEST_HOST',
+    'MARIADB_TEST_PORT', 'MARIADB_TEST_USERNAME', 'MARIADB_TEST_PASSWORD',
+    'MYSQL_PWD'
+)
+$demoEnvironmentSnapshot = @{}
+foreach ($name in $demoEnvironmentNames) {
+    $demoEnvironmentSnapshot[$name] = @{
+        Exists = Test-Path "Env:$name"
+        Value = [Environment]::GetEnvironmentVariable($name, 'Process')
+    }
+}
 try {
     $env:MARIADB_TEST_ENABLED = '1'
-    $env:MARIADB_TEST_DATABASE = 'quan_ly_nhan_su_employee_test_<hex>'
+    $env:MARIADB_TEST_DATABASE = 'quan_ly_nhan_su_employee_test_<hex>' # thay <hex> bằng DB đã provision
     $env:MARIADB_TEST_HOST = '127.0.0.1'
     $env:MARIADB_TEST_PORT = '3306'
     $env:MARIADB_TEST_USERNAME = '<tai-khoan-test>'
@@ -159,14 +169,21 @@ try {
     # pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableDisposableMariaDb
 }
 finally {
-    if ($mysqlPwdWasPresent) {
-        Set-Item -Path Env:MYSQL_PWD -Value $mysqlPwdPrevious
-    }
-    else {
-        Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
+    foreach ($name in $demoEnvironmentNames) {
+        $snapshot = $demoEnvironmentSnapshot[$name]
+        if ($snapshot.Exists) {
+            Set-Item -Path "Env:$name" -Value $snapshot.Value
+        }
+        else {
+            Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+        }
     }
 }
 ```
+
+`finally` khôi phục cả giá trị lẫn việc tồn tại của từng biến; credential test
+không bị để lại trong process caller. Helper cũng tự snapshot/restore
+`MYSQL_PWD` khi map `MARIADB_TEST_PASSWORD` cho MariaDB CLI.
 
 Tài khoản demo quản trị: `demo.admin@employee.example.test` / `nhom3@2026`. Đây là credential chỉ dành cho local/demo; phải đổi hoặc xóa trước khi chia sẻ, deploy hoặc đưa vào môi trường thật. Không ghi plaintext password vào database; seed chỉ chứa bcrypt tương thích Laravel.
 
