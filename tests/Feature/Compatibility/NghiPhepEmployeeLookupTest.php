@@ -20,13 +20,14 @@ class NghiPhepEmployeeLookupTest extends TestCase
             $mock->shouldNotReceive('paginateForAttendance');
         });
 
-        $this->getJson('/api/v1/nghi-phep/nhan-vien')->assertNotFound();
-        $this->getJson('/api/v1/cham-cong/nhan-vien')->assertNotFound();
+        $this->getJson('/api/v1/nghi-phep/nhan-vien')->assertUnauthorized();
+        $this->getJson('/api/v1/cham-cong/nhan-vien')->assertUnauthorized();
+        $this->get('/api/v1/nghi-phep/nhan-vien')->assertRedirect(route('login'));
     }
 
     public function test_enabled_lookup_maps_legacy_query_to_the_canonical_employee_service(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
 
         $paginator = new LengthAwarePaginator(
             collect([
@@ -99,7 +100,7 @@ class NghiPhepEmployeeLookupTest extends TestCase
 
     public function test_enabled_lookup_returns_a_stable_error_without_internal_details(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->andThrow(
                 new RuntimeException('SQLSTATE[42000] mat_khau secret'),
@@ -116,7 +117,7 @@ class NghiPhepEmployeeLookupTest extends TestCase
 
     public function test_legacy_employee_mutations_are_removed_with_stable_http_semantics(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
 
         $this->postJson('/api/v1/nghi-phep/nhan-vien')->assertMethodNotAllowed();
         $this->putJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();

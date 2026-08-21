@@ -32,6 +32,8 @@ class NhanVienStoreTest extends TestCase
 
     public function test_store_is_fail_closed_before_validation_or_service(): void
     {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao, \App\Enums\NhanVienPermission::Xem]);
+        config()->set('nhanvien.enabled', false);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('create');
         });
@@ -41,7 +43,7 @@ class NhanVienStoreTest extends TestCase
 
     public function test_enabled_store_redirects_to_canonical_show_with_safe_exact_handoff_flash(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('create')->once()->withArgs(function (array $validated): bool {
                 $this->assertArrayNotHasKey('ma_vt', $validated);
@@ -69,9 +71,35 @@ class NhanVienStoreTest extends TestCase
         $this->assertStringNotContainsString('nhom3@2026', json_encode($session, JSON_UNESCAPED_UNICODE));
     }
 
+    public function test_create_flash_is_rendered_accessibly_after_following_the_redirect(): void
+    {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao, \App\Enums\NhanVienPermission::Xem]);
+        $employee = (object) [
+            'ma_nv' => 'NV001', 'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '1990-01-01',
+            'gioi_tinh' => 1, 'sdt' => '0901234567', 'email' => 'an@example.test',
+            'ngay_vao_lam' => '2020-01-01', 'ma_pb' => 1, 'ten_pb' => 'Kỹ thuật',
+            'ma_cv' => 1, 'ten_cv' => 'Lập trình viên', 'dan_toc' => 'Kinh',
+            'cccd' => '001200000001', 'noi_cap_cccd' => 'Cục CSQLHC', 'hoc_van' => 'Đại học',
+            'ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm việc',
+            'ngay_nghi_viec' => null, 'ma_vt' => 1, 'ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH',
+            'ten_vt' => 'Nhân viên', 'anh_dai_dien' => null,
+            'dia_chi_cu_the' => null, 'phuong_xa' => null, 'quan_huyen' => null, 'tinh_thanh' => null,
+        ];
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('create')->once()->andReturn('NV001');
+            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
+        });
+
+        $this->followingRedirects()
+            ->post('/admin/nhan-vien', $this->validPayload())
+            ->assertOk()
+            ->assertSee('Đã tạo nhân viên; có thể bổ sung hợp đồng sau.')
+            ->assertSee('role="status"', false);
+    }
+
     public function test_domain_field_error_returns_old_safe_input_without_internal_details(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('create')->once()->andThrow(new NhanVienDomainException(
                 'Email đã được sử dụng.',
@@ -98,7 +126,7 @@ class NhanVienStoreTest extends TestCase
         $this->assertSame(NhanVienController::class.'@store', $route->getActionName());
         $this->assertContains(EnsureNhanVienModuleEnabled::class, $route->gatherMiddleware());
 
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('create');
         });

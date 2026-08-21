@@ -10,16 +10,19 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
 use Mockery;
 use Tests\Support\CreatesEmployeeFeatureSchema;
+use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
 
 class NhanVienValidationTest extends TestCase
 {
     use CreatesEmployeeFeatureSchema;
+    use InteractsWithEmployeeModule;
 
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->enableEmployeeModule();
         $this->createEmployeeFeatureSchema();
         $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ky_hieu' => 'DANG_LAM']);
 

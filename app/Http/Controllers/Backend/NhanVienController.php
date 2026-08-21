@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Contracts\NhanVienServiceContract;
+use App\Enums\NhanVienRemovalAction;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Requests\ListNhanVienRequest;
 use App\Http\Requests\StoreNhanVienRequest;
@@ -14,6 +15,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Illuminate\Auth\Access\AuthorizationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 class NhanVienController extends Controller
@@ -244,5 +247,73 @@ class NhanVienController extends Controller
         return redirect()
             ->route('backend.nhanvien.show', ['ma_nv' => $ma_nv])
             ->with('success', 'Đã cập nhật hồ sơ nhân viên.');
+    }
+
+    public function destroy(string $ma_nv, NhanVienTargetGuard $guard): RedirectResponse
+    {
+        try {
+            $employee = $this->employees->findOrFail($ma_nv);
+            $guard->assertManageable($employee);
+            $action = $this->employees->removeOrTerminate($ma_nv);
+        } catch (AuthorizationException) {
+            abort(403);
+        } catch (NotFoundHttpException) {
+            abort(404);
+        } catch (NhanVienDomainException $exception) {
+            if ($exception->domainCode === 'NV_NOT_FOUND') {
+                abort(404);
+            }
+
+            if ($exception->domainCode === 'NV_PRIVILEGED_TARGET') {
+                abort(403);
+            }
+
+            return back()->withErrors([
+                'nhan_vien' => 'Không thể xử lý nhân viên lúc này. Vui lòng thử lại sau.',
+            ]);
+        } catch (Throwable) {
+            return back()->withErrors([
+                'nhan_vien' => 'Không thể xử lý nhân viên lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
+
+        return redirect()
+            ->route('backend.nhanvien.index')
+            ->with('success', $action === NhanVienRemovalAction::Deleted
+                ? 'Đã xóa hồ sơ nhân viên.'
+                : 'Đã ghi nhận nhân viên nghỉ việc theo lịch sử.');
+    }
+
+    public function resetPassword(string $ma_nv, NhanVienTargetGuard $guard): RedirectResponse
+    {
+        try {
+            $employee = $this->employees->findOrFail($ma_nv);
+            $guard->assertManageable($employee);
+            $this->employees->resetPassword($ma_nv);
+        } catch (AuthorizationException) {
+            abort(403);
+        } catch (NotFoundHttpException) {
+            abort(404);
+        } catch (NhanVienDomainException $exception) {
+            if ($exception->domainCode === 'NV_NOT_FOUND') {
+                abort(404);
+            }
+
+            if ($exception->domainCode === 'NV_PRIVILEGED_TARGET') {
+                abort(403);
+            }
+
+            return back()->withErrors([
+                'nhan_vien' => 'Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.',
+            ]);
+        } catch (Throwable) {
+            return back()->withErrors([
+                'nhan_vien' => 'Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
+
+        return redirect()
+            ->route('backend.nhanvien.show', ['ma_nv' => $ma_nv])
+            ->with('success', 'Đã đặt lại mật khẩu theo quy ước nhom3@{năm thao tác}.');
     }
 }

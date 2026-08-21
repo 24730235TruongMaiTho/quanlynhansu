@@ -76,6 +76,7 @@
                 </ol>
             </div>
 
+            @can(\App\Enums\NhanVienPermission::Tao->value)
             <form
                 class="card-body"
                 method="POST"
@@ -168,6 +169,9 @@
                     </div>
                 </fieldset>
             </form>
+            @else
+                <div class="card-body" role="alert">Bạn không có quyền tạo nhân viên.</div>
+            @endcan
         </section>
     </main>
 @endsection

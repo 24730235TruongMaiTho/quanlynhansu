@@ -3,9 +3,11 @@
 namespace Tests\Integration\MariaDb;
 
 use App\Contracts\NhanVienRepositoryContract;
+use App\Enums\NhanVienRemovalAction;
 use App\Exceptions\NhanVienDomainException;
 use App\Repositories\NhanVienRepository;
 use App\Support\NhanVienProcedureExceptionMapper;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
@@ -46,6 +48,165 @@ class NhanVienRepositoryReadTest extends MariaDbTestCase
         $this->assertInstanceOf(NhanVienRepository::class, $this->app->make(NhanVienRepositoryContract::class));
     }
 
+    public function test_remove_or_terminate_keeps_set_call_and_both_out_reads_on_one_write_connection(): void
+    {
+        $connection = Mockery::mock(Connection::class);
+        $database = Mockery::mock(DatabaseManager::class);
+        $database->shouldReceive('connection')->once()->andReturn($connection);
+        $connection->shouldReceive('statement')
+            ->once()
+            ->ordered()
+            ->with('SET @nv_hanh_dong = NULL')
+            ->andReturnTrue();
+        $connection->shouldReceive('statement')
+            ->once()
+            ->ordered()
+            ->with('SET @nv_anh_cu = NULL')
+            ->andReturnTrue();
+        $connection->shouldReceive('selectResultSets')
+            ->once()
+            ->ordered()
+            ->with(
+                'CALL sp_nhan_vien_xoa_hoac_nghi_viec(?, ?, @nv_hanh_dong, @nv_anh_cu)',
+                ['NV001', '2026-08-20'],
+                false,
+            )
+            ->andReturn([[]]);
+        $connection->shouldReceive('selectOne')
+            ->once()
+            ->ordered()
+            ->with('SELECT @nv_hanh_dong AS hanh_dong', [], false)
+            ->andReturn((object) ['hanh_dong' => 'TERMINATED']);
+        $connection->shouldReceive('selectOne')
+            ->once()
+            ->ordered()
+            ->with('SELECT @nv_anh_cu AS anh_cu', [], false)
+            ->andReturn((object) ['anh_cu' => 'avatars/NV001.png']);
+
+        $repository = new NhanVienRepository($database, new NhanVienProcedureExceptionMapper);
+        $result = $repository->removeOrTerminate('NV001', CarbonImmutable::parse('2026-08-20'));
+
+        $this->assertSame(NhanVienRemovalAction::Terminated, $result['action']);
+        $this->assertSame('avatars/NV001.png', $result['avatar_path']);
+    }
+
+    #[DataProvider('invalidLifecycleActions')]
+    public function test_remove_or_terminate_maps_unknown_or_missing_out_action_to_safe_database_error(?string $action): void
+    {
+        $connection = Mockery::mock(Connection::class);
+        $database = Mockery::mock(DatabaseManager::class);
+        $database->shouldReceive('connection')->once()->andReturn($connection);
+        $connection->shouldReceive('statement')->twice()->andReturnTrue();
+        $connection->shouldReceive('selectResultSets')->once()->andReturn([[]]);
+        $connection->shouldReceive('selectOne')
+            ->once()
+            ->with('SELECT @nv_hanh_dong AS hanh_dong', [], false)
+            ->andReturn($action === null ? (object) [] : (object) ['hanh_dong' => $action]);
+        $connection->shouldReceive('selectOne')
+            ->once()
+            ->with('SELECT @nv_anh_cu AS anh_cu', [], false)
+            ->andReturn((object) ['anh_cu' => null]);
+
+        $repository = new NhanVienRepository($database, new NhanVienProcedureExceptionMapper);
+
+        try {
+            $repository->removeOrTerminate('NV001', CarbonImmutable::parse('2026-08-20'));
+            $this->fail('Invalid lifecycle action should be rejected.');
+        } catch (NhanVienDomainException $exception) {
+            $this->assertSame('NV_DATABASE_ERROR', $exception->domainCode);
+            $this->assertSame('Không thể xử lý yêu cầu nhân viên. Vui lòng thử lại.', $exception->getMessage());
+        }
+    }
+
+    public static function invalidLifecycleActions(): array
+    {
+        return [
+            'unknown action' => ['SURPRISE'],
+            'missing action' => [null],
+        ];
+    }
+
+    #[DataProvider('lifecycleFailureStages')]
+    public function test_remove_or_terminate_query_failures_are_mapped_without_leaking_sql(string $stage): void
+    {
+        $connection = Mockery::mock(Connection::class);
+        $database = Mockery::mock(DatabaseManager::class);
+        $database->shouldReceive('connection')->once()->andReturn($connection);
+        $exception = new QueryException(
+            'mysql',
+            "CALL lifecycle_secret_{$stage}('sensitive-sql')",
+            [],
+            new PDOException('SQLSTATE[HY000]: General error: 1234 private lifecycle failure'),
+        );
+
+        if ($stage === 'set-action') {
+            $connection->shouldReceive('statement')
+                ->once()
+                ->with('SET @nv_hanh_dong = NULL')
+                ->andThrow($exception);
+        } else {
+            $connection->shouldReceive('statement')->once()->with('SET @nv_hanh_dong = NULL')->andReturnTrue();
+            if ($stage === 'set-avatar') {
+                $connection->shouldReceive('statement')
+                    ->once()
+                    ->with('SET @nv_anh_cu = NULL')
+                    ->andThrow($exception);
+            } else {
+                $connection->shouldReceive('statement')->once()->with('SET @nv_anh_cu = NULL')->andReturnTrue();
+            }
+            if ($stage === 'call') {
+                $connection->shouldReceive('selectResultSets')
+                    ->once()
+                    ->with(
+                        'CALL sp_nhan_vien_xoa_hoac_nghi_viec(?, ?, @nv_hanh_dong, @nv_anh_cu)',
+                        ['NV001', '2026-08-20'],
+                        false,
+                    )
+                    ->andThrow($exception);
+            } elseif ($stage === 'out-action') {
+                $connection->shouldReceive('selectResultSets')->once()->andReturn([[]]);
+                $connection->shouldReceive('selectOne')
+                    ->once()
+                    ->with('SELECT @nv_hanh_dong AS hanh_dong', [], false)
+                    ->andThrow($exception);
+            } elseif ($stage === 'out-avatar') {
+                $connection->shouldReceive('selectResultSets')->once()->andReturn([[]]);
+                $connection->shouldReceive('selectOne')
+                    ->once()
+                    ->with('SELECT @nv_hanh_dong AS hanh_dong', [], false)
+                    ->andReturn((object) ['hanh_dong' => 'DELETED']);
+                $connection->shouldReceive('selectOne')
+                    ->once()
+                    ->with('SELECT @nv_anh_cu AS anh_cu', [], false)
+                    ->andThrow($exception);
+            }
+        }
+
+        $repository = new NhanVienRepository($database, new NhanVienProcedureExceptionMapper);
+
+        try {
+            $repository->removeOrTerminate('NV001', CarbonImmutable::parse('2026-08-20'));
+            $this->fail("Lifecycle QueryException at {$stage} should be mapped.");
+        } catch (NhanVienDomainException $mapped) {
+            $this->assertSame('NV_DATABASE_ERROR', $mapped->domainCode);
+            $this->assertSame('Không thể xử lý yêu cầu nhân viên. Vui lòng thử lại.', $mapped->getMessage());
+            $this->assertStringNotContainsString('lifecycle_secret', strtolower($mapped->getMessage()));
+            $this->assertStringNotContainsString('SQLSTATE', $mapped->getMessage());
+            $this->assertStringNotContainsString('private lifecycle failure', $mapped->getMessage());
+        }
+    }
+
+    public static function lifecycleFailureStages(): array
+    {
+        return [
+            'SET action session variable' => ['set-action'],
+            'SET avatar session variable' => ['set-avatar'],
+            'CALL procedure' => ['call'],
+            'SELECT OUT action value' => ['out-action'],
+            'SELECT OUT avatar value' => ['out-avatar'],
+        ];
+    }
+
     public function test_read_methods_use_the_write_pdo_for_set_call_and_out_and_return_contract_shapes(): void
     {
         $connection = $this->app->make(DatabaseManager::class)->connection();
@@ -83,7 +244,10 @@ class NhanVienRepositoryReadTest extends MariaDbTestCase
         $this->assertSame(1, $attendance->total());
         $this->assertSame(1.0, (float) $attendance->items()[0]->so_ngay_cham_cong);
 
-        $this->assertSame('NV001', $repository->find('NV001')?->ma_nv);
+        $employee = $repository->find('NV001');
+        $this->assertSame('NV001', $employee?->ma_nv);
+        $this->assertSame('0900000001', $employee?->sdt);
+        $this->assertSame('an@example.test', $employee?->email);
         $this->assertNull($repository->find('NV999'));
 
         $lookups = $repository->lookups();

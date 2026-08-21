@@ -144,6 +144,6 @@ function initializeWizard(form) {
     showStep(currentStep, form.querySelector('[data-error-focus]'));
 }
 
-export function initializeEmployeeWizards() {
-    document.querySelectorAll('[data-employee-wizard]').forEach(initializeWizard);
+export function initializeEmployeeWizards(root = typeof document !== 'undefined' ? document : null) {
+    root?.querySelectorAll?.('[data-employee-wizard]')?.forEach(initializeWizard);
 }

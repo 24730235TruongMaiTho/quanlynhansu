@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Contracts\NhanVienRepositoryContract;
 use App\Contracts\NhanVienServiceContract;
+use App\Enums\NhanVienRemovalAction;
 use App\Exceptions\NhanVienDomainException;
 use App\Support\NhanVienAvatarPath;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -69,8 +71,10 @@ final class NhanVienService implements NhanVienServiceContract
             [$disk, $finalAvatarPath] = $this->storeAvatar($avatar, $avatarPath);
         }
 
+        $connection = $this->database->connection();
+
         try {
-            return $this->database->connection()->transaction(function () use (
+            $maNv = $connection->transaction(function () use (
                 $profile,
                 $address,
                 $passwordHash,
@@ -81,6 +85,28 @@ final class NhanVienService implements NhanVienServiceContract
 
                 return $maNv;
             });
+
+            if (
+                $disk instanceof FilesystemAdapter
+                && $finalAvatarPath !== null
+                && $connection->transactionLevel() > 0
+            ) {
+                // An outer transaction may still abort after this closure; compensate the new owned file.
+                $connection->afterRollBack(function () use (
+                    $disk,
+                    $avatarPath,
+                    $finalAvatarPath,
+                ): void {
+                    $this->deleteOwnedAvatarCandidates(
+                        $disk,
+                        $avatarPath,
+                        [],
+                        [$finalAvatarPath],
+                    );
+                });
+            }
+
+            return $maNv;
         } catch (Throwable $exception) {
             if ($disk instanceof FilesystemAdapter && $finalAvatarPath !== null) {
                 $this->deleteOwnedAvatarCandidates($disk, $avatarPath, [], [$finalAvatarPath]);
@@ -189,6 +215,48 @@ final class NhanVienService implements NhanVienServiceContract
         }
 
         return $employee;
+    }
+
+    public function removeOrTerminate(string $maNv): NhanVienRemovalAction
+    {
+        $connection = $this->database->connection();
+        $businessDate = CarbonImmutable::now(config('app.timezone'))->startOfDay();
+        // Keep the procedure on the write transaction that owns its row lock and outcome.
+        $result = $connection->transaction(
+            fn (): array => $this->repository->removeOrTerminate($maNv, $businessDate),
+        );
+        $action = $result['action'] ?? null;
+
+        if (! $action instanceof NhanVienRemovalAction) {
+            throw new NhanVienDomainException(
+                'Không thể xử lý yêu cầu nhân viên. Vui lòng thử lại.',
+                'NV_DATABASE_ERROR',
+            );
+        }
+
+        if ($action === NhanVienRemovalAction::Deleted && is_string($result['avatar_path'] ?? null)) {
+            $cleanup = function () use ($maNv, $result): void {
+                $this->deleteRemovedAvatar($maNv, $result['avatar_path']);
+            };
+
+            // File cleanup follows the root commit so an outer rollback cannot lose the old avatar.
+            if ($connection->transactionLevel() > 0) {
+                $connection->afterCommit($cleanup);
+            } else {
+                $cleanup();
+            }
+        }
+
+        return $action;
+    }
+
+    public function resetPassword(string $maNv): void
+    {
+        $plainPassword = 'nhom3@'.now(config('app.timezone'))->year;
+        $hash = $this->hasher->make($plainPassword);
+        unset($plainPassword);
+
+        $this->repository->resetPasswordHash($maNv, $hash);
     }
 
     public function lookups(): array
@@ -354,6 +422,40 @@ final class NhanVienService implements NhanVienServiceContract
 
         try {
             $disk ??= $this->files->disk('public');
+            if (! $disk->delete($ownedPath)) {
+                $this->safeAvatarWarning('employee_avatar_cleanup_failed', [
+                    'ma_nv' => $maNv,
+                    'reason' => 'DELETE_FALSE',
+                ]);
+            }
+        } catch (Throwable $exception) {
+            $this->safeAvatarWarning('employee_avatar_cleanup_failed', [
+                'ma_nv' => $maNv,
+                'reason' => $exception::class,
+            ]);
+        }
+    }
+
+    private function deleteRemovedAvatar(string $maNv, string $oldPath): void
+    {
+        try {
+            $paths = new NhanVienAvatarPath;
+            $ownedPath = $paths->assertOwnedFile($oldPath);
+        } catch (Throwable) {
+            $this->safeAvatarWarning('employee_avatar_cleanup_skipped', [
+                'ma_nv' => $maNv,
+                'reason' => 'UNOWNED_PATH',
+            ]);
+
+            return;
+        }
+
+        if ($ownedPath === null) {
+            return;
+        }
+
+        try {
+            $disk = $this->files->disk('public');
             if (! $disk->delete($ownedPath)) {
                 $this->safeAvatarWarning('employee_avatar_cleanup_failed', [
                     'ma_nv' => $maNv,

@@ -10,6 +10,7 @@ use App\Http\Controllers\Backend\LuongChucVuController;
 use App\Http\Controllers\Backend\LuongPhongBanController;
 use App\Http\Controllers\Backend\LuongHeSoLuongController;
 use App\Http\Middleware\EnsureNhanVienModuleEnabled;
+use App\Enums\NhanVienPermission;
 
 Route::middleware('api')
     ->prefix('v1')
@@ -28,7 +29,12 @@ Route::middleware('api')
                     'nhan-vien',
                     [ChamCongController::class, 'employees']
                 )
-                ->middleware(EnsureNhanVienModuleEnabled::class)
+                ->middleware([
+                    'web',
+                    'auth',
+                    EnsureNhanVienModuleEnabled::class,
+                    'can:'.NhanVienPermission::Xem->value,
+                ])
                 ->name(
                     'api.v1.cham-cong.nhan-vien'
                 );
@@ -63,7 +69,12 @@ Route::middleware('api')
                     'nhan-vien',
                     [NghiPhepController::class, 'employees']
                 )
-                ->middleware(EnsureNhanVienModuleEnabled::class);
+                ->middleware([
+                    'web',
+                    'auth',
+                    EnsureNhanVienModuleEnabled::class,
+                    'can:'.NhanVienPermission::Xem->value,
+                ]);
 
                 Route::get(
                     'phong-ban',

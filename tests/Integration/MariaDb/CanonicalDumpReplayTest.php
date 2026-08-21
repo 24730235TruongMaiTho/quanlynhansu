@@ -55,6 +55,8 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $this->assertSafeView();
             $this->assertRoutineSignatures();
             $this->assertVersionedUpdateDefinitionsMatchCanonical();
+            $this->assertVersionedLifecycleDefinitionsMatchCanonical();
+            $this->assertVersionedRbacDefinitionsMatchCanonical();
             $this->assertEmployeeReadRoutineResultsAreSafe();
         } finally {
             try {
@@ -168,6 +170,7 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             ['nhan_vien', 'uq_nhan_vien_cccd'],
             ['trang_thai_lam_viec', 'uq_trang_thai_lam_viec_ky_hieu'],
             ['vai_tro', 'uq_vai_tro_ky_hieu'],
+            ['quyen', 'uq_quyen_ky_hieu_quyen'],
         ] as [$table, $index]) {
             $statement = $this->pdo()->prepare(
                 'SELECT COUNT(*) FROM information_schema.STATISTICS
@@ -176,6 +179,20 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $statement->execute([$table, $index]);
             $this->assertSame(1, (int) $statement->fetchColumn());
         }
+
+        $this->assertSame('auto_increment', strtolower((string) $this->pdo()->query(
+            "SELECT EXTRA FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quyen' AND COLUMN_NAME = 'ma_quyen'"
+        )->fetchColumn()));
+        $this->assertSame([
+            'NHAN_VIEN_DAT_LAI_MAT_KHAU',
+            'NHAN_VIEN_SUA',
+            'NHAN_VIEN_TAO',
+            'NHAN_VIEN_XEM',
+            'NHAN_VIEN_XOA',
+        ], $this->pdo()->query(
+            "SELECT ky_hieu_quyen FROM quyen WHERE module = 'NHAN_VIEN' ORDER BY ky_hieu_quyen"
+        )->fetchAll(PDO::FETCH_COLUMN));
 
         $this->assertSame(1, (int) $this->pdo()->query(
             "SELECT COUNT(*) FROM information_schema.CHECK_CONSTRAINTS
@@ -232,8 +249,25 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             'sp_nhan_vien_cap_nhat_anh' => [
                 'IN:p_ma_nv:varchar(5)', 'IN:p_anh_moi:varchar(255)', 'OUT:p_anh_cu:varchar(255)',
             ],
-            'sp_nhan_vien_xoa' => ['IN:p_ma_nv:varchar(5)'],
-            'sp_nhan_vien_dang_nhap' => ['IN:p_ten_dang_nhap:varchar(50)', 'IN:p_mat_khau:varchar(255)'],
+            'sp_nhan_vien_xoa_hoac_nghi_viec' => [
+                'IN:p_ma_nv:varchar(5)', 'IN:p_ngay_nghi_viec:date',
+                'OUT:p_hanh_dong:varchar(12)', 'OUT:p_anh_cu:varchar(255)',
+            ],
+            'sp_nhan_vien_dat_lai_mat_khau' => [
+                'IN:p_ma_nv:varchar(5)', 'IN:p_mat_khau_hash:varchar(255)',
+            ],
+            'sp_nhan_vien_cap_nhat_hash_xac_thuc' => [
+                'IN:p_ma_nv:varchar(5)', 'IN:p_hash_hien_tai:varchar(255)', 'IN:p_hash_moi:varchar(255)',
+            ],
+            'sp_nhan_vien_lay_tai_khoan_dang_nhap' => ['IN:p_dinh_danh:varchar(100)'],
+            'sp_quyen_danh_sach' => [],
+            'sp_quyen_them' => [
+                'IN:p_ky_hieu_quyen:varchar(100)', 'IN:p_ten_quyen:varchar(50)', 'IN:p_module:varchar(50)',
+            ],
+            'sp_quyen_lay_theo_ma_nhan_vien' => ['IN:p_ma_nv:varchar(5)'],
+            'sp_vai_tro_quyen_them' => ['IN:p_ma_vt:int(11)', 'IN:p_ma_quyen:int(11)'],
+            'sp_vai_tro_xoa' => ['IN:p_ma_vt:int(11)'],
+            'sp_nhan_vien_gan_vai_tro_noi_bo' => ['IN:p_ma_nv:varchar(5)', 'IN:p_ma_vt:int(11)'],
             'sp_cham_cong_nhan_vien_tim_kiem' => ['IN:p_ma_nv:varchar(5)', 'IN:p_ngay_lam:date'],
             'sp_luong_tim_kiem' => ['IN:p_tu_khoa:varchar(255)', 'IN:p_ky_luong:date', 'IN:p_ma_pb:int(11)', 'IN:p_ma_cv:int(11)'],
             'sp_luong_xem' => ['IN:p_ma_nv:varchar(5)', 'IN:p_ky_luong:date'],
@@ -257,7 +291,7 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
             $this->assertSame(1, (int) $exists->fetchColumn(), "Missing procedure {$routine}.");
         }
 
-        foreach (['sp_nhan_vien_tim_kiem', 'sp_nhan_vien_danh_sach'] as $removedRoutine) {
+        foreach (['sp_nhan_vien_tim_kiem', 'sp_nhan_vien_danh_sach', 'sp_nhan_vien_xoa', 'sp_nhan_vien_dang_nhap'] as $removedRoutine) {
             $statement = $this->pdo()->prepare(
                 'SELECT COUNT(*) FROM information_schema.ROUTINES
                  WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = ? AND ROUTINE_TYPE = ?'
@@ -282,6 +316,61 @@ class CanonicalDumpReplayTest extends MariaDbTestCase
                 $canonical[$procedure],
                 $this->normalizedRoutineDefinition($procedure),
                 "Canonical definition drift for {$procedure} versus script 004.",
+            );
+        }
+    }
+
+    private function assertVersionedLifecycleDefinitionsMatchCanonical(): void
+    {
+        $procedures = [
+            'sp_nhan_vien_xoa_hoac_nghi_viec',
+            'sp_nhan_vien_dat_lai_mat_khau',
+            'sp_nhan_vien_cap_nhat_hash_xac_thuc',
+            'sp_nhan_vien_lay_tai_khoan_dang_nhap',
+        ];
+        $canonical = [];
+        foreach ($procedures as $procedure) {
+            $canonical[$procedure] = $this->normalizedRoutineDefinition($procedure);
+        }
+
+        $this->runSql(base_path('database/sql/employee/2026_08_12_005_lifecycle_auth_routines.sql'));
+
+        foreach ($procedures as $procedure) {
+            $this->assertSame(
+                $canonical[$procedure],
+                $this->normalizedRoutineDefinition($procedure),
+                "Canonical definition drift for {$procedure} versus script 005.",
+            );
+        }
+    }
+
+    private function assertVersionedRbacDefinitionsMatchCanonical(): void
+    {
+        $procedures = [
+            'sp_quyen_them',
+            'sp_quyen_danh_sach',
+            'sp_quyen_lay_theo_ma_nhan_vien',
+            'sp_vai_tro_quyen_them',
+            'sp_vai_tro_xoa',
+            'sp_nhan_vien_gan_vai_tro_noi_bo',
+        ];
+        $canonical = [];
+        foreach ($procedures as $procedure) {
+            $canonical[$procedure] = $this->normalizedRoutineDefinition($procedure);
+            $this->assertStringNotContainsString(
+                'DELETEFROMnhan_vien',
+                $canonical[$procedure],
+                "RBAC routine {$procedure} must never delete an employee."
+            );
+        }
+
+        $this->runSql(base_path('database/sql/employee/2026_08_12_006_rbac.sql'));
+
+        foreach ($procedures as $procedure) {
+            $this->assertSame(
+                $canonical[$procedure],
+                $this->normalizedRoutineDefinition($procedure),
+                "Canonical definition drift for {$procedure} versus script 006.",
             );
         }
     }

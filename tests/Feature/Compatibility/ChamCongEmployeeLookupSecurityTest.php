@@ -28,7 +28,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_enabled_lookup_maps_filters_and_preserves_attendance_aggregates(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
 
         $paginator = new LengthAwarePaginator(
             collect([(object) [
@@ -75,7 +75,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_any_lookup_failure_returns_only_the_stable_public_error(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginateForAttendance')->once()->andThrow(
                 new RuntimeException('SQLSTATE[42000] CALL sp_internal mat_khau'),
@@ -101,7 +101,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_exists_validation_database_failure_returns_only_the_stable_public_error(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         Schema::drop('phong_ban');
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginateForAttendance');
@@ -126,7 +126,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_ordinary_invalid_filter_still_returns_laravel_validation_errors(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginateForAttendance');
         });

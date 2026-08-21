@@ -2,6 +2,7 @@
 
 namespace App\Contracts;
 
+use App\Enums\NhanVienRemovalAction;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface NhanVienServiceContract
@@ -15,6 +16,10 @@ interface NhanVienServiceContract
     public function create(array $validated): string;
 
     public function update(string $maNv, array $validated): object;
+
+    public function removeOrTerminate(string $maNv): NhanVienRemovalAction;
+
+    public function resetPassword(string $maNv): void;
 
     /**
      * @return array{phong_ban: array, chuc_vu: array, trang_thai: array}

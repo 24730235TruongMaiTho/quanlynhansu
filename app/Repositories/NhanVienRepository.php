@@ -3,8 +3,11 @@
 namespace App\Repositories;
 
 use App\Contracts\NhanVienRepositoryContract;
+use App\Enums\NhanVienRemovalAction;
 use App\Exceptions\NhanVienDomainException;
+use App\Models\NhanVien;
 use App\Support\NhanVienProcedureExceptionMapper;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
@@ -186,6 +189,147 @@ final class NhanVienRepository implements NhanVienRepositoryContract
                     $address['quan_huyen'],
                     $address['tinh_thanh'],
                 ],
+            );
+        });
+    }
+
+    /**
+     * Keep SET, CALL and OUT reads on one write PDO so a procedure's OUT state
+     * cannot be read from a different pooled session.
+     *
+     * @return array{action: NhanVienRemovalAction, avatar_path: ?string}
+     */
+    public function removeOrTerminate(string $maNv, CarbonImmutable $date): array
+    {
+        return $this->databaseOperation(function () use ($maNv, $date): array {
+            $connection = $this->connection();
+            $connection->statement('SET @nv_hanh_dong = NULL');
+            $connection->statement('SET @nv_anh_cu = NULL');
+            $this->call(
+                $connection,
+                'CALL sp_nhan_vien_xoa_hoac_nghi_viec(?, ?, @nv_hanh_dong, @nv_anh_cu)',
+                [$maNv, $date->toDateString()],
+            );
+
+            $actionRow = $connection->selectOne(
+                'SELECT @nv_hanh_dong AS hanh_dong',
+                [],
+                false,
+            );
+            $actionValue = is_object($actionRow) && property_exists($actionRow, 'hanh_dong')
+                ? $actionRow->hanh_dong
+                : null;
+            $avatarRow = $connection->selectOne(
+                'SELECT @nv_anh_cu AS anh_cu',
+                [],
+                false,
+            );
+            $avatarPath = is_object($avatarRow) && property_exists($avatarRow, 'anh_cu')
+                ? $avatarRow->anh_cu
+                : null;
+            $action = is_string($actionValue) ? NhanVienRemovalAction::tryFrom($actionValue) : null;
+
+            if ($action === null) {
+                throw new NhanVienDomainException(
+                    'Không thể xử lý yêu cầu nhân viên. Vui lòng thử lại.',
+                    'NV_DATABASE_ERROR',
+                );
+            }
+
+            return [
+                'action' => $action,
+                'avatar_path' => is_string($avatarPath) ? $avatarPath : null,
+            ];
+        });
+    }
+
+    public function resetPasswordHash(string $maNv, string $hash): void
+    {
+        $this->databaseOperation(function () use ($maNv, $hash): void {
+            $this->call(
+                $this->connection(),
+                'CALL sp_nhan_vien_dat_lai_mat_khau(?, ?)',
+                [$maNv, $hash],
+            );
+        });
+    }
+
+    public function rehashAuthenticatedPassword(string $maNv, string $currentHash, string $newHash): void
+    {
+        $this->databaseOperation(function () use ($maNv, $currentHash, $newHash): void {
+            $this->call(
+                $this->connection(),
+                'CALL sp_nhan_vien_cap_nhat_hash_xac_thuc(?, ?, ?)',
+                [$maNv, $currentHash, $newHash],
+            );
+        });
+    }
+
+    public function findAccountByIdentifier(string $identifier): ?NhanVien
+    {
+        return $this->databaseOperation(function () use ($identifier): ?NhanVien {
+            $sets = $this->call(
+                $this->connection(),
+                'CALL sp_nhan_vien_lay_tai_khoan_dang_nhap(?)',
+                [$identifier],
+            );
+            $row = $sets[0][0] ?? null;
+
+            return is_object($row) ? NhanVien::fromAuthProcedureRow($row) : null;
+        });
+    }
+
+    /** @return list<string> */
+    public function permissionSymbols(string $maNv): array
+    {
+        return $this->databaseOperation(function () use ($maNv): array {
+            $rows = $this->call(
+                $this->connection(),
+                'CALL sp_quyen_lay_theo_ma_nhan_vien(?)',
+                [$maNv],
+            )[0] ?? [];
+            $symbols = [];
+
+            foreach ($rows as $row) {
+                $value = is_object($row)
+                    ? ($row->ky_hieu_quyen ?? null)
+                    : (is_array($row) ? ($row['ky_hieu_quyen'] ?? null) : null);
+                if (! is_string($value)) {
+                    throw new NhanVienDomainException(
+                        'Dữ liệu quyền nhân viên không hợp lệ.',
+                        'NV_PERMISSION_RESULT_INVALID',
+                    );
+                }
+
+                $symbol = strtoupper(trim($value));
+                if (preg_match('/\A[A-Z][A-Z0-9_]{0,99}\z/', $symbol) !== 1) {
+                    throw new NhanVienDomainException(
+                        'Dữ liệu quyền nhân viên không hợp lệ.',
+                        'NV_PERMISSION_RESULT_INVALID',
+                    );
+                }
+
+                $symbols[$symbol] = true;
+            }
+
+            $symbols = array_keys($symbols);
+            sort($symbols, SORT_STRING);
+
+            return $symbols;
+        });
+    }
+
+    /**
+     * @internal Bootstrap-only seam. Never call this from an HTTP/service flow.
+     */
+    public function assignRoleForBootstrap(string $maNv, int $maVt): void
+    {
+        $this->databaseOperation(function () use ($maNv, $maVt): void {
+            // WHY: role assignment is one guarded CALL on the write PDO; the caller owns the outer transaction.
+            $this->call(
+                $this->connection(),
+                'CALL sp_nhan_vien_gan_vai_tro_noi_bo(?, ?)',
+                [$maNv, $maVt],
             );
         });
     }

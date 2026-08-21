@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 use App\Http\Controllers\Frontend\HomeController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Enums\NhanVienPermission;
 
 
 /*
@@ -32,15 +34,41 @@ use App\Http\Controllers\Backend\ {
     VaiTroController
 };
 
+Route::get('/dang-nhap', [AuthenticatedSessionController::class, 'create'])
+    ->middleware('guest')
+    ->name('login');
+
+Route::post('/dang-nhap', [AuthenticatedSessionController::class, 'store'])
+    ->middleware('guest')
+    ->name('login.store');
+
+Route::post('/dang-xuat', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout');
+
+if (app()->environment('testing')) {
+    Route::get('/_test/employee-authenticated', fn () => response()->json([
+        'ma_nv' => auth()->id(),
+    ]))->middleware(['auth']);
+}
+
 Route::get('/admin/nhan-vien/danh-sach-nhan-vien', function (Request $request) {
     return redirect()->route('backend.nhanvien.index', $request->query(), 301);
-})->middleware(EnsureNhanVienModuleEnabled::class);
+})->middleware([
+    'auth',
+    EnsureNhanVienModuleEnabled::class,
+    'can:'.NhanVienPermission::Xem->value,
+]);
 
 Route::get('/admin/nhan-vien/them-nhan-vien', function (Request $request) {
     return redirect()->route('backend.nhanvien.create', $request->query(), 301);
-})->middleware(EnsureNhanVienModuleEnabled::class);
+})->middleware([
+    'auth',
+    EnsureNhanVienModuleEnabled::class,
+    'can:'.NhanVienPermission::Tao->value,
+]);
 
-Route::prefix('admin')->name('backend.')->group(function () {
+Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () {
 #                   url                                  tên hàm trong controller        tên file view
     Route::get('/bang-dieu-khien', [BangDieuKhienController::class, 'index'])->name('bangdieukhien.index');
 
@@ -61,30 +89,64 @@ Route::prefix('admin')->name('backend.')->group(function () {
     Route::delete('/phong-ban/{id}', [PhongBanController::class, 'destroy'])->name('phongban.destroy');
 
     Route::get('/nhan-vien', [NhanVienController::class, 'index'])
-        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->middleware([
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Xem->value,
+        ])
         ->name('nhanvien.index');
 
     Route::get('/nhan-vien/create', [NhanVienController::class, 'create'])
-        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->middleware([
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Tao->value,
+        ])
         ->name('nhanvien.create');
 
     Route::post('/nhan-vien', [NhanVienController::class, 'store'])
-        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->middleware([
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Tao->value,
+        ])
         ->name('nhanvien.store');
 
     Route::get('/nhan-vien/{ma_nv}/edit', [NhanVienController::class, 'edit'])
         ->where('ma_nv', 'NV[0-9]{3}')
-        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->middleware([
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Sua->value,
+        ])
         ->name('nhanvien.edit');
 
     Route::match(['put', 'patch'], '/nhan-vien/{ma_nv}', [NhanVienController::class, 'update'])
         ->where('ma_nv', 'NV[0-9]{3}')
-        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->middleware([
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Sua->value,
+        ])
         ->name('nhanvien.update');
+
+    Route::patch('/nhan-vien/{ma_nv}/dat-lai-mat-khau', [NhanVienController::class, 'resetPassword'])
+        ->where('ma_nv', 'NV[0-9]{3}')
+        ->middleware([
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::DatLaiMatKhau->value,
+        ])
+        ->name('nhanvien.reset-password');
+
+    Route::delete('/nhan-vien/{ma_nv}', [NhanVienController::class, 'destroy'])
+        ->where('ma_nv', 'NV[0-9]{3}')
+        ->middleware([
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Xoa->value,
+        ])
+        ->name('nhanvien.destroy');
 
     Route::get('/nhan-vien/{ma_nv}', [NhanVienController::class, 'show'])
         ->where('ma_nv', 'NV[0-9]{3}')
-        ->middleware(EnsureNhanVienModuleEnabled::class)
+        ->middleware([
+            EnsureNhanVienModuleEnabled::class,
+            'can:'.NhanVienPermission::Xem->value,
+        ])
         ->name('nhanvien.show');
 
     // Lương
