@@ -12,11 +12,12 @@ Roadmap ưu tiên theo dependency và khả năng kiểm chứng, không theo s�
 ## Snapshot kiểm chứng hiện tại (2026-08-21)
 
 Module Nhân viên đã tích hợp vào `main` qua merge `aa77419`; hãy revalidate
-HEAD/upstream trước mỗi task. Current Laravel là `234 pass, 1 fail, 1815
-assertions` do baseline `/` 404; baseline trước vòng authorization/guard là
-`224/1789`; scoped employee/auth là `119/1141`,
+HEAD/upstream trước mỗi task. Current Laravel là `237 pass, 1820 assertions`
+sau khi bổ sung entrypoint `/` (guest → login, authenticated → dashboard);
+snapshot trước entrypoint là `234 pass, 1 fail, 1815`; baseline trước vòng
+authorization/guard là `224/1789`; scoped employee/auth snapshot là `119/1141`,
 attendance compatibility là `16 pass/61 assertions`, frontend là `15/15`, build Vite 16
-modules và route inventory 49. Guarded MariaDB rerun sau tích hợp timeout khoảng
+modules và route inventory 52. Guarded MariaDB rerun sau tích hợp timeout khoảng
 184 giây rồi cleanup sạch, nên không claim DB gate pass. `165/3367` chỉ là
 historical Task 20 evidence.
 
@@ -28,9 +29,9 @@ Mục tiêu: tạo một nền `main` có setup lặp lại được và không 
 - [x] Đồng bộ `.env.example` với baseline MariaDB/timezone/file-sync thực tế.
 - [ ] Quyết định import dump + migrations theo thứ tự nào.
 - [ ] Tạo master-data seed tối thiểu để các FK nghiệp vụ có dữ liệu hợp lệ.
-- [ ] Chốt route home: `/`, `/admin` và landing mong muốn.
+- [x] Chốt entrypoint `/`: guest vào login, authenticated vào dashboard; landing `/admin` vẫn còn view blocker.
 - [ ] Chuẩn hóa web/API route names và validation/error status.
-- [ ] Sửa test mặc định theo contract đã chốt.
+- [x] Sửa test mặc định theo contract entrypoint đã chốt.
 - [x] Lập plan/ADR tích hợp shell từ branch `frontend`; shell chưa thuộc main.
 - [x] Thêm DB preflight/guarded harness cho employee schema/routines; module khác vẫn cần contract riêng.
 

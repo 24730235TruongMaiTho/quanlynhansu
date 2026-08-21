@@ -43,8 +43,8 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
 - Full guarded MariaDB wrapper historical: `165 tests, 3367 assertions, 1 platform skip, exit 0`; rerun sau tích hợp timeout khoảng 184 giây, process/schema/state/marker cleanup sạch, không claim current pass.
 - Scoped employee/auth hiện tại: `119 tests, 1141 assertions`; attendance compatibility: `16 pass, 61 assertions`.
 - Frontend: `15/15`; Vite 7.3.6 build pass với 16 modules.
-- Full Laravel current: `234 pass, 1 fail, 1815 assertions`; failure duy nhất là baseline `Tests\Feature\ExampleTest` kỳ vọng `GET /` 200 trong khi ứng dụng trả 404. Trước vòng authorization/guard là `224/1789`.
-- Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `49` và `git diff --check` pass trong các gate tương ứng.
+- Full Laravel current: `237 pass, 1820 assertions`; root entrypoint regression now covers guest → login and authenticated → dashboard. Trước entrypoint là `234 pass, 1 fail, 1815 assertions`; trước vòng authorization/guard là `224/1789`.
+- Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `52` và `git diff --check` pass trong các gate tương ứng.
 - Task 19 process-identity/atomic-state regressions đều nằm trong full wrapper sạch; skip duy nhất là Windows từ chối tạo disposable state symlink.
 - Independent review của checkpoint trước đã được supersede bởi vòng authorization/guard này; kiểm tra mới phải dựa trên HEAD hiện tại.
 
@@ -77,7 +77,7 @@ Official `Stop` đã dọn sạch fixture: guarded schema, state/lock/probe/run/
 ## Việc còn lại
 
 1. Bật quyền file URL cho Chrome extension rồi chạy riêng avatar upload/replacement acceptance nếu cần đóng khoảng trống browser.
-2. Chốt route `/`/landing để sửa baseline `ExampleTest` 404 trong một task riêng.
+2. Chốt landing `/admin`/`frontend.home` và sửa view còn thiếu; entrypoint `/` login/dashboard đã hoàn tất.
 3. Lập quy trình rollout/master-data/backup trước khi dùng database thật.
 4. Chạy lại browser avatar upload khi Chrome file URL access được cấp; các module phòng ban/lương/chấm công/nghỉ phép vẫn có blocker riêng.
 5. Không suy rộng trạng thái Nhân viên sang toàn dự án.

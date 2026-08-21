@@ -42,6 +42,20 @@ Route::post('/dang-nhap', [AuthenticatedSessionController::class, 'store'])
     ->middleware('guest')
     ->name('login.store');
 
+// Tương thích URL đăng nhập cũ (không đổi luồng nghiệp vụ mặc định)
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])
+    ->middleware('guest');
+
+Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+    ->middleware('guest');
+
+// Root branches explicitly so guests enter login while authenticated users reach the dashboard.
+Route::get('/', function () {
+    return auth()->check()
+        ? redirect()->route('backend.bangdieukhien.index')
+        : redirect()->route('login');
+})->name('home');
+
 Route::post('/dang-xuat', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');

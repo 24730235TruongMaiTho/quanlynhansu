@@ -48,7 +48,7 @@ Chạy hai terminal từ repository root:
     php artisan serve
     npm run dev
 
-Trang đăng nhập là [/dang-nhap](http://127.0.0.1:8000/dang-nhap). Sau khi đăng nhập, màn hình chính của module là [/admin/nhan-vien](http://127.0.0.1:8000/admin/nhan-vien). Các URL chính khác:
+Trang đăng nhập là [/dang-nhap](http://127.0.0.1:8000/dang-nhap). Bạn cũng có thể mở base URL `/`: guest sẽ được đưa vào luồng đăng nhập, còn user đã xác thực đi thẳng tới dashboard `/admin/bang-dieu-khien`. Sau khi đăng nhập, màn hình chính của module là [/admin/nhan-vien](http://127.0.0.1:8000/admin/nhan-vien). Các URL chính khác:
 
 - /admin/nhan-vien/create — tạo hồ sơ.
 - /admin/nhan-vien/{ma_nv} — chi tiết.
@@ -223,12 +223,12 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
     git diff --check
     git status --short
 
-Evidence hiện tại trên main: route inventory 49; scoped employee/auth
+Evidence hiện tại trên main: route inventory 52; scoped employee/auth snapshot
 `119 tests, 1141 assertions`; attendance compatibility `16 tests, 61
-assertions`; full Laravel `234 pass, 1 fail, 1815 assertions` với lỗi duy nhất
-`GET /` 404 trong `ExampleTest`. Trước vòng authorization/guard, baseline full
-suite là `224/1789`. Đây là kết quả SQLite/feature hiện tại; không thay thế
-MariaDB procedure gate.
+assertions`; full Laravel `237 pass, 1820 assertions`. Trước entrypoint `/`,
+full snapshot là `234 pass, 1 fail, 1815 assertions`; trước vòng
+authorization/guard, baseline full suite là `224/1789`. Đây là kết quả
+SQLite/feature hiện tại; không thay thế MariaDB procedure gate.
 
 Integration stored procedure phải dùng wrapper guarded và switch bắt buộc, không trỏ vào database live. Demo 5-row chỉ dùng trên disposable DB đã provision và phải dùng helper; không copy lại lệnh `SOURCE` trực tiếp:
 

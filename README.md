@@ -5,7 +5,7 @@
 - **Lập trình Web Application**: Laravel MVC, API, validation, MySQL/MariaDB, xác thực, phân quyền và kiểm thử.
 - **Thiết kế giao diện người dùng**: luồng thao tác, design system, responsive, accessibility và phản hồi trạng thái.
 
-> **Trạng thái ngày 2026-08-21:** Module Nhân viên verified hẹp đã được tích hợp vào `main` qua merge `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f` (parents `1677f202f70e020ce75ef0fa88b11b9db44fa047` và `91bb7a106e6a4fae8a61c4eb383dad596bf2b199`), sau đó test attendance `9cd2c30`. Delivery evidence lịch sử nằm ở feature commits `ba6e0189e64eb3046164ae5183950afe0b5722be`, `18ea209d89efce38596dd1440151f6d55ca90156` và `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Full Laravel current sau vòng authorization/guard là **234 pass, 1 fail, 1815 assertions**; failure duy nhất là `ExampleTest` với `/` 404. Baseline trước vòng này là `224/1789`. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây rồi cleanup sạch, nên không claim pass; `165/3367` chỉ là historical Task 20. Frontend `15/15`, build, Composer validate/audit, routes và diff checks pass. Browser employee responsive `320/375/768/1024/1440` pass với console sạch; avatar upload/replacement còn **blocked/unverified** vì Chrome file URL access. Không claim production readiness.
+> **Trạng thái ngày 2026-08-21:** Module Nhân viên verified hẹp đã được tích hợp vào `main` qua merge `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f` (parents `1677f202f70e020ce75ef0fa88b11b9db44fa047` và `91bb7a106e6a4fae8a61c4eb383dad596bf2b199`), sau đó test attendance `9cd2c30`. Delivery evidence lịch sử nằm ở feature commits `ba6e0189e64eb3046164ae5183950afe0b5722be`, `18ea209d89efce38596dd1440151f6d55ca90156` và `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Entrypoint `/` hiện đưa guest vào `/dang-nhap` và user đã xác thực tới dashboard; regression tests đã khóa hai nhánh này. Full-suite snapshot trước thay đổi entrypoint là **234 pass, 1 fail, 1815 assertions** và cần chạy lại sau thay đổi. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây rồi cleanup sạch, nên không claim pass; `165/3367` chỉ là historical Task 20. Frontend `15/15`, build, Composer validate/audit, routes và diff checks pass. Browser employee responsive `320/375/768/1024/1440` pass với console sạch; avatar upload/replacement còn **blocked/unverified** vì Chrome file URL access. Không claim production readiness.
 
 ## Bắt đầu từ đâu
 
@@ -47,9 +47,9 @@ Các số liệu Task 20 trong bảng là historical feature-branch evidence; h�
 | --- | --- |
 | Git | `main` đã chứa merge `aa77419` với parents `1677f20` và `91bb7a1`; luôn revalidate HEAD/upstream khi tiếp tục |
 | Laravel | 12.62.0 trên PHP 8.5.0; project target PHP 8.2+ |
-| Route ứng dụng | 49 route; có login/logout, toàn bộ `/admin` yêu cầu auth và route nhân viên dùng Gate theo quyền |
+| Route ứng dụng | 52 route; `/` đưa guest tới login và user đã xác thực tới dashboard; toàn bộ `/admin` yêu cầu auth và route nhân viên dùng Gate theo quyền |
 | Frontend | `npm run test:frontend` 15 pass; `npm run build` pass; Vite 7.3.6, 16 modules transformed |
-| Test | Scoped employee/auth hiện tại `119 pass, 1141 assertions`; attendance compatibility `16 pass, 61 assertions`; full Laravel `234 pass, 1 fail, 1815 assertions` vì `/` chưa có route |
+| Test | Scoped employee/auth snapshot `119 pass, 1141 assertions`; attendance compatibility `16 pass, 61 assertions`; full Laravel hiện tại `237 pass, 1820 assertions`; trước entrypoint `/` là `234 pass, 1 fail, 1815 assertions` |
 | Database local | MariaDB 10.4.32; rollout environment-specific 16 tables/1 view/8 functions/10 triggers/69 procedures và demo 5 employee/5 address; guarded rerun sau tích hợp timeout khoảng 184 giây, cleanup sạch; không phải production |
 | Auth/RBAC | Custom employee provider, login/logout, session fail-closed và 5 quyền nhân viên đã wired/test; role mặc định có 0 quyền |
 
@@ -64,7 +64,7 @@ Các số liệu Task 20 trong bảng là historical feature-branch evidence; h�
 | Chấm công | Prototype — blocked | Chi tiết dùng Query Builder vì procedure thiếu; update/read đã khóa auth, rollout và Gate; import/export chưa có workflow an toàn |
 | Nghỉ phép | Prototype | Có UI/API CRUD và duyệt; chưa có test nghiệp vụ hoặc kiểm chứng mutation đầy đủ |
 | Hệ số lương | Prototype | Có API đọc/thêm/sửa; JavaScript delete không có route DELETE; validation và schema còn lệch |
-| Nhân viên | Verified hẹp và đã tích hợp vào `main` qua `aa77419`; chưa production-ready | List/create/detail/edit, avatar ở automated tests, delete-or-terminate, reset password, login/session, RBAC 5 quyền và responsive browser đã kiểm tra trên disposable MariaDB. Browser upload/thay avatar còn blocked do quyền Chrome; full suite còn baseline `/` 404 |
+| Nhân viên | Verified hẹp và đã tích hợp vào `main` qua `aa77419`; chưa production-ready | List/create/detail/edit, avatar ở automated tests, delete-or-terminate, reset password, login/session, RBAC 5 quyền và responsive browser đã kiểm tra trên disposable MariaDB. Browser upload/thay avatar còn blocked do quyền Chrome; entrypoint `/` đã có regression test guest/authenticated |
 | Phòng ban | Prototype — blocked | Route/controller/Blade/procedure chưa khớp |
 | Chức vụ | Prototype — unreachable | Có controller/service/repository/request/model nhưng chưa có route |
 | Hợp đồng | Planned | Chưa có workflow quản trị; hiện chỉ được dùng làm dependency khi kiểm tra kết thúc làm việc |
@@ -175,7 +175,7 @@ php artisan serve
 npm run dev
 ```
 
-Các trang có route hiện nằm dưới `/admin`; repository chưa có route `/`.
+Mở base URL `/` để vào luồng mặc định: guest được chuyển tới `/dang-nhap`, còn user đã xác thực được chuyển thẳng tới `/admin/bang-dieu-khien`. Các trang quản trị khác nằm dưới `/admin`.
 
 Không dùng `composer setup` như một lệnh “cài tất cả” ở trạng thái hiện tại, vì script này tự chạy migrations trong khi chiến lược import dump/migrations chưa được chốt.
 
@@ -193,19 +193,19 @@ git status --short
 
 Baseline Task 20 trước delivery:
 
-- Route list: pass, 49 route.
+- Route list: pass, 52 route; entrypoint `/` đã có redirect login/dashboard.
 - Frontend: 15 pass; build pass, 16 modules.
 - Composer validate/install dry-run pass; audit không còn advisory sau khi nâng sáu dependency tương thích trong lockfile.
-- Full Laravel hiện tại: 234 pass, 1 fail, 1815 assertions; lỗi duy nhất do `/` trả 404. Baseline trước vòng authorization/guard là 224/1789.
+- Full Laravel hiện tại: 237 pass, 1820 assertions; trước thay đổi entrypoint là 234 pass, 1 fail, 1815 assertions. Baseline trước vòng authorization/guard là 224/1789.
 - Guarded MariaDB rerun sau tích hợp: timeout khoảng 184 giây; process/schema/state đã cleanup sạch, không claim pass. Kết quả `165/3367` là historical Task 20.
 
 Ngoài ra, `phpunit.xml` ép test dùng SQLite in-memory. Kể cả khi suite này xanh, nó vẫn không chứng minh stored procedure/trigger MariaDB hoạt động; cần một integration suite riêng trên database disposable.
 
-Không sửa test để “xanh” bằng cách bỏ assertion; hãy chốt route home mong muốn rồi cập nhật route và test cùng nhau.
+Entrypoint `/` được khóa bằng route và regression tests cho cả guest lẫn authenticated; không bỏ assertion để che lỗi.
 
 ## Các blocker ưu tiên
 
-1. Chốt route `/`/landing để xử lý baseline `ExampleTest` 404.
+1. Re-run full Laravel suite để cập nhật evidence sau khi bổ sung entrypoint `/`.
 2. Xác minh browser upload/thay avatar sau khi Chrome extension được cấp file URL access; không suy từ automated test thành browser pass.
 3. Tạo quy trình rollout/backup/master data cho môi trường dùng thật; không chạy canonical dump phá hủy trên database cần giữ dữ liệu.
 4. Bổ sung hai procedure còn thiếu ngoài module nhân viên: `sp_phong_ban_chi_tiet` và `sp_luong_tim_kiem_phan_trang`. Chấm công chi tiết đã chuyển sang Query Builder trong scope tích hợp.

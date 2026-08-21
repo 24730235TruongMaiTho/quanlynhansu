@@ -31,6 +31,20 @@ class EmployeeAuthenticationTest extends TestCase
             ->assertDontSee('remember', false);
     }
 
+    public function test_authenticated_user_visiting_login_form_is_redirected_to_dashboard(): void
+    {
+        $this->actingAs($this->employee())
+            ->get('/dang-nhap')
+            ->assertRedirect(route('backend.bangdieukhien.index'));
+    }
+
+    public function test_authenticated_user_visiting_root_is_redirected_to_dashboard(): void
+    {
+        $this->actingAs($this->employee())
+            ->get('/')
+            ->assertRedirect(route('backend.bangdieukhien.index'));
+    }
+
     public function test_invalid_password_payload_never_flashes_or_renders_plaintext(): void
     {
         $response = $this->from('/dang-nhap')->post('/dang-nhap', [
