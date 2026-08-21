@@ -2,18 +2,25 @@
 
 > Snapshot: 2026-08-21
 >
-> Branch: `feature/quanly-nhan-vien`
+> Historical Task 20 branch: `feature/quanly-nhan-vien`; current local integration branch: `main`
 >
-> Phạm vi: Tasks 13–20 đã được kiểm chứng hẹp, commit và push lên `origin/feature/quanly-nhan-vien`: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156`, documentation evidence `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Local/upstream/remote đã trùng tại checkpoint `7bedcadf`; luôn revalidate vì commit trạng thái này nằm sau checkpoint. Không ghi database live.
+> Phạm vi historical: Tasks 13–20 đã được kiểm chứng hẹp, commit và push lên `origin/feature/quanly-nhan-vien`: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156`, documentation evidence `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Current local main đã fast-forward tới `origin/main` `1677f202f70e020ce75ef0fa88b11b9db44fa047` và merge feature tại `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f`; focused attendance tests ở `9cd2c30`. Không push trong task này.
 
-## Bằng chứng hiện tại — Task 20 Phase E (2026-08-21)
+## Current local integration và rollout (2026-08-21)
+
+- Local `main` là nguồn tích hợp hiện tại; merge `aa77419` có parents `1677f20` và `91bb7a1` (`feat(employee-db): add guarded local demo seed`).
+- `quan_ly_nhan_su` local đã được cập nhật có chủ đích qua rollout được approval và demo synthetic; đây là bằng chứng environment-specific, không phải production. Shape đã kiểm chứng: 16 bảng, 1 view, 8 function, 10 trigger, 69 procedure.
+- Demo hiện có 5 employee và 5 address; admin demo có đúng 5 employee permission; bốn normal demo zero employee permission. IDs local hiện `NV006`–`NV010` nhưng không ổn định sau cleanup/reseed. Backup nằm ngoài Git/ignored.
+- Hướng dẫn authoritative: [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md). Avatar browser vẫn blocked/unverified và chưa claim MySQL 8.
+
+## Bằng chứng historical — Task 20 Phase E trước local integration (2026-08-21)
 
 Đây là mục authoritative mới nhất; các số liệu lịch sử bên dưới được giữ để
 truy nguyên nhưng không được dùng thay cho gate mới.
 
 - Full guarded MariaDB wrapper đã pass với `165 tests, 3367 assertions, 1 platform skip,
-  exit 0`; mọi schema disposable được cleanup. Runtime chỉ dùng database test
-  có tên guarded; `quan_ly_nhan_su` không bị mutation.
+  exit 0`; mọi schema disposable được cleanup. Ở checkpoint historical này
+  runtime chỉ dùng database test có tên guarded; `quan_ly_nhan_su` chưa bị mutation.
 - Scoped employee Feature/Unit, frontend `15/15`, Vite build, Composer, route
   inventory và diff checks đã pass trong các gate Task20. Full Laravel vẫn có
   đúng một baseline failure: `Tests\\Feature\\ExampleTest` kỳ vọng `GET /` là
@@ -31,9 +38,9 @@ truy nguyên nhưng không được dùng thay cho gate mới.
   listener `8012`, PHP acceptance child, `public/storage` và guarded schema đều
   `0`; `storage/app/public` được giữ nguyên. Không còn runtime resource thuộc
   harness.
-- Module nhân viên là **verified hẹp và đã Git-deliver trên feature branch**,
-  chưa phải production readiness: avatar browser còn blocked và full-suite `/`
-  baseline còn fail.
+- Historical module nhân viên là **verified hẹp và đã Git-deliver trên feature
+  branch**; code hiện đã tích hợp local vào `main`, chưa phải production
+  readiness: avatar browser còn blocked và full-suite `/` baseline còn fail.
 
 ## Cách đọc trạng thái
 
@@ -49,7 +56,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 
 | Kiểm tra | Kết quả |
 | --- | --- |
-| Git | Branch `feature/quanly-nhan-vien`; source `ba6e018`, dependency locks `18ea209`, docs/evidence `7bedcad`; checkpoint đã push và xác minh local/upstream/remote bằng nhau |
+| Git | Historical feature checkpoint `7bedcad`; current local `main` merge `aa77419`, parents `1677f20`/`91bb7a1`, chưa push |
 | MCP code graph | 1.819 node, 2.454 edge; dùng để khám phá code, không dùng thay cho route runtime |
 | `php artisan route:list --except-vendor` | Pass; 49 route, gồm login/logout và employee lifecycle routes |
 | `php artisan test` | `221 pass, 1 fail, 1772 assertions`; failure duy nhất là baseline `/` trả 404; Unit `95/633`, scoped Feature employee/auth/compatibility `107/1093` |
@@ -68,7 +75,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | Home/landing | Có named route `backend.frontend.home` tại `/admin`, nhưng target view `frontend.home` bị thiếu; không có route `/` | Không | Test `/` fail | **Blocked** |
 | Dashboard | `/admin/bang-dieu-khien` render 200 | Chưa có dữ liệu | Không | **Prototype** |
 | Phòng ban | Blade index/create lỗi | Controller gọi SP trực tiếp | Không | **Prototype — blocked**: route trỏ method thiếu, SP chi tiết thiếu, update sai placeholder |
-| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Unit `95/633`; scoped Feature `107/1093`; MariaDB `165/3367`; frontend `15`; browser function/RBAC/responsive matrix | **Verified hẹp và đã Git-deliver trên feature branch; chưa production-ready**: browser avatar upload còn blocked; full suite còn baseline `/` 404 |
+| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Unit `95/633`; scoped Feature `107/1093`; MariaDB `165/3367`; frontend `15`; browser function/RBAC/responsive matrix | **Verified hẹp và đã tích hợp local vào main; chưa production-ready**: browser avatar upload còn blocked; full suite còn baseline `/` 404 |
 | Chức vụ | Chưa có route/view | Có controller/service/repository/request/model | Không | **Prototype — unreachable** |
 | Lương | Trang render, JS CRUD và hệ số được build | API resource + service/repository | Không | **Prototype — blocked**: thiếu procedure danh sách; write contract chưa ngăn trùng `(ma_nv, ky_luong)`; export/đối soát chưa có handler đầy đủ |
 | Hệ số lương | UI tích hợp trong trang lương | API đọc/thêm/sửa dùng Query Builder; JavaScript có delete nhưng API chưa có route DELETE | Không | **Prototype — blocked action**: validation lệch schema, mutation chưa xác minh |
@@ -146,11 +153,11 @@ Không merge/rebase/cherry-pick tự động. Xem [ADR-001](decisions/ADR-001-ad
 
 ## Điều chưa được xác minh
 
-- Canonical dump replay đã chạy trên disposable schema qua `CanonicalDumpReplayTest`; không replay vào `quan_ly_nhan_su`.
-- Không chạy mutation CRUD trên database live; employee mutation chỉ chạy trong disposable schema do guard tạo và đã cleanup.
+- Historical canonical dump replay đã chạy trên disposable schema qua `CanonicalDumpReplayTest`; local rollout hiện tại được ghi riêng ở phần Current local integration và không phải production acceptance.
+- Không chạy mutation CRUD trên production/live cần giữ dữ liệu; local demo rollout có backup/preflight và synthetic scope, employee mutation tests vẫn chạy trong disposable schema do guard tạo và đã cleanup.
 - Guarded full employee wrapper đã pass hẹp: `165 tests, 3367 assertions, 1 platform skip`, cleanup schema/state/lock/run/upload/listener/PHP/link `0`.
 - Browser matrix chức năng/RBAC/responsive đã có; avatar upload/replacement còn blocked và separate simultaneous context không được browser-verified đầy đủ.
-- Không re-read hoặc mutate các bảng nghiệp vụ live trong phiên; response 200 trên danh sách rỗng (nếu có) không chứng minh logic với dữ liệu thật.
+- Không dùng local demo rollout hoặc response 200 trên danh sách rỗng để chứng minh production logic; cần rollout evidence/approval riêng cho môi trường thật.
 - Chưa xác minh tương thích MySQL 8; runtime hiện tại chỉ là MariaDB 10.4.32.
 - Full Laravel chưa xanh vì baseline route `/` 404 ngoài scope module nhân viên.
 

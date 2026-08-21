@@ -1,3 +1,11 @@
+-- ============================================================================
+-- LEGACY / NOT AUTHORITATIVE for the current employee module.
+-- DO NOT RUN as the employee-module setup path.
+-- Use quan_ly_nhan_su.session.sql only for a fresh disposable/local database,
+-- or database/sql/employee/001..006 for an existing database after backup and
+-- preflight. See docs/EMPLOYEE_MODULE_GUIDE.md.
+-- ============================================================================
+
 USE quan_ly_nhan_su;
 
 -- ============================================================

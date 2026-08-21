@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-08-21 (Asia/Saigon)
 >
-> Branch: `feature/quanly-nhan-vien`
+> Branch: `main` (local integration; not pushed by this task)
 >
 > Base HEAD/upstream trước Tasks 13–20: `723dac63983d04364c6f146662aec7bd5eb6d87a`
 >
@@ -12,6 +12,10 @@
 >
 > Delivery checkpoint: sau lần push đầu, local HEAD, tracking upstream và remote ref cùng ở `7bedcadf`. Commit ghi trạng thái delivery này nằm sau checkpoint; luôn chạy lại Git status/HEAD/upstream sau khi đồng bộ.
 
+> Current integration: local `main` fast-forwarded to `origin/main` `1677f202f70e020ce75ef0fa88b11b9db44fa047`, then merged `feature/quanly-nhan-vien` at `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f` with parents `1677f202f70e020ce75ef0fa88b11b9db44fa047` and `91bb7a106e6a4fae8a61c4eb383dad596bf2b199`. Local demo seed commit is `91bb7a1`; focused merged-attendance tests are `9cd2c30`. Root must review and push separately.
+
+> Local rollout evidence (environment-specific, 2026-08-21): `quan_ly_nhan_su` was intentionally updated through the approved local rollout and demo seed. Verified local shape is 16 tables, 1 view, 8 functions, 10 triggers, 69 procedures; demo state is 5 employees/5 addresses, admin role 5 employee permissions, four normal identities zero employee permissions. Backup is ignored/outside Git. This is not production evidence.
+
 ## Đọc trước
 
 1. `AGENTS.md`.
@@ -19,12 +23,13 @@
 3. [PROJECT_STATUS.md](PROJECT_STATUS.md).
 4. [DATABASE.md](DATABASE.md) và `quan_ly_nhan_su.session.sql` nếu task chạm dữ liệu.
 5. Route, controller, request, service/repository, model, Blade/JavaScript và test đúng phạm vi.
+6. [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md) nếu task thuộc module Nhân viên.
 
 Code, route, test và database đang được kiểm tra có ưu tiên cao hơn snapshot này.
 
 ## Trạng thái module Nhân viên
 
-Tasks 13–20 đã đưa module tới mức **verified hẹp trên branch**, chưa phải production-ready:
+Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên feature branch**; sau đó code đã được tích hợp local vào `main`, chưa phải production-ready:
 
 - danh sách có filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar, xóa cứng hoặc chuyển nghỉ việc theo dependency, và reset mật khẩu;
 - custom employee auth provider, login/logout, session từ chối nhân viên `DA_NGHI`;
@@ -43,7 +48,7 @@ Tasks 13–20 đã đưa module tới mức **verified hẹp trên branch**, ch�
 - Task 19 process-identity/atomic-state regressions đều nằm trong full wrapper sạch; skip duy nhất là Windows từ chối tạo disposable state symlink.
 - Independent final review: **Spec PASS / Quality APPROVE**, không còn finding Critical/Important.
 
-`phpunit.xml` dùng SQLite in-memory; chỉ wrapper guarded MariaDB chứng minh stored procedure trên MariaDB 10.4.32. Chưa claim MySQL 8 hoặc database live.
+`phpunit.xml` dùng SQLite in-memory; chỉ wrapper guarded MariaDB chứng minh stored procedure trên MariaDB 10.4.32. Local rollout/seed ở trên là bằng chứng environment-specific riêng; chưa claim production hoặc MySQL 8.
 
 ## Browser acceptance Task 20
 
@@ -61,10 +66,10 @@ Giới hạn còn lại: browser upload/thay avatar **blocked/unverified** vì C
 
 Official `Stop` đã dọn sạch fixture: guarded schema, state/lock/probe/run/upload, listener 8012, acceptance PHP child và `public/storage` đều `0`; `storage/app/public` dùng chung vẫn được giữ.
 
-## Database safety
+## Database safety và lịch sử kiểm tra
 
 - `quan_ly_nhan_su.session.sql` bắt đầu bằng `DROP DATABASE IF EXISTS`; chỉ replay trên database disposable/local không có dữ liệu cần giữ.
-- Không chạy employee mutation test trên database live/configured.
+- Historical Task 20 integration tests chỉ chạy trên disposable/guarded schema; local rollout hiện tại đã được approval riêng, backup ngoài Git và có demo synthetic. Không suy rộng local rollout thành production.
 - Dùng `tests/Support/invoke-employee-mariadb-tests.ps1 -EnableDisposableMariaDb` cho integration suite.
 - Dùng `tests/Support/employee-acceptance.ps1` cho browser fixture; luôn chạy action `Stop`, kể cả khi browser fail.
 - Không đưa password/hash, credential, DB URL, cookie/token hoặc dữ liệu cá nhân vào log/handoff.
@@ -74,8 +79,9 @@ Official `Stop` đã dọn sạch fixture: guarded schema, state/lock/probe/run/
 1. Bật quyền file URL cho Chrome extension rồi chạy riêng avatar upload/replacement acceptance nếu cần đóng khoảng trống browser.
 2. Chốt route `/`/landing để sửa baseline `ExampleTest` 404 trong một task riêng.
 3. Lập quy trình rollout/master-data/backup trước khi dùng database thật.
-4. Mở review/PR và merge feature branch khi nhóm duyệt; chưa merge vào `main` trong lượt này.
-5. Các module phòng ban/lương/chấm công/nghỉ phép vẫn có blocker riêng; không suy rộng trạng thái Nhân viên sang toàn dự án.
+4. Root review merge/docs commits và push khi nhóm duyệt; task này không push.
+5. Chạy lại browser avatar upload khi Chrome file URL access được cấp; các module phòng ban/lương/chấm công/nghỉ phép vẫn có blocker riêng.
+6. Không suy rộng trạng thái Nhân viên sang toàn dự án.
 
 ## Checklist tiếp tục
 
@@ -93,7 +99,7 @@ npm run test:frontend
 npm run build
 ```
 
-Nếu task dùng database, đọc [DATABASE.md](DATABASE.md), kiểm tra signature/result shape và chỉ mutation trên target disposable được guard.
+Nếu task dùng database, đọc [DATABASE.md](DATABASE.md), kiểm tra signature/result shape và chỉ mutation trên target đã được approval/backup/preflight; test routine vẫn phải dùng disposable guard.
 
 ## Branch frontend
 

@@ -1,3 +1,10 @@
+-- ============================================================================
+-- LEGACY / NOT AUTHORITATIVE for the current employee module.
+-- DO NOT RUN as the employee-module demo setup path.
+-- Use database/sql/employee/demo/2026_08_21_001_demo_seed.sql after the
+-- canonical/schema rollout described in docs/EMPLOYEE_MODULE_GUIDE.md.
+-- ============================================================================
+
 USE quan_ly_nhan_su;
 
 -- 1. Dữ liệu bảng Phòng Ban

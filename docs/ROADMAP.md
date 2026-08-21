@@ -93,7 +93,7 @@ Module này trở thành mẫu cho chức vụ và các danh mục.
 - [x] Automated test upload/replace/delete/ownership avatar; browser file chooser còn blocked.
 - [x] Test quyền và dữ liệu nhạy cảm.
 
-Milestone 5 đạt mức **verified hẹp và đã Git-deliver trên feature branch**. Chưa đánh dấu production-ready vì browser avatar còn blocked và chưa có rollout database thật.
+Milestone 5 là historical **verified hẹp và đã Git-deliver trên feature branch**; hiện đã tích hợp local vào `main`. Chưa đánh dấu production-ready vì browser avatar còn blocked và rollout database thật chưa được phê duyệt.
 
 ## Milestone 6 — lương, chấm công, nghỉ phép
 

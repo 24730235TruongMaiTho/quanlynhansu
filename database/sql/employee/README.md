@@ -1,5 +1,10 @@
 # Employee database scripts
 
+Hướng dẫn authoritative cho setup, rollout, demo và continuation map nằm ở
+[docs/EMPLOYEE_MODULE_GUIDE.md](../../../docs/EMPLOYEE_MODULE_GUIDE.md). README
+này giữ chi tiết SQL contract; không dùng nó để bỏ qua target guard, backup hoặc
+preflight.
+
 Các script trong thư mục này nâng cấp schema nhân viên theo thứ tự tên file. Chúng chạy trên database đang được chọn và không tự `DROP DATABASE`, `CREATE DATABASE` hoặc `USE`.
 
 ## `2026_08_12_001_schema.sql`

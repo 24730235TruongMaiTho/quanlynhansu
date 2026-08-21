@@ -9,14 +9,14 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
 - Đồ án: website quản lý nhân sự cho hai môn Web Application và UI/UX.
 - Stack: Laravel 12, PHP 8.2+, Blade, JavaScript, Vite 7, Tailwind CSS 4, Bootstrap, MariaDB/MySQL.
 - Schema nghiệp vụ hiện nằm trong `quan_ly_nhan_su.session.sql`.
-- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban còn lỗi. Branch `feature/quanly-nhan-vien` có module nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và Git-deliver trên feature branch; xem handoff để biết các SHA và giới hạn browser avatar.
+- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban còn lỗi. Module nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp local vào `main`; xem handoff/guide để biết các SHA và giới hạn browser avatar.
 - Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
 ## Thứ tự đọc
 
 1. File này.
 2. `docs/CODEX_NEXT_HANDOFF.md`.
-3. `docs/PROJECT_STATUS.md` và tài liệu chuyên đề liên quan.
+3. `docs/PROJECT_STATUS.md` và tài liệu chuyên đề liên quan. Với task module Nhân viên, đọc thêm [docs/EMPLOYEE_MODULE_GUIDE.md](docs/EMPLOYEE_MODULE_GUIDE.md).
 4. Route, controller, request, service/repository, model, Blade/JavaScript và test của task.
 5. `quan_ly_nhan_su.session.sql` trước mọi thay đổi dùng database.
 6. Instruction/skill phù hợp trong `.codex/`.

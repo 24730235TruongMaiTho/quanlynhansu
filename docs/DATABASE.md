@@ -2,13 +2,13 @@
 
 > Snapshot kiểm tra: 2026-08-21
 >
-> Runtime tham chiếu: MariaDB 10.4.32, schema `quan_ly_nhan_su` (live không bị mutate; guarded disposable integration employee đã pass hẹp)
+> Runtime tham chiếu: MariaDB 10.4.32, schema `quan_ly_nhan_su` (local rollout đã được kiểm chứng environment-specific; guarded disposable integration employee đã pass hẹp)
 >
-> Thao tác phiên này: đối chiếu caller/SQL/test, hoàn tất acceptance disposable và cleanup; không ghi database live.
+> Thao tác lịch sử Task 20: đối chiếu caller/SQL/test, hoàn tất acceptance disposable và cleanup. Current local rollout/demo được ghi ở mục dưới; không dùng làm production acceptance.
 
 ## Nguồn schema
 
-`quan_ly_nhan_su.session.sql` hiện là nguồn schema nghiệp vụ canonical trong Git. Counts dưới đây được đo trực tiếp từ file hiện tại; database live không được mutate/re-audit trong Task 20 nên không được giả định có cùng revision:
+`quan_ly_nhan_su.session.sql` hiện là nguồn schema nghiệp vụ canonical trong Git. Counts dưới đây được đo trực tiếp từ file hiện tại; local rollout đã được kiểm tra riêng và không được suy rộng thành production schema:
 
 | Loại object | Số lượng |
 | --- | ---: |
@@ -17,6 +17,16 @@
 | Function | 8 |
 | Trigger | 10 |
 | Stored procedure | 69 |
+
+## Current local rollout (environment-specific, 2026-08-21)
+
+Local `quan_ly_nhan_su` đã được cập nhật có chủ đích qua approved rollout và
+demo synthetic. Postcheck ghi nhận 16 bảng, 1 view, 8 function, 10 trigger,
+69 procedure; demo có 5 employee và 5 address; role admin demo có đúng 5
+employee permission và bốn normal demo có zero employee permission. Backup nằm
+ngoài Git/ignored. Đây không phải production rollout; MySQL 8 chưa được claim.
+Xem [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md) cho decision table,
+target guard và cleanup.
 
 Ba migration Laravel chỉ tạo users/password reset/session, cache và queue/jobs. Database live chưa có bảng `migrations` và các migration này chưa chạy.
 
@@ -62,7 +72,11 @@ View duy nhất là `vw_danh_sach_nhan_vien_chi_tiet`.
 | Lương | 7 |
 | Backup/restore | 2 |
 
-Tồn tại object không đồng nghĩa procedure đã được kiểm thử nghiệp vụ. Scripts employee `001`–`006` và canonical dump chỉ được replay/mutation-test trên disposable schema qua guarded integration; không gọi routine ghi trên live schema.
+Tồn tại object không đồng nghĩa procedure đã được kiểm thử nghiệp vụ. Historical
+employee integration dùng scripts `001`–`006` và canonical dump trên disposable
+schema qua guarded integration; approved local rollout/demo là scope riêng. Không
+gọi routine ghi trên production hoặc database cần giữ dữ liệu nếu chưa có
+backup/preflight/approval.
 
 ## Registry các procedure PHP đang gọi
 
@@ -278,6 +292,6 @@ runtime đã kiểm chứng; MySQL 8 chưa được claim.
 
 ## Giới hạn của snapshot
 
-- Canonical dump và scripts employee đã clean-replay/mutation-test trên schema disposable; chưa replay vào database `quan_ly_nhan_su` live.
+- Canonical dump và scripts employee đã clean-replay/mutation-test trên schema disposable; local `quan_ly_nhan_su` hiện có rollout/demo synthetic được ghi ở mục Current local rollout, không phải production acceptance.
 - Chưa checksum thân routine giữa live DB và dump; không dùng live DB làm nguồn acceptance.
 - Chưa xác minh MySQL 8.

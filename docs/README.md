@@ -14,11 +14,10 @@ Khi thông tin mâu thuẫn, dùng thứ tự ưu tiên:
 
 Mọi số liệu route, test, build và Git đều là snapshot; phải đo lại khi HEAD đổi.
 
-Snapshot mới nhất của Tasks 13–20 nằm ở đầu [PROJECT_STATUS.md](PROJECT_STATUS.md)
+Snapshot lịch sử Tasks 13–20 nằm ở đầu [PROJECT_STATUS.md](PROJECT_STATUS.md)
 và [CODEX_NEXT_HANDOFF.md](CODEX_NEXT_HANDOFF.md). Browser employee đã có
 responsive evidence hẹp; avatar file upload vẫn blocked/unverified. Source và
-dependency locks cùng tài liệu evidence đã push trên feature branch. Không dùng các đoạn lịch sử bên dưới để suy rộng thành
-production readiness.
+dependency locks cùng tài liệu evidence đã được tích hợp local vào `main`; không dùng các đoạn lịch sử bên dưới để suy rộng thành production readiness.
 
 ## Bản đồ tài liệu
 
@@ -26,6 +25,7 @@ production readiness.
 | --- | --- |
 | [README gốc](../README.md) | Onboarding nhanh và tổng quan dự án |
 | [PROJECT_STATUS.md](PROJECT_STATUS.md) | Kiểm tra module nào wired, prototype, blocked hoặc planned |
+| [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md) | Setup, database decision table, demo và bản đồ tiếp tục module Nhân viên |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Hiểu luồng request, lớp code, route và asset |
 | [DATABASE.md](DATABASE.md) | Setup MariaDB/MySQL, schema, routine và rủi ro dữ liệu |
 | [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) | Bắt đầu task, quy ước code, Git và kiểm tra |

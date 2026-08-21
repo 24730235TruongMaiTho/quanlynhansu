@@ -11,7 +11,7 @@ git rev-parse HEAD
 php artisan route:list --except-vendor
 ```
 
-Sau đó đọc [PROJECT_STATUS.md](PROJECT_STATUS.md) và các file route/controller/request/model/view/JavaScript/SQL liên quan trực tiếp tới task.
+Sau đó đọc [PROJECT_STATUS.md](PROJECT_STATUS.md), [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md) nếu task thuộc module Nhân viên, và các file route/controller/request/model/view/JavaScript/SQL liên quan trực tiếp tới task.
 
 Không dùng snapshot cũ thay cho kiểm tra live. Không fetch, merge, rebase, push, tạo upstream hoặc worktree nếu người dùng chưa yêu cầu.
 
