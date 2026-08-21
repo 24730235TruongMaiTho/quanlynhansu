@@ -28,11 +28,16 @@ Local branch `frontend` tại `940e7cc` có shell đã được duyệt:
 
 Shell này dùng layout `backend.layout.app` (không có `s`) và chưa được tích hợp vào `main`. Xem [ADR-001](decisions/ADR-001-admin-shell.md).
 
-Contract và automated render/controller/build tests đã được xác minh trên branch; browser acceptance về viewport, clipping, focus, console/network vẫn chưa hoàn tất.
+Contract và automated render/controller/build tests đã được xác minh trên branch.
+Task20 đã có browser evidence hẹp cho employee runtime: responsive
+`320/375/768/1024/1440`, clipping, console và các flow auth/CRUD chính đã pass;
+avatar upload/replacement vẫn **blocked/unverified** vì browser extension không
+cho file URL access. Shell mục tiêu trên branch `frontend` vẫn là workstream
+riêng và chưa được coi là đã merge.
 
 Không copy ngẫu nhiên từng file giữa hai branch: layout path, route name, Vite inputs, page contract và tests khác nhau.
 
-## Hiện trạng page trên main
+## Hiện trạng page trên branch tính năng hiện tại
 
 | Page | Hiện trạng |
 | --- | --- |
@@ -40,8 +45,8 @@ Không copy ngẫu nhiên từng file giữa hai branch: layout path, route name
 | Lương | UI + JavaScript CRUD/hệ số đã nối một phần; danh sách lương bị DB block; JS xóa hệ số không có route DELETE; export không có binding và đối soát chỉ enable/disable, chưa có click handler |
 | Chấm công | UI + JavaScript tải/cập nhật đã nối; import/export mới phát event |
 | Nghỉ phép | UI + JavaScript CRUD/duyệt đã nối; chưa có test workflow |
-| Nhân viên | Danh sách hard-code; action dùng alert/client state |
-| Thêm nhân viên | Form không có action/method/CSRF; submit không lưu |
+| Nhân viên | List/filter/pagination, detail/edit, delete-or-terminate/reset, permission-aware actions và trạng thái empty/success/error/submitting đã wired; verified hẹp bằng automated + browser acceptance |
+| Thêm nhân viên | Wizard POST có CSRF/validation, lưu hồ sơ + địa chỉ + account/avatar qua service/repository; không nhận role từ client |
 | Phòng ban | Blade/layout bị lỗi |
 | Landing | View bị thiếu; `/` không có route |
 
@@ -49,7 +54,7 @@ Không copy ngẫu nhiên từng file giữa hai branch: layout path, route name
 
 ## Asset trên main
 
-`vite.config.js` build sáu entry JavaScript cho:
+`vite.config.js` build bảy entry JavaScript cho:
 
 - Lương chính.
 - Form lương.
@@ -57,13 +62,14 @@ Không copy ngẫu nhiên từng file giữa hai branch: layout path, route name
 - Form hệ số lương.
 - Chấm công.
 - Nghỉ phép.
+- Nhân viên.
 
 Các điểm cần chuẩn hóa:
 
 - Layout admin vẫn dựa nhiều vào CDN và asset `public/backend`.
 - Landing/shared `app.css` và `app.js` không có trong Vite input.
 - `resources/js/app.js` import `./bootstrap`, nhưng file này không tồn tại.
-- Sidebar không có route active và thiếu link tới các module mới.
+- Sidebar/navigation vẫn hard-code và chưa dùng chung route-active contract của shell mục tiêu.
 - Route name lương/chấm công/nghỉ phép bị lặp `backend.backend.*`.
 
 ## Page contract khi tích hợp shell mục tiêu
@@ -137,9 +143,22 @@ Checklist tối thiểu:
 - [ ] Contrast và focus ring kiểm tra trong browser.
 - [ ] Animation tôn trọng `prefers-reduced-motion`.
 
-Khoảng trống hiện tại gồm focus management của drawer/dropdown, accessible name cho một số icon, submenu `href="#"`, control động thiếu label và thiếu browser acceptance.
+Khoảng trống toàn shell hiện tại gồm focus management của drawer/dropdown, accessible name cho một số icon, submenu `href="#"` và control động thiếu label. Employee dialog/filter/responsive đã có kiểm tra hẹp; không suy rộng kết quả đó sang mọi page hoặc shell ở branch `frontend`.
 
 ## Browser acceptance
+
+### Employee runtime evidence (2026-08-21)
+
+Browser recheck ghi nhận `documentOverflow=false` ở cả năm viewport; ở 320px
+`.main-content` co đúng nhờ `min-width: 0`, bảng giữ overflow-x trong
+`.table-responsive`, và media rule chỉ ẩn global topbar search placeholder.
+Employee filter, title, hamburger và account vẫn có mặt; từ 375px search hiện
+lại. Console không có lỗi trong các trang đã kiểm tra. Đây là bằng chứng runtime
+hẹp của employee page, không thay thế acceptance của shell `frontend` branch.
+
+Avatar upload/replacement chưa được browser verify do file chooser bị Chrome
+extension từ chối; automated upload/ownership tests không chứng minh được thao
+tác file thật trong browser.
 
 Tối thiểu kiểm tra:
 

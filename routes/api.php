@@ -9,6 +9,8 @@ use App\Http\Controllers\Backend\NghiPhepController;
 use App\Http\Controllers\Backend\LuongChucVuController;
 use App\Http\Controllers\Backend\LuongPhongBanController;
 use App\Http\Controllers\Backend\LuongHeSoLuongController;
+use App\Http\Middleware\EnsureNhanVienModuleEnabled;
+use App\Enums\NhanVienPermission;
 
 Route::middleware('api')
     ->prefix('v1')
@@ -26,7 +28,14 @@ Route::middleware('api')
                 Route::get(
                     'nhan-vien',
                     [ChamCongController::class, 'employees']
-                )->name(
+                )
+                ->middleware([
+                    'web',
+                    'auth',
+                    EnsureNhanVienModuleEnabled::class,
+                    'can:'.NhanVienPermission::Xem->value,
+                ])
+                ->name(
                     'api.v1.cham-cong.nhan-vien'
                 );
 
@@ -59,18 +68,13 @@ Route::middleware('api')
                 Route::get(
                     'nhan-vien',
                     [NghiPhepController::class, 'employees']
-                );
-
-                Route::post(
-                    'nhan-vien',
-                    [NghiPhepController::class, 'storeEmployee']
-                );
-
-                Route::match(
-                    ['PUT', 'PATCH'],
-                    'nhan-vien/{ma_nv}',
-                    [NghiPhepController::class, 'updateEmployee']
-                );
+                )
+                ->middleware([
+                    'web',
+                    'auth',
+                    EnsureNhanVienModuleEnabled::class,
+                    'can:'.NhanVienPermission::Xem->value,
+                ]);
 
                 Route::get(
                     'phong-ban',

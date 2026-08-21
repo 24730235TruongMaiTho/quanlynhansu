@@ -9,6 +9,7 @@ export default defineConfig({
                 'resources/js/frontend/luong/luong.js',
                 'resources/js/frontend/nghiphep/nghiphep.js',
                 'resources/js/frontend/chamcong/chamcong.js',
+                'resources/js/frontend/nhanvien/nhanvien.js',
                 'resources/js/frontend/luong/luongCreateUpdate.js',
                 'resources/js/frontend/luong/luongHeSo.js',
                 'resources/js/frontend/luong/luongHeSoCreateUpdate.js',

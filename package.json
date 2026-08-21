@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:frontend": "node --test tests/Frontend/nghiphep/employee-response.test.js tests/Frontend/nhanvien/wizard-state.test.js tests/Frontend/nhanvien/confirm-actions.test.js tests/Frontend/nhanvien/filter-submit.test.js tests/Frontend/nhanvien/responsive-layout.test.js"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

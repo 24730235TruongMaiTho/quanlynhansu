@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Contracts\NhanVienServiceContract;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -9,9 +10,14 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ChamCongController extends Controller
 {
+    public function __construct(private NhanVienServiceContract $nhanVienService)
+    {
+    }
+
     /**
      * =========================================================
      * DANH SÁCH NHÂN VIÊN + TỔNG HỢP CHẤM CÔNG
@@ -30,180 +36,47 @@ class ChamCongController extends Controller
      */
     public function employees(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'tu_khoa' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-            'ma_pb' => [
-                'nullable',
-                'integer',
-                'exists:phong_ban,ma_pb',
-            ],
-            'thang' => [
-                'nullable',
-                'integer',
-                'between:1,12',
-            ],
-            'nam' => [
-                'nullable',
-                'integer',
-                'between:2000,2100',
-            ],
-            'page' => [
-                'nullable',
-                'integer',
-                'min:1',
-            ],
-            'per_page' => [
-                'nullable',
-                'integer',
-                'min:1',
-                'max:100',
-            ],
-        ]);
-
         try {
-            $tuKhoa = $this->nullIfEmpty(
-                $validated['tu_khoa'] ?? null
-            );
+            $validated = $request->validate([
+                'tu_khoa' => ['nullable', 'string', 'max:255'],
+                'ma_pb' => ['nullable', 'integer', 'exists:phong_ban,ma_pb'],
+                'thang' => ['nullable', 'integer', 'between:1,12'],
+                'nam' => ['nullable', 'integer', 'between:2000,2100'],
+                'page' => ['nullable', 'integer', 'min:1'],
+                'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            ]);
 
-            $maPhongBan = $validated['ma_pb'] ?? null;
+            $filters = [
+                'tu_khoa' => $this->nullIfEmpty($validated['tu_khoa'] ?? null),
+                'ma_pb' => isset($validated['ma_pb']) ? (int) $validated['ma_pb'] : null,
+                'thang' => (int) ($validated['thang'] ?? now()->month),
+                'nam' => (int) ($validated['nam'] ?? now()->year),
+                'page' => (int) ($validated['page'] ?? 1),
+                'so_dong' => (int) ($validated['per_page'] ?? 15),
+            ];
 
-            $thang = (int) (
-                $validated['thang']
-                ?? now()->month
-            );
-
-            $nam = (int) (
-                $validated['nam']
-                ?? now()->year
-            );
-
-            $perPage = min(
-                100,
-                max(
-                    1,
-                    (int) ($validated['per_page'] ?? 15)
-                )
-            );
-
-            $query = DB::table('nhan_vien as nv')
-                ->leftJoin(
-                    'phong_ban as pb',
-                    'pb.ma_pb',
-                    '=',
-                    'nv.ma_pb'
-                )
-                ->leftJoin(
-                    'chuc_vu as cv',
-                    'cv.ma_cv',
-                    '=',
-                    'nv.ma_cv'
-                )
-                ->leftJoin('cham_cong as cc', function ($join) use (
-                    $thang,
-                    $nam
-                ) {
-                    $join->on(
-                        'cc.ma_nv',
-                        '=',
-                        'nv.ma_nv'
-                    )
-                        ->whereMonth(
-                            'cc.ngay_lam',
-                            '=',
-                            $thang
-                        )
-                        ->whereYear(
-                            'cc.ngay_lam',
-                            '=',
-                            $nam
-                        );
-                })
-                ->when(
-                    $tuKhoa,
-                    function ($query) use ($tuKhoa) {
-                        $query->where(function ($subQuery) use (
-                            $tuKhoa
-                        ) {
-                            $subQuery
-                                ->where(
-                                    'nv.ma_nv',
-                                    'like',
-                                    '%'.$tuKhoa.'%'
-                                )
-                                ->orWhere(
-                                    'nv.ho_ten',
-                                    'like',
-                                    '%'.$tuKhoa.'%'
-                                );
-                        });
-                    }
-                )
-                ->when(
-                    $maPhongBan,
-                    fn ($query) => $query->where(
-                        'nv.ma_pb',
-                        $maPhongBan
-                    )
-                )
-                ->groupBy(
-                    'nv.ma_nv',
-                    'nv.ho_ten',
-                    'nv.gioi_tinh',
-                    'nv.so_dien_thoai',
-                    'nv.email',
-                    'nv.ma_pb',
-                    'pb.ten_pb',
-                    'nv.ma_cv',
-                    'cv.ten_cv'
-                )
-                ->select([
-                     'nv.ma_nv',
-                     'nv.ho_ten',
-                     'nv.gioi_tinh',
-                     'nv.so_dien_thoai',
-                     'nv.email',
-                     'nv.ma_pb',
-                     'pb.ten_pb',
-                     'nv.ma_cv',
-                     'cv.ten_cv',
-                 ])
-                ->selectRaw(
-                    'COALESCE(SUM(cc.so_gio_lam), 0) AS tong_gio_lam'
-                )
-                ->selectRaw(
-                    'COALESCE(SUM(CASE WHEN cc.vao_muon = 1 THEN 1 ELSE 0 END), 0) AS so_lan_vao_muon'
-                )
-                ->selectRaw(
-                    'COALESCE(SUM(CASE WHEN cc.ve_som = 1 THEN 1 ELSE 0 END), 0) AS so_lan_ve_som'
-                )
-                ->selectRaw(
-                    'COUNT(cc.ma_cc) AS so_ngay_cham_cong'
-                )
-                ->orderBy('nv.ma_nv');
-
-            $paginator = $query
-                ->paginate($perPage)
-                ->withQueryString();
+            $paginator = $this->nhanVienService->paginateForAttendance($filters);
+            $paginator->withPath($request->url())->appends($request->query());
 
             return response()->json([
                 'success' => true,
                 'data' => $paginator,
             ]);
         } catch (QueryException $exception) {
-            return $this->queryError(
-                $exception,
-                'Không thể tải danh sách nhân viên.'
-            );
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể tải danh sách nhân viên.',
+            ], 500);
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Throwable $exception) {
             report($exception);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Đã xảy ra lỗi khi tải danh sách nhân viên.',
+                'message' => 'Không thể tải danh sách nhân viên.',
             ], 500);
         }
     }
@@ -223,7 +96,8 @@ class ChamCongController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        try {
+            $validated = $request->validate([
             'ma_nv' => [
                 'required',
                 'string',
@@ -251,9 +125,8 @@ class ChamCongController extends Controller
                 'min:1',
                 'max:100',
             ],
-        ]);
+            ]);
 
-        try {
             $maNhanVien = $validated['ma_nv'];
             $thang = (int) $validated['thang'];
             $nam = (int) $validated['nam'];
@@ -362,6 +235,8 @@ class ChamCongController extends Controller
                     'so_ngay_cham_cong' => (float) ($summary->so_ngay_cham_cong ?? 0),
                 ],
             ]);
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (QueryException $exception) {
             return $this->queryError(
                 $exception,
@@ -518,11 +393,14 @@ class ChamCongController extends Controller
                 'Không thể cập nhật chấm công.'
             );
 
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Throwable $exception) {
+            report($exception);
 
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage(),
+                'message' => 'Không thể cập nhật chấm công.',
             ], 500);
         }
     }

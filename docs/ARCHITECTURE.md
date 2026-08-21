@@ -1,6 +1,6 @@
 # Kiến trúc hiện tại
 
-Tài liệu này mô tả code trên `main` tại snapshot 2026-08-11. Đây là kiến trúc **đang tồn tại**, không phải cam kết rằng mọi lớp đã nhất quán hoặc mọi module hoạt động.
+Tài liệu này mô tả code dùng chung và branch `feature/quanly-nhan-vien` tại snapshot 2026-08-21. Đây là kiến trúc **đang tồn tại**, không phải cam kết rằng mọi lớp đã nhất quán hoặc mọi module hoạt động.
 
 ## Sơ đồ request
 
@@ -29,14 +29,14 @@ Không nên coi sơ đồ lớp là chuẩn hoàn chỉnh: một số module b�
 
 ### Web
 
-`routes/web.php` đăng ký 17 route dưới `/admin`:
+`routes/web.php` đăng ký 22 web route tổng cộng, gồm login/logout và các route dưới `/admin`:
 
 - Dashboard.
 - Phòng ban.
 - Nhân viên.
 - Trang lương, chấm công, nghỉ phép.
 
-Các route quản trị chưa có middleware auth hoặc permission.
+Toàn bộ group `/admin` yêu cầu middleware `auth`. Route nhân viên còn đi qua rollout middleware và Gate theo từng permission; các module khác mới chỉ có auth chung, chưa có permission contract riêng.
 
 Named-route contract chưa đồng nhất: web có `backend.backend.*`, resource API không có `api.v1` prefix và một số route nghỉ phép chưa được đặt tên.
 
@@ -117,26 +117,27 @@ Frontend layout cũ lại yêu cầu `resources/css/app.css` và `resources/js/a
 
 `quan_ly_nhan_su.session.sql` là nguồn schema nghiệp vụ hiện tại:
 
-- 14 bảng.
+- 16 bảng.
 - 1 view.
 - 8 function.
 - 10 trigger.
-- 63 stored procedure.
+- 69 stored procedure.
 
 Ba migrations Laravel chỉ tạo hạ tầng users/session/cache/jobs và chưa được chạy trên database live. Xem [DATABASE.md](DATABASE.md).
 
-Laravel hiện dùng timezone `UTC`, trong khi MariaDB local dùng system timezone UTC+7 và SQL có `CURDATE()`. Những luồng dùng cả `now()` trong PHP và ngày DB có thể lệch kỳ ở ranh giới ngày/tháng cho tới khi nhóm chốt một timezone thống nhất.
+Baseline hiện dùng `APP_TIMEZONE=Asia/Ho_Chi_Minh` và `DB_TIMEZONE=+07:00`. Môi trường triển khai phải giữ hai giá trị đồng bộ vì SQL vẫn dùng `CURDATE()` và PHP dùng `now()`.
 
 ## Auth và ranh giới bảo mật
 
-Auth/RBAC chưa được tích hợp:
+Auth/RBAC đã được tích hợp hẹp cho module nhân viên:
 
-- Không route login/logout.
-- Không middleware `auth` trên web/API.
-- `config/auth.php` vẫn trỏ mặc định tới `App\Models\User`, nhưng model này không tồn tại.
-- SQL dump có hướng đăng nhập qua `nhan_vien` và SHA-256; đây không phải guard/hash Laravel đã hoàn thiện.
+- route `dang-nhap`/`dang-xuat`, custom `nhan-vien` provider và `App\Models\NhanVien` làm identity;
+- hash mới/rehash dùng Laravel hasher, lookup/hash CAS chỉ ở server boundary, session từ chối `DA_NGHI`;
+- toàn bộ `/admin` có `auth`; năm employee permission symbol được đăng ký thành Gate và cache trong một request;
+- employee Blade action và route dùng cùng permission; target role mặc định, self-target và non-baseline target được guard trước mutation;
+- hai lookup nhân viên dùng chung ở chấm công/nghỉ phép yêu cầu web session, rollout và quyền XEM.
 
-Không đưa ứng dụng ra môi trường công khai trước khi chốt và kiểm thử ranh giới này.
+Đây là verified hẹp trên automated/disposable/browser acceptance, chưa phải security audit production cho toàn ứng dụng. Các module ngoài nhân viên vẫn cần permission/audit riêng.
 
 ## Kiến trúc mục tiêu chưa tích hợp
 

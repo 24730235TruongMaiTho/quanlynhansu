@@ -1,372 +1,181 @@
 @extends('backend.layouts.app')
-@section('title', 'Thêm nhân viên - Quản lý nhân sự')
+
+@section('title', 'Thêm nhân viên')
+
 @section('content')
-<div class="content-area">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div>
-            <h1><i class="bi bi-person-plus-fill text-danger me-2"></i>Thêm nhân viên mới</h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="#">Trang chủ</a></li>
-                    <li class="breadcrumb-item"><a href="#">Nhân sự</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Thêm nhân viên</li>
-                </ol>
-            </nav>
-        </div>
-        <div>
-            <a href="#" class="btn btn-outline-secondary" style="display: inline-block; padding: 10px 20px; background: #f8f9fa; border: 1.5px solid #e0e0e0; border-radius: 10px; color: #495057; text-decoration: none; transition: all 0.2s;">
-                <i class="bi bi-arrow-left"></i> Quay lại
+    @php
+        $submitDisabled = $lookupError !== null || $missingLookups !== [];
+        $selectedLookup = function (string $key, string $valueKey, string $labelKey) use ($lookups): string {
+            $selected = collect($lookups[$key])->first(
+                fn (mixed $item): bool => (string) data_get($item, $valueKey) === (string) old($valueKey),
+            );
+
+            return data_get($selected, $labelKey, 'Chưa chọn');
+        };
+        $reviewValue = fn (string $field): string => filled(old($field)) ? old($field) : 'Chưa nhập';
+    @endphp
+
+    <main class="employee-page container container-xl py-4" aria-labelledby="page-title">
+        <nav class="mb-3" aria-label="Đường dẫn trang">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item">Nhân sự</li>
+                <li class="breadcrumb-item"><a href="{{ route('backend.nhanvien.index') }}">Danh sách nhân viên</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Thêm nhân viên</li>
+            </ol>
+        </nav>
+
+        <header class="d-flex flex-column flex-sm-row align-items-sm-start justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h3 fw-semibold mb-1" id="page-title">Thêm nhân viên</h1>
+                <p class="text-secondary mb-0">Nhập hồ sơ, thông tin công việc rồi kiểm tra trước khi lưu.</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ route('backend.nhanvien.index') }}">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                Quay lại danh sách
             </a>
+        </header>
+
+        @include('backend.nhanvien.partials.flash')
+
+        @if ($lookupError)
+            <div class="alert alert-danger" role="alert">
+                <p class="fw-semibold mb-1">Không tải được dữ liệu danh mục</p>
+                <p class="mb-0">{{ $lookupError }}</p>
+            </div>
+        @elseif ($missingLookups !== [])
+            <div class="alert alert-warning" role="alert">
+                <p class="fw-semibold mb-1">Thiếu dữ liệu danh mục bắt buộc</p>
+                <p class="mb-2">Chưa thể tạo nhân viên cho tới khi có đủ:</p>
+                <ul class="mb-0">
+                    @foreach ($missingLookups as $missingLookup)
+                        <li>{{ $missingLookup }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <div class="alert alert-info" role="note">
+            <p class="mb-1"><strong>Mã nhân viên được hệ thống tự cấp</strong> sau khi lưu thành công.</p>
+            <p class="mb-1">Mật khẩu demo ban đầu theo quy ước <strong>nhom3{{ '@' }}{{ now(config('app.timezone'))->year }}</strong>.</p>
+            <p class="mb-0">Vai trò <strong>NHAN_VIEN_MAC_DINH</strong> không có quyền mặc định; quyền phải được cấp ở luồng quản trị riêng.</p>
         </div>
-    </div>
 
-    <!-- Form -->
-    <div class="employee-form-wrapper">
-        <form id="employeeForm" novalidate>
-            <!-- Thông tin cá nhân -->
-            <div class="section-title">
-                <i class="bi bi-person-circle"></i>Thông tin cá nhân
+        <section class="card shadow-sm" aria-labelledby="wizard-title">
+            <div class="card-header bg-white py-3">
+                <h2 class="h6 fw-semibold mb-3" id="wizard-title">Quy trình tạo hồ sơ</h2>
+                <ol class="employee-stepper mb-0" aria-label="Tiến trình tạo nhân viên">
+                    <li data-step-indicator="1" aria-current="{{ $firstErrorStep === 1 ? 'step' : 'false' }}">
+                        <span aria-hidden="true">1</span> Hồ sơ
+                    </li>
+                    <li data-step-indicator="2" aria-current="{{ $firstErrorStep === 2 ? 'step' : 'false' }}">
+                        <span aria-hidden="true">2</span> Công việc
+                    </li>
+                    <li data-step-indicator="3" aria-current="{{ $firstErrorStep === 3 ? 'step' : 'false' }}">
+                        <span aria-hidden="true">3</span> Kiểm tra
+                    </li>
+                </ol>
             </div>
-            <div class="row g-4" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
-                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
-                    <div class="avatar-upload">
-                        <div class="avatar-preview" id="avatarPreview">
-                            <i class="bi bi-person-circle"></i>
-                        </div>
-                        <label class="btn-upload" for="avatarInput">
-                            <i class="bi bi-camera me-2"></i>Tải ảnh đại diện
-                        </label>
-                        <input type="file" id="avatarInput" accept="image/*" style="display: none;">
-                        <small class="text-muted">Hỗ trợ JPG, PNG, GIF (tối đa 2MB)</small>
+
+            @can(\App\Enums\NhanVienPermission::Tao->value)
+            <form
+                class="card-body"
+                method="POST"
+                action="{{ route('backend.nhanvien.store') }}"
+                enctype="multipart/form-data"
+                aria-busy="false"
+                data-employee-wizard
+                data-initial-step="{{ $firstErrorStep }}"
+            >
+                @csrf
+
+                <fieldset class="employee-step border-0 p-0 m-0" data-wizard-step="1">
+                    <legend class="visually-hidden">Bước 1: Hồ sơ và liên hệ</legend>
+                    <h2 class="h5 fw-semibold" tabindex="-1" data-step-heading>Bước 1: Hồ sơ và liên hệ</h2>
+                    <p class="text-secondary">Các trường có dấu <span aria-hidden="true">*</span> là bắt buộc.</p>
+
+                    @include('backend.nhanvien.partials.personal-fields')
+                    @include('backend.nhanvien.partials.address-fields')
+
+                    <div class="employee-step-actions justify-content-end">
+                        <button class="btn btn-primary" type="button" data-wizard-next>
+                            Tiếp tục
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </button>
                     </div>
-                    <div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div>
-                                <label for="fullName" class="form-label">
-                                    Họ và tên <span class="required">*</span>
-                                </label>
-                                <input type="text" class="form-control" id="fullName" 
-                                        placeholder="Nhập họ và tên" required>
-                                <div class="invalid-feedback">Vui lòng nhập họ và tên</div>
-                            </div>
-                            <div>
-                                <label for="dob" class="form-label">
-                                    Ngày sinh <span class="required">*</span>
-                                </label>
-                                <input type="date" class="form-control" id="dob" required>
-                                <div class="invalid-feedback">Vui lòng chọn ngày sinh</div>
-                            </div>
-                            <div>
-                                <label for="gender" class="form-label">
-                                    Giới tính <span class="required">*</span>
-                                </label>
-                                <select class="form-select" id="gender" required>
-                                    <option value="">Chọn giới tính</option>
-                                    <option value="male">Nam</option>
-                                    <option value="female">Nữ</option>
-                                    <option value="other">Khác</option>
-                                </select>
-                                <div class="invalid-feedback">Vui lòng chọn giới tính</div>
-                            </div>
-                            <div>
-                                <label for="nationality" class="form-label">
-                                    Quốc tịch <span class="required">*</span>
-                                </label>
-                                <select class="form-select" id="nationality" required>
-                                    <option value="">Chọn quốc tịch</option>
-                                    <option value="vn">Việt Nam</option>
-                                    <option value="us">Hoa Kỳ</option>
-                                    <option value="jp">Nhật Bản</option>
-                                    <option value="kr">Hàn Quốc</option>
-                                    <option value="cn">Trung Quốc</option>
-                                </select>
-                                <div class="invalid-feedback">Vui lòng chọn quốc tịch</div>
-                            </div>
-                            <div>
-                                <label for="idCard" class="form-label">
-                                    Số CMND/CCCD <span class="required">*</span>
-                                </label>
-                                <input type="text" class="form-control" id="idCard" 
-                                        placeholder="Nhập số CMND/CCCD" required maxlength="12">
-                                <div class="invalid-feedback">Vui lòng nhập số CMND/CCCD</div>
-                            </div>
-                            <div>
-                                <label for="issueDate" class="form-label">
-                                    Ngày cấp <span class="required">*</span>
-                                </label>
-                                <input type="date" class="form-control" id="issueDate" required>
-                                <div class="invalid-feedback">Vui lòng chọn ngày cấp</div>
-                            </div>
-                            <div style="grid-column: 1 / -1;">
-                                <label for="issuePlace" class="form-label">
-                                    Nơi cấp <span class="required">*</span>
-                                </label>
-                                <input type="text" class="form-control" id="issuePlace" 
-                                        placeholder="Nhập nơi cấp CMND/CCCD" required>
-                                <div class="invalid-feedback">Vui lòng nhập nơi cấp</div>
-                            </div>
-                        </div>
+                </fieldset>
+
+                <fieldset class="employee-step border-0 p-0 m-0" data-wizard-step="2">
+                    <legend class="visually-hidden">Bước 2: Thông tin công việc</legend>
+                    <h2 class="h5 fw-semibold" tabindex="-1" data-step-heading>Bước 2: Thông tin công việc</h2>
+                    <p class="text-secondary">Chọn dữ liệu danh mục đã được cấu hình trong hệ thống.</p>
+
+                    @include('backend.nhanvien.partials.employment-fields')
+
+                    <div class="employee-step-actions">
+                        <button class="btn btn-outline-secondary" type="button" data-wizard-previous>
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                            Quay lại
+                        </button>
+                        <button class="btn btn-primary" type="button" data-wizard-next>
+                            Kiểm tra hồ sơ
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                        </button>
                     </div>
-                </div>
-            </div>
+                </fieldset>
 
-            <hr class="my-4">
+                <fieldset class="employee-step border-0 p-0 m-0" data-wizard-step="3">
+                    <legend class="visually-hidden">Bước 3: Kiểm tra và lưu</legend>
+                    <h2
+                        class="h5 fw-semibold"
+                        tabindex="-1"
+                        data-step-heading
+                        @if ($firstErrorField === 'nhan_vien') data-error-focus @endif
+                    >Bước 3: Kiểm tra và lưu</h2>
+                    <p class="text-secondary">Kiểm tra thông tin chính trước khi tạo hồ sơ.</p>
 
-            <!-- Thông tin liên hệ -->
-            <div class="section-title">
-                <i class="bi bi-envelope-paper"></i>Thông tin liên hệ
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div>
-                    <label for="email" class="form-label">
-                        Email <span class="required">*</span>
-                    </label>
-                    <input type="email" class="form-control" id="email" 
-                            placeholder="example@company.com" required>
-                    <div class="invalid-feedback">Vui lòng nhập email hợp lệ</div>
-                </div>
-                <div>
-                    <label for="phone" class="form-label">
-                        Số điện thoại <span class="required">*</span>
-                    </label>
-                    <input type="tel" class="form-control" id="phone" 
-                            placeholder="Nhập số điện thoại" required>
-                    <div class="invalid-feedback">Vui lòng nhập số điện thoại</div>
-                </div>
-                <div style="grid-column: 1 / -1;">
-                    <label for="address" class="form-label">
-                        Địa chỉ thường trú <span class="required">*</span>
-                    </label>
-                    <input type="text" class="form-control" id="address" 
-                            placeholder="Nhập địa chỉ thường trú" required>
-                    <div class="invalid-feedback">Vui lòng nhập địa chỉ</div>
-                </div>
-                <div>
-                    <label for="province" class="form-label">
-                        Tỉnh/Thành phố <span class="required">*</span>
-                    </label>
-                    <select class="form-select" id="province" required>
-                        <option value="">Chọn tỉnh/thành</option>
-                        <option value="hanoi">Hà Nội</option>
-                        <option value="hcm">TP. Hồ Chí Minh</option>
-                        <option value="danang">Đà Nẵng</option>
-                        <option value="haiphong">Hải Phòng</option>
-                        <option value="cantho">Cần Thơ</option>
-                    </select>
-                    <div class="invalid-feedback">Vui lòng chọn tỉnh/thành phố</div>
-                </div>
-                <div>
-                    <label for="district" class="form-label">
-                        Quận/Huyện <span class="required">*</span>
-                    </label>
-                    <select class="form-select" id="district" required>
-                        <option value="">Chọn quận/huyện</option>
-                        <option value="1">Quận 1</option>
-                        <option value="2">Quận 2</option>
-                        <option value="3">Quận 3</option>
-                    </select>
-                    <div class="invalid-feedback">Vui lòng chọn quận/huyện</div>
-                </div>
-                <div>
-                    <label for="ward" class="form-label">
-                        Phường/Xã <span class="required">*</span>
-                    </label>
-                    <select class="form-select" id="ward" required>
-                        <option value="">Chọn phường/xã</option>
-                        <option value="1">Phường 1</option>
-                        <option value="2">Phường 2</option>
-                        <option value="3">Phường 3</option>
-                    </select>
-                    <div class="invalid-feedback">Vui lòng chọn phường/xã</div>
-                </div>
-            </div>
+                    <dl class="employee-review row mb-0">
+                        <dt class="col-sm-5">Họ và tên</dt>
+                        <dd class="col-sm-7" data-review-output="ho_ten">{{ $reviewValue('ho_ten') }}</dd>
+                        <dt class="col-sm-5">Email</dt>
+                        <dd class="col-sm-7 text-break" data-review-output="email">{{ $reviewValue('email') }}</dd>
+                        <dt class="col-sm-5">Số điện thoại</dt>
+                        <dd class="col-sm-7" data-review-output="sdt">{{ $reviewValue('sdt') }}</dd>
+                        <dt class="col-sm-5">Phòng ban</dt>
+                        <dd class="col-sm-7" data-review-output="ma_pb">{{ $selectedLookup('phong_ban', 'ma_pb', 'ten_pb') }}</dd>
+                        <dt class="col-sm-5">Chức vụ</dt>
+                        <dd class="col-sm-7" data-review-output="ma_cv">{{ $selectedLookup('chuc_vu', 'ma_cv', 'ten_cv') }}</dd>
+                        <dt class="col-sm-5">Trạng thái</dt>
+                        <dd class="col-sm-7" data-review-output="ma_tt">{{ $selectedLookup('trang_thai', 'ma_tt', 'ten_tt') }}</dd>
+                        <dt class="col-sm-5">Ngày vào làm</dt>
+                        <dd class="col-sm-7" data-review-output="ngay_vao_lam">{{ $reviewValue('ngay_vao_lam') }}</dd>
+                    </dl>
 
-            <hr class="my-4">
-
-            <!-- Thông tin công việc -->
-            <div class="section-title">
-                <i class="bi bi-briefcase-fill"></i>Thông tin công việc
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
-                <div>
-                    <label for="employeeId" class="form-label">
-                        Mã nhân viên <span class="required">*</span>
-                    </label>
-                    <input type="text" class="form-control" id="employeeId" 
-                            placeholder="VD: EMP001" required>
-                    <div class="invalid-feedback">Vui lòng nhập mã nhân viên</div>
-                </div>
-                <div>
-                    <label for="department" class="form-label">
-                        Phòng ban <span class="required">*</span>
-                    </label>
-                    <select class="form-select" id="department" required>
-                        <option value="">Chọn phòng ban</option>
-                        <option value="it">Phòng Kỹ thuật</option>
-                        <option value="sales">Phòng Kinh doanh</option>
-                        <option value="hr">Phòng Nhân sự</option>
-                        <option value="finance">Phòng Tài chính</option>
-                        <option value="marketing">Phòng Marketing</option>
-                    </select>
-                    <div class="invalid-feedback">Vui lòng chọn phòng ban</div>
-                </div>
-                <div>
-                    <label for="position" class="form-label">
-                        Chức vụ <span class="required">*</span>
-                    </label>
-                    <select class="form-select" id="position" required>
-                        <option value="">Chọn chức vụ</option>
-                        <option value="manager">Trưởng phòng</option>
-                        <option value="staff">Nhân viên</option>
-                        <option value="intern">Thực tập sinh</option>
-                        <option value="director">Giám đốc</option>
-                    </select>
-                    <div class="invalid-feedback">Vui lòng chọn chức vụ</div>
-                </div>
-                <div>
-                    <label for="startDate" class="form-label">
-                        Ngày vào làm <span class="required">*</span>
-                    </label>
-                    <input type="date" class="form-control" id="startDate" required>
-                    <div class="invalid-feedback">Vui lòng chọn ngày vào làm</div>
-                </div>
-                <div>
-                    <label for="contractType" class="form-label">
-                        Loại hợp đồng <span class="required">*</span>
-                    </label>
-                    <select class="form-select" id="contractType" required>
-                        <option value="">Chọn loại hợp đồng</option>
-                        <option value="indefinite">Không xác định thời hạn</option>
-                        <option value="fixed">Xác định thời hạn</option>
-                        <option value="probation">Thử việc</option>
-                        <option value="parttime">Bán thời gian</option>
-                    </select>
-                    <div class="invalid-feedback">Vui lòng chọn loại hợp đồng</div>
-                </div>
-                <div>
-                    <label for="salary" class="form-label">
-                        Mức lương (VNĐ) <span class="required">*</span>
-                    </label>
-                    <input type="number" class="form-control" id="salary" 
-                            placeholder="Nhập mức lương" required min="0">
-                    <div class="invalid-feedback">Vui lòng nhập mức lương hợp lệ</div>
-                </div>
-                <div style="grid-column: 1 / -1;">
-                    <label for="note" class="form-label">Ghi chú</label>
-                    <textarea class="form-control" id="note" rows="3" 
-                                placeholder="Nhập ghi chú (nếu có)"></textarea>
-                </div>
-            </div>
-
-            <!-- Form Actions -->
-            <div class="form-actions">
-                <button type="reset" class="btn btn-secondary">
-                    <i class="bi bi-arrow-counterclockwise me-2"></i>Nhập lại
-                </button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-circle me-2"></i>Lưu thông tin
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+                    <div class="employee-step-actions">
+                        <button class="btn btn-outline-secondary" type="button" data-wizard-previous>
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                            Quay lại
+                        </button>
+                        <button
+                            class="btn btn-primary"
+                            type="submit"
+                            data-submit-employee
+                            @disabled($submitDisabled)
+                            aria-disabled="{{ $submitDisabled ? 'true' : 'false' }}"
+                            data-submitting-text="Đang lưu nhân viên…"
+                        >
+                            <i class="bi bi-check-circle" aria-hidden="true"></i>
+                            Lưu nhân viên
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+            @else
+                <div class="card-body" role="alert">Bạn không có quyền tạo nhân viên.</div>
+            @endcan
+        </section>
+    </main>
 @endsection
-@push('styles')
 
-@endpush
 @push('scripts')
-<script>
-(function(){
-// ===== FORM VALIDATION =====
-            const form = document.getElementById('employeeForm');
-
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const inputs = form.querySelectorAll('.form-control, .form-select');
-                inputs.forEach(function(input) {
-                    input.classList.remove('is-invalid');
-                });
-
-                let isValid = true;
-
-                inputs.forEach(function(input) {
-                    if (input.hasAttribute('required') && !input.value.trim()) {
-                        input.classList.add('is-invalid');
-                        isValid = false;
-                    }
-                    if (input.type === 'email' && input.value.trim()) {
-                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                        if (!emailRegex.test(input.value.trim())) {
-                            input.classList.add('is-invalid');
-                            isValid = false;
-                        }
-                    }
-                });
-
-                if (isValid) {
-                    const formData = {
-                        fullName: document.getElementById('fullName').value,
-                        dob: document.getElementById('dob').value,
-                        gender: document.getElementById('gender').value,
-                        nationality: document.getElementById('nationality').value,
-                        idCard: document.getElementById('idCard').value,
-                        issueDate: document.getElementById('issueDate').value,
-                        issuePlace: document.getElementById('issuePlace').value,
-                        email: document.getElementById('email').value,
-                        phone: document.getElementById('phone').value,
-                        address: document.getElementById('address').value,
-                        province: document.getElementById('province').value,
-                        district: document.getElementById('district').value,
-                        ward: document.getElementById('ward').value,
-                        employeeId: document.getElementById('employeeId').value,
-                        department: document.getElementById('department').value,
-                        position: document.getElementById('position').value,
-                        startDate: document.getElementById('startDate').value,
-                        contractType: document.getElementById('contractType').value,
-                        salary: document.getElementById('salary').value,
-                        note: document.getElementById('note').value
-                    };
-
-                    console.log('Form Data:', formData);
-                    alert('✅ Thêm nhân viên thành công!');
-                    form.reset();
-                    avatarPreview.innerHTML = '<i class="bi bi-person-circle"></i>';
-                    avatarInput.value = '';
-                } else {
-                    const firstInvalid = form.querySelector('.is-invalid');
-                    if (firstInvalid) {
-                        firstInvalid.focus();
-                    }
-                    alert('⚠️ Vui lòng kiểm tra lại các trường thông tin bắt buộc!');
-                }
-            });
-
-            form.querySelectorAll('.form-control, .form-select').forEach(function(input) {
-                input.addEventListener('input', function() {
-                    this.classList.remove('is-invalid');
-                });
-                input.addEventListener('change', function() {
-                    this.classList.remove('is-invalid');
-                });
-            });
-
-            // ===== SALARY FORMAT =====
-            const salaryInput = document.getElementById('salary');
-            salaryInput.addEventListener('blur', function() {
-                if (this.value) {
-                    const num = parseInt(this.value.replace(/,/g, ''));
-                    if (!isNaN(num)) {
-                        this.value = num.toLocaleString('vi-VN');
-                    }
-                }
-            });
-            salaryInput.addEventListener('focus', function() {
-                if (this.value) {
-                    this.value = this.value.replace(/,/g, '');
-                }
-            });
-});
-</script>
+    @vite('resources/js/frontend/nhanvien/nhanvien.js')
 @endpush

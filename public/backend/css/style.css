@@ -290,6 +290,8 @@ body {
         /* ===== MAIN CONTENT ===== */
         .main-content {
             flex: 1;
+            /* Flex child must shrink so wide module tables scroll inside .table-responsive. */
+            min-width: 0;
             padding: 0;
             background: #f4f6f9;
             min-height: 100vh;
@@ -988,6 +990,13 @@ body {
             }
 
             .top-bar .icon-btn.hide-mobile {
+                display: none;
+            }
+        }
+
+        @media (max-width: 360px) {
+            /* Keep the narrow topbar usable; employee filters remain in the page content. */
+            .top-bar .search-box {
                 display: none;
             }
         }
