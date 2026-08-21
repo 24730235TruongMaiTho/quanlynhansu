@@ -14,14 +14,14 @@ Roadmap ưu tiên theo dependency và khả năng kiểm chứng, không theo s�
 Mục tiêu: tạo một nền `main` có setup lặp lại được và không còn mâu thuẫn tài liệu/runtime.
 
 - [ ] Chốt MariaDB 10.4 hay MySQL 8 là DBMS chuẩn và timezone chung cho PHP/DB.
-- [ ] Đồng bộ `.env.example` với baseline thực tế.
+- [x] Đồng bộ `.env.example` với baseline MariaDB/timezone/file-sync thực tế.
 - [ ] Quyết định import dump + migrations theo thứ tự nào.
 - [ ] Tạo master-data seed tối thiểu để các FK nghiệp vụ có dữ liệu hợp lệ.
 - [ ] Chốt route home: `/`, `/admin` và landing mong muốn.
 - [ ] Chuẩn hóa web/API route names và validation/error status.
 - [ ] Sửa test mặc định theo contract đã chốt.
-- [ ] Lập plan tích hợp shell từ branch `frontend`; không merge tự động.
-- [ ] Thêm DB preflight kiểm tra version/object/procedure thiếu.
+- [x] Lập plan/ADR tích hợp shell từ branch `frontend`; chưa merge.
+- [x] Thêm DB preflight/guarded harness cho employee schema/routines; module khác vẫn cần contract riêng.
 
 Điều kiện xong:
 
@@ -30,7 +30,7 @@ Mục tiêu: tạo một nền `main` có setup lặp lại được và không 
 
 ## Milestone 1 — khóa hợp đồng database
 
-- [ ] Bổ sung hoặc thay thế bốn procedure code đang gọi nhưng không tồn tại.
+- [ ] Bổ sung hoặc thay thế ba procedure còn thiếu: phòng ban chi tiết, chấm công chi tiết phân trang và lương tìm kiếm phân trang.
 - [ ] Sửa placeholder `sp_phong_ban_sua`.
 - [ ] Chuẩn hóa model table/key/timestamps.
 - [ ] Thống nhất kiểu `ma_nv`, ngày và hệ số giữa request/model/SQL/JSON.
@@ -43,19 +43,19 @@ Mục tiêu: tạo một nền `main` có setup lặp lại được và không 
 
 ## Milestone 2 — auth và phân quyền
 
-Quyết định cần chốt trước:
+Đã chốt cho module nhân viên:
 
-- `nhan_vien` hay `users` là identity chính.
-- Cách liên kết identity với `vai_tro/quyen`.
-- Chuyển SHA-256 sang Laravel hashing như thế nào.
+- `nhan_vien` là identity chính qua custom provider.
+- `vai_tro_quyen` cung cấp năm permission symbol và Gate.
+- Hash mới/rehash dùng Laravel hasher; không nhận plaintext ở SQL.
 
 Thực hiện:
 
-- [ ] Model/provider/guard hoặc mô hình auth Laravel đã chọn.
-- [ ] Login/logout/session.
-- [ ] Middleware auth cho `/admin` và API.
-- [ ] Permission checks cho action nhạy cảm.
-- [ ] Test guest/authenticated/forbidden.
+- [x] Model/provider/guard cho nhân viên.
+- [x] Login/logout/session, gồm từ chối `DA_NGHI`.
+- [x] Middleware auth cho `/admin` và hai lookup API nhân viên dùng chung.
+- [x] Năm permission checks cho action nhân viên nhạy cảm.
+- [x] Test guest/authenticated/forbidden ở automated + browser boundary.
 
 ## Milestone 3 — shell quản trị thống nhất
 
@@ -86,12 +86,14 @@ Module này trở thành mẫu cho chức vụ và các danh mục.
 
 ## Milestone 5 — nhân viên
 
-- [ ] Thay dữ liệu hard-code bằng contract thật.
-- [ ] Hoàn thiện create/edit/update/delete/detail.
-- [ ] Chốt identity/password handling.
-- [ ] Validation CCCD/email/ngày/phòng ban/chức vụ.
-- [ ] Test upload/avatar nếu được đưa vào scope.
-- [ ] Test quyền và dữ liệu nhạy cảm.
+- [x] Thay dữ liệu hard-code bằng repository/procedure contract thật.
+- [x] Hoàn thiện list/create/detail/edit/update/delete-or-terminate/reset.
+- [x] Chốt identity/password handling và custom auth provider.
+- [x] Validation CCCD/email/ngày/phòng ban/chức vụ.
+- [x] Automated test upload/replace/delete/ownership avatar; browser file chooser còn blocked.
+- [x] Test quyền và dữ liệu nhạy cảm.
+
+Milestone 5 đạt mức **verified hẹp trên branch** và đã commit local. Chưa đánh dấu production-ready vì browser avatar còn blocked, push đang chờ và chưa có rollout database thật.
 
 ## Milestone 6 — lương, chấm công, nghỉ phép
 
@@ -107,7 +109,7 @@ Làm từng module độc lập:
 
 ### Chấm công
 
-- [ ] Thay hai procedure phân trang thiếu.
+- [ ] Bổ sung `sp_cham_cong_chi_tiet_phan_trang`; procedure aggregate nhân viên đã có trong employee read routines.
 - [ ] Chuẩn hóa `ngay_lam` và model.
 - [ ] Cập nhật record có concurrency/error handling.
 - [ ] Import/export thiết kế riêng; không bật button giả.

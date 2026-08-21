@@ -1,133 +1,98 @@
 # Handoff tiếp tục đồ án `quanlynhansu`
 
-> Snapshot: 2026-08-20 (Asia/Saigon)
+> Snapshot: 2026-08-21 (Asia/Saigon)
 >
 > Branch: `feature/quanly-nhan-vien`
 >
-> Implementation commit đã push và được xác minh là ancestor trên `origin/feature/quanly-nhan-vien`: `3c07d88db59d3083e0728c4c2a71ce3b9039f75f`
+> Base HEAD/upstream trước Tasks 13–20: `723dac63983d04364c6f146662aec7bd5eb6d87a`
 >
-> Remote: `origin/feature/quanly-nhan-vien` đã xác nhận chứa implementation commit trên; revalidate current branch HEAD trước khi dùng handoff
+> Source/test/SQL commit: `ba6e0189e64eb3046164ae5183950afe0b5722be`; dependency-lock commit: `18ea209d89efce38596dd1440151f6d55ca90156`.
 >
-> Phạm vi phiên này: Task 12 scoped vertical slice đã delivered/pushed; scoped code/test review **Approve**. Current HEAD/worktree phải được revalidate; không ghi database live.
+> Trạng thái Git khi soạn snapshot: hai commit trên đã có local; commit tài liệu và push branch còn chờ. Luôn chạy lại Git status/HEAD/upstream sau khi đồng bộ.
 
 ## Đọc trước
 
 1. `AGENTS.md`.
-2. [docs/README.md](README.md).
+2. [README tài liệu](README.md).
 3. [PROJECT_STATUS.md](PROJECT_STATUS.md).
-4. Code, test và SQL liên quan trực tiếp tới task.
+4. [DATABASE.md](DATABASE.md) và `quan_ly_nhan_su.session.sql` nếu task chạm dữ liệu.
+5. Route, controller, request, service/repository, model, Blade/JavaScript và test đúng phạm vi.
 
-Không dùng snapshot này nếu HEAD đã đổi mà chưa chạy lại kiểm tra.
+Code, route, test và database đang được kiểm tra có ưu tiên cao hơn snapshot này.
 
-## Handoff hiện tại: cập nhật nhân viên
+## Trạng thái module Nhân viên
 
-Các file trong implementation commit employee-update phải được bảo toàn; không sửa ngoài scope. Lát cắt gồm route/controller/request/service/repository, target-role guard, form Blade wizard, CSS/JS states, routine SQL và test. Runtime vẫn dùng `backend.layouts.app`; không copy shell từ branch `frontend`.
+Tasks 13–20 đã đưa module tới mức **verified hẹp trên branch**, chưa phải production-ready:
 
-### Hard-disabled rollout gate
+- danh sách có filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar, xóa cứng hoặc chuyển nghỉ việc theo dependency, và reset mật khẩu;
+- custom employee auth provider, login/logout, session từ chối nhân viên `DA_NGHI`;
+- năm quyền `NHAN_VIEN_XEM`, `NHAN_VIEN_TAO`, `NHAN_VIEN_SUA`, `NHAN_VIEN_XOA`, `NHAN_VIEN_DAT_LAI_MAT_KHAU` được map qua Gate; role `NHAN_VIEN_MAC_DINH` giữ đúng zero quyền;
+- route `/admin` yêu cầu auth; route nhân viên kiểm tra rollout trước Gate phù hợp; target không thuộc exact role mặc định và actor tự nhắm mình bị chặn trước mutation;
+- cấu hình rollout là `env('NHAN_VIEN_MODULE_ENABLED', true)`. Có thể đặt `false` để fail-closed 404; không dùng cờ này thay cho auth/Gate;
+- SQL versioned `001`–`006` và canonical dump đã đồng bộ cho schema, read/create/update, lifecycle/auth và RBAC contracts.
 
-`config/nhanvien.php` dùng literal `'enabled' => false`. Đây là trạng thái bắt buộc hiện tại. `NhanVienUpdateTest` xác minh edit/update trả 404 trước service khi cờ tắt. Không set cờ thành `true`, không thêm env override và không deploy active trước Task 18 có auth/RBAC/Gates + actor authorization. Khi bật sớm, anonymous có thể lấy form/CSRF, enumerate target/role và gửi mutation/đọc PII; target-role guard không thay thế authentication. Không mô tả endpoint là public-safe.
+## Bằng chứng mới nhất
 
-Contract mutation:
+- Full guarded MariaDB wrapper: `165 tests, 3367 assertions, 1 platform skip, exit 0`; schema/state/lock/run/upload/listener/PHP/`public/storage` cleanup `0` và giữ nguyên `storage/app/public`.
+- Unit: `95 tests, 633 assertions`; scoped Feature employee/auth/compatibility: `107 tests, 1093 assertions`.
+- Frontend: `15/15`; Vite 7.3.6 build pass với 16 modules.
+- Full Laravel: `221 pass, 1 fail, 1772 assertions`; failure duy nhất là baseline `Tests\Feature\ExampleTest` kỳ vọng `GET /` 200 trong khi ứng dụng trả 404.
+- Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `49` và `git diff --check` pass trong các gate tương ứng.
+- Task 19 process-identity/atomic-state regressions đều nằm trong full wrapper sạch; skip duy nhất là Windows từ chối tạo disposable state symlink.
+- Independent final review: **Spec PASS / Quality APPROVE**, không còn finding Critical/Important.
 
-- `PUT|PATCH /admin/nhan-vien/{ma_nv}` với `ma_nv` khớp `NV[0-9]{3}`, route name `backend.nhanvien.update` và rollout middleware.
-- Target được đọc/guard trước validation; chỉ role chính xác `NHAN_VIEN_MAC_DINH` được sửa. Role, mã, hash mật khẩu và ngày nghỉ việc không nằm trong payload.
-- Hồ sơ + địa chỉ + avatar chạy trong một transaction default/write connection. Avatar mới dùng prefix `nhan-vien/avatars`; file cũ chỉ xóa sau commit nếu path được chứng minh thuộc prefix.
-- `sp_nhan_vien_sua` nhận 14 `IN`; `sp_dia_chi_nhan_vien_luu` upsert địa chỉ; `sp_nhan_vien_cap_nhat_anh` nhận 2 `IN` và 1 `OUT` đường dẫn cũ. Routine không tự commit/rollback.
+`phpunit.xml` dùng SQLite in-memory; chỉ wrapper guarded MariaDB chứng minh stored procedure trên MariaDB 10.4.32. Chưa claim MySQL 8 hoặc database live.
 
-Evidence phiên này:
+## Browser acceptance Task 20
 
-- Fresh pre-push evidence: PHP employee `84/907`; MariaDB disposable `20/436`, cleanup count `0`; frontend `5`; build `13`; route `44`; Composer/lint pass.
-- Feature/Unit employee tests: **84 pass, 907 assertions**.
-- Frontend: `npm run test:frontend` 5 pass; `npm run build` pass (Vite 7.3.6, 13 modules).
-- Laravel full suite: **158 pass, 1 baseline fail** tại `tests/Feature/ExampleTest.php` vì `/` trả 404; không sửa ngoài scope để che lỗi này.
-- Route list: 44 route; PHP lint **23 PHP files in slice** pass.
-- MariaDB disposable integration (`EmployeeUpdateProcedureTest`, `CanonicalDumpReplayTest`, `NhanVienRepositoryReadTest`) pass hẹp: **20 tests, 436 assertions, exit 0**, cleanup count **0**; tuyệt đối không dùng database `quan_ly_nhan_su` live.
-- Hard-disable evidence: `php artisan test tests/Feature/Backend/NhanVien/NhanVienUpdateTest.php` pass; config flag vẫn literal false.
-- Browser acceptance/auth-RBAC thật chưa được thực hiện. Slice đã **delivered hẹp** tại commit `3c07d88` nhưng module chưa production-ready và không được bật active. Scoped code/test re-review đã **Approve**.
+Đã xác minh trên acceptance child dùng database disposable:
 
-## Baseline live
+- login bằng mã/email, logout và protected session;
+- list/empty search, create và flash chính xác, detail/edit preload, filter/query/pagination và submitting state;
+- reset rồi baseline user bị 403; stale edit sau hard-delete trả 404 an toàn;
+- dependency làm action chuyển `DA_NGHI` và lần đăng nhập sau bị từ chối; việc từ chối một session đã mở trước đó được automated-test, chưa recheck trực tiếp trong simultaneous browser context;
+- view-only/no-permission và target đặc quyền bị chặn đúng UI/HTTP boundary;
+- không thấy SQL/stack/raw exception hoặc hash; console không có warning/error;
+- responsive `320/375/768/1024/1440`: không document overflow, bảng cuộn trong `.table-responsive`; ở 320px chỉ ẩn global topbar search, employee filter/title/menu/account vẫn hiện.
 
-- PHP 8.5.0; project target PHP 8.2+.
-- Laravel 12.62.0.
-- 44 app route: 17 web, 27 API.
-- `npm run build`: pass, Vite 7.3.6.
-- `php artisan test`: 158 pass, 1 fail vì `/` trả 404; suite dùng SQLite in-memory, không chứng minh routine MariaDB.
-- Composer metadata: valid.
-- Runtime app: DB mysql, session/cache file, queue sync.
-- MariaDB 10.4.32 / schema 14 table, 1 view, 8 function, 10 trigger, 63 procedure là số liệu kế thừa từ audit trước; phiên này không re-read hoặc mutate live.
-- Migrations chưa chạy; `migrate:status` báo không có bảng migrations.
+Giới hạn còn lại: browser upload/thay avatar **blocked/unverified** vì Chrome extension chưa được cấp file URL access. Automated upload/ownership tests pass nhưng không thay thế browser file chooser. Separate simultaneous browser context được kiểm tra một phần qua automated auth/session tests, không được mô tả là browser-verified đầy đủ.
 
-## Phân loại đúng
+Official `Stop` đã dọn sạch fixture: guarded schema, state/lock/probe/run/upload, listener 8012, acceptance PHP child và `public/storage` đều `0`; `storage/app/public` dùng chung vẫn được giữ.
 
-- **Verified hẹp:** Laravel boot, route registration, build, một số Blade page/lookup endpoint trả 200 trên DB rỗng.
-- **Verified hẹp/delivered:** lát cắt cập nhật nhân viên trên SQLite/Unit/Feature/frontend và guarded MariaDB `20/436`, route `44`, Composer/lint pass; browser/auth-RBAC evidence vẫn chưa có.
-- **Prototype:** dashboard, danh sách nhân viên ngoài lát cắt update, lương, chấm công, nghỉ phép, hệ số lương.
-- **Blocked:** home/landing, phòng ban, danh sách lương, pagination chấm công.
-- **Planned:** auth/RBAC, hợp đồng, vai trò/quyền/tài khoản, báo cáo; backup/restore vẫn là unsafe legacy procedures.
+## Database safety
 
-Không gọi lương/chấm công/nghỉ phép “hoàn thành” chỉ vì có UI/API code.
+- `quan_ly_nhan_su.session.sql` bắt đầu bằng `DROP DATABASE IF EXISTS`; chỉ replay trên database disposable/local không có dữ liệu cần giữ.
+- Không chạy employee mutation test trên database live/configured.
+- Dùng `tests/Support/invoke-employee-mariadb-tests.ps1 -EnableDisposableMariaDb` cho integration suite.
+- Dùng `tests/Support/employee-acceptance.ps1` cho browser fixture; luôn chạy action `Stop`, kể cả khi browser fail.
+- Không đưa password/hash, credential, DB URL, cookie/token hoặc dữ liệu cá nhân vào log/handoff.
 
-## Blocker P0
+## Việc còn lại
 
-1. Không có route `/`; `/admin` gọi view `frontend.home` không tồn tại.
-2. Hai web route phòng ban trỏ method không tồn tại ở `PhongBanController`; route delete nhân viên chưa nằm trong scope.
-3. Tên route lương/chấm công/nghỉ phép bị lặp `backend.backend.*`.
-4. Phòng ban có Blade lỗi, procedure chi tiết thiếu và update sai placeholder.
-5. Code gọi bốn procedure không có trong dump/DB:
-   - `sp_phong_ban_chi_tiet`
-   - `sp_cham_cong_nhan_vien_phan_trang`
-   - `sp_cham_cong_chi_tiet_phan_trang`
-   - `sp_luong_tim_kiem_phan_trang`
-6. `.env.example` dùng SQLite/database session-cache-queue, lệch runtime nghiệp vụ.
-7. Chưa có auth middleware hoặc permission checks.
-8. Database nghiệp vụ hiện rỗng và chưa có master-data seed; các FK nhân viên cần phòng ban/chức vụ/trạng thái/vai trò trước mutation.
-9. Laravel dùng UTC trong khi MariaDB system timezone là UTC+7; `now()` và `CURDATE()` có thể lệch kỳ.
+1. Commit tài liệu và push Tasks 13–20 trên branch hiện tại; không merge vào `main` trong lượt này.
+2. Bật quyền file URL cho Chrome extension rồi chạy riêng avatar upload/replacement acceptance nếu cần đóng khoảng trống browser.
+3. Chốt route `/`/landing để sửa baseline `ExampleTest` 404 trong một task riêng.
+4. Lập quy trình rollout/master-data/backup trước khi dùng database thật.
+5. Các module phòng ban/lương/chấm công/nghỉ phép vẫn có blocker riêng; không suy rộng trạng thái Nhân viên sang toàn dự án.
 
-## Branch frontend
-
-Local branch `frontend` ở `940e7cc`; merge-base với main là `063c669`; hai phía có 17/20 commit riêng.
-
-Shell contract Header + Sidebar + Main + Footer/no global navbar đã được duyệt và pass automated render/controller/build tests trên branch đó; browser acceptance chưa hoàn tất và shell **chưa có trên main**. Xem [ADR-001](decisions/ADR-001-admin-shell.md).
-
-Không tự fetch/merge/rebase/cherry-pick/force-push/tạo upstream hoặc worktree; mọi thao tác tiếp theo cần request riêng.
-
-`docs/CODEX_FRONTEND_HANDOFF.md` là local-only qua `.git/info/exclude`; không stage file này và không coi nó là source of truth cho main.
-
-## Task tiếp theo và sequencing
-
-Task 12 scoped delivery đã complete tại implementation commit `3c07d88db59d3083e0728c4c2a71ce3b9039f75f`, đã push và remote xác nhận exact SHA. Scoped code/test re-review **Approve**. Task13 lifecycle/auth DB contracts là bước kế tiếp nhưng **chưa bắt đầu**; Task18 auth/RBAC/Gates là prerequisite trước enablement. Browser acceptance giữ ở Task20.
-
-Task 18 phải hoàn tất auth/RBAC/Gates và actor authorization trước khi có bất kỳ thay đổi nào bật `config('nhanvien.enabled')`. Browser acceptance của lát cắt giữ ở Task 20; không dùng browser chưa chạy để suy rộng thành an toàn vận hành.
-
-Implementation commit đã được push; không tự tạo commit/push tiếp theo và luôn revalidate current HEAD trước khi tiếp tục.
-
-Roadmap đầy đủ: [ROADMAP.md](ROADMAP.md).
-
-## Checklist phiên tiếp theo
+## Checklist tiếp tục
 
 ```powershell
 Get-Content -Raw AGENTS.md
 Get-Content -Raw docs/CODEX_NEXT_HANDOFF.md
+Get-Content -Raw docs/PROJECT_STATUS.md
 
 git status --short --branch
 git rev-parse HEAD
-php artisan about --only=environment,drivers
+git rev-parse '@{upstream}'
 php artisan route:list --except-vendor
 php artisan test
+npm run test:frontend
 npm run build
 ```
 
-Nếu task dùng database:
+Nếu task dùng database, đọc [DATABASE.md](DATABASE.md), kiểm tra signature/result shape và chỉ mutation trên target disposable được guard.
 
-- Đọc [DATABASE.md](DATABASE.md).
-- Chỉ test mutation trên database disposable.
-- Kiểm tra procedure signature trước khi sửa PHP.
+## Branch frontend
 
-## Giới hạn bằng chứng
-
-- Không clean-replay dump.
-- Không chạy mutation nghiệp vụ.
-- Không có browser acceptance mới.
-- Response 200 trên database rỗng không chứng minh workflow.
-- Vite build không chứng minh API/DB.
-- `php artisan db:show` có thể lỗi vì MariaDB local thiếu `performance_schema.session_status`; không dùng riêng lỗi này để kết luận mất kết nối.
+Local branch `frontend` tại snapshot cũ có shell Header + Sidebar + Main + Footer khác runtime hiện tại và chưa được merge. Không tự fetch/merge/rebase/cherry-pick. `docs/CODEX_FRONTEND_HANDOFF.md` là local-only, bị exclude và tuyệt đối không stage.
