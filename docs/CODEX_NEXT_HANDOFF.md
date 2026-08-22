@@ -27,6 +27,24 @@
 
 Code, route, test và database đang được kiểm tra có ưu tiên cao hơn snapshot này.
 
+## Feature branch evidence — Phòng ban v1 (2026-08-22)
+
+Branch `feature/quan-ly-phong-ban-chuc-vu` hiện có server-rendered CRUD Phòng
+ban dưới auth với route names `backend.phongban.index/create/store/edit/update/destroy`,
+param dương `ma_pb`, bốn Gate canonical `PHONG_BAN_*`, model mapping chuẩn,
+repository/service gọi stored procedures, form validation và UI runtime
+`backend.layouts.app`. Catalog permission được version và canonical dump đồng bộ;
+không tự grant role thật hoặc local demo admin.
+
+Evidence đã chạy: HTTP/controller/view, unit/mocked service và repository
+contract tests pass (scoped `16 tests/144 assertions`); full Laravel
+`253 tests/1964 assertions`, full feature suite dùng SQLite in-memory.
+Frontend `16/16`, Vite `17 modules`, Composer validate, route list và diff check.
+MariaDB guarded
+integration/preflight/concurrency test đã viết nhưng chưa chạy vì phiên này
+không có target disposable được cấp; browser acceptance chưa thực hiện. Không
+claim persistence routine/production/MySQL 8.
+
 ## Trạng thái module Nhân viên
 
 Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên feature branch**; code hiện đã tích hợp vào `main`, chưa phải production-ready:

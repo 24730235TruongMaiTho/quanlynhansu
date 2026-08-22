@@ -219,12 +219,7 @@ class EmployeeReadProcedureTest extends MariaDbTestCase
             $this->assertSame($columns, array_keys($rows[0]));
         }
 
-        set_error_handler(static fn (int $severity, string $message): bool => str_contains($message, 'Undefined variable $phongban'));
-        try {
-            $view = (new PhongBanController())->index();
-        } finally {
-            restore_error_handler();
-        }
+        $view = $this->app->make(PhongBanController::class)->index();
         $this->assertSame('backend.phongban.index', $view->name());
     }
 

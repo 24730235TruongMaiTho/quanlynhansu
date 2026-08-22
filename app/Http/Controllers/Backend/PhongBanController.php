@@ -1,69 +1,128 @@
 <?php
 namespace App\Http\Controllers\Backend;
 
-use App\Models\PhongBan;
-use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\DB; //Thư viện để làm việc với database
+use App\Contracts\PhongBanServiceContract;
+use App\Exceptions\PhongBanDomainException;
+use App\Http\Requests\StorePhongBanRequest;
+use App\Http\Requests\UpdatePhongBanRequest;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
+use Throwable;
 
 class PhongBanController extends Controller
 {
-    // Danh sách phòng ban
-    public function index()
-    {
-        // Gọi store procedure để lấy danh sách
-        $danh_sach_phong_ban = DB::select('CALL sp_phong_ban_danh_sach()');
+    public function __construct(private PhongBanServiceContract $departments) {}
 
-        return view('backend.phongban.index', compact('phongban'));
+    public function index(): View
+    {
+        $departmentError = null;
+        $departments = [];
+
+        try {
+            $departments = $this->departments->all();
+        } catch (Throwable) {
+            $departmentError = 'Không thể tải danh sách phòng ban lúc này. Vui lòng thử lại sau.';
+        }
+
+        return view('backend.phongban.index', compact('departments', 'departmentError'));
     }
 
-    public function create()
+    public function create(): View
     {
         return view('backend.phongban.create');
     }
 
-    // Thêm phòng ban
-    public function store(Request $request)
+    public function store(StorePhongBanRequest $request): RedirectResponse
     {
-        // Xác thực dữ liệu nhập vào
-        $request->validate([
-            'ten_pb' => 'required'
-        ]);
+        try {
+            $this->departments->create($request->validated('ten_pb'));
+        } catch (PhongBanDomainException $exception) {
+            return back()->withInput()->withErrors([
+                $exception->field ?? 'phong_ban' => $exception->getMessage(),
+            ]);
+        } catch (Throwable) {
+            return back()->withInput()->withErrors([
+                'phong_ban' => 'Không thể tạo phòng ban lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
 
-        DB::statement('CALL sp_phong_ban_them(?)', [$request->ten_pb]);
-
-        return redirect()->route('backend.phongban.index')->with('success', 'Thêm phòng ban thành công');
+        return redirect()->route('backend.phongban.index')->with('success', 'Đã thêm phòng ban.');
     }
 
-    // Chi tiết phòng ban
-    public function edit($id)
+    public function edit(string $ma_pb): View
     {
-        $phong_ban = DB::select('CALL sp_phong_ban_chi_tiet(?)', [$id]);
+        $departmentId = $this->departmentId($ma_pb);
 
-        return view('backend.phongban.index', [
-            'phongban' => $phong_ban[0]
-        ]);
+        try {
+            $department = $this->departments->findOrFail($departmentId);
+        } catch (PhongBanDomainException $exception) {
+            if ($exception->domainCode === 'PB_NOT_FOUND') {
+                abort(404);
+            }
+
+            abort(503);
+        } catch (Throwable) {
+            abort(503);
+        }
+
+        return view('backend.phongban.edit', compact('department'));
     }
 
-    // Cập nhật phòng ban
-    public function update(Request $request, $id)
+    public function update(UpdatePhongBanRequest $request, string $ma_pb): RedirectResponse
     {
-        DB::statement('CALL sp_phong_ban_sua(?)', 
-        [
-            $id,
-            $request->ten_pb
-        ]);
+        $departmentId = $this->departmentId($ma_pb);
 
-        return redirect()->route('backend.phongban.index');
+        try {
+            $this->departments->update($departmentId, $request->validated('ten_pb'));
+        } catch (PhongBanDomainException $exception) {
+            if ($exception->domainCode === 'PB_NOT_FOUND') {
+                abort(404);
+            }
+
+            return back()->withInput()->withErrors([
+                $exception->field ?? 'phong_ban' => $exception->getMessage(),
+            ]);
+        } catch (Throwable) {
+            return back()->withInput()->withErrors([
+                'phong_ban' => 'Không thể cập nhật phòng ban lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
+
+        return redirect()->route('backend.phongban.index')->with('success', 'Đã cập nhật phòng ban.');
     }
 
-    // Xóa phòng ban
-    public function detroy($id)
+    public function destroy(string $ma_pb): RedirectResponse
     {
-        DB::statement('CALL sp_phong_ban_xoa(?)', [$id]);
+        $departmentId = $this->departmentId($ma_pb);
 
-        return redirect()->route('backend.phongban.index');
+        try {
+            $this->departments->delete($departmentId);
+        } catch (PhongBanDomainException $exception) {
+            if ($exception->domainCode === 'PB_NOT_FOUND') {
+                abort(404);
+            }
+
+            return back()->withErrors([
+                $exception->field ?? 'phong_ban' => $exception->getMessage(),
+            ]);
+        } catch (Throwable) {
+            return back()->withErrors([
+                'phong_ban' => 'Không thể xóa phòng ban lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
+
+        return redirect()->route('backend.phongban.index')->with('success', 'Đã xóa phòng ban.');
+    }
+
+    private function departmentId(string $value): int
+    {
+        $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        if ($id === false || $id === null) {
+            abort(404);
+        }
+
+        return $id;
     }
 }
-
-?>

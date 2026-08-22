@@ -41,6 +41,14 @@
                 </li>
                 @endif
             @endcan
+            @can(\App\Enums\PhongBanPermission::Xem->value)
+                <li class="nav-item">
+                    <a href="{{ route('backend.phongban.index') }}" class="nav-link">
+                        <i class="bi bi-building" aria-hidden="true"></i>
+                        <span class="nav-title">Phòng ban</span>
+                    </a>
+                </li>
+            @endcan
             <!-- Chấm công -->
             <li class="nav-item">
                 <a href="{{ route('backend.backend.chamcong.index') }}" class="nav-link">

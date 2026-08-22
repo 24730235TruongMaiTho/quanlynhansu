@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Frontend\HomeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Enums\NhanVienPermission;
+use App\Enums\PhongBanPermission;
 
 
 /*
@@ -88,19 +89,32 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
 
     Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
 
-    // Tìm kiếm phòng ban
-    Route::get('/phong-ban', [PhongBanController::class, 'index'])->name('phongban.index');
+    Route::get('/phong-ban', [PhongBanController::class, 'index'])
+        ->middleware('can:'.PhongBanPermission::Xem->value)
+        ->name('phongban.index');
 
-    // Tạo mới phòng ban
-    Route::get('/phong-ban/create', [PhongBanController::class, 'create'])->name('phongban.create');
-    Route::post('/phong-ban', [PhongBanController::class, 'store'])->name('phongban.store');
+    Route::get('/phong-ban/create', [PhongBanController::class, 'create'])
+        ->middleware('can:'.PhongBanPermission::Tao->value)
+        ->name('phongban.create');
 
-    // Sửa phòng ban
-    Route::get('/phong-ban/{id}/sua', [PhongBanController::class, 'edit'])->name('phongban.edit');
-    Route::put('/phong-ban/{id}', [PhongBanController::class, 'show'])->name('phongban.show');
+    Route::post('/phong-ban', [PhongBanController::class, 'store'])
+        ->middleware('can:'.PhongBanPermission::Tao->value)
+        ->name('phongban.store');
 
-    // Xóa phòng ban
-    Route::delete('/phong-ban/{id}', [PhongBanController::class, 'destroy'])->name('phongban.destroy');
+    Route::get('/phong-ban/{ma_pb}/edit', [PhongBanController::class, 'edit'])
+        ->where('ma_pb', '[1-9][0-9]*')
+        ->middleware('can:'.PhongBanPermission::Sua->value)
+        ->name('phongban.edit');
+
+    Route::match(['put', 'patch'], '/phong-ban/{ma_pb}', [PhongBanController::class, 'update'])
+        ->where('ma_pb', '[1-9][0-9]*')
+        ->middleware('can:'.PhongBanPermission::Sua->value)
+        ->name('phongban.update');
+
+    Route::delete('/phong-ban/{ma_pb}', [PhongBanController::class, 'destroy'])
+        ->where('ma_pb', '[1-9][0-9]*')
+        ->middleware('can:'.PhongBanPermission::Xoa->value)
+        ->name('phongban.destroy');
 
     Route::get('/nhan-vien', [NhanVienController::class, 'index'])
         ->middleware([

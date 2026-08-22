@@ -15,7 +15,8 @@ USE quan_ly_nhan_su;
    -------------------------------------- */
 CREATE TABLE phong_ban (
     ma_pb INT AUTO_INCREMENT PRIMARY KEY,
-    ten_pb NVARCHAR(100) NOT NULL
+    ten_pb NVARCHAR(100) NOT NULL,
+    CONSTRAINT uq_phong_ban_ten_pb UNIQUE (ten_pb)
 );
 
 /* --------------------------------------
@@ -57,7 +58,11 @@ INSERT INTO quyen (ky_hieu_quyen, ten_quyen, module) VALUES
     ('NHAN_VIEN_TAO', N'Tạo nhân viên', 'NHAN_VIEN'),
     ('NHAN_VIEN_SUA', N'Sửa nhân viên', 'NHAN_VIEN'),
     ('NHAN_VIEN_XOA', N'Xóa hoặc kết thúc làm việc', 'NHAN_VIEN'),
-    ('NHAN_VIEN_DAT_LAI_MAT_KHAU', N'Đặt lại mật khẩu nhân viên', 'NHAN_VIEN');
+    ('NHAN_VIEN_DAT_LAI_MAT_KHAU', N'Đặt lại mật khẩu nhân viên', 'NHAN_VIEN'),
+    ('PHONG_BAN_XEM', N'Xem phòng ban', 'PHONG_BAN'),
+    ('PHONG_BAN_TAO', N'Tạo phòng ban', 'PHONG_BAN'),
+    ('PHONG_BAN_SUA', N'Sửa phòng ban', 'PHONG_BAN'),
+    ('PHONG_BAN_XOA', N'Xóa phòng ban', 'PHONG_BAN');
 
 /* --------------------------------------
    Bảng vai trò quyền
@@ -740,10 +745,13 @@ CREATE PROCEDURE sp_phong_ban_them(
 BEGIN
     SET p_ten_pb = LTRIM(RTRIM(IFNULL(p_ten_pb, N'')));
     IF p_ten_pb = N'' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban không được rỗng.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_REQUIRED';
+    END IF;
+    IF CHAR_LENGTH(p_ten_pb) > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_TOO_LONG';
     END IF;
     IF EXISTS (SELECT 1 FROM phong_ban WHERE ten_pb = p_ten_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban đã tồn tại.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_DUPLICATE';
     END IF;
     INSERT INTO phong_ban(ten_pb) VALUES (p_ten_pb);
 END//
@@ -759,14 +767,20 @@ CREATE PROCEDURE sp_phong_ban_sua(
 )
 BEGIN
     SET p_ten_pb = LTRIM(RTRIM(IFNULL(p_ten_pb, N'')));
+    IF p_ma_pb IS NULL OR p_ma_pb < 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_ID_INVALID';
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM phong_ban WHERE ma_pb = p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không tìm thấy phòng ban cần sửa.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NOT_FOUND';
     END IF;
     IF p_ten_pb = N'' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban không được rỗng.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_REQUIRED';
+    END IF;
+    IF CHAR_LENGTH(p_ten_pb) > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_TOO_LONG';
     END IF;
     IF EXISTS (SELECT 1 FROM phong_ban WHERE ten_pb = p_ten_pb AND ma_pb <> p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban đã tồn tại.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_DUPLICATE';
     END IF;
     UPDATE phong_ban SET ten_pb = p_ten_pb WHERE ma_pb = p_ma_pb;
 END//
@@ -780,11 +794,14 @@ CREATE PROCEDURE sp_phong_ban_xoa(
     IN p_ma_pb INT
 )
 BEGIN
+    IF p_ma_pb IS NULL OR p_ma_pb < 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_ID_INVALID';
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM phong_ban WHERE ma_pb = p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không tìm thấy phòng ban cần xóa.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NOT_FOUND';
     END IF;
     IF EXISTS (SELECT 1 FROM nhan_vien WHERE ma_pb = p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không thể xóa phòng ban vì đang có nhân viên thuộc phòng ban này.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_IN_USE';
     END IF;
     DELETE FROM phong_ban WHERE ma_pb = p_ma_pb;
 END//
@@ -799,6 +816,26 @@ BEGIN
     SELECT ma_pb, ten_pb, fn_dem_nhan_vien_theo_phong_ban(ma_pb) AS so_nhan_vien 
     FROM phong_ban 
     ORDER BY ma_pb;
+END//
+
+/* --------------------------------------
+   Chi tiết phòng ban
+   -------------------------------------- */
+DROP PROCEDURE IF EXISTS sp_phong_ban_chi_tiet//
+
+CREATE PROCEDURE sp_phong_ban_chi_tiet(
+    IN p_ma_pb INT
+)
+BEGIN
+    IF p_ma_pb IS NULL OR p_ma_pb < 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_ID_INVALID';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM phong_ban WHERE ma_pb = p_ma_pb) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NOT_FOUND';
+    END IF;
+    SELECT ma_pb, ten_pb, fn_dem_nhan_vien_theo_phong_ban(ma_pb) AS so_nhan_vien
+    FROM phong_ban
+    WHERE ma_pb = p_ma_pb;
 END//
 
 /* ============================

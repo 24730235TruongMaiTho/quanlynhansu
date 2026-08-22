@@ -1,6 +1,6 @@
 # Trạng thái dự án
 
-> Snapshot: 2026-08-21
+> Snapshot: 2026-08-22
 >
 > Historical Task 20 branch: `feature/quanly-nhan-vien`; current integrated branch: `main`
 >
@@ -8,11 +8,29 @@
 
 ## Current integrated module và rollout (2026-08-21)
 
+### Feature branch evidence — Phòng ban v1 (2026-08-22)
+
+Trên branch `feature/quan-ly-phong-ban-chuc-vu`, CRUD web Phòng ban đã được nối
+với route REST dưới auth và bốn Gate canonical `PHONG_BAN_XEM/TAO/SUA/XOA`.
+Danh sách hiển thị `ma_pb`, `ten_pb`, `so_nhan_vien`; form có validation, old
+input, lỗi an toàn, empty/success/server-error, action gating và chặn xóa khi
+đang có nhân viên. Stored-procedure contract được version tại
+`database/sql/department/2026_08_22_001_department_contract.sql` và đồng bộ
+canonical dump; rollout có preflight fail-closed cho dữ liệu cũ và unique
+constraint tên sau khi preflight pass, không tự map role.
+
+Bằng chứng tự động: HTTP/controller/view, unit/mocked service và repository
+contract tests pass; full feature suite dùng SQLite in-memory. Frontend, full Laravel, Vite,
+`composer validate`, route inventory và `git diff --check` đều pass. MariaDB
+procedure/preflight/concurrency test đã viết theo guard disposable nhưng chưa
+chạy trong phiên này; không claim persistence routine/production/browser
+acceptance đã verified.
+
 - Main là nguồn tích hợp hiện tại; merge `aa77419` có parents `1677f20` và `91bb7a1` (`feat(employee-db): add guarded local demo seed`).
 - `quan_ly_nhan_su` local đã được cập nhật có chủ đích qua rollout được approval và demo synthetic; đây là bằng chứng environment-specific, không phải production. Shape đã kiểm chứng: 16 bảng, 1 view, 8 function, 10 trigger, 69 procedure.
 - Demo hiện có 5 employee và 5 address; admin demo có đúng 5 employee permission; bốn normal demo zero employee permission. IDs local hiện `NV006`–`NV010` nhưng không ổn định sau cleanup/reseed. Backup nằm ngoài Git/ignored.
 - Hướng dẫn authoritative: [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md). Avatar browser vẫn blocked/unverified và chưa claim MySQL 8.
-- Current full Laravel là `237 pass, 1820 assertions`; root `/` đã có regression guest → login và authenticated → dashboard. Trước entrypoint, snapshot là `234 pass, 1 fail, 1815 assertions`; trước vòng authorization/guard là `224/1789`. Scoped employee/auth snapshot là `119 pass, 1141 assertions`; attendance compatibility hiện là `16 pass, 61 assertions`. Frontend là `15/15`, build Vite 16 modules, route inventory 52. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây và cleanup sạch; không claim rerun pass.
+- Base `main` snapshot là `237 pass, 1820 assertions`; trên feature branch này full Laravel là `253 pass, 1964 assertions` sau khi thêm Phòng ban contracts. Base frontend là `15/15`; feature branch là `16/16`, Vite build 17 modules. Guarded MariaDB employee rerun historical timeout khoảng 184 giây và cleanup sạch; Phòng ban routine integration chưa chạy, không claim DB/production pass.
 
 ## Bằng chứng historical — Task 20 Phase E trước merge vào main (2026-08-21)
 
@@ -61,10 +79,10 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | --- | --- |
 | Git | Main tích hợp merge `aa77419`, parents `1677f20`/`91bb7a1`; revalidate HEAD/upstream khi tiếp tục |
 | MCP code graph | 1.819 node, 2.454 edge; dùng để khám phá code, không dùng thay cho route runtime |
-| `php artisan route:list --except-vendor` | Pass; 52 route, gồm root login/dashboard entrypoint, login/logout, aliases `/login` và employee lifecycle routes |
-| `php artisan test` | `237 pass, 1820 assertions`; root entrypoint guest/authenticated redirects pass; prior snapshot `234 pass, 1 fail, 1815 assertions`; scoped employee/auth snapshot `119/1141`, attendance compatibility `16 pass/61 assertions` |
-| `npm run test:frontend` | Pass; 15 tests |
-| `npm run build` | Pass; Vite 7.3.6, 16 modules transformed |
+| `php artisan route:list --except-vendor` | Pass; department routes are present under `admin/phong-ban`; full inventory rechecked |
+| `php artisan test` | `253 pass, 1964 assertions`; includes scoped Phòng ban `16/144` |
+| `npm run test:frontend` | Pass; 16 tests |
+| `npm run build` | Pass; Vite 7.3.6, 17 modules transformed |
 | Composer dependency gates | Validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates |
 | MariaDB employee integration | **Unverified sau tích hợp**; guarded rerun timeout khoảng 184 giây, process/schema/state/marker cleanup sạch; `165/3367` chỉ là historical Task 20 |
 | Task 19 harness regression/review | Historical Task 20 wrapper có process-identity/atomic-state evidence; rerun hiện tại chưa pass nên không suy rộng review cũ thành current DB gate |
@@ -77,7 +95,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | --- | --- | --- | --- | --- |
 | Home/landing | Root `/` redirect guest tới login và authenticated tới dashboard; named route `backend.frontend.home` tại `/admin` vẫn thiếu target view `frontend.home` | Không | Root redirect test pass | **Prototype — landing view blocked** |
 | Dashboard | `/admin/bang-dieu-khien` render 200 | Chưa có dữ liệu | Không | **Prototype** |
-| Phòng ban | Blade index/create lỗi | Controller gọi SP trực tiếp | Không | **Prototype — blocked**: route trỏ method thiếu, SP chi tiết thiếu, update sai placeholder |
+| Phòng ban | Server-rendered index/create/edit; action gating và trạng thái an toàn | Repository/service gọi 5 routine CRUD/chi tiết; canonical permission catalog, unique tên có preflight rollout; chưa map role tự động | HTTP/controller/view + unit/mocked service/repository contract đã pass; MariaDB integration/preflight/concurrency đã viết nhưng chưa chạy; frontend `16` | **Verified hẹp ở HTTP/controller/view + unit/mocked service; repository/procedure MariaDB và browser acceptance unverified** |
 | Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | SQL `001`–`006`, repository/service, auth provider, session guard và 5 permission Gates | Scoped employee/auth snapshot `119/1141`; attendance `16/61`; frontend `15`; browser function/RBAC/responsive matrix; MariaDB current rerun timeout; full Laravel `237/1820` | **Verified hẹp và đã tích hợp vào main; chưa production-ready**: browser avatar upload còn blocked |
 | Chức vụ | Chưa có route/view | Có controller/service/repository/request/model | Không | **Prototype — unreachable** |
 | Lương | Trang render, JS CRUD và hệ số được build | API resource + service/repository | Không | **Prototype — blocked**: thiếu procedure danh sách; write contract chưa ngăn trùng `(ma_nv, ky_luong)`; export/đối soát chưa có handler đầy đủ |
@@ -108,10 +126,8 @@ Acceptance harness chỉ dùng target MariaDB guarded/disposable, process/cache/
 
 ## Route và controller đang lệch
 
-Hai route phòng ban vẫn trỏ tới method không tồn tại:
-
-- `PhongBanController@show`
-- `PhongBanController@destroy`
+Module Phòng ban v1 đã thay route lỗi bằng `index/create/store/edit/update/destroy`
+với param số dương `ma_pb`; các lệch route còn lại bên dưới thuộc module khác.
 
 Module nhân viên đã có index/create/store/show/edit/update/destroy/reset-password; các route này được bảo vệ bởi auth, rollout và Gate tương ứng.
 
@@ -130,10 +146,9 @@ Root `/` hiện là entrypoint: guest được chuyển tới `/dang-nhap`, user
 
 ## Data contract đang lệch
 
-Code còn gọi hai procedure ngoài module nhân viên không có trong canonical dump:
+Code còn gọi một procedure ngoài module nhân viên không có trong canonical dump:
 
-1. `sp_phong_ban_chi_tiet`
-2. `sp_luong_tim_kiem_phan_trang`
+1. `sp_luong_tim_kiem_phan_trang`
 
 `ChamCongController@index` dùng Query Builder trên cột canonical vì
 `sp_cham_cong_chi_tiet_phan_trang` không tồn tại; không ghi procedure này vào
@@ -141,9 +156,10 @@ backlog missing caller.
 
 Ngoài ra:
 
-- `sp_phong_ban_sua(ma_pb, ten_pb)` cần hai placeholder; controller hiện chỉ có một.
+- `sp_phong_ban_chi_tiet(ma_pb)` đã được bổ sung vào canonical dump và script versioned; routine trả `ma_pb`, `ten_pb`, `so_nhan_vien`.
+- Các routine Phòng ban normalize/trim tên, dùng mã lỗi `PB_*`; unique constraint tên được thêm bởi rollout script sau preflight fail-closed, không tự sửa dữ liệu lỗi.
 - Model `ChamCong` dùng tên bảng/cột không khớp `cham_cong.ngay_lam`.
-- Model `NhanVien` đã map table/key/timestamps và ẩn `mat_khau`; `PhongBan` vẫn cần audit mapping.
+- Model `NhanVien` đã map table/key/timestamps và ẩn `mat_khau`; `PhongBan` v1 đã map table/key/timestamps và quan hệ `nhanViens`.
 - Validation `ma_nv`, hệ số và ngày hiệu lực chưa thống nhất với schema.
 - Một số exception trả nguyên message của DB ra JSON, có nguy cơ lộ chi tiết nội bộ.
 
@@ -166,6 +182,7 @@ Không merge/rebase/cherry-pick tự động. Xem [ADR-001](decisions/ADR-001-ad
 - Không dùng local demo rollout hoặc response 200 trên danh sách rỗng để chứng minh production logic; cần rollout evidence/approval riêng cho môi trường thật.
 - Chưa xác minh tương thích MySQL 8; runtime hiện tại chỉ là MariaDB 10.4.32.
 - Full Laravel current đã xanh; landing view legacy `/admin` và các blocker module khác vẫn chưa được xử lý.
+- MariaDB procedure suite Phòng ban chưa chạy trong phiên này vì chưa có target disposable guard được cấp; browser Phòng ban chưa được gọi.
 
 ## Khi nào được đổi trạng thái thành hoàn thành
 
