@@ -2,41 +2,153 @@
 
 namespace Tests\Unit\Repositories;
 
+use App\Exceptions\PhongBanDomainException;
 use App\Repositories\PhongBanRepository;
-use App\Support\PhongBanProcedureExceptionMapper;
-use Illuminate\Database\Connection;
+use App\Support\PhongBanExceptionMapper;
 use Illuminate\Database\DatabaseManager;
-use Mockery;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class PhongBanRepositoryTest extends TestCase
 {
-    public function test_write_procedures_use_select_result_sets_to_drain_mariadb_cursors(): void
+    private PhongBanRepository $repository;
+
+    protected function setUp(): void
     {
-        $connection = Mockery::mock(Connection::class);
-        $database = Mockery::mock(DatabaseManager::class);
-        $database->shouldReceive('connection')->times(3)->andReturn($connection);
+        parent::setUp();
 
-        $connection->shouldReceive('selectResultSets')
-            ->once()
-            ->ordered()
-            ->with('CALL sp_phong_ban_them(?)', ['Kỹ thuật'], false)
-            ->andReturn([[]]);
-        $connection->shouldReceive('selectResultSets')
-            ->once()
-            ->ordered()
-            ->with('CALL sp_phong_ban_sua(?, ?)', [1, 'Nhân sự'], false)
-            ->andReturn([[]]);
-        $connection->shouldReceive('selectResultSets')
-            ->once()
-            ->ordered()
-            ->with('CALL sp_phong_ban_xoa(?)', [1], false)
-            ->andReturn([[]]);
+        Schema::create('phong_ban', static function (Blueprint $table): void {
+            $table->increments('ma_pb');
+            $table->string('ten_pb', 100)->unique('uq_phong_ban_ten');
+        });
+        Schema::create('nhan_vien', static function (Blueprint $table): void {
+            $table->string('ma_nv', 10)->primary();
+            $table->unsignedInteger('ma_pb')->nullable();
+        });
 
-        $repository = new PhongBanRepository($database, new PhongBanProcedureExceptionMapper);
+        $this->repository = new PhongBanRepository(
+            $this->app->make(DatabaseManager::class),
+            new PhongBanExceptionMapper,
+        );
+    }
 
-        $repository->create('Kỹ thuật');
-        $repository->update(1, 'Nhân sự');
-        $repository->delete(1);
+    protected function tearDown(): void
+    {
+        Schema::dropIfExists('nhan_vien');
+        Schema::dropIfExists('phong_ban');
+
+        parent::tearDown();
+    }
+
+    public function test_all_and_find_return_explicit_rows_with_employee_counts_and_order(): void
+    {
+        $this->insertDepartment('Kỹ thuật');
+        $this->insertDepartment('Nhân sự');
+        $this->insertEmployee('NV001', 1);
+        $this->insertEmployee('NV002', 1);
+
+        $rows = $this->repository->all();
+
+        $this->assertSame(['ma_pb', 'ten_pb', 'so_nhan_vien'], array_keys(get_object_vars($rows[0])));
+        $this->assertSame(1, $rows[0]->ma_pb);
+        $this->assertSame('Kỹ thuật', $rows[0]->ten_pb);
+        $this->assertSame(2, $rows[0]->so_nhan_vien);
+        $this->assertSame('Nhân sự', $rows[1]->ten_pb);
+        $this->assertSame(0, $rows[1]->so_nhan_vien);
+        $this->assertSame(2, $this->repository->find(2)->ma_pb);
+        $this->assertNull($this->repository->find(999));
+    }
+
+    public function test_create_and_update_trim_names_and_persist_state(): void
+    {
+        $this->repository->create('  Kỹ thuật  ');
+        $this->assertSame('Kỹ thuật', DB::table('phong_ban')->where('ma_pb', 1)->value('ten_pb'));
+
+        $this->repository->update(1, '  Nhân sự  ');
+        $this->assertSame('Nhân sự', DB::table('phong_ban')->where('ma_pb', 1)->value('ten_pb'));
+    }
+
+    public function test_invalid_names_fail_closed_without_writes(): void
+    {
+        foreach (['', '   ', str_repeat('a', 101)] as $name) {
+            try {
+                $this->repository->create($name);
+                $this->fail('Expected invalid department name to throw.');
+            } catch (PhongBanDomainException $exception) {
+                $this->assertContains($exception->domainCode, ['PB_NAME_REQUIRED', 'PB_NAME_TOO_LONG']);
+            }
+        }
+
+        $this->assertSame(0, DB::table('phong_ban')->count());
+    }
+
+    public function test_duplicate_name_maps_to_safe_domain_error(): void
+    {
+        $this->insertDepartment('Kỹ thuật');
+
+        try {
+            $this->repository->create('  Kỹ thuật ');
+            $this->fail('Expected duplicate department name to throw.');
+        } catch (PhongBanDomainException $exception) {
+            $this->assertSame('PB_NAME_DUPLICATE', $exception->domainCode);
+            $this->assertSame('ten_pb', $exception->field);
+        }
+    }
+
+    public function test_update_and_delete_missing_or_invalid_ids_fail_closed(): void
+    {
+        foreach ([
+            function (): void {
+                $this->repository->update(999, 'Mới');
+            },
+            function (): void {
+                $this->repository->delete(999);
+            },
+        ] as $operation) {
+            try {
+                $operation();
+                $this->fail('Expected missing department to throw.');
+            } catch (PhongBanDomainException $exception) {
+                $this->assertSame('PB_NOT_FOUND', $exception->domainCode);
+            }
+        }
+
+        try {
+            $this->repository->delete(0);
+            $this->fail('Expected invalid department ID to throw.');
+        } catch (PhongBanDomainException $exception) {
+            $this->assertSame('PB_ID_INVALID', $exception->domainCode);
+        }
+    }
+
+    public function test_delete_rejects_departments_in_use_and_deletes_free_department(): void
+    {
+        $this->insertDepartment('Đang dùng');
+        $this->insertDepartment('Trống');
+        $this->insertEmployee('NV001', 1);
+
+        try {
+            $this->repository->delete(1);
+            $this->fail('Expected in-use department to throw.');
+        } catch (PhongBanDomainException $exception) {
+            $this->assertSame('PB_IN_USE', $exception->domainCode);
+            $this->assertSame('phong_ban', $exception->field);
+        }
+
+        $this->repository->delete(2);
+        $this->assertNull($this->repository->find(2));
+        $this->assertSame(1, DB::table('phong_ban')->count());
+    }
+
+    private function insertDepartment(string $name): void
+    {
+        DB::table('phong_ban')->insert(['ten_pb' => $name]);
+    }
+
+    private function insertEmployee(string $code, int $department): void
+    {
+        DB::table('nhan_vien')->insert(['ma_nv' => $code, 'ma_pb' => $department]);
     }
 }

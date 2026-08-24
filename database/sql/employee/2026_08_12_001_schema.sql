@@ -1,3 +1,7 @@
+-- LEGACY EMPLOYEE MIGRATION (superseded 2026-08-24). Historical only; do not
+-- run as active setup. Use the exact 15-table fresh pair or the reviewed
+-- 2026_08_24_001 migration for an existing disposable database.
+
 DELIMITER //
 
 BEGIN NOT ATOMIC

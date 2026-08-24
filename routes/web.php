@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 // Danh sách quyền dùng cho middleware phân quyền route.
 use App\Enums\NhanVienPermission;
 use App\Enums\PhongBanPermission;
+use App\Enums\ChucVuPermission;
 
 
 /*
@@ -155,6 +156,33 @@ Route::prefix('')->name('backend.')
         ->name('vaitro.destroy');
 
     // Danh sách nhân viên.
+    Route::get('/chuc-vu', [ChucVuController::class, 'index'])
+        ->middleware('can:'.ChucVuPermission::Xem->value)
+        ->name('chucvu.index');
+
+    Route::get('/chuc-vu/create', [ChucVuController::class, 'create'])
+        ->middleware('can:'.ChucVuPermission::Tao->value)
+        ->name('chucvu.create');
+
+    Route::post('/chuc-vu', [ChucVuController::class, 'store'])
+        ->middleware('can:'.ChucVuPermission::Tao->value)
+        ->name('chucvu.store');
+
+    Route::get('/chuc-vu/{ma_cv}/edit', [ChucVuController::class, 'edit'])
+        ->where('ma_cv', '[1-9][0-9]*')
+        ->middleware('can:'.ChucVuPermission::Sua->value)
+        ->name('chucvu.edit');
+
+    Route::match(['put', 'patch'], '/chuc-vu/{ma_cv}', [ChucVuController::class, 'update'])
+        ->where('ma_cv', '[1-9][0-9]*')
+        ->middleware('can:'.ChucVuPermission::Sua->value)
+        ->name('chucvu.update');
+
+    Route::delete('/chuc-vu/{ma_cv}', [ChucVuController::class, 'destroy'])
+        ->where('ma_cv', '[1-9][0-9]*')
+        ->middleware('can:'.ChucVuPermission::Xoa->value)
+        ->name('chucvu.destroy');
+
     Route::get('/nhan-vien', [NhanVienController::class, 'index'])
         /*->middleware([
             EnsureNhanVienModuleEnabled::class,

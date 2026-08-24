@@ -22,7 +22,6 @@ trait CreatesEmployeeFeatureSchema
 
         Schema::create('trang_thai_lam_viec', function (Blueprint $table): void {
             $table->increments('ma_tt');
-            $table->string('ky_hieu', 20)->unique();
             $table->string('ten_tt', 50);
         });
 
@@ -39,10 +38,10 @@ trait CreatesEmployeeFeatureSchema
             ['ma_cv' => 1, 'ten_cv' => 'Lập trình viên'],
         ]);
         DB::table('trang_thai_lam_viec')->insert([
-            ['ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm việc'],
-            ['ma_tt' => 2, 'ky_hieu' => 'THU_VIEC', 'ten_tt' => 'Thử việc'],
-            ['ma_tt' => 3, 'ky_hieu' => 'DA_NGHI', 'ten_tt' => 'Đã nghỉ'],
-            ['ma_tt' => 4, 'ky_hieu' => 'OTHER', 'ten_tt' => 'Trạng thái khác'],
+            ['ma_tt' => 1, 'ten_tt' => 'Thử việc'],
+            ['ma_tt' => 2, 'ten_tt' => 'Đang làm việc'],
+            ['ma_tt' => 3, 'ten_tt' => 'Tạm nghỉ không lương'],
+            ['ma_tt' => 4, 'ten_tt' => 'Đã nghỉ việc'],
         ]);
     }
 

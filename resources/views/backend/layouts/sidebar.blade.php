@@ -21,8 +21,11 @@
                     <span class="nav-title">Tổng quan</span>
                 </a>
             </li>
-                @if (config('nhanvien.enabled') === true)
-                <!-- Quản lý nhân viên -->
+            @php($sidebarUser = auth()->user())
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && config('nhanvien.enabled') === true
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'NhanVien'))
+                <!-- Nhân sự -->
                 <li class="nav-item">
                     <a href="#" class="nav-link" data-toggle="submenu">
                         <i class="bi bi-people-fill"></i>
@@ -38,8 +41,9 @@
                         </li>
                     </ul>
                 </li>
-                @endif
-            @can(\App\Enums\PhongBanPermission::Xem->value)
+            @endif
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'PhongBan'))
                 <li class="nav-item">
                     <a href="#" class="nav-link" data-toggle="submenu">
                         <i class="bi bi-building-fill" aria-hidden="true"></i>
@@ -55,8 +59,17 @@
                         </li>
                     </ul>
                 </li>
-            @endcan
-            <!-- Quản lý phòng ban -->
+            @endif
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'ChucVu'))
+                <li class="nav-item">
+                    <a href="{{ route('backend.chucvu.index') }}" class="nav-link">
+                        <i class="bi bi-person-badge" aria-hidden="true"></i>
+                        <span class="nav-title">Chức vụ</span>
+                    </a>
+                </li>
+            @endif
+            <!-- Chấm công -->
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
                     <i class="bi bi-building-fill"></i>

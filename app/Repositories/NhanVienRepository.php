@@ -4,17 +4,41 @@ namespace App\Repositories;
 
 use App\Contracts\NhanVienRepositoryContract;
 use App\Enums\NhanVienRemovalAction;
+use App\Enums\NhanVienRole;
+use App\Enums\NhanVienStatus;
 use App\Exceptions\NhanVienDomainException;
 use App\Models\NhanVien;
 use App\Support\NhanVienProcedureExceptionMapper;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 
+/**
+ * Employee data access against the 15-table contract.
+ *
+ * Employee/auth/RBAC deliberately use explicit Query Builder projections. The
+ * canonical fresh schema has no employee procedures, views or address table;
+ * callers own the transaction around multi-step writes.
+ */
 final class NhanVienRepository implements NhanVienRepositoryContract
 {
+    private const PROFILE_COLUMNS = [
+        'ho_ten', 'ngay_sinh', 'gioi_tinh', 'sdt', 'email', 'ngay_vao_lam',
+        'ma_pb', 'ma_cv', 'dan_toc', 'cccd', 'noi_cap_cccd', 'hoc_van', 'ma_tt',
+    ];
+
+    private const ADDRESS_COLUMNS = [
+        'dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh',
+    ];
+
+    private const DEPENDENCY_TABLES = [
+        'hop_dong', 'nghi_phep', 'cham_cong', 'lich_su_he_so_luong', 'luong',
+    ];
+
     public function __construct(
         private DatabaseManager $database,
         private NhanVienProcedureExceptionMapper $exceptions,
@@ -23,28 +47,24 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     public function paginate(array $filters): LengthAwarePaginator
     {
         return $this->databaseOperation(function () use ($filters): LengthAwarePaginator {
-            $connection = $this->connection();
-            $connection->statement('SET @nv_tong_so = 0');
-            $sets = $this->call(
-                $connection,
-                'CALL sp_nhan_vien_danh_sach_phan_trang(?, ?, ?, ?, ?, ?, @nv_tong_so)',
-                [
-                    $filters['tu_khoa'],
-                    $filters['ma_pb'],
-                    $filters['ma_cv'],
-                    $filters['ma_tt'],
-                    $filters['page'],
-                    $filters['so_dong'],
-                ],
-            );
-            $total = (int) $connection
-                ->selectOne('SELECT @nv_tong_so AS total', [], false)->total;
+            $filters += [
+                'tu_khoa' => null,
+                'ma_pb' => null,
+                'ma_cv' => null,
+                'ma_tt' => null,
+                'page' => 1,
+                'so_dong' => 15,
+            ];
 
-            return $this->paginator(
-                $sets[0] ?? [],
-                $total,
-                $filters['so_dong'],
-                $filters['page'],
+            $query = $this->employeeQuery();
+            $this->applyEmployeeFilters($query, $filters);
+            $columns = $query->columns ?? ['*'];
+
+            return $query->orderBy('nv.ma_nv')->paginate(
+                (int) $filters['so_dong'],
+                $columns,
+                'page',
+                (int) $filters['page'],
             );
         });
     }
@@ -52,299 +72,318 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     public function paginateAttendance(array $filters): LengthAwarePaginator
     {
         return $this->databaseOperation(function () use ($filters): LengthAwarePaginator {
-            $connection = $this->connection();
-            $connection->statement('SET @nv_tong_so_cham_cong = 0');
-            $sets = $this->call(
-                $connection,
-                'CALL sp_cham_cong_nhan_vien_phan_trang(?, ?, ?, ?, ?, ?, @nv_tong_so_cham_cong)',
-                [
-                    $filters['tu_khoa'],
-                    $filters['ma_pb'],
-                    $filters['thang'],
-                    $filters['nam'],
-                    $filters['page'],
-                    $filters['so_dong'],
-                ],
-            );
-            $total = (int) $connection
-                ->selectOne('SELECT @nv_tong_so_cham_cong AS total', [], false)->total;
+            $filters += [
+                'tu_khoa' => null,
+                'ma_pb' => null,
+                'thang' => null,
+                'nam' => null,
+                'page' => 1,
+                'so_dong' => 15,
+            ];
 
-            return $this->paginator(
-                $sets[0] ?? [],
-                $total,
-                $filters['so_dong'],
-                $filters['page'],
+            $query = $this->employeeQuery()
+                ->leftJoin('cham_cong as cc', function ($join) use ($filters): void {
+                    $join->on('cc.ma_nv', '=', 'nv.ma_nv');
+                    if ($filters['thang'] !== null) {
+                        $join->whereRaw('MONTH(cc.ngay_lam) = ?', [(int) $filters['thang']]);
+                    }
+                    if ($filters['nam'] !== null) {
+                        $join->whereRaw('YEAR(cc.ngay_lam) = ?', [(int) $filters['nam']]);
+                    }
+                })
+                ->addSelect([
+                    DB::raw('COALESCE(SUM(CASE WHEN cc.so_gio_lam >= 8 THEN 1 WHEN cc.so_gio_lam >= 4 THEN 0.5 ELSE 0 END), 0) AS so_ngay_cham_cong'),
+                    DB::raw('COALESCE(SUM(cc.so_gio_lam), 0) AS tong_gio_lam'),
+                    DB::raw('COALESCE(SUM(CASE WHEN cc.vao_muon = 1 THEN 1 ELSE 0 END), 0) AS so_lan_vao_muon'),
+                    DB::raw('COALESCE(SUM(CASE WHEN cc.ve_som = 1 THEN 1 ELSE 0 END), 0) AS so_lan_ve_som'),
+                ])
+                ->groupBy([
+                    'nv.ma_nv', 'nv.ho_ten', 'nv.ngay_sinh', 'nv.gioi_tinh', 'nv.sdt', 'nv.email',
+                    'nv.ngay_vao_lam', 'nv.ma_pb', 'nv.ma_cv', 'nv.dan_toc', 'nv.cccd',
+                    'nv.noi_cap_cccd', 'nv.hoc_van', 'nv.ma_tt', 'nv.ma_vt', 'nv.anh_dai_dien',
+                    'nv.ngay_nghi_viec', 'nv.dia_chi_cu_the', 'nv.phuong_xa', 'nv.quan_huyen', 'nv.tinh_thanh',
+                    'pb.ten_pb', 'cv.ten_cv', 'cv.he_so_phu_cap', 'tt.ten_tt', 'vt.ten_vt',
+                ]);
+
+            $this->applyEmployeeFilters($query, $filters);
+            $columns = $query->columns ?? ['*'];
+
+            return $query->orderBy('nv.ma_nv')->paginate(
+                (int) $filters['so_dong'],
+                $columns,
+                'page',
+                (int) $filters['page'],
             );
         });
     }
 
     public function find(string $maNv): ?object
     {
-        return $this->databaseOperation(function () use ($maNv): ?object {
-            $sets = $this->call(
-                $this->connection(),
-                'CALL sp_nhan_vien_chi_tiet(?)',
-                [$maNv],
-            );
-
-            return $sets[0][0] ?? null;
-        });
+        return $this->databaseOperation(fn (): ?object => $this->employeeQuery()
+            ->where('nv.ma_nv', $maNv)
+            ->first());
     }
 
     public function create(array $profile, string $passwordHash, ?string $avatarPath): string
     {
         return $this->databaseOperation(function () use ($profile, $passwordHash, $avatarPath): string {
-            $connection = $this->connection();
-            $connection->statement('SET @nv_ma = NULL');
-            $this->call(
-                $connection,
-                'CALL sp_nhan_vien_them(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, @nv_ma)',
-                [
-                    $profile['ho_ten'],
-                    $profile['ngay_sinh'],
-                    $profile['gioi_tinh'],
-                    $profile['sdt'],
-                    $profile['email'],
-                    $profile['ngay_vao_lam'],
-                    $profile['ma_pb'],
-                    $profile['ma_cv'],
-                    $profile['dan_toc'],
-                    $profile['cccd'],
-                    $profile['noi_cap_cccd'],
-                    $profile['hoc_van'],
-                    $profile['ma_tt'],
-                    $passwordHash,
-                    $avatarPath,
-                ],
-            );
-            $result = $connection->selectOne('SELECT @nv_ma AS ma_nv', [], false);
-            $maNv = is_object($result) && is_string($result->ma_nv ?? null)
-                ? $result->ma_nv
-                : '';
+            return $this->transactionIfNeeded(function () use ($profile, $passwordHash, $avatarPath): string {
+                $connection = $this->connection();
+                $counter = $connection->table('bo_dem_ma_nhan_vien')
+                    ->where('ten_bo_dem', 'NHAN_VIEN')
+                    ->lockForUpdate()
+                    ->first();
 
-            if (preg_match('/\ANV[0-9]{3}\z/', $maNv) !== 1) {
-                throw new NhanVienDomainException(
-                    'Không thể tạo nhân viên. Vui lòng thử lại.',
-                    'NV_CREATE_RESULT_INVALID',
-                );
-            }
+                if ($counter === null) {
+                    throw new NhanVienDomainException(
+                        'Không thể cấp mã nhân viên. Vui lòng kiểm tra cấu hình dữ liệu.',
+                        'NV_COUNTER_MISSING',
+                    );
+                }
 
-            return $maNv;
+                $issued = (int) ($counter->so_da_cap ?? -1);
+                if ($issued < 0 || $issued >= 999) {
+                    throw new NhanVienDomainException(
+                        'Đã hết mã nhân viên khả dụng.',
+                        'NV_COUNTER_EXHAUSTED',
+                    );
+                }
+
+                $maxExisting = 0;
+                foreach ($connection->table('nhan_vien')->pluck('ma_nv') as $existingCode) {
+                    if (! is_string($existingCode) || preg_match('/\ANV[0-9]{3}\z/', $existingCode) !== 1) {
+                        throw new NhanVienDomainException(
+                            'Không thể cấp mã nhân viên do dữ liệu mã bị sai lệch.',
+                            'NV_COUNTER_DRIFT',
+                        );
+                    }
+
+                    $maxExisting = max($maxExisting, (int) substr($existingCode, 2));
+                }
+
+                if ($issued < $maxExisting) {
+                    throw new NhanVienDomainException(
+                        'Không thể cấp mã nhân viên do bộ đếm bị sai lệch.',
+                        'NV_COUNTER_DRIFT',
+                    );
+                }
+
+                $next = $issued + 1;
+                $maNv = sprintf('NV%03d', $next);
+                if ($connection->table('nhan_vien')->where('ma_nv', $maNv)->exists()) {
+                    throw new NhanVienDomainException(
+                        'Không thể cấp mã nhân viên do mã đã tồn tại.',
+                        'NV_COUNTER_DRIFT',
+                    );
+                }
+
+                $row = $this->profileRow($profile) + [
+                    'ma_nv' => $maNv,
+                    'ma_vt' => NhanVienRole::Employee->value,
+                    'mat_khau' => $passwordHash,
+                    'anh_dai_dien' => $avatarPath,
+                    'ngay_nghi_viec' => null,
+                ];
+                $connection->table('nhan_vien')->insert($row);
+                $connection->table('bo_dem_ma_nhan_vien')
+                    ->where('ten_bo_dem', 'NHAN_VIEN')
+                    ->update(['so_da_cap' => $next]);
+
+                return $maNv;
+            });
         });
     }
 
     public function update(string $maNv, array $profile): void
     {
         $this->databaseOperation(function () use ($maNv, $profile): void {
-            $this->call(
-                $this->connection(),
-                'CALL sp_nhan_vien_sua(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [
-                    $maNv,
-                    $profile['ho_ten'],
-                    $profile['ngay_sinh'],
-                    $profile['gioi_tinh'],
-                    $profile['sdt'],
-                    $profile['email'],
-                    $profile['ngay_vao_lam'],
-                    $profile['ma_pb'],
-                    $profile['ma_cv'],
-                    $profile['dan_toc'],
-                    $profile['cccd'],
-                    $profile['noi_cap_cccd'],
-                    $profile['hoc_van'],
-                    $profile['ma_tt'],
-                ],
-            );
+            $this->connection()->table('nhan_vien')
+                ->where('ma_nv', $maNv)
+                ->where('ma_vt', NhanVienRole::Employee->value)
+                ->update($this->profileRow($profile));
+
+            $targetRole = $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->value('ma_vt');
+            if ($targetRole === null) {
+                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+            }
+            if ((int) $targetRole !== NhanVienRole::Employee->value) {
+                throw new NhanVienDomainException(
+                    'Không thể cập nhật tài khoản đặc quyền.',
+                    'NV_PRIVILEGED_TARGET',
+                );
+            }
         });
     }
 
     public function replaceAvatarPath(string $maNv, ?string $newPath): ?string
     {
         return $this->databaseOperation(function () use ($maNv, $newPath): ?string {
-            $connection = $this->connection();
-            $connection->statement('SET @nv_anh_cu = NULL');
-            $this->call(
-                $connection,
-                'CALL sp_nhan_vien_cap_nhat_anh(?, ?, @nv_anh_cu)',
-                [$maNv, $newPath],
-            );
-            $result = $connection->selectOne('SELECT @nv_anh_cu AS anh_cu', [], false);
-            $oldPath = is_object($result) ? ($result->anh_cu ?? null) : null;
+            return $this->transactionIfNeeded(function () use ($maNv, $newPath): ?string {
+                $row = $this->connection()->table('nhan_vien')
+                    ->select(['anh_dai_dien', 'ma_vt'])
+                    ->where('ma_nv', $maNv)
+                    ->lockForUpdate()
+                    ->first();
 
-            return is_string($oldPath) ? $oldPath : null;
+                if ($row === null) {
+                    throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+                }
+                if ((int) $row->ma_vt !== NhanVienRole::Employee->value) {
+                    throw new NhanVienDomainException(
+                        'Không thể cập nhật tài khoản đặc quyền.',
+                        'NV_PRIVILEGED_TARGET',
+                    );
+                }
+
+                $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->update([
+                    'anh_dai_dien' => $newPath,
+                ]);
+
+                return is_string($row->anh_dai_dien) ? $row->anh_dai_dien : null;
+            });
         });
     }
 
     public function upsertAddress(string $maNv, array $address): void
     {
         $this->databaseOperation(function () use ($maNv, $address): void {
-            $this->call(
-                $this->connection(),
-                'CALL sp_dia_chi_nhan_vien_luu(?, ?, ?, ?, ?)',
-                [
-                    $maNv,
-                    $address['dia_chi_cu_the'],
-                    $address['phuong_xa'],
-                    $address['quan_huyen'],
-                    $address['tinh_thanh'],
-                ],
-            );
+            $addressRow = array_intersect_key($address, array_flip(self::ADDRESS_COLUMNS));
+            if ($addressRow !== []) {
+                $this->connection()->table('nhan_vien')
+                    ->where('ma_nv', $maNv)
+                    ->where('ma_vt', NhanVienRole::Employee->value)
+                    ->update($addressRow);
+            }
+
+            $targetRole = $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->value('ma_vt');
+            if ($targetRole === null) {
+                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+            }
+            if ((int) $targetRole !== NhanVienRole::Employee->value) {
+                throw new NhanVienDomainException('Không thể cập nhật tài khoản đặc quyền.', 'NV_PRIVILEGED_TARGET');
+            }
         });
     }
 
-    /**
-     * Keep SET, CALL and OUT reads on one write PDO so a procedure's OUT state
-     * cannot be read from a different pooled session.
-     *
-     * @return array{action: NhanVienRemovalAction, avatar_path: ?string}
-     */
+    /** @return array{action: NhanVienRemovalAction, avatar_path: ?string} */
     public function removeOrTerminate(string $maNv, CarbonImmutable $date): array
     {
         return $this->databaseOperation(function () use ($maNv, $date): array {
-            $connection = $this->connection();
-            $connection->statement('SET @nv_hanh_dong = NULL');
-            $connection->statement('SET @nv_anh_cu = NULL');
-            $this->call(
-                $connection,
-                'CALL sp_nhan_vien_xoa_hoac_nghi_viec(?, ?, @nv_hanh_dong, @nv_anh_cu)',
-                [$maNv, $date->toDateString()],
-            );
+            return $this->transactionIfNeeded(function () use ($maNv, $date): array {
+                $connection = $this->connection();
+                $employee = $connection->table('nhan_vien')
+                    ->select(['ma_nv', 'ma_vt', 'ma_tt', 'anh_dai_dien'])
+                    ->where('ma_nv', $maNv)
+                    ->lockForUpdate()
+                    ->first();
 
-            $actionRow = $connection->selectOne(
-                'SELECT @nv_hanh_dong AS hanh_dong',
-                [],
-                false,
-            );
-            $actionValue = is_object($actionRow) && property_exists($actionRow, 'hanh_dong')
-                ? $actionRow->hanh_dong
-                : null;
-            $avatarRow = $connection->selectOne(
-                'SELECT @nv_anh_cu AS anh_cu',
-                [],
-                false,
-            );
-            $avatarPath = is_object($avatarRow) && property_exists($avatarRow, 'anh_cu')
-                ? $avatarRow->anh_cu
-                : null;
-            $action = is_string($actionValue) ? NhanVienRemovalAction::tryFrom($actionValue) : null;
+                if ($employee === null) {
+                    throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+                }
+                if ((int) $employee->ma_vt !== NhanVienRole::Employee->value) {
+                    throw new NhanVienDomainException('Không thể xử lý tài khoản đặc quyền.', 'NV_PRIVILEGED_TARGET');
+                }
 
-            if ($action === null) {
-                throw new NhanVienDomainException(
-                    'Không thể xử lý yêu cầu nhân viên. Vui lòng thử lại.',
-                    'NV_DATABASE_ERROR',
-                );
-            }
+                $hasDependency = false;
+                foreach (self::DEPENDENCY_TABLES as $table) {
+                    if ($connection->table($table)->where('ma_nv', $maNv)->exists()) {
+                        $hasDependency = true;
+                        break;
+                    }
+                }
 
-            return [
-                'action' => $action,
-                'avatar_path' => is_string($avatarPath) ? $avatarPath : null,
-            ];
+                if ($hasDependency) {
+                    $connection->table('nhan_vien')->where('ma_nv', $maNv)->update([
+                        'ma_tt' => NhanVienStatus::Terminated->value,
+                        'ngay_nghi_viec' => $date->toDateString(),
+                    ]);
+
+                    return ['action' => NhanVienRemovalAction::Terminated, 'avatar_path' => null];
+                }
+
+                $connection->table('nhan_vien')->where('ma_nv', $maNv)->delete();
+
+                return [
+                    'action' => NhanVienRemovalAction::Deleted,
+                    'avatar_path' => is_string($employee->anh_dai_dien) ? $employee->anh_dai_dien : null,
+                ];
+            });
         });
     }
 
     public function resetPasswordHash(string $maNv, string $hash): void
     {
         $this->databaseOperation(function () use ($maNv, $hash): void {
-            $this->call(
-                $this->connection(),
-                'CALL sp_nhan_vien_dat_lai_mat_khau(?, ?)',
-                [$maNv, $hash],
-            );
+            $updated = $this->connection()->table('nhan_vien')
+                ->where('ma_nv', $maNv)
+                ->where('ma_vt', NhanVienRole::Employee->value)
+                ->where('ma_tt', '<>', NhanVienStatus::Terminated->value)
+                ->update(['mat_khau' => $hash]);
+
+            if ($updated === 0) {
+                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+            }
         });
     }
 
     public function rehashAuthenticatedPassword(string $maNv, string $currentHash, string $newHash): void
     {
         $this->databaseOperation(function () use ($maNv, $currentHash, $newHash): void {
-            $this->call(
-                $this->connection(),
-                'CALL sp_nhan_vien_cap_nhat_hash_xac_thuc(?, ?, ?)',
-                [$maNv, $currentHash, $newHash],
-            );
+            $updated = $this->connection()->table('nhan_vien')
+                ->where('ma_nv', $maNv)
+                ->where('mat_khau', $currentHash)
+                ->where('ma_tt', '<>', NhanVienStatus::Terminated->value)
+                ->update(['mat_khau' => $newHash]);
+
+            if ($updated === 0) {
+                throw new NhanVienDomainException(
+                    'Mật khẩu đã thay đổi, vui lòng đăng nhập lại.',
+                    'NV_AUTH_HASH_STALE',
+                );
+            }
         });
     }
 
     public function findAccountByIdentifier(string $identifier): ?NhanVien
     {
         return $this->databaseOperation(function () use ($identifier): ?NhanVien {
-            $sets = $this->call(
-                $this->connection(),
-                'CALL sp_nhan_vien_lay_tai_khoan_dang_nhap(?)',
-                [$identifier],
-            );
-            $row = $sets[0][0] ?? null;
+            $row = $this->connection()->table('nhan_vien as nv')
+                ->select(['nv.ma_nv', 'nv.ho_ten', 'nv.email', 'nv.mat_khau', 'nv.ma_vt', 'nv.ma_tt'])
+                ->where(function (Builder $query) use ($identifier): void {
+                    $query->where('nv.ma_nv', $identifier)
+                        ->orWhereRaw('LOWER(TRIM(nv.email)) = ?', [strtolower(trim($identifier))]);
+                })
+                ->first();
 
-            return is_object($row) ? NhanVien::fromAuthProcedureRow($row) : null;
+            return $row === null ? null : NhanVien::fromAuthRow($row);
         });
     }
 
-    /** @return list<string> */
-    public function permissionSymbols(string $maNv): array
-    {
-        return $this->databaseOperation(function () use ($maNv): array {
-            $rows = $this->call(
-                $this->connection(),
-                'CALL sp_quyen_lay_theo_ma_nhan_vien(?)',
-                [$maNv],
-            )[0] ?? [];
-            $symbols = [];
-
-            foreach ($rows as $row) {
-                $value = is_object($row)
-                    ? ($row->ky_hieu_quyen ?? null)
-                    : (is_array($row) ? ($row['ky_hieu_quyen'] ?? null) : null);
-                if (! is_string($value)) {
-                    throw new NhanVienDomainException(
-                        'Dữ liệu quyền nhân viên không hợp lệ.',
-                        'NV_PERMISSION_RESULT_INVALID',
-                    );
-                }
-
-                $symbol = strtoupper(trim($value));
-                if (preg_match('/\A[A-Z][A-Z0-9_]{0,99}\z/', $symbol) !== 1) {
-                    throw new NhanVienDomainException(
-                        'Dữ liệu quyền nhân viên không hợp lệ.',
-                        'NV_PERMISSION_RESULT_INVALID',
-                    );
-                }
-
-                $symbols[$symbol] = true;
-            }
-
-            $symbols = array_keys($symbols);
-            sort($symbols, SORT_STRING);
-
-            return $symbols;
-        });
-    }
-
-    /**
-     * @internal Bootstrap-only seam. Never call this from an HTTP/service flow.
-     */
+    /** @internal Bootstrap-only role assignment; never expose through web flows. */
     public function assignRoleForBootstrap(string $maNv, int $maVt): void
     {
         $this->databaseOperation(function () use ($maNv, $maVt): void {
-            // WHY: role assignment is one guarded CALL on the write PDO; the caller owns the outer transaction.
-            $this->call(
-                $this->connection(),
-                'CALL sp_nhan_vien_gan_vai_tro_noi_bo(?, ?)',
-                [$maNv, $maVt],
-            );
+            $updated = $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->update(['ma_vt' => $maVt]);
+            if ($updated === 0) {
+                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+            }
         });
     }
 
+    /** @return array{phong_ban: array, chuc_vu: array, trang_thai: array} */
     public function lookups(): array
     {
-        return $this->databaseOperation(function (): array {
-            $connection = $this->connection();
-
-            return [
-                'phong_ban' => $this->call($connection, 'CALL sp_phong_ban_danh_sach()', [])[0] ?? [],
-                'chuc_vu' => $this->call($connection, 'CALL sp_chuc_vu_danh_sach()', [])[0] ?? [],
-                'trang_thai' => $this->call($connection, 'CALL sp_trang_thai_lam_viec_danh_sach()', [])[0] ?? [],
-            ];
-        });
+        return $this->databaseOperation(fn (): array => [
+            'phong_ban' => $this->connection()->table('phong_ban')
+                ->select(['ma_pb', 'ten_pb'])
+                ->orderBy('ma_pb')->get()->all(),
+            'chuc_vu' => $this->connection()->table('chuc_vu')
+                ->select(['ma_cv', 'ten_cv', 'he_so_phu_cap'])
+                ->orderBy('ma_cv')->get()->all(),
+            'trang_thai' => $this->connection()->table('trang_thai_lam_viec')
+                ->select(['ma_tt', 'ten_tt'])
+                ->orderBy('ma_tt')->get()->all(),
+        ]);
     }
 
     private function connection(): Connection
@@ -352,20 +391,50 @@ final class NhanVienRepository implements NhanVienRepositoryContract
         return $this->database->connection();
     }
 
-    private function call(Connection $connection, string $sql, array $bindings): array
+    private function employeeQuery(): Builder
     {
-        return $connection->selectResultSets($sql, $bindings, false);
+        return $this->connection()->table('nhan_vien as nv')
+            ->join('phong_ban as pb', 'pb.ma_pb', '=', 'nv.ma_pb')
+            ->join('chuc_vu as cv', 'cv.ma_cv', '=', 'nv.ma_cv')
+            ->join('trang_thai_lam_viec as tt', 'tt.ma_tt', '=', 'nv.ma_tt')
+            ->join('vai_tro as vt', 'vt.ma_vt', '=', 'nv.ma_vt')
+            ->select([
+                'nv.ma_nv', 'nv.ho_ten', 'nv.ngay_sinh', 'nv.gioi_tinh', 'nv.sdt', 'nv.email',
+                'nv.ngay_vao_lam', 'nv.ma_pb', 'nv.ma_cv', 'nv.dan_toc', 'nv.cccd',
+                'nv.noi_cap_cccd', 'nv.hoc_van', 'nv.ma_tt', 'nv.ma_vt', 'nv.anh_dai_dien',
+                'nv.ngay_nghi_viec', 'nv.dia_chi_cu_the', 'nv.phuong_xa', 'nv.quan_huyen', 'nv.tinh_thanh',
+                'pb.ten_pb', 'cv.ten_cv', 'cv.he_so_phu_cap', 'tt.ten_tt', 'vt.ten_vt',
+            ]);
     }
 
-    private function paginator(array $items, int $total, int $perPage, int $page): LengthAwarePaginator
+    private function applyEmployeeFilters(Builder $query, array $filters): void
     {
-        return new LengthAwarePaginator(
-            collect($items),
-            $total,
-            $perPage,
-            $page,
-            ['pageName' => 'page'],
-        );
+        if (filled($filters['tu_khoa'] ?? null)) {
+            $keyword = trim((string) $filters['tu_khoa']);
+            $query->where(function (Builder $inner) use ($keyword): void {
+                $inner->where('nv.ma_nv', 'like', "%{$keyword}%")
+                    ->orWhere('nv.ho_ten', 'like', "%{$keyword}%")
+                    ->orWhere('nv.email', 'like', "%{$keyword}%");
+            });
+        }
+        foreach (['ma_pb', 'ma_cv', 'ma_tt'] as $column) {
+            if (($filters[$column] ?? null) !== null && $filters[$column] !== '') {
+                $query->where('nv.'.$column, (int) $filters[$column]);
+            }
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function profileRow(array $profile): array
+    {
+        $row = [];
+        foreach (self::PROFILE_COLUMNS as $column) {
+            if (array_key_exists($column, $profile)) {
+                $row[$column] = $profile[$column];
+            }
+        }
+
+        return $row;
     }
 
     private function databaseOperation(callable $operation): mixed
@@ -375,5 +444,14 @@ final class NhanVienRepository implements NhanVienRepositoryContract
         } catch (QueryException $exception) {
             throw $this->exceptions->map($exception);
         }
+    }
+
+    private function transactionIfNeeded(callable $operation): mixed
+    {
+        $connection = $this->connection();
+
+        return $connection->transactionLevel() === 0
+            ? $connection->transaction($operation)
+            : $operation();
     }
 }

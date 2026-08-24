@@ -1,3 +1,6 @@
+-- LEGACY EMPLOYEE ROUTINES (superseded 2026-08-24). Historical audit only;
+-- do not source as active setup. Current code uses direct Query Builder.
+
 DELIMITER //
 
 DROP PROCEDURE IF EXISTS sp_nhan_vien_sua//

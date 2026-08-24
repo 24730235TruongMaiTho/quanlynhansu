@@ -244,7 +244,7 @@ class NhanVienAuthorizationTest extends TestCase
             NhanVienPermission::Xoa,
             NhanVienPermission::DatLaiMatKhau,
         ]);
-        $target = $this->employee(['ky_hieu_vai_tro' => 'QUAN_TRI']);
+        $target = $this->employee(['ma_vt' => 1]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
             $mock->shouldReceive('findOrFail')->times(3)->with('NV001')->andReturn($target);
             $mock->shouldNotReceive('update');
@@ -267,7 +267,7 @@ class NhanVienAuthorizationTest extends TestCase
         ]);
         $target = $this->employee([
             'ma_nv' => 'NV002',
-            'ky_hieu_vai_tro' => 'QUAN_TRI',
+            'ma_vt' => 1,
             'ten_vt' => 'Quản trị viên',
         ]);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
@@ -354,8 +354,8 @@ class NhanVienAuthorizationTest extends TestCase
             'ngay_vao_lam' => '2020-01-01', 'ma_pb' => 1, 'ten_pb' => 'Kỹ thuật',
             'ma_cv' => 1, 'ten_cv' => 'Lập trình viên', 'dan_toc' => 'Kinh',
             'cccd' => '001200000001', 'noi_cap_cccd' => 'Cục CSQLHC', 'hoc_van' => 'Đại học',
-            'ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm việc',
-            'ngay_nghi_viec' => null, 'ma_vt' => 1, 'ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH',
+            'ma_tt' => 1, 'ten_tt' => 'Đang làm việc',
+            'ngay_nghi_viec' => null, 'ma_vt' => 5,
             'ten_vt' => 'Nhân viên', 'anh_dai_dien' => null,
             'dia_chi_cu_the' => '1 Nguyễn Trãi', 'phuong_xa' => 'Bến Thành',
             'quan_huyen' => 'Quận 1', 'tinh_thanh' => 'TP Hồ Chí Minh',
@@ -390,7 +390,7 @@ class NhanVienAuthorizationTest extends TestCase
         return [
             'phong_ban' => [(object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật']],
             'chuc_vu' => [(object) ['ma_cv' => 1, 'ten_cv' => 'Lập trình viên']],
-            'trang_thai' => [(object) ['ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm việc']],
+            'trang_thai' => [(object) ['ma_tt' => 1, 'ten_tt' => 'Đang làm việc']],
         ];
     }
 }

@@ -1,209 +1,52 @@
-# Employee database scripts
+# Employee SQL sources
 
-Hướng dẫn authoritative cho setup, rollout, demo và continuation map nằm ở
-[docs/EMPLOYEE_MODULE_GUIDE.md](../../../docs/EMPLOYEE_MODULE_GUIDE.md). README
-này giữ chi tiết SQL contract; không dùng nó để bỏ qua target guard, backup hoặc
-preflight.
+## Active contract (2026-08-24)
 
-Các script trong thư mục này nâng cấp schema nhân viên theo thứ tự tên file. Chúng chạy trên database đang được chọn và không tự `DROP DATABASE`, `CREATE DATABASE` hoặc `USE`.
+For a new disposable database, run only these two sources in order:
 
-## `2026_08_12_001_schema.sql`
+1. `database/tao_bang.sql`
+2. `database/du_lieu_mau.sql`
 
-Script nền tảng cho MariaDB 10.4:
+Together they create exactly 15 base tables, including
+`bo_dem_ma_nhan_vien`, and no required view, routine or trigger. The seed has
+explicit master/RBAC IDs, 30 Vietnamese employee rows, direct address/avatar/
+termination columns, bcrypt hashes and counter `30`. The local/demo login
+convention is `NV001` / `nhom3@2026`; it must never be reused for production.
 
-- preflight toàn bộ dữ liệu legacy trước DDL, gồm mã chỉ trong `NV001..NV999`;
-- chuẩn hóa email bằng `LOWER(TRIM(email))` và CCCD bằng `TRIM(cccd)`;
-- thêm ký hiệu trạng thái/vai trò, role hệ thống zero-quyền, avatar và ngày nghỉ việc;
-- thêm unique email/CCCD, địa chỉ một-một cascade và bộ đếm mã không giảm;
-- recreate view dùng chung bằng danh sách cột tường minh, không có `mat_khau`.
+For an existing approved disposable database with the former 16-table shape,
+review and run `2026_08_24_001_migrate_to_fifteen_tables.sql` section by section.
+It has read-only preflight, fixed role/status and permission-ID checks, address
+copy verification, counter repair, RBAC additions and postchecks. MariaDB DDL
+implicitly commits: take a backup first and do not pretend the script is one
+atomic transaction. It never selects a database and must not be run on the live
+`quan_ly_nhan_su` database.
 
-Các nhãn hệ thống trạng thái/vai trò được so sánh bằng `LOWER(TRIM(...))` rồi `BINARY`, tránh tự nhận biến thể gần giống nhưng sai dấu dưới collation `utf8mb4_unicode_ci`.
+After the migration postcheck, run
+`2026_08_24_002_cleanup_legacy_employee_objects.sql` only when the returned
+allowlist is reviewed. That separate script drops only the known employee view
+and routines; it deliberately leaves procedures from other modules untouched.
 
-Các lỗi preflight chỉ dùng whitelist: `NV_MIGRATION_EMAIL_INVALID`, `NV_MIGRATION_CCCD_INVALID` (gồm cả mã nhân viên ngoài `NV001..NV999`), `NV_MIGRATION_STATUS_AMBIGUOUS`, `NV_MIGRATION_ROLE_AMBIGUOUS`, `NV_MIGRATION_EXISTING_TERMINATION_DATE_REQUIRED`.
+Authoritative setup and acceptance notes are in
+[docs/EMPLOYEE_MODULE_GUIDE.md](../../../docs/EMPLOYEE_MODULE_GUIDE.md) and
+[docs/DATABASE.md](../../../docs/DATABASE.md).
 
-Trước khi chạy DDL trên database đã có dữ liệu, phải tạo backup bằng `mariadb-dump` và chạy preflight. Không chạy canonical dump trên database cần giữ dữ liệu.
+## Historical appendix (not an active setup path)
 
-## `2026_08_12_002_read_routines.sql`
+The following files are retained for audit comparison only and must not be
+sourced on the 15-table contract:
 
-Script read contract cho MariaDB 10.4:
+- `2026_08_12_001_schema.sql` through `2026_08_12_006_rbac.sql`
+- `demo/2026_08_21_001_demo_seed.sql`
+- `demo/2026_08_21_002_demo_cleanup.sql`
+- `../du_lieu_mau.sql`
 
-- thay danh sách/tìm kiếm nhân viên legacy bằng `sp_nhan_vien_danh_sach_phan_trang` có OUT total, filter và thứ tự `ma_nv ASC` ổn định;
-- viết lại `sp_nhan_vien_chi_tiet` với cột hồ sơ/địa chỉ tường minh và địa chỉ nullable;
-- bổ sung `sp_cham_cong_nhan_vien_phan_trang`, tổng hợp đúng tháng/năm theo quy tắc giờ `>= 8` là một ngày, `>= 4` là nửa ngày;
-- khóa shape lookup dùng chung cho phòng ban, chức vụ, vai trò và trạng thái làm việc;
-- không dùng dynamic SQL và không tự `DROP DATABASE`, `CREATE DATABASE` hoặc `USE`.
+They target the superseded address table, role/status symbols and stored
+procedures. Their legacy marker is at the beginning of each file. No command
+sequence for replaying them is provided here, so historical text cannot be
+mistaken for the current rollout contract. The old files may mention their
+former routine contracts; active Laravel code uses direct Query Builder and
+permission IDs instead.
 
-Chạy sau script `001` trên cùng database đã được chọn. Script không tự chọn database và không mở transaction cho toàn bộ chuỗi nâng cấp.
-
-## `2026_08_12_003_create_routines.sql`
-
-Script mutation tạo nhân viên cho MariaDB 10.4:
-
-- thay `sp_nhan_vien_them` legacy bằng contract 15 `IN` + một `OUT`, tự cấp mã tuần tự dưới row lock và không nhận vai trò từ client;
-- gán đúng role hệ thống `NHAN_VIEN_MAC_DINH` khi role tồn tại duy nhất và không có quyền;
-- nhận nguyên hash Laravel, không nhận hoặc hash mật khẩu plaintext;
-- chuẩn hóa email/CCCD và fail closed bằng mã lỗi `NV_*` ổn định;
-- thêm `sp_dia_chi_nhan_vien_luu` để upsert địa chỉ một-một;
-- không procedure nào tự mở, commit hoặc rollback transaction.
-
-Chạy sau script `001` và `002`. Transaction tạo hồ sơ + địa chỉ thuộc về service Laravel trên cùng default connection.
-
-## `2026_08_12_004_update_routines.sql`
-
-Script mutation cập nhật hồ sơ nhân viên cho MariaDB 10.4:
-
-- thay `sp_nhan_vien_sua` legacy bằng contract 14 `IN`, giữ nguyên mã, vai trò, hash, avatar và ngày nghỉ việc;
-- khóa target rồi kiểm tra exact role `NHAN_VIEN_MAC_DINH` trước mọi validation còn lại;
-- chỉ cho chuyển đổi giữa `DANG_LAM` và `THU_VIEC`, hoặc giữ nguyên cặp trạng thái/ngày nghỉ hợp lệ của nhân viên `DA_NGHI`;
-- thêm `sp_nhan_vien_cap_nhat_anh` để thay/xóa đường dẫn avatar và trả đường dẫn cũ qua `OUT` cho cleanup sau commit;
-- không procedure nào tự mở, commit hoặc rollback transaction.
-
-Chạy sau script `001`, `002` và `003`. Transaction hồ sơ + địa chỉ + avatar thuộc về service Laravel trên cùng default connection; filesystem cleanup chỉ diễn ra sau commit hoặc như bù trừ rollback.
-
-## `2026_08_12_005_lifecycle_auth_routines.sql`
-
-Script lifecycle/auth cho MariaDB 10.4, chạy sau `001`–`004`:
-
-- drop dứt điểm `sp_nhan_vien_xoa` và `sp_nhan_vien_dang_nhap`, sau đó tạo `sp_nhan_vien_xoa_hoac_nghi_viec` với hai `OUT` (`DELETED`/`TERMINATED`, avatar cũ);
-- khóa nhân viên trước exact-role guard, kiểm tra đủ năm bảng dependency, resolve `DA_NGHI` bằng ký hiệu và giữ nguyên ngày nghỉ đầu tiên khi gọi lại;
-- tách reset hash web cho role `NHAN_VIEN_MAC_DINH` khỏi compare-and-swap hash xác thực áp dụng mọi role; cả hai chỉ nhận hash đã tạo ở Laravel và không trả hash/plaintext;
-- lookup tài khoản trim + case-insensitive exact theo mã/email, trả đúng sáu cột server-only kể cả trạng thái `DA_NGHI` để provider từ chối session ở task auth sau;
-- không routine nào tự mở, commit hoặc rollback transaction; `NhanVienRepository` giữ SET/CALL/OUT trên cùng write connection.
-
-Lifecycle/auth đã được tích hợp với custom Laravel provider, session guard, lifecycle/reset service/routes và RBAC Gates trong Tasks 14–18. Lookup/hash CAS vẫn chỉ đi qua repository/provider; controller/UI không nhận hoặc trả hash. Bằng chứng tổng hợp mới nhất nằm ở mục Task 20 bên dưới; các số Task 13 cũ chỉ là lịch sử component, không phải gate hiện tại.
-
-## `2026_08_12_006_rbac.sql`
-
-Script RBAC cho MariaDB 10.4, chạy sau `001`–`005`:
-
-- fail-closed toàn bộ permission ID/symbol, orphan mapping, hai foreign key và role `NHAN_VIEN_MAC_DINH` trước DDL; không tự dọn drift;
-- chuẩn hóa symbol bằng `UPPER(TRIM(...))`, đổi `quyen.ma_quyen` thành positive `AUTO_INCREMENT`, thêm unique symbol và recreate duy nhất `fk_vai_tro_quyen_quyen` với đúng `UPDATE_RULE/DELETE_RULE` đã preflight, giữ nguyên FK role;
-- seed idempotent theo symbol năm quyền `NHAN_VIEN_XEM`, `NHAN_VIEN_TAO`, `NHAN_VIEN_SUA`, `NHAN_VIEN_XOA` và `NHAN_VIEN_DAT_LAI_MAT_KHAU`; role mặc định luôn zero mapping;
-- cung cấp lookup explicit/deterministic và các routine gán/xóa mapping, xóa role an toàn, assignment bootstrap nội bộ; các routine mutation không tự mở/commit/rollback transaction và `sp_vai_tro_xoa` không bao giờ xóa nhân viên;
-- canonical dump `quan_ly_nhan_su.session.sql` phải giữ cùng table shape, seed, FK và routine definitions.
-
-Chỉ chạy sau `001`–`005`. Trên database hiện hữu, dùng quy trình backup/preflight ở dưới; không chạy canonical dump vì dump bắt đầu bằng `DROP DATABASE`.
-
-## Nâng cấp database hiện hữu và seed demo tùy chọn
-
-`quan_ly_nhan_su.session.sql` là canonical dump để dựng database disposable mới và có lệnh `DROP DATABASE IF EXISTS`. Không dùng file đó để cập nhật database hiện hữu cần giữ dữ liệu. Schema canonical hiện đã khớp các script employee `001`–`006`; dữ liệu demo được tách riêng để không làm canonical dump chứa tài khoản/mật khẩu demo.
-
-Các script chạy trên database đã được chọn, không tự `USE`, `CREATE DATABASE` hoặc `DROP DATABASE`. Các lệnh direct rollout dưới đây chỉ dành cho local/dev hoặc môi trường đã được phê duyệt; shared/production cần backup đã kiểm tra, cửa sổ maintenance và approval riêng. Chạy từ repository root, sau khi xác nhận `.env` trỏ đúng target. `127.0.0.1`, `3306` và `root` chỉ là ví dụ khớp `.env` local hiện tại; máy khác phải dùng đúng `DB_HOST`, `DB_PORT`, `DB_USERNAME` và policy credential của môi trường đó, không mặc định `root`.
-
-Với MariaDB CLI trên Windows, chạy từng file theo thứ tự `001` → `006`:
-
-```powershell
-$mysqlPwdWasPresent = Test-Path Env:MYSQL_PWD
-$mysqlPwdPrevious = $env:MYSQL_PWD
-function Invoke-EmployeeSql([string] $Path) {
-    & mariadb --abort-source-on-error --protocol=tcp --host=127.0.0.1 --port=3306 --user=root --database=quan_ly_nhan_su --execute="source $Path"
-    if ($LASTEXITCODE -ne 0) { throw "employee SQL failed: $Path" }
-}
-try {
-    $env:MYSQL_PWD = '<local-password>'
-    Invoke-EmployeeSql 'database/sql/employee/2026_08_12_001_schema.sql'
-    Invoke-EmployeeSql 'database/sql/employee/2026_08_12_002_read_routines.sql'
-    Invoke-EmployeeSql 'database/sql/employee/2026_08_12_003_create_routines.sql'
-    Invoke-EmployeeSql 'database/sql/employee/2026_08_12_004_update_routines.sql'
-    Invoke-EmployeeSql 'database/sql/employee/2026_08_12_005_lifecycle_auth_routines.sql'
-    Invoke-EmployeeSql 'database/sql/employee/2026_08_12_006_rbac.sql'
-}
-finally {
-    if ($mysqlPwdWasPresent) {
-        $env:MYSQL_PWD = $mysqlPwdPrevious
-    }
-    else {
-        Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue
-    }
-}
-```
-
-DDL MariaDB có thể autocommit, nên phải dừng ngay nếu một file lỗi và giữ backup để phục hồi theo quy trình riêng. Trước khi chạy, xác nhận `DATABASE()='quan_ly_nhan_su'`, `@@global.read_only=0`, đúng version MariaDB, row counts và schema target. Backup đầy đủ nên dùng `mariadb-dump --single-transaction --routines --triggers --events` vào thư mục ignored; không ghi credential vào command log.
-
-Sau `006`, seed demo là tùy chọn:
-
-- `demo/2026_08_21_001_demo_seed.sql` tạo dữ liệu synthetic khoảng 5 nhân viên, 5 địa chỉ, 5 phòng ban/chức vụ, role `DEMO_QUAN_TRI_NHAN_VIEN` và đúng 5 quyền employee; email dùng `example.test`, phone/CCCD deterministic. Seed có guard target/schema/routine, transaction rollback và rerun idempotent. Hồ sơ/địa chỉ và mapping dùng các routine employee chính thức khi có contract phù hợp.
-- `demo/2026_08_21_002_demo_cleanup.sql` chỉ xóa đúng synthetic identities/masters/role của bộ trên rồi commit; không xóa quyền hệ thống và không giảm/reuse `bo_dem_ma_nhan_vien`. Rerun seed sẽ tạo lại dữ liệu với mã mới nếu counter đã tăng.
-
-Demo SQL **không được chạy bằng `SOURCE` trực tiếp**. Mỗi invocation phải dùng
-[invoke-demo.ps1](invoke-demo.ps1), helper này tạo `TEMPORARY TABLE
-employee_demo_guard` và token ngẫu nhiên trong cùng MariaDB connection trước khi
-`SOURCE` file. Seed/cleanup kiểm tra đúng một marker, token 64 ký tự và
-`DATABASE()` trong chính block mutation trước mọi transaction/mutation; thiếu hoặc
-sai marker sẽ fail-closed kể cả khi MariaDB client tiếp tục sau lỗi statement.
-Helper chỉ chấp nhận database đã provision có tên khớp
-`^quan_ly_nhan_su_employee_test_[a-f0-9]+$`, yêu cầu `MARIADB_TEST_ENABLED=1`
-và switch `-EnableDisposableMariaDb`, lấy host/port/user/password từ
-`MARIADB_TEST_*`. Nó không bao giờ cấp marker cho database canonical
-`quan_ly_nhan_su`.
-
-Đường dành cho người mới là acceptance harness tạo disposable DB, server và
-account; xem guide authoritative. Helper 5-row bên dưới chỉ dành cho disposable
-DB đã được provision/guard trước đó, không phải lệnh rollout local canonical.
-
-Ví dụ dùng helper trên target disposable đã có (đặt credential test trong process,
-không ghi password thật vào shell history/repository):
-
-```powershell
-$demoEnvironmentNames = @(
-    'MARIADB_TEST_ENABLED', 'MARIADB_TEST_DATABASE', 'MARIADB_TEST_HOST',
-    'MARIADB_TEST_PORT', 'MARIADB_TEST_USERNAME', 'MARIADB_TEST_PASSWORD',
-    'MYSQL_PWD'
-)
-$demoEnvironmentSnapshot = @{}
-foreach ($name in $demoEnvironmentNames) {
-    $demoEnvironmentSnapshot[$name] = @{
-        Exists = Test-Path "Env:$name"
-        Value = [Environment]::GetEnvironmentVariable($name, 'Process')
-    }
-}
-try {
-    $env:MARIADB_TEST_ENABLED = '1'
-    $env:MARIADB_TEST_DATABASE = 'quan_ly_nhan_su_employee_test_<hex>' # thay <hex> bằng DB đã provision
-    $env:MARIADB_TEST_HOST = '127.0.0.1'
-    $env:MARIADB_TEST_PORT = '3306'
-    $env:MARIADB_TEST_USERNAME = '<tai-khoan-test>'
-    $env:MARIADB_TEST_PASSWORD = '<mat-khau-test>'
-    pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action seed -EnableDisposableMariaDb
-    # Khi cần dọn đúng bộ synthetic:
-    # pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableDisposableMariaDb
-}
-finally {
-    foreach ($name in $demoEnvironmentNames) {
-        $snapshot = $demoEnvironmentSnapshot[$name]
-        if ($snapshot.Exists) {
-            Set-Item -Path "Env:$name" -Value $snapshot.Value
-        }
-        else {
-            Remove-Item "Env:$name" -ErrorAction SilentlyContinue
-        }
-    }
-}
-```
-
-`finally` khôi phục cả giá trị lẫn việc tồn tại của từng biến; credential test
-không bị để lại trong process caller. Helper cũng tự snapshot/restore
-`MYSQL_PWD` khi map `MARIADB_TEST_PASSWORD` cho MariaDB CLI.
-
-Tài khoản demo quản trị: `demo.admin@employee.example.test` / `nhom3@2026`. Đây là credential chỉ dành cho local/demo; phải đổi hoặc xóa trước khi chia sẻ, deploy hoặc đưa vào môi trường thật. Không ghi plaintext password vào database; seed chỉ chứa bcrypt tương thích Laravel.
-
-Sau seed, kiểm tra read-only: đúng 5 employee và 5 address, có cả `DANG_LAM` và `THU_VIEC`, admin role đúng 5 permission, employee role mặc định có 0 permission, không có routine tạm, counter không giảm sau cleanup, và kiểm tra mật khẩu bằng `password_verify`/`Hash::check` mà không in hash. Integration/browser acceptance vẫn cần gate riêng; seed thành công không thay thế browser verification.
-
-## Evidence cập nhật Task 20 (2026-08-21)
-
-Full guarded wrapper của Task 20 (historical, trước tích hợp/chỉnh sửa hiện tại)
-đã chạy qua `tests/Support/invoke-employee-mariadb-tests.ps1
--EnableDisposableMariaDb`: `165 tests, 3367 assertions, 1 platform skip, exit 0`.
-Vòng rerun sau tích hợp đã timeout khoảng 184 giây; process, marker,
-acceptance state và guarded schema được cleanup, nên không claim rerun này pass.
-Các scripts `001`–`006` và canonical dump được replay trong database
-disposable; schema cleanup sau run là `0`. Acceptance/browser harness cũng chỉ
-dùng target guarded, state và upload prefix theo run; official Stop đã dọn
-schema, state, lock, temp, upload, listener và link acceptance về `0`, giữ lại
-`storage/app/public` dùng chung. Không claim MySQL 8 hoặc database live.
-
-Kết quả browser employee là verified hẹp cho login/session, CRUD, auth/RBAC,
-filter/flash/edit mapping, stale error, console và responsive widths.
-Avatar upload/replacement vẫn **blocked/unverified** vì Chrome extension không
-cho file URL access; automated avatar tests vẫn là bằng chứng riêng, không thay
-browser file chooser.
+The canonical `quan_ly_nhan_su.session.sql` dump is also for a fresh,
+disposable database only. It begins with `DROP DATABASE IF EXISTS`; never use
+it to update a database whose data must be retained.

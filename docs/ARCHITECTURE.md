@@ -1,6 +1,7 @@
 # Kiến trúc hiện tại
 
-Tài liệu này mô tả code dùng chung và branch `feature/quanly-nhan-vien` tại snapshot 2026-08-21. Đây là kiến trúc **đang tồn tại**, không phải cam kết rằng mọi lớp đã nhất quán hoặc mọi module hoạt động.
+Tài liệu này mô tả code dùng chung và module Nhân viên tại snapshot 2026-08-24.
+Đây là kiến trúc **đang tồn tại**, không phải cam kết production cho mọi module.
 
 ## Sơ đồ request
 
@@ -18,10 +19,10 @@ flowchart LR
     D --> M[(MariaDB)]
 ```
 
-Hai đường truy cập database đang cùng tồn tại:
+Các đường truy cập database đang cùng tồn tại theo phạm vi module:
 
-- `Controller → Service → Repository → stored procedure/query`.
-- `Controller → DB facade/Query Builder → stored procedure/table`.
+- Employee/auth/RBAC: `Controller → Service → Repository → Query Builder/table`.
+- Các module legacy khác: `Controller → Service/Repository → procedure/query`.
 
 Không nên coi sơ đồ lớp là chuẩn hoàn chỉnh: một số module bỏ qua service/repository, và một số model chưa map đúng schema.
 
@@ -71,7 +72,8 @@ app/
 - `ChamCongController` gọi Query Builder/stored procedure trực tiếp và chứa logic pagination/response.
 - `LuongHeSoLuongController`, `LuongPhongBanController`, `LuongChucVuController` là endpoint phụ trợ.
 - `PhongBanController` gọi procedure trực tiếp nhưng hợp đồng hiện bị lệch.
-- `NhanVienController` mới có index/create/store; store chưa lưu dữ liệu.
+- `NhanVienController` có list/create/store/show/edit/update/lifecycle/reset; dữ
+  liệu employee/auth/RBAC đi qua repository Query Builder trực tiếp.
 
 ### Request validation
 
@@ -115,13 +117,16 @@ Frontend layout cũ lại yêu cầu `resources/css/app.css` và `resources/js/a
 
 ## Database
 
-`quan_ly_nhan_su.session.sql` là nguồn schema nghiệp vụ hiện tại:
+Nguồn fresh active cho module employee/auth/RBAC là `database/tao_bang.sql` rồi
+`database/du_lieu_mau.sql`:
 
-- 16 bảng.
-- 1 view.
-- 8 function.
-- 10 trigger.
-- 69 stored procedure.
+- đúng 15 bảng;
+- không yêu cầu view/function/trigger/stored procedure;
+- `nhan_vien` chứa trực tiếp address/avatar/date columns;
+- role/status/permission dùng ID contracts và counter row lock.
+
+`quan_ly_nhan_su.session.sql` cùng các script employee 001–006 là legacy
+history; xem [DATABASE.md](DATABASE.md) và không dùng làm fresh setup path.
 
 Ba migrations Laravel chỉ tạo hạ tầng users/session/cache/jobs và chưa được chạy trên database live. Xem [DATABASE.md](DATABASE.md).
 
@@ -133,8 +138,10 @@ Auth/RBAC đã được tích hợp hẹp cho module nhân viên:
 
 - route `dang-nhap`/`dang-xuat`, custom `nhan-vien` provider và `App\Models\NhanVien` làm identity;
 - hash mới/rehash dùng Laravel hasher, lookup/hash CAS chỉ ở server boundary, session từ chối `DA_NGHI`;
-- toàn bộ `/admin` có `auth`; năm employee permission symbol được đăng ký thành Gate và cache trong một request;
-- employee Blade action và route dùng cùng permission; target role mặc định, self-target và non-baseline target được guard trước mutation;
+- toàn bộ `/admin` có `auth`; năm Gate ability employee được đối chiếu với
+  `ma_quyen` 101–105 và cache trong một request;
+- employee Blade action và route dùng cùng permission; chỉ target `ma_vt = 5`
+  được quản lý, role khác bị guard trước mutation;
 - hai lookup nhân viên dùng chung ở chấm công/nghỉ phép yêu cầu web session, rollout và quyền XEM.
 
 Đây là verified hẹp trên automated/disposable/browser acceptance, chưa phải security audit production cho toàn ứng dụng. Các module ngoài nhân viên vẫn cần permission/audit riêng.

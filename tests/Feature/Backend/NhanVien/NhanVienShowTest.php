@@ -156,7 +156,7 @@ class NhanVienShowTest extends TestCase
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $employee = $this->employee();
-        $employee->ky_hieu_vai_tro = 'QUAN_TRI';
+        $employee->ma_vt = 1;
         $employee->ten_vt = 'Quản trị viên';
 
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
@@ -242,8 +242,7 @@ class NhanVienShowTest extends TestCase
 
         $this->get('/admin/nhan-vien/NV404')
             ->assertNotFound()
-            ->assertDontSee('SQLSTATE')
-            ->assertDontSee('sp_nhan_vien_chi_tiet');
+            ->assertDontSee('SQLSTATE');
     }
 
     public function test_invalid_employee_codes_do_not_dispatch_show(): void
@@ -320,12 +319,10 @@ class NhanVienShowTest extends TestCase
             'cccd' => '123456789001',
             'noi_cap_cccd' => 'Cục CSQLHC về TTXH',
             'hoc_van' => 'Đại học',
-            'ma_tt' => 1,
-            'ky_hieu' => 'DANG_LAM',
+            'ma_tt' => 2,
             'ten_tt' => 'Đang làm việc',
             'ngay_nghi_viec' => null,
-            'ma_vt' => 3,
-            'ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH',
+            'ma_vt' => 5,
             'ten_vt' => 'Nhân viên',
             'anh_dai_dien' => 'nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png',
             'dia_chi_cu_the' => '12 Nguyễn Huệ',

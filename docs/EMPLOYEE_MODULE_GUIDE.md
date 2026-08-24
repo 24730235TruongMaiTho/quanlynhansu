@@ -1,7 +1,17 @@
 # Hướng dẫn module Nhân viên
 
 > Tài liệu authoritative cho người phát triển, reviewer và người chạy demo local.
-> Snapshot: 2026-08-21 (Asia/Saigon).
+> Snapshot: 2026-08-24 (Asia/Saigon).
+
+> **Hợp đồng DB hiện hành:** Dựng fresh bằng `database/tao_bang.sql` rồi
+> `database/du_lieu_mau.sql`; tổng cộng đúng 15 bảng, không cần routine/view/
+> trigger. `nhan_vien` chứa trực tiếp `dia_chi_cu_the`, `phuong_xa`,
+> `quan_huyen`, `tinh_thanh`, `anh_dai_dien`, `ngay_nghi_viec`; không còn
+> `dia_chi_nhan_vien`. Role dùng `ma_vt` (1..5), status dùng `ma_tt` (1..4),
+> quyền module Nhân viên dùng `ma_quyen` 101..105. Bộ đếm `NHAN_VIEN` cấp
+> tuần tự `NV001..NV999` dưới row lock và fail closed khi thiếu/drift/hết số.
+> Các row seed local/demo dùng convention bcrypt `nhom3@2026`;
+> plaintext không nằm trong source.
 
 ## 1. Đối tượng, trạng thái và thứ tự đọc
 
@@ -11,7 +21,9 @@ Tài liệu này dành cho thành viên nhóm và AI agent tiếp tục module N
 
 1. [AGENTS.md](../AGENTS.md) và [README.md](../README.md).
 2. [PROJECT_STATUS.md](PROJECT_STATUS.md) và [CODEX_NEXT_HANDOFF.md](CODEX_NEXT_HANDOFF.md).
-3. [DATABASE.md](DATABASE.md), sau đó [quan_ly_nhan_su.session.sql](../quan_ly_nhan_su.session.sql) nếu task chạm DB.
+3. [DATABASE.md](DATABASE.md), sau đó cặp fresh SQL `../database/tao_bang.sql`
+   và `../database/du_lieu_mau.sql`; chỉ đọc
+   [quan_ly_nhan_su.session.sql](../quan_ly_nhan_su.session.sql) khi cần đối chiếu legacy.
 4. [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) và [FRONTEND_GUIDE.md](FRONTEND_GUIDE.md).
 5. Route, Request, controller, service/repository, Blade/JavaScript, SQL và test đúng vertical slice.
 
@@ -61,10 +73,11 @@ Chỉ chạy php artisan storage:link khi cần public avatar/storage link và c
 
 ### Demo local và acceptance disposable
 
-Đường khuyến nghị cho thành viên mới là acceptance harness: nó provision một
-database disposable có tên guarded, chạy schema/routine cần thiết, tạo admin,
-khởi động server ở `http://127.0.0.1:8012` và trả JSON gồm `url`,
-`admin_ma_nv`, `admin_email`. Mật khẩu bootstrap dùng quy ước
+Fresh DB acceptance hiện hành là guarded `phpunit.mariadb.xml`, dựng đúng hai
+file SQL active và test direct repository. Browser `employee-acceptance.ps1`
+và `EmployeeAcceptanceEnvironment` vẫn là Task 20 historical harness cho
+schema/routine cũ; không dùng chúng để claim fresh 15-table/browser pass cho
+đến khi được viết lại. Mật khẩu bootstrap dùng quy ước
 `nhom3@{năm thao tác}`; không ghi credential thật vào repository.
 
 ```powershell
@@ -111,23 +124,32 @@ finally {
 }
 ```
 
-StateFile dùng suffix 12 hex nên mỗi invocation có namespace riêng; lệnh `Stop`
+StateFile dùng suffix 12 hex nên mỗi invocation có namespace riêng trong
+historical harness; lệnh `Stop`
 chỉ chạy khi Start thành công hoặc invocation đã để lại đúng file state của nó,
 không thể dừng phiên người khác nếu Start bị từ chối vì state pre-existing.
 Nếu harness phải prompt `MARIADB_TEST_*` credential, nó snapshot/khôi phục các
 biến đó trong process harness; không đưa credential vào StateFile hoặc tài liệu.
 Luôn giữ cleanup trong `finally` hoặc chạy Stop thủ công với đúng StateFile sở
-hữu kể cả khi browser bị lỗi. Acceptance Start/Stop là đường browser disposable;
-không dùng nó để suy ra production readiness.
+hữu kể cả khi browser bị lỗi. Acceptance Start/Stop là đường browser legacy;
+không dùng nó để claim fresh 15-table/browser pass hoặc production readiness.
 
-Trong môi trường local đã được kiểm chứng, bộ seed hiện tạo các mã NV006–NV010: admin thường là NV006, bốn tài khoản còn lại là nhân viên thường. Các mã này **không ổn định** sau cleanup/reseed vì bộ đếm mã không giảm và không tái sử dụng mã cũ.
+Fresh seed hiện tạo đúng 30 mã `NV001..NV030`. `NV001` là `Nguyễn Văn An`,
+email `an.nguyen@company.com`, role `ma_vt = 1` và status `ma_tt = 2`; các
+role/status còn lại được phân bổ theo dữ liệu seed hiện hành, không mặc định
+tất cả là role Nhân viên. Cả 30 row dùng bcrypt theo convention local/demo
+`nhom3@2026`. Bộ đếm bắt đầu ở 30 và không tái sử dụng mã đã cấp.
 
-Identity admin demo:
+Identity demo login (`NV001`):
 
-    email: demo.admin@employee.example.test
+    ma_nv: NV001
+    ho_ten: Nguyễn Văn An
+    email: an.nguyen@company.com
     password: nhom3@2026
 
-Credential này chỉ dành cho local/demo; phải đổi hoặc xóa trước khi chia sẻ, deploy hoặc dùng môi trường thật. Bốn tài khoản thường không có quyền employee. Tên, email example.test, phone và CCCD trong seed là synthetic, không phải PII thật. Không suy ra production identity từ bộ demo.
+Credential này chỉ dành cho local/demo; phải đổi hoặc xóa trước khi chia sẻ,
+deploy hoặc dùng môi trường thật. Đây là bộ dữ liệu mẫu tiếng Việt đang được
+version trong Git của dự án; không suy ra production identity từ seed.
 
 ## 3. Cách sử dụng và quyền
 
@@ -140,37 +162,62 @@ Từ /admin/nhan-vien, người có quyền XEM có thể tìm theo mã/tên/ema
 - Xóa cứng khi không có dependency; khi có dependency, action chuyển đúng trạng thái DA_NGHI và giữ ngày nghỉ đầu tiên.
 - Reset mật khẩu chỉ tạo hash ở Laravel/repository boundary; plaintext không được flash, log hoặc trả về JSON.
 
-Năm permission symbol được Gate sử dụng:
+Seed RBAC giữ least privilege theo mapping cố định: role 1 có toàn bộ catalog;
+role 2 (Quản trị Nhân sự) chỉ có `101–105, 201–204, 301–304, 401–404`; role 3,
+4 và 5 giữ các quyền theo mô tả module hiện có. Migration 16→15 chỉ bổ sung
+mapping role 2 còn thiếu và không thu hồi mapping module khác đã tồn tại.
 
-| Symbol | Mục đích |
-| --- | --- |
-| NHAN_VIEN_XEM | xem danh sách/chi tiết và lookup dùng chung |
-| NHAN_VIEN_TAO | mở và submit tạo mới |
-| NHAN_VIEN_SUA | sửa hồ sơ/địa chỉ/avatar |
-| NHAN_VIEN_XOA | xóa hoặc chuyển nghỉ việc |
-| NHAN_VIEN_DAT_LAI_MAT_KHAU | reset mật khẩu |
+Gate dùng registry tĩnh tại `config/permissions.php` cho các module đã tích hợp;
+thêm enum module mới ở registration point này, không sửa provider/service. Mỗi lần kiểm tra đối chiếu
+đồng thời `ma_quyen`, `ky_hieu_quyen` và `module` từ projection RBAC; row malformed,
+catalog drift hoặc lỗi database đều fail closed. Projection được cache theo actor
+trong request scope, không truy vấn database khi application boot.
 
-Rollout flag NHAN_VIEN_MODULE_ENABLED phải bật trước; sau đó vẫn bắt buộc auth và Gate đúng hành động. Role NHAN_VIEN_MAC_DINH là role baseline và có zero employee permission. Target không thuộc exact role baseline và actor tự nhắm mình bị chặn trước mutation; đây là boundary bảo mật, không bỏ qua khi debug bằng cách cấp quyền rộng hơn.
+Lookup nhân viên dùng chung của Chấm công và Nghỉ phép tiếp tục yêu cầu đúng
+`NV_VIEW`/Gate employee hiện hữu; đây là compatibility dependency, không cấp
+quyền nghiệp vụ mới cho hai module đó và không thay đổi UI/business path của chúng.
+
+Năm Gate ability nội bộ được đối chiếu với `ma_quyen`:
+
+| Ability | `ma_quyen` | Mục đích |
+| --- | ---: | --- |
+| NV_VIEW | 101 | xem danh sách/chi tiết và lookup dùng chung |
+| NV_CREATE | 102 | mở và submit tạo mới |
+| NV_EDIT | 103 | sửa hồ sơ/địa chỉ/avatar |
+| NV_DELETE | 104 | xóa hoặc chuyển nghỉ việc |
+| NV_RESET_PASSWORD | 105 | reset mật khẩu |
+
+Rollout flag NHAN_VIEN_MODULE_ENABLED phải bật trước; sau đó vẫn bắt buộc auth
+và Gate đúng hành động. Flow web chỉ quản lý target `ma_vt = 5`; target role
+khác bị chặn trước mutation.
 
 ## 4. Quyết định database và scripts
 
 | Tình huống | Đường dẫn đúng | Điều kiện/bảo vệ |
 | --- | --- | --- |
-| Database mới, disposable/local trống | quan_ly_nhan_su.session.sql | Canonical dump có DROP DATABASE IF EXISTS; chỉ dùng khi dữ liệu có thể bị xóa |
-| Database đã tồn tại cần giữ dữ liệu | database/sql/employee/2026_08_12_001_schema.sql → 002 → 003 → 004 → 005 → 006 | Backup đầy đủ bằng công cụ MariaDB/MySQL, preflight whitelist, approval và dừng ngay khi một file lỗi |
-| Muốn có dữ liệu demo qua browser | `tests/Support/employee-acceptance.ps1 -Action Start -StateFile storage/framework/testing/employee-acceptance.json -EnableDisposableMariaDb` | Đường khuyến nghị; dùng UI tạo thêm nhân viên, URL/identity lấy từ JSON stdout; luôn Stop đúng StateFile |
-| Đã có disposable DB guarded và cần bộ 5-row synthetic | `database/sql/employee/invoke-demo.ps1 -Action seed -EnableDisposableMariaDb` | Chỉ khi `MARIADB_TEST_ENABLED=1` và `MARIADB_TEST_DATABASE` khớp allowlist; helper không nhận canonical `quan_ly_nhan_su` |
-| Dọn bộ 5-row synthetic guarded | `database/sql/employee/invoke-demo.ps1 -Action cleanup -EnableDisposableMariaDb` | Chỉ xóa identity/master/role synthetic trên disposable DB đã provision; không giảm hoặc tái sử dụng counter |
+| Database mới, disposable/local trống | `database/tao_bang.sql` → `database/du_lieu_mau.sql` | Đúng 15 bảng; chỉ dùng trên DB rỗng/disposable |
+| Database 16 bảng đã tồn tại cần giữ dữ liệu | `database/sql/employee/2026_08_24_001_migrate_to_fifteen_tables.sql` | Backup đầy đủ, preflight/copy-verify-drop, approval; DDL MariaDB implicit commit |
+| Muốn tái hiện browser historical | `tests/Support/employee-acceptance.ps1 -Action Start -StateFile storage/framework/testing/employee-acceptance.json -EnableDisposableMariaDb` | Legacy routine/address-table harness; không dùng thay fresh 15-table gate; luôn Stop đúng StateFile |
+| Bộ 5-row synthetic legacy | `database/sql/employee/invoke-demo.ps1` | Legacy only; không dùng thay fresh 30-row seed |
+| Dọn bộ 5-row synthetic legacy | `database/sql/employee/invoke-demo.ps1` | Legacy only; không chạy trên active fresh source |
 
 Không dùng canonical dump trên database cần giữ dữ liệu. Scripts 001–006 chạy trên database đã chọn và không tự DROP DATABASE, CREATE DATABASE hay USE; phải xác nhận target, version MariaDB, read-only state, row counts và backup trước DDL. Demo SQL không được SOURCE trực tiếp: seed/cleanup fail-closed nếu thiếu marker phiên `employee_demo_guard`, token random và database khớp. Không chạy php artisan db:seed theo quán tính: seeder mặc định còn tham chiếu model User không phải identity của module.
 
 ### Kết quả rollout local đã kiểm chứng
 
-Đây là bằng chứng **environment-specific**, không phải production claim: local MariaDB có 16 bảng, 1 view, 8 function, 10 trigger và 69 stored procedure sau canonical/employee rollout; demo seed có 5 employee và 5 address; role admin demo có đúng 5 employee permission; bốn normal demo có zero employee permission. Bộ 5-row trên canonical local là evidence của môi trường chủ repo, không phải lệnh peer nên chạy; người mới dùng acceptance harness và UI. Database disposable/guarded và backup của lần rollout được quản lý ngoài Git; không đưa backup, hash hoặc credential vào index.
+Fresh pair đã được kiểm tra tĩnh và replay thật trên guarded disposable MariaDB:
+đúng 15 bảng, 30 employee, counter 30, direct address/avatar/date columns,
+bcrypt login seed `NV001`; role/RBAC explicit theo catalog; repository CRUD/address/avatar/lifecycle,
+migration 16→15, allowlisted cleanup và parallel direct-repository counter pass
+trong `5 tests, 161 assertions`. Đây không phải bằng chứng live production;
+browser avatar vẫn là gate riêng.
 
-### Hai file legacy trên main
+### Legacy history
 
-database/tao_bang.sql và database/du_lieu_mau.sql là artefact legacy được giữ nguyên để truy nguyên, không phải đường dẫn hiện tại. Chúng thiếu hoặc không khớp ky_hieu, địa chỉ một-một, bộ đếm mã, avatar, ngày nghỉ việc, unique email/CCCD và RBAC; seed password legacy có thể trống/không tương thích auth hiện tại. Chúng cũng không thể thay thế các guard, procedure contract và role mặc định của employee module. Phần đầu mỗi file đã đánh dấu LEGACY / NOT AUTHORITATIVE / DO NOT RUN. Dùng canonical dump cho database disposable hoặc 001–006 và demo seed nói trên.
+`quan_ly_nhan_su.session.sql`, `database/sql/du_lieu_mau.sql`, các script
+`2026_08_12_001`–`006` và `demo/` là legacy history, đã có header đánh dấu và
+không phải setup path. Chúng có thể còn symbol/routine/address-table cũ để
+đối chiếu lịch sử; không chạy chúng thay cho fresh pair.
 
 ## 5. Bản đồ backend để tiếp tục phát triển
 
@@ -181,21 +228,33 @@ Luồng chuẩn là:
       → Controller
       → NhanVienServiceContract/NhanVienService
       → NhanVienRepositoryContract/NhanVienRepository
-      → database/sql/employee/001..006 hoặc canonical dump
+      → database/tao_bang.sql + database/du_lieu_mau.sql (fresh), hoặc migration
       → Feature/Unit/MariaDB integration tests
 
 Các điểm vào chính:
 
 - Web routes và middleware: routes/web.php; auth/session ở app/Http/Controllers/Auth/AuthenticatedSessionController.php và app/Auth/NhanVienUserProvider.php.
 - Employee lifecycle: app/Http/Controllers/Backend/NhanVienController.php, app/Http/Requests/ListNhanVienRequest.php, StoreNhanVienRequest.php, UpdateNhanVienRequest.php, app/Services/NhanVienService.php, app/Repositories/NhanVienRepository.php.
-- Permission/rollout/target guard: app/Enums/NhanVienPermission.php, config/nhanvien.php, app/Http/Middleware/EnsureNhanVienModuleEnabled.php, app/Services/NhanVienPermissionService.php và app/Support/NhanVienTargetGuard.php.
-- SQL contract: database/sql/employee/2026_08_12_001_schema.sql đến 2026_08_12_006_rbac.sql; test shape/error/mutation nằm ở tests/Integration/MariaDb/.
+- Permission/rollout/target guard: app/Enums/PermissionAction.php,
+  app/Enums/NhanVienPermission.php, app/Enums/PhongBanPermission.php,
+  config/permissions.php, app/Authorization/PermissionRegistry.php,
+  app/Services/PermissionService.php, app/Repositories/PermissionRepository.php,
+  config/nhanvien.php, app/Http/Middleware/EnsureNhanVienModuleEnabled.php và
+  app/Support/NhanVienTargetGuard.php.
+- SQL contract active: `database/tao_bang.sql` + `database/du_lieu_mau.sql`; direct
+  Query Builder employee/auth/RBAC path is covered by the Unit/Feature suites and
+  the new guarded `FreshEmployeeSchemaContractTest`. The older
+  `tests/Integration/MariaDb/*ProcedureTest.php`, legacy fixture and native
+  procedure workers are historical Task 12–20 evidence only; they target the
+  superseded routine/address-table contract and are not an active setup or
+  acceptance path for the 15-table source.
 - Attendance compatibility: /api/v1/cham-cong/nhan-vien đi qua ChamCongController::employees và NhanVienServiceContract; chi tiết /api/v1/cham-cong dùng Query Builder trên cột canonical cham_cong.ngay_lam.
 
 Các constraint không được phá vỡ:
 
 - Transaction hồ sơ + địa chỉ + avatar thuộc service và cùng write connection.
-- Repository giữ SET → CALL → SELECT OUT trên cùng connection; không đoán procedure hoặc đổi thứ tự placeholder.
+- Repository dùng explicit Query Builder projections trên cùng connection;
+  không gọi employee procedure/view/trigger.
 - Hash được tạo ở Laravel, không nhận role/mã/hash/ngày nghỉ từ request và không trả mat_khau ra view/API.
 - Avatar cleanup chỉ sau commit hoặc bù trừ rollback; prefix path phải qua NhanVienAvatarPath.
 - Lỗi validation là 422 chuẩn; lỗi DB/generic trả thông báo ổn định, không lộ SQLSTATE, SQL query, stack, credential, hash hay filesystem path.
@@ -215,7 +274,7 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
 ## 7. Lệnh kiểm tra và mức bằng chứng
 
     php artisan route:list --except-vendor
-    php artisan test tests/Feature/Auth/EmployeeAuthenticationTest.php tests/Feature/Backend/NhanVien tests/Unit/Auth/NhanVienUserProviderTest.php tests/Unit/Models/NhanVienTest.php tests/Unit/Services/NhanVienPermissionServiceTest.php
+    php artisan test tests/Feature/Auth/EmployeeAuthenticationTest.php tests/Feature/Backend/NhanVien tests/Unit/Auth/NhanVienUserProviderTest.php tests/Unit/Models/NhanVienTest.php tests/Unit/Services/PermissionServiceTest.php
     php artisan test tests/Feature/Compatibility/ChamCongEmployeeLookupSecurityTest.php
     npm run test:frontend
     npm run build
@@ -223,19 +282,23 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
     git diff --check
     git status --short
 
-Evidence hiện tại trên main: route inventory 52; scoped employee/auth snapshot
-`119 tests, 1141 assertions`; attendance compatibility `16 tests, 61
-assertions`; full Laravel `237 pass, 1820 assertions`. Trước entrypoint `/`,
-full snapshot là `234 pass, 1 fail, 1815 assertions`; trước vòng
-authorization/guard, baseline full suite là `224/1789`. Đây là kết quả
-SQLite/feature hiện tại; không thay thế MariaDB procedure gate.
+Evidence hiện tại của slice này: route inventory 52; full Laravel
+`265 pass, 2086 assertions`; schema contract static `4 pass, 93 assertions`;
+attendance/leave compatibility và employee/auth scoped tests đều pass; guarded
+MariaDB fresh contract `5 tests, 161 assertions` pass, gồm parallel counter.
+Browser avatar chưa chạy.
 
-Integration stored procedure phải dùng wrapper guarded và switch bắt buộc, không trỏ vào database live. Demo 5-row chỉ dùng trên disposable DB đã provision và phải dùng helper; không copy lại lệnh `SOURCE` trực tiếp:
+MariaDB fresh-contract integration phải dùng wrapper guarded và switch bắt buộc,
+không trỏ vào database live:
 
     pwsh -NoProfile -File tests/Support/invoke-employee-mariadb-tests.ps1 -EnableDisposableMariaDb
-    pwsh -NoProfile -File database/sql/employee/invoke-demo.ps1 -Action seed -EnableDisposableMariaDb
+    php artisan test tests/Integration/MariaDb/FreshEmployeeSchemaContractTest.php
 
-Có thể thêm -Filter EmployeeReadProcedureTest|CanonicalDumpReplayTest cho vòng focused. Wrapper yêu cầu MARIADB_TEST_*, chỉ cho phép disposable target, khôi phục process environment và trả exit code test. phpunit.xml mặc định dùng SQLite in-memory nên suite Laravel xanh không chứng minh stored procedure, trigger hay MariaDB behavior; MariaDB wrapper mới là bằng chứng DB hẹp. Browser acceptance dùng tests/Support/employee-acceptance.ps1 với state disposable và luôn phải chạy action Stop; không báo browser pass nếu chưa chạy browser thật.
+Wrapper yêu cầu `MARIADB_TEST_*`, chỉ cho phép disposable target, khôi phục
+process environment và trả exit code test. phpunit.xml mặc định dùng SQLite
+in-memory nên suite Laravel xanh không chứng minh MariaDB DDL/FK behavior;
+MariaDB fresh-contract test mới là bằng chứng DB hẹp. Browser acceptance vẫn
+phải chạy riêng; không báo browser pass nếu chưa chạy browser thật.
 
 ## 8. Checklist cộng tác
 

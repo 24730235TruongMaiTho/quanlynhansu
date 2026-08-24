@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\Rules\Unique;
+use Illuminate\Validation\Validator;
 
 class StoreNhanVienRequest extends FormRequest
 {
@@ -31,6 +32,12 @@ class StoreNhanVienRequest extends FormRequest
                 && is_string($normalized[$field])
                 && preg_match('/\A[0-9]+\z/', $normalized[$field]) === 1) {
                 $normalized[$field] = (int) $normalized[$field];
+            }
+        }
+
+        foreach (['dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh'] as $field) {
+            if (array_key_exists($field, $normalized) && $normalized[$field] === '') {
+                $normalized[$field] = null;
             }
         }
 
@@ -60,10 +67,10 @@ class StoreNhanVienRequest extends FormRequest
             'noi_cap_cccd' => ['required', 'string', 'max:50'],
             'hoc_van' => ['required', 'string', 'max:50'],
             'ma_tt' => ['required', 'integer', $this->statusExistsRule()],
-            'dia_chi_cu_the' => ['required', 'string', 'max:255'],
-            'phuong_xa' => ['required', 'string', 'max:100'],
-            'quan_huyen' => ['required', 'string', 'max:100'],
-            'tinh_thanh' => ['required', 'string', 'max:100'],
+            'dia_chi_cu_the' => ['nullable', 'string', 'max:255'],
+            'phuong_xa' => ['nullable', 'string', 'max:100'],
+            'quan_huyen' => ['nullable', 'string', 'max:100'],
+            'tinh_thanh' => ['nullable', 'string', 'max:100'],
             'anh_dai_dien' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
             'xoa_anh_dai_dien' => ['missing', 'prohibited'],
             'ma_nv' => ['missing', 'prohibited'],
@@ -87,8 +94,7 @@ class StoreNhanVienRequest extends FormRequest
     protected function statusExistsRule(): Exists
     {
         return Rule::exists('trang_thai_lam_viec', 'ma_tt')
-            ->whereIn('ky_hieu', ['DANG_LAM', 'THU_VIEC'])
-            ->whereNot('ky_hieu', 'DA_NGHI');
+            ->whereIn('ma_tt', [1, 2]);
     }
 
     protected function ignoredEmployeeCodeForEmailUniqueness(): ?string
@@ -133,5 +139,21 @@ class StoreNhanVienRequest extends FormRequest
         }
 
         return $value;
+    }
+
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            $fields = ['dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh'];
+            $present = array_map(fn (string $field): bool => filled($this->input($field)), $fields);
+
+            if (count(array_filter($present)) > 0 && count(array_filter($present)) < count($fields)) {
+                foreach ($fields as $index => $field) {
+                    if (! $present[$index]) {
+                        $validator->errors()->add($field, 'Vui lòng nhập đủ bốn thành phần địa chỉ hoặc để trống toàn bộ.');
+                    }
+                }
+            }
+        }];
     }
 }

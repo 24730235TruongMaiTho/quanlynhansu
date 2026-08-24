@@ -98,7 +98,7 @@ class EmployeeAuthenticationTest extends TestCase
         $cases = [
             'missing' => null,
             'wrong-password' => $this->employee(['mat_khau' => Hash::make('different')]),
-            'terminated' => $this->employee(['ky_hieu' => 'DA_NGHI']),
+            'terminated' => $this->employee(['ma_tt' => 4]),
             'database' => new NhanVienDomainException('internal sql text', 'NV_DATABASE_ERROR'),
         ];
 
@@ -209,7 +209,7 @@ class EmployeeAuthenticationTest extends TestCase
     public function test_session_restore_rejects_employee_that_becomes_terminated(): void
     {
         $active = $this->employee();
-        $terminated = $this->employee(['ky_hieu' => 'DA_NGHI']);
+        $terminated = $this->employee(['ma_tt' => 4]);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('findAccountByIdentifier')->with('NV001')->andReturn($active, $terminated);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
@@ -242,13 +242,13 @@ class EmployeeAuthenticationTest extends TestCase
 
     private function employee(array $overrides = []): NhanVien
     {
-        return NhanVien::fromAuthProcedureRow((object) array_replace([
+        return NhanVien::fromAuthRow((object) array_replace([
             'ma_nv' => 'NV001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => Hash::make('secret'),
             'ma_vt' => 1,
-            'ky_hieu' => 'DANG_LAM',
+            'ma_tt' => 2,
         ], $overrides));
     }
 

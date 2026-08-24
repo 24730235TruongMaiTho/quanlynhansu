@@ -24,7 +24,7 @@ class NhanVienValidationTest extends TestCase
 
         $this->enableEmployeeModule();
         $this->createEmployeeFeatureSchema();
-        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ky_hieu' => 'DANG_LAM']);
+        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ma_tt' => 2]);
 
         Route::post('/_tests/nhan-vien', function (StoreNhanVienRequest $request) {
             return response()->json(array_merge(
@@ -196,6 +196,16 @@ class NhanVienValidationTest extends TestCase
         }
     }
 
+    public function test_all_four_address_parts_may_be_omitted_together(): void
+    {
+        $this->postJson('/_tests/nhan-vien', $this->validPayload([
+            'dia_chi_cu_the' => null,
+            'phuong_xa' => null,
+            'quan_huyen' => null,
+            'tinh_thanh' => null,
+        ]))->assertOk();
+    }
+
     public function test_avatar_accepts_supported_images_and_rejects_wrong_type_or_oversize(): void
     {
         foreach (['jpg', 'png', 'webp'] as $extension) {
@@ -316,15 +326,24 @@ class NhanVienValidationTest extends TestCase
 
     public function test_update_enforces_active_and_terminated_lifecycle_invariants(): void
     {
-        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ky_hieu' => 'DANG_LAM']);
+        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ma_tt' => 2]);
         $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 2]))->assertOk();
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 3]))
+        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 4]))
             ->assertUnprocessable()->assertJsonValidationErrors('ma_tt');
 
-        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ky_hieu' => 'DA_NGHI']);
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 3]))->assertOk();
+        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ma_tt' => 4]);
+        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 4]))->assertOk();
         $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 1]))
             ->assertUnprocessable()->assertJsonValidationErrors('ma_tt');
+    }
+
+    public function test_update_requires_all_address_parts_or_none(): void
+    {
+        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload([
+            'phuong_xa' => '   ',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('phuong_xa');
     }
 
     public function test_update_returns_safe_not_found_before_validation_when_route_employee_does_not_exist(): void
@@ -341,8 +360,10 @@ class NhanVienValidationTest extends TestCase
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->once()->with('NV001')->andReturn((object) [
             'ma_nv' => 'NV001',
-            'ky_hieu' => 'DANG_LAM',
-            'ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH',
+            'ma_tt' => 2,
+            'ma_vt' => 5,
+            'ma_vt' => 5,
+            'ma_tt' => 2,
         ]);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
@@ -422,8 +443,14 @@ class NhanVienValidationTest extends TestCase
 
     private function bindCurrentEmployee(?object $employee): void
     {
-        if ($employee !== null && ! property_exists($employee, 'ky_hieu_vai_tro')) {
-            $employee->ky_hieu_vai_tro = 'NHAN_VIEN_MAC_DINH';
+        if ($employee !== null && ! property_exists($employee, 'ma_vt')) {
+            $employee->ma_vt = 5;
+        }
+        if ($employee !== null && ! property_exists($employee, 'ma_vt')) {
+            $employee->ma_vt = 5;
+        }
+        if ($employee !== null && ! property_exists($employee, 'ma_tt')) {
+            $employee->ma_tt = 2;
         }
 
         $repository = Mockery::mock(NhanVienRepositoryContract::class);

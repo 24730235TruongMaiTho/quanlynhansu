@@ -420,7 +420,7 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
             $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn(
-                (object) ['ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH'],
+                (object) ['ma_vt' => 5],
             );
             $mock->shouldReceive('removeOrTerminate')->once()->with('NV001')->andReturn(
                 NhanVienRemovalAction::Deleted,
@@ -453,7 +453,8 @@ class NhanVienIndexTest extends TestCase
                 'ma_cv' => 1,
                 'ten_cv' => 'Lập trình viên',
                 'ma_tt' => 1,
-                'ky_hieu' => 'DANG_LAM',
+                'ma_vt' => 5,
+                'ma_tt' => 2,
                 'ten_tt' => 'Đang làm',
             ]];
         }
@@ -472,7 +473,7 @@ class NhanVienIndexTest extends TestCase
         return [
             'phong_ban' => [(object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật', 'so_nhan_vien' => 1]],
             'chuc_vu' => [(object) ['ma_cv' => 1, 'ten_cv' => 'Lập trình viên', 'he_so_phu_cap' => '0.20']],
-            'trang_thai' => [(object) ['ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm']],
+            'trang_thai' => [(object) ['ma_tt' => 1, 'ten_tt' => 'Thử việc'], (object) ['ma_tt' => 2, 'ten_tt' => 'Đang làm']],
         ];
     }
 }

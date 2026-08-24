@@ -2,11 +2,45 @@
 
 namespace App\Enums;
 
-enum NhanVienPermission: string
+use App\Contracts\PermissionDefinitionContract;
+
+enum NhanVienPermission: string implements PermissionDefinitionContract
 {
-    case Xem = 'NHAN_VIEN_XEM';
-    case Tao = 'NHAN_VIEN_TAO';
-    case Sua = 'NHAN_VIEN_SUA';
-    case Xoa = 'NHAN_VIEN_XOA';
-    case DatLaiMatKhau = 'NHAN_VIEN_DAT_LAI_MAT_KHAU';
+    case Xem = 'NV_VIEW';
+    case Tao = 'NV_CREATE';
+    case Sua = 'NV_EDIT';
+    case Xoa = 'NV_DELETE';
+    case DatLaiMatKhau = 'NV_RESET_PASSWORD';
+
+    public function id(): int
+    {
+        return match ($this) {
+            self::Xem => 101,
+            self::Tao => 102,
+            self::Sua => 103,
+            self::Xoa => 104,
+            self::DatLaiMatKhau => 105,
+        };
+    }
+
+    public function symbol(): string
+    {
+        return $this->value;
+    }
+
+    public function module(): string
+    {
+        return 'NhanVien';
+    }
+
+    public function action(): ?PermissionAction
+    {
+        return match ($this) {
+            self::Xem => PermissionAction::View,
+            self::Tao => PermissionAction::Create,
+            self::Sua => PermissionAction::Edit,
+            self::Xoa => PermissionAction::Delete,
+            self::DatLaiMatKhau => null,
+        };
+    }
 }

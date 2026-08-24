@@ -1,3 +1,5 @@
+-- LEGACY EMPLOYEE DEMO SEED (superseded 2026-08-24). Historical evidence only;
+-- do not source directly. Use database/du_lieu_mau.sql for the active seed.
 -- Optional synthetic demo seed for the employee module.
 -- Target is deliberately limited to quan_ly_nhan_su or a DisposableMariaDbGuard
 -- name; the caller owns the selected database and must use the guarded helper.

@@ -30,7 +30,7 @@
             : null;
         $canResetPassword = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::DatLaiMatKhau->value);
         $canDestroy = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Xoa->value);
-        $isManageableTarget = ($employee->ky_hieu_vai_tro ?? null) === 'NHAN_VIEN_MAC_DINH';
+        $isManageableTarget = (int) ($employee->ma_vt ?? 0) === \App\Enums\NhanVienRole::Employee->value;
     @endphp
 
     <main class="container container-lg py-4" aria-labelledby="page-title">

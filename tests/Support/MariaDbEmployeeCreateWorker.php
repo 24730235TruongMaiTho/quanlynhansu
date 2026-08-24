@@ -1,5 +1,7 @@
 <?php
 
+// LEGACY Task 20 procedure worker; excluded from phpunit.mariadb.xml.
+
 use App\Support\DisposableMariaDbGuard;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';

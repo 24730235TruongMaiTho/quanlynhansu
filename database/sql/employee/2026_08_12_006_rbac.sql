@@ -1,3 +1,6 @@
+-- LEGACY EMPLOYEE RBAC ROUTINES (superseded 2026-08-24). Historical audit
+-- only; do not source as active setup. Current code uses permission IDs.
+
 DELIMITER //
 
 # WHY: MariaDB DDL implicitly commits, so every ambiguity and orphan must be

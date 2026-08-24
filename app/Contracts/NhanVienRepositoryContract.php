@@ -34,9 +34,6 @@ interface NhanVienRepositoryContract
 
     public function findAccountByIdentifier(string $identifier): ?NhanVien;
 
-    /** @return list<string> */
-    public function permissionSymbols(string $maNv): array;
-
     /** @internal Bootstrap-only role assignment; never expose through web flows. */
     public function assignRoleForBootstrap(string $maNv, int $maVt): void;
 

@@ -20,7 +20,7 @@
             : 'Chưa nhập';
         $canResetPassword = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::DatLaiMatKhau->value);
         $canDestroy = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Xoa->value);
-        $isManageableTarget = ($employee->ky_hieu_vai_tro ?? null) === 'NHAN_VIEN_MAC_DINH';
+        $isManageableTarget = (int) ($employee->ma_vt ?? 0) === \App\Enums\NhanVienRole::Employee->value;
     @endphp
 
     <main class="employee-page container container-xl py-4" aria-labelledby="page-title">
@@ -193,7 +193,7 @@
                         <dt class="col-sm-5">Chức vụ</dt>
                         <dd class="col-sm-7" data-review-output="ma_cv">{{ $selectedLookup('chuc_vu', 'ma_cv', 'ten_cv') }}</dd>
                         <dt class="col-sm-5">Trạng thái</dt>
-                        @if ($employee->ky_hieu === 'DA_NGHI')
+                        @if ((int) ($employee->ma_tt ?? 0) === \App\Enums\NhanVienStatus::Terminated->value)
                             <dd class="col-sm-7">{{ $employee->ten_tt }}</dd>
                         @else
                             <dd class="col-sm-7" data-review-output="ma_tt">{{ $selectedLookup('trang_thai', 'ma_tt', 'ten_tt') }}</dd>

@@ -3,6 +3,7 @@
 namespace App\Auth;
 
 use App\Contracts\NhanVienRepositoryContract;
+use App\Enums\NhanVienStatus;
 use App\Exceptions\NhanVienDomainException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\UserProvider;
@@ -135,6 +136,6 @@ final class NhanVienUserProvider implements UserProvider
     private function isTerminated(Authenticatable $user): bool
     {
         return $user instanceof \App\Models\NhanVien
-            && $user->getAttribute('ky_hieu') === 'DA_NGHI';
+            && (int) $user->getAttribute('ma_tt') === NhanVienStatus::Terminated->value;
     }
 }

@@ -1,3 +1,5 @@
+-- LEGACY EMPLOYEE DEMO CLEANUP (superseded 2026-08-24). Historical evidence
+-- only; do not source directly. The active contract has no demo cleanup path.
 -- Remove only the synthetic 2026-08-21 employee demo data.
 -- This is reversible by rerunning 2026_08_21_001_demo_seed.sql.
 -- It intentionally never decrements or reuses bo_dem_ma_nhan_vien.

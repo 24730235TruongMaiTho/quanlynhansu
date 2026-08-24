@@ -96,7 +96,7 @@ class NhanVienUpdateTest extends TestCase
     public function test_privileged_edit_and_valid_or_invalid_update_return_generic_403_before_mutation(): void
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
-        $privileged = $this->employee(['ky_hieu_vai_tro' => 'QUAN_TRI', 'email' => 'admin@example.test']);
+        $privileged = $this->employee(['ma_vt' => 1, 'email' => 'admin@example.test']);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($privileged): void {
             $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($privileged);
             $mock->shouldNotReceive('lookups');
@@ -233,7 +233,7 @@ class NhanVienUpdateTest extends TestCase
             ->assertSee('name="xoa_anh_dai_dien"', false)
             ->assertSee('data-avatar-delete', false)
             ->assertSee('Nhân viên')
-            ->assertDontSee('NHAN_VIEN_MAC_DINH')
+            ->assertDontSee('ma_vt = 5')
             ->assertDontSee('name="ma_nv"', false)
             ->assertDontSee('name="ma_vt"', false)
             ->assertDontSee('name="mat_khau"', false)
@@ -255,8 +255,7 @@ class NhanVienUpdateTest extends TestCase
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $terminated = $this->employee([
-            'ma_tt' => 3,
-            'ky_hieu' => 'DA_NGHI',
+            'ma_tt' => 4,
             'ten_tt' => 'Đã nghỉ việc',
             'ngay_nghi_viec' => '2026-07-01',
         ]);
@@ -272,7 +271,7 @@ class NhanVienUpdateTest extends TestCase
         $this->get('/admin/nhan-vien/NV001/edit')
             ->assertOk()
             ->assertSee('Trạng thái không thể thay đổi qua cập nhật hồ sơ')
-            ->assertSee('type="hidden" name="ma_tt" value="3"', false)
+            ->assertSee('type="hidden" name="ma_tt" value="4"', false)
             ->assertSee('<dd class="col-sm-7">Đã nghỉ việc</dd>', false)
             ->assertDontSee('data-review-output="ma_tt"', false)
             ->assertDontSee('id="ma_tt"', false);
@@ -331,8 +330,8 @@ class NhanVienUpdateTest extends TestCase
             'ngay_vao_lam' => '2020-01-01', 'ma_pb' => 1, 'ten_pb' => 'Kỹ thuật',
             'ma_cv' => 1, 'ten_cv' => 'Lập trình viên', 'dan_toc' => 'Kinh',
             'cccd' => '001200000001', 'noi_cap_cccd' => 'Cục CSQLHC', 'hoc_van' => 'Đại học',
-            'ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm việc',
-            'ngay_nghi_viec' => null, 'ma_vt' => 1, 'ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH',
+            'ma_tt' => 2, 'ten_tt' => 'Đang làm việc',
+            'ngay_nghi_viec' => null, 'ma_vt' => 5,
             'ten_vt' => 'Nhân viên',
             'anh_dai_dien' => 'nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png',
             'dia_chi_cu_the' => '1 Nguyễn Trãi', 'phuong_xa' => 'Bến Thành',
@@ -346,9 +345,9 @@ class NhanVienUpdateTest extends TestCase
             'phong_ban' => [(object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật']],
             'chuc_vu' => [(object) ['ma_cv' => 1, 'ten_cv' => 'Lập trình viên']],
             'trang_thai' => [
-                (object) ['ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm việc'],
-                (object) ['ma_tt' => 2, 'ky_hieu' => 'THU_VIEC', 'ten_tt' => 'Thử việc'],
-                (object) ['ma_tt' => 3, 'ky_hieu' => 'DA_NGHI', 'ten_tt' => 'Đã nghỉ việc'],
+                (object) ['ma_tt' => 1, 'ten_tt' => 'Thử việc'],
+                (object) ['ma_tt' => 2, 'ten_tt' => 'Đang làm việc'],
+                (object) ['ma_tt' => 4, 'ten_tt' => 'Đã nghỉ việc'],
             ],
         ];
     }
