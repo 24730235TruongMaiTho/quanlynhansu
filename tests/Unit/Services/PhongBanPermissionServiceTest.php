@@ -11,21 +11,17 @@ use Tests\TestCase;
 
 class PhongBanPermissionServiceTest extends TestCase
 {
-    public function test_only_canonical_department_symbols_are_allowed_and_legacy_symbol_is_ignored(): void
+    public function test_only_department_permission_ids_are_allowed(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('permissionSymbols')->once()->with('NV001')->andReturn([
-            'PHONG_BAN_XEM',
-            'PHONG_BAN_SUA',
-            'PB_VIEW',
-        ]);
-        $employee = NhanVien::fromAuthProcedureRow((object) [
+        $repository->shouldReceive('permissionIds')->once()->with('NV001')->andReturn([201, 203, 101]);
+        $employee = NhanVien::fromAuthRow((object) [
             'ma_nv' => 'NV001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => 'hash',
-            'ma_vt' => 2,
-            'ky_hieu' => 'DANG_LAM',
+            'ma_vt' => 5,
+            'ma_tt' => 2,
         ]);
 
         $service = new PhongBanPermissionService($repository);
@@ -39,10 +35,10 @@ class PhongBanPermissionServiceTest extends TestCase
     public function test_repository_failure_fails_closed_for_department_gate(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('permissionSymbols')->once()->with('NV001')->andThrow(new \RuntimeException('db failure'));
-        $employee = NhanVien::fromAuthProcedureRow((object) [
+        $repository->shouldReceive('permissionIds')->once()->with('NV001')->andThrow(new \RuntimeException('db failure'));
+        $employee = NhanVien::fromAuthRow((object) [
             'ma_nv' => 'NV001', 'ho_ten' => 'Nguyễn An', 'email' => 'an@example.test',
-            'mat_khau' => 'hash', 'ma_vt' => 2, 'ky_hieu' => 'DANG_LAM',
+            'mat_khau' => 'hash', 'ma_vt' => 5, 'ma_tt' => 2,
         ]);
 
         $this->assertFalse((new PhongBanPermissionService($repository))->allows($employee, PhongBanPermission::Xem));

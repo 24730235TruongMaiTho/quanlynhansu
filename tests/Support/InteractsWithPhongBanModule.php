@@ -16,7 +16,7 @@ trait InteractsWithPhongBanModule
      */
     protected function actingAsPhongBanEmployee(array $symbols): NhanVien
     {
-        $employee = NhanVien::fromAuthProcedureRow((object) [
+        $employee = NhanVien::fromAuthRow((object) [
             'ma_nv' => 'NV001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',

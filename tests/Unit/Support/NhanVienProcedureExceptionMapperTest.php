@@ -147,7 +147,7 @@ class NhanVienProcedureExceptionMapperTest extends TestCase
         $this->assertStringNotContainsString($sql, $mapped->getMessage());
     }
 
-    private function queryException(string $message, string $sql = 'CALL sp_nhan_vien_them(?)'): QueryException
+    private function queryException(string $message, string $sql = 'insert into nhan_vien (...) values (...)'): QueryException
     {
         return new QueryException('mysql', $sql, [], new PDOException($message));
     }

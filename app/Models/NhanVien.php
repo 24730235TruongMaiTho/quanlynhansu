@@ -41,7 +41,7 @@ final class NhanVien extends Model implements AuthenticatableContract
         return null;
     }
 
-    public static function fromAuthProcedureRow(object $row): self
+    public static function fromAuthRow(object $row): self
     {
         $employee = (new self())->forceFill([
             'ma_nv' => $row->ma_nv,
@@ -49,10 +49,11 @@ final class NhanVien extends Model implements AuthenticatableContract
             'email' => $row->email,
             'mat_khau' => $row->mat_khau,
             'ma_vt' => $row->ma_vt,
-            'ky_hieu' => $row->ky_hieu,
+            'ma_tt' => property_exists($row, 'ma_tt') ? $row->ma_tt : null,
         ]);
         $employee->exists = true;
 
         return $employee;
     }
+
 }

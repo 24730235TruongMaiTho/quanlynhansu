@@ -9,7 +9,7 @@ use Throwable;
 
 class PhongBanPermissionService
 {
-    /** @var array<string, ?array<string, true>> */
+    /** @var array<string, ?array<int, true>> */
     private array $permissionSets = [];
 
     public function __construct(private NhanVienRepositoryContract $repository) {}
@@ -28,31 +28,36 @@ class PhongBanPermissionService
 
         $permissionSet = $this->permissionSets[$maNv];
 
-        return $permissionSet !== null && isset($permissionSet[$permission->value]);
+        return $permissionSet !== null && isset($permissionSet[$permission->id()]);
     }
 
-    /** @return array<string, true>|null */
+    /** @return array<int, true>|null */
     private function loadPermissionSet(string $maNv): ?array
     {
         try {
-            $symbols = $this->repository->permissionSymbols($maNv);
+            $ids = $this->repository->permissionIds($maNv);
         } catch (Throwable) {
             return null;
         }
 
-        if (! is_array($symbols)) {
+        if (! is_array($ids)) {
             return null;
         }
 
-        $knownSymbols = array_fill_keys(array_map(
-            static fn (PhongBanPermission $permission): string => $permission->value,
+        $knownIds = array_fill_keys(array_map(
+            static fn (PhongBanPermission $permission): int => $permission->id(),
             PhongBanPermission::cases(),
         ), true);
         $set = [];
 
-        foreach ($symbols as $symbol) {
-            if (is_string($symbol) && isset($knownSymbols[$symbol])) {
-                $set[$symbol] = true;
+        foreach ($ids as $id) {
+            if ((! is_int($id) && ! (is_string($id) && ctype_digit($id)))) {
+                continue;
+            }
+
+            $id = (int) $id;
+            if (isset($knownIds[$id])) {
+                $set[$id] = true;
             }
         }
 

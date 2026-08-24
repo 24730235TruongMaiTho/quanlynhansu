@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use App\Contracts\NhanVienRepositoryContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Support\NhanVienTargetGuard;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\Rules\Unique;
@@ -51,7 +50,8 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
      */
     public function after(): array
     {
-        return [function (Validator $validator): void {
+        $callbacks = parent::after();
+        $callbacks[] = function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }
@@ -66,18 +66,20 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
                 return;
             }
 
-            $targetStatus = $this->targetStatusSymbol();
-            $currentStatus = $this->authorizedTarget?->ky_hieu ?? null;
+            $targetStatus = $this->targetStatusId();
+            $currentStatus = (int) ($this->authorizedTarget?->ma_tt ?? 0);
 
-            if (($currentStatus === 'DA_NGHI' && $targetStatus !== null && $targetStatus !== 'DA_NGHI')
-                || ($currentStatus !== 'DA_NGHI' && $targetStatus === 'DA_NGHI')) {
+            if (($currentStatus === 4 && $targetStatus !== null && $targetStatus !== 4)
+                || ($currentStatus !== 4 && $targetStatus === 4)) {
                 $validator->errors()->add(
                     'ma_tt',
                     'Không thể thay đổi trạng thái đã nghỉ qua thao tác cập nhật hồ sơ.',
                 );
             }
 
-        }];
+        };
+
+        return $callbacks;
     }
 
     protected function emailUniqueRule(): Unique
@@ -109,18 +111,14 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
         return is_string($maNv) ? $maNv : '';
     }
 
-    private function targetStatusSymbol(): ?string
+    private function targetStatusId(): ?int
     {
         $maTt = $this->input('ma_tt');
 
-        if (! is_int($maTt)) {
+        if (! is_int($maTt) && ! (is_string($maTt) && ctype_digit($maTt))) {
             return null;
         }
 
-        $symbol = DB::table('trang_thai_lam_viec')
-            ->where('ma_tt', $maTt)
-            ->value('ky_hieu');
-
-        return is_string($symbol) ? $symbol : null;
+        return (int) $maTt;
     }
 }

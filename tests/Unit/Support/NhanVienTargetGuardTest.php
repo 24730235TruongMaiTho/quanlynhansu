@@ -15,7 +15,7 @@ class NhanVienTargetGuardTest extends TestCase
         $guard->assertManageable((object) [
             'ma_nv' => 'NV001',
             'email' => 'employee@example.test',
-            'ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH',
+            'ma_vt' => 5,
         ]);
 
         $this->addToAssertionCount(1);
@@ -23,13 +23,13 @@ class NhanVienTargetGuardTest extends TestCase
 
     public function test_every_non_exact_or_missing_role_fails_with_a_generic_authorization_exception(): void
     {
-        foreach ([null, '', 'nhan_vien_mac_dinh', ' NHAN_VIEN_MAC_DINH ', 'QUAN_TRI'] as $role) {
+        foreach ([null, 0, 1, 2, 4] as $role) {
             $employee = (object) [
                 'ma_nv' => 'NV999',
                 'email' => 'privileged@example.test',
             ];
             if ($role !== null) {
-                $employee->ky_hieu_vai_tro = $role;
+                $employee->ma_vt = $role;
             }
 
             try {
@@ -39,9 +39,6 @@ class NhanVienTargetGuardTest extends TestCase
                 $this->assertSame('This action is unauthorized.', $exception->getMessage());
                 $this->assertStringNotContainsString('NV999', $exception->getMessage());
                 $this->assertStringNotContainsString('privileged@example.test', $exception->getMessage());
-                if (is_string($role) && $role !== '') {
-                    $this->assertStringNotContainsString($role, $exception->getMessage());
-                }
             }
         }
     }

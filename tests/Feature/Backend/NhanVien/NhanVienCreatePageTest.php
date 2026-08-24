@@ -61,9 +61,9 @@ class NhanVienCreatePageTest extends TestCase
             ->assertSee('enctype="multipart/form-data"', false)
             ->assertSee('name="_token"', false)
             ->assertSee('Mã nhân viên được hệ thống tự cấp')
-            ->assertSee('nhom3@2026')
-            ->assertSee('NHAN_VIEN_MAC_DINH')
-            ->assertSee('không có quyền mặc định')
+            ->assertSee('không hiển thị hoặc lưu plaintext')
+            ->assertSee('ma_vt = 5')
+            ->assertSee('quyền phải được cấp ở luồng quản trị riêng')
             ->assertSee('Kỹ thuật')
             ->assertSee('Lập trình viên')
             ->assertSee('Đang làm việc')
@@ -198,8 +198,9 @@ class NhanVienCreatePageTest extends TestCase
             'phong_ban' => [(object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật']],
             'chuc_vu' => [(object) ['ma_cv' => 1, 'ten_cv' => 'Lập trình viên']],
             'trang_thai' => [
-                (object) ['ma_tt' => 1, 'ky_hieu' => 'DANG_LAM', 'ten_tt' => 'Đang làm việc'],
-                (object) ['ma_tt' => 2, 'ky_hieu' => 'DA_NGHI', 'ten_tt' => 'Đã nghỉ việc'],
+                (object) ['ma_tt' => 1, 'ten_tt' => 'Thử việc'],
+                (object) ['ma_tt' => 2, 'ten_tt' => 'Đang làm việc'],
+                (object) ['ma_tt' => 4, 'ten_tt' => 'Đã nghỉ việc'],
             ],
         ];
     }

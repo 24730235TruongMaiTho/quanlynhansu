@@ -1,3 +1,9 @@
+-- LEGACY HISTORICAL DUMP (superseded 2026-08-24).
+-- Do not use this file as the active fresh schema source. The employee/auth/RBAC
+-- contract is exactly 15 tables from database/tao_bang.sql followed by
+-- database/du_lieu_mau.sql; this dump retains the former routines/symbols and
+-- address table only for audit/history.
+
 -- ============================================================
 -- TẠO DATABASE
 -- ============================================================

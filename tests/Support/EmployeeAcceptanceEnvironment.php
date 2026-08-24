@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * LEGACY Task 20 browser fixture.
+ *
+ * This helper provisions the superseded routine/address-table schema. The
+ * active 15-table MariaDB gate is FreshEmployeeSchemaContractTest via
+ * phpunit.mariadb.xml; do not use this fixture for fresh or live databases.
+ */
+
 declare(strict_types=1);
 
 namespace Tests\Support;

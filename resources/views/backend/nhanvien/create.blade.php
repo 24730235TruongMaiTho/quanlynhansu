@@ -56,8 +56,8 @@
 
         <div class="alert alert-info" role="note">
             <p class="mb-1"><strong>Mã nhân viên được hệ thống tự cấp</strong> sau khi lưu thành công.</p>
-            <p class="mb-1">Mật khẩu demo ban đầu theo quy ước <strong>nhom3{{ '@' }}{{ now(config('app.timezone'))->year }}</strong>.</p>
-            <p class="mb-0">Vai trò <strong>NHAN_VIEN_MAC_DINH</strong> không có quyền mặc định; quyền phải được cấp ở luồng quản trị riêng.</p>
+            <p class="mb-1">Mật khẩu ban đầu do server tạo theo convention local/demo; không hiển thị hoặc lưu plaintext.</p>
+            <p class="mb-0">Tài khoản mới dùng vai trò Nhân viên (ma_vt = 5); quyền phải được cấp ở luồng quản trị riêng.</p>
         </div>
 
         <section class="card shadow-sm" aria-labelledby="wizard-title">

@@ -224,7 +224,7 @@
                                         >
                                             Xem
                                         </a>
-                                        @if (($employee->ky_hieu_vai_tro ?? null) === 'NHAN_VIEN_MAC_DINH'
+                                        @if ((int) ($employee->ma_vt ?? 0) === \App\Enums\NhanVienRole::Employee->value
                                             && ($canResetPassword || $canDestroy))
                                             @php
                                                 $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);

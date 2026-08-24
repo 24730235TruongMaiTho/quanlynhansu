@@ -38,7 +38,7 @@ class NhanVienUserProviderTest extends TestCase
 
         $this->assertSame($employee, $provider->retrieveById('NV001'));
 
-        $terminated = $this->employee(['ky_hieu' => 'DA_NGHI']);
+        $terminated = $this->employee(['ma_tt' => 4]);
         $repository->shouldReceive('findAccountByIdentifier')->once()->with('NV001')->andReturn($terminated);
         $this->assertNull($provider->retrieveById('NV001'));
     }
@@ -65,7 +65,7 @@ class NhanVienUserProviderTest extends TestCase
         ]));
 
         $repository->shouldReceive('findAccountByIdentifier')->once()->with('an@example.test')->andReturn(
-            $this->employee(['ky_hieu' => 'DA_NGHI']),
+            $this->employee(['ma_tt' => 4]),
         );
         $this->assertNull($provider->retrieveByCredentials(['dinh_danh' => 'an@example.test']));
     }
@@ -83,13 +83,13 @@ class NhanVienUserProviderTest extends TestCase
         $hasher->shouldReceive('check')->once()->with('wrong', 'old-hash')->andReturnFalse();
         $this->assertFalse($provider->validateCredentials($employee, ['password' => 'wrong']));
 
-        $terminated = $this->employee(['ky_hieu' => 'DA_NGHI']);
+        $terminated = $this->employee(['ma_tt' => 4]);
         $this->assertFalse($provider->validateCredentials($terminated, ['password' => 'secret']));
     }
 
     public function test_rehashes_baseline_and_admin_accounts_with_compare_and_swap(): void
     {
-        foreach ([1, 9] as $role) {
+        foreach ([1, 2] as $role) {
             $employee = $this->employee(['ma_vt' => $role]);
             $repository = Mockery::mock(NhanVienRepositoryContract::class);
             $hasher = Mockery::mock(Hasher::class);
@@ -119,7 +119,7 @@ class NhanVienUserProviderTest extends TestCase
 
     public function test_forced_rehash_updates_baseline_and_admin_after_valid_validation(): void
     {
-        foreach ([1, 9] as $role) {
+        foreach ([1, 2] as $role) {
             $employee = $this->employee(['ma_vt' => $role]);
             $repository = Mockery::mock(NhanVienRepositoryContract::class);
             $hasher = Mockery::mock(Hasher::class);
@@ -187,13 +187,13 @@ class NhanVienUserProviderTest extends TestCase
 
     private function employee(array $overrides = []): NhanVien
     {
-        return NhanVien::fromAuthProcedureRow((object) array_replace([
+        return NhanVien::fromAuthRow((object) array_replace([
             'ma_nv' => 'NV001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => 'old-hash',
-            'ma_vt' => 1,
-            'ky_hieu' => 'DANG_LAM',
+            'ma_vt' => 5,
+            'ma_tt' => 2,
         ], $overrides));
     }
 }

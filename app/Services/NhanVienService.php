@@ -221,7 +221,7 @@ final class NhanVienService implements NhanVienServiceContract
     {
         $connection = $this->database->connection();
         $businessDate = CarbonImmutable::now(config('app.timezone'))->startOfDay();
-        // Keep the procedure on the write transaction that owns its row lock and outcome.
+        // Keep the repository operation on the write transaction that owns its row lock and outcome.
         $result = $connection->transaction(
             fn (): array => $this->repository->removeOrTerminate($maNv, $businessDate),
         );

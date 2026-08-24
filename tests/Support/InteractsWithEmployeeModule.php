@@ -22,13 +22,13 @@ trait InteractsWithEmployeeModule
     protected function actingAsEmployeeWithPermissions(array $symbols): NhanVien
     {
         $this->enableEmployeeModule();
-        $employee = NhanVien::fromAuthProcedureRow((object) [
+        $employee = NhanVien::fromAuthRow((object) [
             'ma_nv' => 'NV001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => 'test-hash',
             'ma_vt' => 1,
-            'ky_hieu' => 'DANG_LAM',
+            'ma_tt' => 2,
         ]);
         $allowedSymbols = array_values(array_filter(array_map(
             static fn (mixed $symbol): ?string => $symbol instanceof NhanVienPermission

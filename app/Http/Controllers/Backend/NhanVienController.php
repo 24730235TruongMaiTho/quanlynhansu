@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Backend;
 
 use App\Contracts\NhanVienServiceContract;
 use App\Enums\NhanVienRemovalAction;
+use App\Enums\NhanVienStatus;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Requests\ListNhanVienRequest;
 use App\Http\Requests\StoreNhanVienRequest;
@@ -80,7 +81,7 @@ class NhanVienController extends Controller
             $lookups = array_replace($lookups, $this->employees->lookups());
             $lookups['trang_thai'] = array_values(array_filter(
                 $lookups['trang_thai'],
-                fn (mixed $status): bool => data_get($status, 'ky_hieu') !== 'DA_NGHI',
+                fn (mixed $status): bool => (int) data_get($status, 'ma_tt', 0) !== NhanVienStatus::Terminated->value,
             ));
         } catch (Throwable) {
             $lookups = $emptyLookups;
@@ -163,10 +164,10 @@ class NhanVienController extends Controller
 
         try {
             $lookups = array_replace($lookups, $this->employees->lookups());
-            if (($employee->ky_hieu ?? null) !== 'DA_NGHI') {
+            if ((int) ($employee->ma_tt ?? 0) !== NhanVienStatus::Terminated->value) {
                 $lookups['trang_thai'] = array_values(array_filter(
                     $lookups['trang_thai'],
-                    fn (mixed $status): bool => data_get($status, 'ky_hieu') !== 'DA_NGHI',
+                    fn (mixed $status): bool => (int) data_get($status, 'ma_tt', 0) !== NhanVienStatus::Terminated->value,
                 ));
             }
         } catch (Throwable) {
@@ -181,7 +182,7 @@ class NhanVienController extends Controller
         ];
         $missingLookups = [];
         foreach ($lookupLabels as $key => $label) {
-            if ($key === 'trang_thai' && ($employee->ky_hieu ?? null) === 'DA_NGHI') {
+            if ($key === 'trang_thai' && (int) ($employee->ma_tt ?? 0) === NhanVienStatus::Terminated->value) {
                 continue;
             }
 

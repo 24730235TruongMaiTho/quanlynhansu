@@ -8,7 +8,9 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
 
 - Đồ án: website quản lý nhân sự cho hai môn Web Application và UI/UX.
 - Stack: Laravel 12, PHP 8.2+, Blade, JavaScript, Vite 7, Tailwind CSS 4, Bootstrap, MariaDB/MySQL.
-- Schema nghiệp vụ hiện nằm trong `quan_ly_nhan_su.session.sql`.
+- Nguồn dựng fresh hiện hành cho hợp đồng 15 bảng là `database/tao_bang.sql`
+  rồi `database/du_lieu_mau.sql`; `quan_ly_nhan_su.session.sql` là dump lịch sử
+  đã đánh dấu, không phải nguồn schema active.
 - Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban còn lỗi. Module nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`; xem handoff/guide để biết các SHA và giới hạn browser avatar.
 - Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
@@ -18,7 +20,8 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
 2. `docs/CODEX_NEXT_HANDOFF.md`.
 3. `docs/PROJECT_STATUS.md` và tài liệu chuyên đề liên quan. Với task module Nhân viên, đọc thêm [docs/EMPLOYEE_MODULE_GUIDE.md](docs/EMPLOYEE_MODULE_GUIDE.md).
 4. Route, controller, request, service/repository, model, Blade/JavaScript và test của task.
-5. `quan_ly_nhan_su.session.sql` trước mọi thay đổi dùng database.
+5. `database/tao_bang.sql` và `database/du_lieu_mau.sql` trước thay đổi fresh;
+   đọc `quan_ly_nhan_su.session.sql` chỉ để đối chiếu legacy khi cần.
 6. Instruction/skill phù hợp trong `.codex/`.
 
 Khi HEAD thay đổi, chạy lại Git status, route, test và build trước khi tin snapshot.
@@ -64,7 +67,9 @@ Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa đ�
 - Dump có `DROP DATABASE IF EXISTS quan_ly_nhan_su`; không import vào DB có dữ liệu cần giữ.
 - Runtime audit là MariaDB 10.4.32; chưa mặc định tuyên bố tương thích MySQL 8.
 - Migrations chỉ là hạ tầng Laravel và chưa tạo bảng nghiệp vụ.
-- Trước khi gọi procedure, kiểm tra tên, số tham số, thứ tự và result shape trong dump/live schema.
+- Module Nhân viên/auth/RBAC hiện dùng Query Builder trực tiếp trên hợp đồng 15
+  bảng; không thêm procedure/view/trigger để né giới hạn bảng. Với procedure của
+  module khác, kiểm tra tên, số tham số, thứ tự và result shape trong dump/live schema.
 - Hai procedure ngoài module nhân viên code đang gọi hiện không tồn tại: `sp_phong_ban_chi_tiet` và `sp_luong_tim_kiem_phan_trang`; không tự tạo bằng phỏng đoán. Chấm công chi tiết hiện dùng Query Builder trên cột canonical và không gọi `sp_cham_cong_chi_tiet_phan_trang`.
 - Chốt cùng timezone cho Laravel và DB trước các logic dùng `now()`/`CURDATE()`.
 - Chỉ test mutation trên database test/disposable.
@@ -105,7 +110,14 @@ git diff --check
 git status --short
 ```
 
-Evidence current trên main ngày 2026-08-21: 52 route (gồm `/`, login/logout và hai alias `/login`), frontend `15/15`, build 16 modules, scoped employee/auth snapshot `119 tests/1141 assertions`, attendance compatibility `16 tests/61 assertions`, full Laravel `237 pass, 1820 assertions`. Root `/` đưa guest vào login và user đã xác thực tới dashboard; regression tests đã khóa cả hai nhánh. Trước entrypoint này, full baseline là `234 pass, 1 fail, 1815 assertions`; trước vòng authorization/guard là `224/1789`. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây và đã cleanup sạch, không claim pass; `165/3367` chỉ là historical Task 20. `phpunit.xml` dùng SQLite in-memory nên full suite xanh cũng không chứng minh procedure MariaDB. Nếu HEAD/baseline đổi, cập nhật `docs/PROJECT_STATUS.md`; không che lỗi cũ bằng cách xóa assertion.
+Evidence historical trên main ngày 2026-08-21 vẫn được giữ trong docs nhưng
+không thay cho gate fresh 15 bảng. Scoped employee/auth tests hiện tại dùng
+SQLite và đã pass hẹp; guarded fresh MariaDB contract đã pass `5 tests,
+161 assertions` trên disposable schema, gồm migration 16→15 và hai worker
+counter trực tiếp. `phpunit.xml` mặc định dùng SQLite
+in-memory nên full suite vẫn không tự chứng minh MariaDB DDL; chạy
+`phpunit.mariadb.xml` để lặp lại gate fresh. Nếu HEAD/baseline đổi, cập nhật
+`docs/PROJECT_STATUS.md`; không che lỗi cũ bằng cách xóa assertion.
 
 ## Giao tiếp
 

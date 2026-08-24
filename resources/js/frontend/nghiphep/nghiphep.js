@@ -62,15 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         /*
          * Paging + filter của danh sách nhân viên.
-         * Các field này map trực tiếp vào:
-         *
-         * sp_nhan_vien_danh_sach_phan_trang(
-         *     p_tu_khoa,
-         *     p_ma_pb,
-         *     p_ma_cv,
-         *     p_page,
-         *     p_per_page
-         * )
+         * Các field này map vào API Laravel; repository dùng projection
+         * Query Builder trên hợp đồng 15 bảng.
          */
         employeePage: 1,
         employeePerPage: 15,
@@ -239,16 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Lấy filter hiện tại để gửi xuống API.
      *
-     * API Laravel sẽ map các query parameter này
-     * vào stored procedure:
-     *
-     * CALL sp_nhan_vien_danh_sach_phan_trang(
-     *     tu_khoa,
-     *     ma_pb,
-     *     ma_cv,
-     *     page,
-     *     per_page
-     * )
+     * API Laravel sẽ map các query parameter này vào projection employee
+     * bằng Query Builder trên hợp đồng 15 bảng.
      */
     function getEmployeeFilters(page = state.employeePage) {
         return {

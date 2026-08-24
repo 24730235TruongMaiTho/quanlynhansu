@@ -1,3 +1,6 @@
+-- LEGACY EMPLOYEE ROUTINES (superseded 2026-08-24). Historical audit only;
+-- do not source as active setup. Current code uses direct Query Builder.
+
 DELIMITER //
 
 # Legacy delete/login procedures owned transactions or accepted plaintext; remove them before

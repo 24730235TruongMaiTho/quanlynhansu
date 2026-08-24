@@ -15,10 +15,10 @@ class NhanVienPermissionServiceTest extends TestCase
     {
         $employee = $this->employee('NV001');
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('permissionSymbols')
+        $repository->shouldReceive('permissionIds')
             ->once()
             ->with('NV001')
-            ->andReturn(['NHAN_VIEN_XEM', 'NHAN_VIEN_SUA']);
+            ->andReturn([101, 103]);
 
         $service = new NhanVienPermissionService($repository);
 
@@ -30,8 +30,8 @@ class NhanVienPermissionServiceTest extends TestCase
     public function test_permission_sets_are_independent_for_distinct_actors(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('permissionSymbols')->once()->with('NV001')->andReturn(['NHAN_VIEN_XEM']);
-        $repository->shouldReceive('permissionSymbols')->once()->with('NV002')->andReturn(['NHAN_VIEN_TAO']);
+        $repository->shouldReceive('permissionIds')->once()->with('NV001')->andReturn([101]);
+        $repository->shouldReceive('permissionIds')->once()->with('NV002')->andReturn([102]);
         $service = new NhanVienPermissionService($repository);
 
         $this->assertTrue($service->allows($this->employee('NV001'), NhanVienPermission::Xem));
@@ -43,11 +43,11 @@ class NhanVienPermissionServiceTest extends TestCase
     public function test_unknown_or_malformed_repository_symbols_never_grant(): void
     {
         foreach ([
-            ['UNKNOWN_PERMISSION'],
-            [' NHAN_VIEN_XEM '],
+            [999],
+            [' 101 '],
         ] as $symbols) {
             $repository = Mockery::mock(NhanVienRepositoryContract::class);
-            $repository->shouldReceive('permissionSymbols')->once()->andReturn($symbols);
+            $repository->shouldReceive('permissionIds')->once()->andReturn($symbols);
             $service = new NhanVienPermissionService($repository);
 
             $this->assertFalse(
@@ -60,7 +60,7 @@ class NhanVienPermissionServiceTest extends TestCase
     public function test_valid_employee_symbols_are_evaluated_even_with_unrelated_repository_symbols(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('permissionSymbols')->once()->andReturn(['NHAN_VIEN_XEM', 'NHOM_KHAC_XEM', null]);
+        $repository->shouldReceive('permissionIds')->once()->andReturn([101, 999, null]);
         $service = new NhanVienPermissionService($repository);
 
         $this->assertTrue($service->allows($this->employee('NV001'), NhanVienPermission::Xem));
@@ -69,7 +69,7 @@ class NhanVienPermissionServiceTest extends TestCase
     public function test_invalid_actor_identifier_fails_closed_without_repository_access(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldNotReceive('permissionSymbols');
+        $repository->shouldNotReceive('permissionIds');
         $service = new NhanVienPermissionService($repository);
 
         $this->assertFalse($service->allows($this->employee('not-an-employee'), NhanVienPermission::Xem));
@@ -77,13 +77,13 @@ class NhanVienPermissionServiceTest extends TestCase
 
     private function employee(string $maNv): NhanVien
     {
-        return NhanVien::fromAuthProcedureRow((object) [
+        return NhanVien::fromAuthRow((object) [
             'ma_nv' => $maNv,
             'ho_ten' => 'Nguyễn An',
             'email' => $maNv.'@example.test',
             'mat_khau' => 'hash',
-            'ma_vt' => 1,
-            'ky_hieu' => 'DANG_LAM',
+            'ma_vt' => 5,
+            'ma_tt' => 2,
         ]);
     }
 }

@@ -1,3 +1,8 @@
+-- LEGACY SAMPLE DATA (superseded 2026-08-24). Do not execute as active setup.
+-- Active fresh seed is database/du_lieu_mau.sql after database/tao_bang.sql.
+-- This historical dump uses the former schema/routines and is retained only
+-- for audit comparison.
+
 -- Tạm tắt kiểm tra khóa ngoại
 SET FOREIGN_KEY_CHECKS = 0;
 
