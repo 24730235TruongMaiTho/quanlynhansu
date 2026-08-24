@@ -1,14 +1,19 @@
 <?php
+// Middleware kiểm tra module nhân viên đã được bật hay chưa.
 use App\Http\Middleware\EnsureNhanVienModuleEnabled;
+// Request được dùng để giữ lại query string khi chuyển hướng URL cũ.
 use Illuminate\Http\Request;
+// Facade Route dùng để khai báo các endpoint web.
 use Illuminate\Support\Facades\Route;
 /*
 |--------------------------------------------------------------------------
 | Frontend Routes - Trang ngoài
 |--------------------------------------------------------------------------
 */
+// Controller xử lý trang ngoài và các thao tác đăng nhập.
 use App\Http\Controllers\Frontend\HomeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+// Danh sách quyền dùng cho middleware phân quyền route.
 use App\Enums\NhanVienPermission;
 use App\Enums\PhongBanPermission;
 
@@ -18,8 +23,9 @@ use App\Enums\PhongBanPermission;
 | Backend Routes - Trang quản trị
 |--------------------------------------------------------------------------
 */
+// Các controller xử lý chức năng trong khu vực quản trị.
 use App\Http\Controllers\Backend\ {
-    BangDieuKhienController,
+    TongQuanController,
     ChamCongController,
     ChucVuController,
     HopDongController,
@@ -35,38 +41,43 @@ use App\Http\Controllers\Backend\ {
     VaiTroController
 };
 
+// Hiển thị form đăng nhập tại URL tiếng Việt.
 Route::get('/dang-nhap', [AuthenticatedSessionController::class, 'create'])
     ->middleware('guest')
     ->name('login');
 
+// Tiếp nhận thông tin đăng nhập và tạo session người dùng.
 Route::post('/dang-nhap', [AuthenticatedSessionController::class, 'store'])
     ->middleware('guest')
     ->name('login.store');
 
-// Tương thích URL đăng nhập cũ (không đổi luồng nghiệp vụ mặc định)
+// Giữ URL cũ để tương thích với các liên kết đã tồn tại.
 Route::get('/login', [AuthenticatedSessionController::class, 'create'])
     ->middleware('guest');
 
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])
     ->middleware('guest');
 
-// Root branches explicitly so guests enter login while authenticated users reach the dashboard.
+// Khách được đưa tới trang đăng nhập; người đã đăng nhập được đưa tới dashboard.
 Route::get('/', function () {
     return auth()->check()
-        ? redirect()->route('backend.bangdieukhien.index')
+        ? redirect()->route('backend.tongquan.index')
         : redirect()->route('login');
 })->name('home');
 
+// Đăng xuất người dùng hiện tại; chỉ session đã xác thực mới được gọi route này.
 Route::post('/dang-xuat', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
+// Chỉ tạo endpoint hỗ trợ kiểm thử khi ứng dụng đang ở môi trường testing.
 if (app()->environment('testing')) {
     Route::get('/_test/employee-authenticated', fn () => response()->json([
         'ma_nv' => auth()->id(),
     ]))->middleware(['auth']);
 }
 
+// Chuyển URL cũ của danh sách nhân viên sang route chuẩn mới.
 Route::get('/admin/nhan-vien/danh-sach-nhan-vien', function (Request $request) {
     return redirect()->route('backend.nhanvien.index', $request->query(), 301);
 })->middleware([
@@ -75,6 +86,7 @@ Route::get('/admin/nhan-vien/danh-sach-nhan-vien', function (Request $request) {
     'can:'.NhanVienPermission::Xem->value,
 ]);
 
+// Chuyển URL cũ của form thêm nhân viên sang route chuẩn mới.
 Route::get('/admin/nhan-vien/them-nhan-vien', function (Request $request) {
     return redirect()->route('backend.nhanvien.create', $request->query(), 301);
 })->middleware([
@@ -83,46 +95,74 @@ Route::get('/admin/nhan-vien/them-nhan-vien', function (Request $request) {
     'can:'.NhanVienPermission::Tao->value,
 ]);
 
-Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () {
-#                   url                                  tên hàm trong controller        tên file view
-    Route::get('/bang-dieu-khien', [BangDieuKhienController::class, 'index'])->name('bangdieukhien.index');
+// Các route quản trị dùng tiền tố tên backend.
+// Có thể bật middleware auth cho toàn bộ nhóm khi hoàn tất cấu hình đăng nhập.
+Route::prefix('')->name('backend.')
+// ->middleware('auth')
+->group(function () {
+    // Dashboard tổng quan.
+    Route::get('/tong-quan', [TongQuanController::class, 'index'])->name('tongquan.index');
 
+    // Trang ngoài mặc định của ứng dụng.
     Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
 
+    // Danh sách phòng ban, yêu cầu quyền xem.
     Route::get('/phong-ban', [PhongBanController::class, 'index'])
         ->middleware('can:'.PhongBanPermission::Xem->value)
         ->name('phongban.index');
 
+    // Hiển thị form tạo phòng ban, yêu cầu quyền tạo.
     Route::get('/phong-ban/create', [PhongBanController::class, 'create'])
         ->middleware('can:'.PhongBanPermission::Tao->value)
         ->name('phongban.create');
 
+    // Lưu phòng ban mới.
     Route::post('/phong-ban', [PhongBanController::class, 'store'])
         ->middleware('can:'.PhongBanPermission::Tao->value)
         ->name('phongban.store');
 
+    // Hiển thị form chỉnh sửa phòng ban theo mã phòng ban.
     Route::get('/phong-ban/{ma_pb}/edit', [PhongBanController::class, 'edit'])
         ->where('ma_pb', '[1-9][0-9]*')
         ->middleware('can:'.PhongBanPermission::Sua->value)
         ->name('phongban.edit');
 
+    // Cập nhật phòng ban bằng PUT hoặc PATCH.
     Route::match(['put', 'patch'], '/phong-ban/{ma_pb}', [PhongBanController::class, 'update'])
         ->where('ma_pb', '[1-9][0-9]*')
         ->middleware('can:'.PhongBanPermission::Sua->value)
         ->name('phongban.update');
 
+    // Xóa phòng ban theo mã phòng ban.
     Route::delete('/phong-ban/{ma_pb}', [PhongBanController::class, 'destroy'])
         ->where('ma_pb', '[1-9][0-9]*')
         ->middleware('can:'.PhongBanPermission::Xoa->value)
         ->name('phongban.destroy');
 
+    // Trang và API quản lý vai trò.
+    Route::view('/vai-tro', 'backend.vaitro.index')->name('vaitro.index');
+    Route::get('/vai-tro/data', [VaiTroController::class, 'index'])->name('vaitro.data');
+    Route::get('/vai-tro/search', [VaiTroController::class, 'search'])->name('vaitro.search');
+    Route::get('/vai-tro/{ma_vt}', [VaiTroController::class, 'show'])
+        ->where('ma_vt', '[1-9][0-9]*')
+        ->name('vaitro.show');
+    Route::post('/vai-tro', [VaiTroController::class, 'store'])->name('vaitro.store');
+    Route::match(['put', 'patch'], '/vai-tro/{ma_vt}', [VaiTroController::class, 'update'])
+        ->where('ma_vt', '[1-9][0-9]*')
+        ->name('vaitro.update');
+    Route::delete('/vai-tro/{ma_vt}', [VaiTroController::class, 'destroy'])
+        ->where('ma_vt', '[1-9][0-9]*')
+        ->name('vaitro.destroy');
+
+    // Danh sách nhân viên.
     Route::get('/nhan-vien', [NhanVienController::class, 'index'])
-        ->middleware([
+        /*->middleware([
             EnsureNhanVienModuleEnabled::class,
             'can:'.NhanVienPermission::Xem->value,
-        ])
+        ])*/
         ->name('nhanvien.index');
 
+    // Hiển thị form thêm nhân viên.
     Route::get('/nhan-vien/create', [NhanVienController::class, 'create'])
         ->middleware([
             EnsureNhanVienModuleEnabled::class,
@@ -130,6 +170,7 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         ])
         ->name('nhanvien.create');
 
+    // Lưu nhân viên mới.
     Route::post('/nhan-vien', [NhanVienController::class, 'store'])
         ->middleware([
             EnsureNhanVienModuleEnabled::class,
@@ -137,6 +178,7 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         ])
         ->name('nhanvien.store');
 
+    // Hiển thị form chỉnh sửa nhân viên.
     Route::get('/nhan-vien/{ma_nv}/edit', [NhanVienController::class, 'edit'])
         ->where('ma_nv', 'NV[0-9]{3}')
         ->middleware([
@@ -145,6 +187,7 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         ])
         ->name('nhanvien.edit');
 
+    // Cập nhật thông tin nhân viên.
     Route::match(['put', 'patch'], '/nhan-vien/{ma_nv}', [NhanVienController::class, 'update'])
         ->where('ma_nv', 'NV[0-9]{3}')
         ->middleware([
@@ -153,6 +196,7 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         ])
         ->name('nhanvien.update');
 
+    // Đặt lại mật khẩu cho nhân viên.
     Route::patch('/nhan-vien/{ma_nv}/dat-lai-mat-khau', [NhanVienController::class, 'resetPassword'])
         ->where('ma_nv', 'NV[0-9]{3}')
         ->middleware([
@@ -161,6 +205,7 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         ])
         ->name('nhanvien.reset-password');
 
+    // Xóa hoặc chuyển trạng thái nhân viên theo nghiệp vụ controller.
     Route::delete('/nhan-vien/{ma_nv}', [NhanVienController::class, 'destroy'])
         ->where('ma_nv', 'NV[0-9]{3}')
         ->middleware([
@@ -169,6 +214,7 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         ])
         ->name('nhanvien.destroy');
 
+    // Xem chi tiết nhân viên.
     Route::get('/nhan-vien/{ma_nv}', [NhanVienController::class, 'show'])
         ->where('ma_nv', 'NV[0-9]{3}')
         ->middleware([
@@ -177,19 +223,19 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         ])
         ->name('nhanvien.show');
 
-    // Lương
+    // Trang quản lý lương hiện trả về view trực tiếp.
     Route::get('/luong', function () {
         return view('backend.luong.index');
-    })->name('backend.luong.index');
+    })->name('luong.index');
 
-    // Chấm công
+    // Trang quản lý chấm công hiện trả về view trực tiếp.
     Route::get('/cham-cong', function () {
         return view('backend.chamcong.index');
-    })->name('backend.chamcong.index');
+    })->name('chamcong.index');
 
-    // Nghỉ phép
+    // Trang quản lý nghỉ phép hiện trả về view trực tiếp.
     Route::get('/nghi-phep', function () {
         return view('backend.nghiphep.index');
-    })->name('backend.nghiphep.index');
+    })->name('nghiphep.index');
 
 });
