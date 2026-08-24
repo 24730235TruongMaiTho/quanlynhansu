@@ -2,93 +2,42 @@
 
 namespace App\Services;
 
-use App\Repositories\ChucVuRepository;
-use Exception;
+use App\Contracts\ChucVuRepositoryContract;
+use App\Contracts\ChucVuServiceContract;
+use App\Exceptions\ChucVuDomainException;
 
-class ChucVuService
+final class ChucVuService implements ChucVuServiceContract
 {
-    protected $repository;
+    public function __construct(private ChucVuRepositoryContract $repository) {}
 
-    public function __construct(ChucVuRepository $repository)
+    public function all(): array
     {
-        $this->repository = $repository;
+        return $this->repository->all();
     }
 
-    public function getAll($filters = [])
+    public function findOrFail(int $maCv): object
     {
-        try {
-            return [
-                'success' => true,
-                'data' => $this->repository->all($filters),
-            ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+        $position = $this->repository->find($maCv);
+
+        if ($position === null) {
+            throw new ChucVuDomainException('Không tìm thấy chức vụ.', 'CV_NOT_FOUND');
         }
+
+        return $position;
     }
 
-    public function getById($id)
+    public function create(string $tenCv, string $heSoPhuCap): void
     {
-        try {
-            $record = $this->repository->find($id);
-            if (!$record) {
-                return ['success' => false, 'message' => 'Không tìm thấy bản ghi'];
-            }
-            return ['success' => true, 'data' => $record];
-        } catch (Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
-        }
+        $this->repository->create(trim($tenCv), trim($heSoPhuCap));
     }
 
-    public function create(array $data)
+    public function update(int $maCv, string $tenCv, string $heSoPhuCap): void
     {
-        try {
-            $record = $this->repository->create($data);
-            return [
-                'success' => true,
-                'message' => 'Tạo thành công',
-                'data' => $record,
-            ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
-        }
+        $this->repository->update($maCv, trim($tenCv), trim($heSoPhuCap));
     }
 
-    public function update($id, array $data)
+    public function delete(int $maCv): void
     {
-        try {
-            $record = $this->repository->update($id, $data);
-            if (!$record) {
-                return ['success' => false, 'message' => 'Không tìm thấy bản ghi'];
-            }
-            return [
-                'success' => true,
-                'message' => 'Cập nhật thành công',
-                'data' => $record,
-            ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
-        }
-    }
-
-    public function delete($id)
-    {
-        try {
-            $result = $this->repository->delete($id);
-            if (!$result) {
-                return ['success' => false, 'message' => 'Không tìm thấy bản ghi'];
-            }
-            return ['success' => true, 'message' => 'Xóa thành công'];
-        } catch (Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
-        }
+        $this->repository->delete($maCv);
     }
 }

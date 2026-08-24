@@ -51,6 +51,15 @@
                     </a>
                 </li>
             @endif
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'ChucVu'))
+                <li class="nav-item">
+                    <a href="{{ route('backend.chucvu.index') }}" class="nav-link">
+                        <i class="bi bi-person-badge" aria-hidden="true"></i>
+                        <span class="nav-title">Chức vụ</span>
+                    </a>
+                </li>
+            @endif
             <!-- Chấm công -->
             <li class="nav-item">
                 <a href="{{ route('backend.backend.chamcong.index') }}" class="nav-link">

@@ -11,6 +11,7 @@ use App\Http\Controllers\Frontend\HomeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Enums\NhanVienPermission;
 use App\Enums\PhongBanPermission;
+use App\Enums\ChucVuPermission;
 
 
 /*
@@ -67,21 +68,21 @@ if (app()->environment('testing')) {
     ]))->middleware(['auth']);
 }
 
-Route::get('/admin/nhan-vien/danh-sach-nhan-vien', function (Request $request) {
-    return redirect()->route('backend.nhanvien.index', $request->query(), 301);
-})->middleware([
-    'auth',
-    EnsureNhanVienModuleEnabled::class,
-    'can:'.NhanVienPermission::Xem->value,
-]);
+Route::prefix('admin')->middleware('auth')->group(function () {
+    Route::get('/nhan-vien/danh-sach-nhan-vien', function (Request $request) {
+        return redirect()->route('backend.nhanvien.index', $request->query(), 301);
+    })->middleware([
+        EnsureNhanVienModuleEnabled::class,
+        'can:'.NhanVienPermission::Xem->value,
+    ]);
 
-Route::get('/admin/nhan-vien/them-nhan-vien', function (Request $request) {
-    return redirect()->route('backend.nhanvien.create', $request->query(), 301);
-})->middleware([
-    'auth',
-    EnsureNhanVienModuleEnabled::class,
-    'can:'.NhanVienPermission::Tao->value,
-]);
+    Route::get('/nhan-vien/them-nhan-vien', function (Request $request) {
+        return redirect()->route('backend.nhanvien.create', $request->query(), 301);
+    })->middleware([
+        EnsureNhanVienModuleEnabled::class,
+        'can:'.NhanVienPermission::Tao->value,
+    ]);
+});
 
 Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () {
 #                   url                                  tên hàm trong controller        tên file view
@@ -115,6 +116,33 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         ->where('ma_pb', '[1-9][0-9]*')
         ->middleware('can:'.PhongBanPermission::Xoa->value)
         ->name('phongban.destroy');
+
+    Route::get('/chuc-vu', [ChucVuController::class, 'index'])
+        ->middleware('can:'.ChucVuPermission::Xem->value)
+        ->name('chucvu.index');
+
+    Route::get('/chuc-vu/create', [ChucVuController::class, 'create'])
+        ->middleware('can:'.ChucVuPermission::Tao->value)
+        ->name('chucvu.create');
+
+    Route::post('/chuc-vu', [ChucVuController::class, 'store'])
+        ->middleware('can:'.ChucVuPermission::Tao->value)
+        ->name('chucvu.store');
+
+    Route::get('/chuc-vu/{ma_cv}/edit', [ChucVuController::class, 'edit'])
+        ->where('ma_cv', '[1-9][0-9]*')
+        ->middleware('can:'.ChucVuPermission::Sua->value)
+        ->name('chucvu.edit');
+
+    Route::match(['put', 'patch'], '/chuc-vu/{ma_cv}', [ChucVuController::class, 'update'])
+        ->where('ma_cv', '[1-9][0-9]*')
+        ->middleware('can:'.ChucVuPermission::Sua->value)
+        ->name('chucvu.update');
+
+    Route::delete('/chuc-vu/{ma_cv}', [ChucVuController::class, 'destroy'])
+        ->where('ma_cv', '[1-9][0-9]*')
+        ->middleware('can:'.ChucVuPermission::Xoa->value)
+        ->name('chucvu.destroy');
 
     Route::get('/nhan-vien', [NhanVienController::class, 'index'])
         ->middleware([

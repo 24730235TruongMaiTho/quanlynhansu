@@ -4,6 +4,7 @@ namespace Tests\Feature\Authorization;
 
 use App\Authorization\PermissionRegistry;
 use App\Contracts\PermissionRepositoryContract;
+use App\Enums\ChucVuPermission;
 use App\Enums\NhanVienPermission;
 use App\Enums\PermissionAction;
 use App\Models\NhanVien;
@@ -44,6 +45,8 @@ final class PermissionIntegrationTest extends TestCase
             ['ma_quyen' => 105, 'ky_hieu_quyen' => 'NV_RESET_PASSWORD', 'module' => 'NhanVien'],
             ['ma_quyen' => 201, 'ky_hieu_quyen' => 'PB_VIEW', 'module' => 'PhongBan'],
             ['ma_quyen' => 202, 'ky_hieu_quyen' => 'PB_CREATE', 'module' => 'PhongBan'],
+            ['ma_quyen' => 301, 'ky_hieu_quyen' => 'CV_VIEW', 'module' => 'ChucVu'],
+            ['ma_quyen' => 302, 'ky_hieu_quyen' => 'CV_CREATE', 'module' => 'ChucVu'],
         ]);
         DB::table('vai_tro_quyen')->insert([
             ['ma_vt' => 1, 'ma_quyen' => 101],
@@ -51,6 +54,8 @@ final class PermissionIntegrationTest extends TestCase
             ['ma_vt' => 1, 'ma_quyen' => 105],
             ['ma_vt' => 1, 'ma_quyen' => 201],
             ['ma_vt' => 1, 'ma_quyen' => 202],
+            ['ma_vt' => 1, 'ma_quyen' => 301],
+            ['ma_vt' => 1, 'ma_quyen' => 302],
         ]);
     }
 
@@ -72,6 +77,9 @@ final class PermissionIntegrationTest extends TestCase
         $this->assertTrue($service->allows($employee, NhanVienPermission::Xem));
         $this->assertTrue($service->allowsModuleAction($employee, 'NhanVien', PermissionAction::Create));
         $this->assertTrue($service->canSeeModule($employee, 'PhongBan'));
+        $this->assertTrue($service->allows($employee, ChucVuPermission::Xem));
+        $this->assertTrue($service->allowsModuleAction($employee, 'ChucVu', PermissionAction::Create));
+        $this->assertTrue($service->canSeeModule($employee, 'ChucVu'));
         $this->assertTrue(Gate::forUser($employee)->allows('NV_VIEW'));
         $this->assertTrue(Gate::forUser($employee)->allows('NV_RESET_PASSWORD'));
         $this->assertFalse(Gate::forUser($employee)->allows('NV_DELETE'));
@@ -99,6 +107,14 @@ final class PermissionIntegrationTest extends TestCase
 
         $this->assertFalse($service->canSeeModule($this->employee(), 'PhongBan'));
         $this->assertTrue($service->allowsModuleAction($this->employee(), 'PhongBan', PermissionAction::Create));
+
+        DB::table('vai_tro_quyen')->where('ma_vt', 1)->where('ma_quyen', 301)->delete();
+        $service = new PermissionService(
+            $this->app->make(PermissionRepositoryContract::class),
+            new PermissionRegistry(),
+        );
+        $this->assertFalse($service->canSeeModule($this->employee(), 'ChucVu'));
+        $this->assertTrue($service->allowsModuleAction($this->employee(), 'ChucVu', PermissionAction::Create));
     }
 
     private function employee(): NhanVien

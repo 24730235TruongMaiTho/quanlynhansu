@@ -3,7 +3,11 @@
 namespace Tests\Integration\MariaDb;
 
 use App\Enums\NhanVienRemovalAction;
+use App\Exceptions\ChucVuDomainException;
+use App\Exceptions\PhongBanDomainException;
+use App\Repositories\ChucVuRepository;
 use App\Repositories\NhanVienRepository;
+use App\Repositories\PhongBanRepository;
 use App\Support\DisposableMariaDbGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -250,6 +254,118 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         )->fetchColumn());
         self::assertSame(2, (int) $this->pdo()->query(
             "SELECT COUNT(*) FROM nhan_vien WHERE ma_nv IN ('NV031', 'NV032')"
+        )->fetchColumn());
+    }
+
+    public function test_department_repository_uses_direct_crud_count_and_safe_errors(): void
+    {
+        $this->runFreshPair();
+        $repository = app(PhongBanRepository::class);
+
+        $rows = $repository->all();
+        self::assertCount(5, $rows);
+        self::assertSame(
+            ['ma_pb', 'ten_pb', 'so_nhan_vien'],
+            array_keys(get_object_vars($rows[0])),
+        );
+        self::assertSame([1, 2, 3, 4, 5], array_map(
+            static fn (object $row): int => $row->ma_pb,
+            $rows,
+        ));
+        self::assertSame([5, 4, 8, 8, 5], array_map(
+            static fn (object $row): int => $row->so_nhan_vien,
+            $rows,
+        ));
+        self::assertSame('Phòng Nhân sự', $rows[0]->ten_pb);
+
+        $repository->create('  Phòng mới  ');
+        $created = $repository->find(6);
+        self::assertNotNull($created);
+        self::assertSame('Phòng mới', $created->ten_pb);
+        self::assertSame(0, $created->so_nhan_vien);
+
+        $repository->update(6, '  Phòng cập nhật  ');
+        self::assertSame('Phòng cập nhật', $repository->find(6)->ten_pb);
+
+        try {
+            $repository->create('Phòng Nhân sự');
+            self::fail('Expected duplicate department name to be rejected.');
+        } catch (PhongBanDomainException $exception) {
+            self::assertSame('PB_NAME_DUPLICATE', $exception->domainCode);
+        }
+
+        try {
+            $repository->update(999, 'Không tồn tại');
+            self::fail('Expected missing department to be rejected.');
+        } catch (PhongBanDomainException $exception) {
+            self::assertSame('PB_NOT_FOUND', $exception->domainCode);
+        }
+
+        try {
+            $repository->delete(1);
+            self::fail('Expected an in-use seeded department to be protected.');
+        } catch (PhongBanDomainException $exception) {
+            self::assertSame('PB_IN_USE', $exception->domainCode);
+        }
+
+        $repository->delete(6);
+        self::assertNull($repository->find(6));
+        self::assertSame(0, (int) $this->pdo()->query(
+            "SELECT COUNT(*) FROM information_schema.ROUTINES
+             WHERE ROUTINE_SCHEMA = DATABASE()"
+        )->fetchColumn());
+    }
+
+    public function test_position_repository_uses_direct_crud_count_decimal_and_safe_errors(): void
+    {
+        $this->runFreshPair();
+        $repository = app(ChucVuRepository::class);
+
+        $rows = $repository->all();
+        self::assertCount(5, $rows);
+        self::assertSame(
+            ['ma_cv', 'ten_cv', 'he_so_phu_cap', 'so_nhan_vien'],
+            array_keys(get_object_vars($rows[0])),
+        );
+        self::assertSame('Giám đốc', $rows[0]->ten_cv);
+        self::assertSame('2.00', $rows[0]->he_so_phu_cap);
+
+        $repository->create('  Cố vấn  ', '1.5');
+        $created = $repository->find(6);
+        self::assertNotNull($created);
+        self::assertSame('Cố vấn', $created->ten_cv);
+        self::assertSame('1.50', $created->he_so_phu_cap);
+
+        $repository->update(6, '  Trưởng cố vấn ', '2');
+        self::assertSame('Trưởng cố vấn', $repository->find(6)->ten_cv);
+        self::assertSame('2.00', $repository->find(6)->he_so_phu_cap);
+
+        try {
+            $repository->create('Giám đốc', '1');
+            self::fail('Expected duplicate position name to be rejected.');
+        } catch (ChucVuDomainException $exception) {
+            self::assertSame('CV_NAME_DUPLICATE', $exception->domainCode);
+        }
+
+        try {
+            $repository->update(999, 'Không tồn tại', '1');
+            self::fail('Expected missing position to be rejected.');
+        } catch (ChucVuDomainException $exception) {
+            self::assertSame('CV_NOT_FOUND', $exception->domainCode);
+        }
+
+        try {
+            $repository->delete(1);
+            self::fail('Expected an in-use seeded position to be protected.');
+        } catch (ChucVuDomainException $exception) {
+            self::assertSame('CV_IN_USE', $exception->domainCode);
+        }
+
+        $repository->delete(6);
+        self::assertNull($repository->find(6));
+        self::assertSame(0, (int) $this->pdo()->query(
+            "SELECT COUNT(*) FROM information_schema.ROUTINES
+             WHERE ROUTINE_SCHEMA = DATABASE()"
         )->fetchColumn());
     }
 

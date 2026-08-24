@@ -2,74 +2,131 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Contracts\ChucVuServiceContract;
+use App\Exceptions\ChucVuDomainException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreChucVuRequest;
 use App\Http\Requests\UpdateChucVuRequest;
-use App\Services\ChucVuService;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
+use Throwable;
 
-class ChucVuController extends Controller
+final class ChucVuController extends Controller
 {
-    protected $service;
+    public function __construct(private ChucVuServiceContract $positions) {}
 
-    public function __construct(ChucVuService $service)
+    public function index(): View
     {
-        $this->service = $service;
-    }
+        $positionError = null;
+        $positions = [];
 
-    public function index(Request $request)
-    {
-        $filters = $request->only(['ten_cv']);
-        $result = $this->service->getAll($filters);
-
-        if (!$result['success']) {
-            return response()->json($result, 500);
+        try {
+            $positions = $this->positions->all();
+        } catch (Throwable) {
+            $positionError = 'Không thể tải danh sách chức vụ lúc này. Vui lòng thử lại sau.';
         }
 
-        return response()->json($result);
+        return view('backend.chucvu.index', compact('positions', 'positionError'));
     }
 
-    public function show($id)
+    public function create(): View
     {
-        $result = $this->service->getById($id);
-
-        if (!$result['success']) {
-            return response()->json($result, 404);
-        }
-
-        return response()->json($result);
+        return view('backend.chucvu.create');
     }
 
-    public function store(StoreChucVuRequest $request)
+    public function store(StoreChucVuRequest $request): RedirectResponse
     {
-        $result = $this->service->create($request->validated());
-
-        if (!$result['success']) {
-            return response()->json($result, 400);
+        try {
+            $this->positions->create(
+                (string) $request->validated('ten_cv'),
+                (string) $request->validated('he_so_phu_cap'),
+            );
+        } catch (ChucVuDomainException $exception) {
+            return back()->withInput()->withErrors([
+                $exception->field ?? 'chuc_vu' => $exception->getMessage(),
+            ]);
+        } catch (Throwable) {
+            return back()->withInput()->withErrors([
+                'chuc_vu' => 'Không thể tạo chức vụ lúc này. Vui lòng thử lại sau.',
+            ]);
         }
 
-        return response()->json($result, 201);
+        return redirect()->route('backend.chucvu.index')->with('success', 'Đã thêm chức vụ.');
     }
 
-    public function update(UpdateChucVuRequest $request, $id)
+    public function edit(string $ma_cv): View
     {
-        $result = $this->service->update($id, $request->validated());
+        try {
+            $position = $this->positions->findOrFail($this->positionId($ma_cv));
+        } catch (ChucVuDomainException $exception) {
+            if ($exception->domainCode === 'CV_NOT_FOUND') {
+                abort(404);
+            }
 
-        if (!$result['success']) {
-            return response()->json($result, 400);
+            abort(503);
+        } catch (Throwable) {
+            abort(503);
         }
 
-        return response()->json($result);
+        return view('backend.chucvu.edit', compact('position'));
     }
 
-    public function destroy($id)
+    public function update(UpdateChucVuRequest $request, string $ma_cv): RedirectResponse
     {
-        $result = $this->service->delete($id);
+        $positionId = $this->positionId($ma_cv);
 
-        if (!$result['success']) {
-            return response()->json($result, 404);
+        try {
+            $this->positions->update(
+                $positionId,
+                (string) $request->validated('ten_cv'),
+                (string) $request->validated('he_so_phu_cap'),
+            );
+        } catch (ChucVuDomainException $exception) {
+            if ($exception->domainCode === 'CV_NOT_FOUND') {
+                abort(404);
+            }
+
+            return back()->withInput()->withErrors([
+                $exception->field ?? 'chuc_vu' => $exception->getMessage(),
+            ]);
+        } catch (Throwable) {
+            return back()->withInput()->withErrors([
+                'chuc_vu' => 'Không thể cập nhật chức vụ lúc này. Vui lòng thử lại sau.',
+            ]);
         }
 
-        return response()->json($result);
+        return redirect()->route('backend.chucvu.index')->with('success', 'Đã cập nhật chức vụ.');
+    }
+
+    public function destroy(string $ma_cv): RedirectResponse
+    {
+        try {
+            $this->positions->delete($this->positionId($ma_cv));
+        } catch (ChucVuDomainException $exception) {
+            if ($exception->domainCode === 'CV_NOT_FOUND') {
+                abort(404);
+            }
+
+            return back()->withErrors([
+                $exception->field ?? 'chuc_vu' => $exception->getMessage(),
+            ]);
+        } catch (Throwable) {
+            return back()->withErrors([
+                'chuc_vu' => 'Không thể xóa chức vụ lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
+
+        return redirect()->route('backend.chucvu.index')->with('success', 'Đã xóa chức vụ.');
+    }
+
+    private function positionId(string $value): int
+    {
+        $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        if ($id === false || $id === null) {
+            abort(404);
+        }
+
+        return $id;
     }
 }

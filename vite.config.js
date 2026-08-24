@@ -11,6 +11,7 @@ export default defineConfig({
                 'resources/js/frontend/chamcong/chamcong.js',
                 'resources/js/frontend/nhanvien/nhanvien.js',
                 'resources/js/frontend/phongban/phongban.js',
+                'resources/js/frontend/chucvu/chucvu.js',
                 'resources/js/frontend/luong/luongCreateUpdate.js',
                 'resources/js/frontend/luong/luongHeSo.js',
                 'resources/js/frontend/luong/luongHeSoCreateUpdate.js',
