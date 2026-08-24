@@ -5,7 +5,7 @@
 - **Lập trình Web Application**: Laravel MVC, API, validation, MySQL/MariaDB, xác thực, phân quyền và kiểm thử.
 - **Thiết kế giao diện người dùng**: luồng thao tác, design system, responsive, accessibility và phản hồi trạng thái.
 
-> **Trạng thái ngày 2026-08-11:** repository đang ở mức **prototype tích hợp**, chưa phải sản phẩm hoàn chỉnh. Code đã có UI và API cho một số nghiệp vụ, nhưng test nghiệp vụ còn thiếu, một số route/Blade bị lỗi và bốn stored procedure mà code gọi chưa tồn tại trong SQL dump hoặc database local.
+> **Trạng thái ngày 2026-08-21:** Module Nhân viên verified hẹp đã được tích hợp vào `main` qua merge `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f` (parents `1677f202f70e020ce75ef0fa88b11b9db44fa047` và `91bb7a106e6a4fae8a61c4eb383dad596bf2b199`), sau đó test attendance `9cd2c30`. Delivery evidence lịch sử nằm ở feature commits `ba6e0189e64eb3046164ae5183950afe0b5722be`, `18ea209d89efce38596dd1440151f6d55ca90156` và `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Entrypoint `/` hiện đưa guest vào `/dang-nhap` và user đã xác thực tới dashboard; regression tests đã khóa hai nhánh này. Full-suite snapshot trước thay đổi entrypoint là **234 pass, 1 fail, 1815 assertions** và cần chạy lại sau thay đổi. Guarded MariaDB rerun sau tích hợp timeout khoảng 184 giây rồi cleanup sạch, nên không claim pass; `165/3367` chỉ là historical Task 20. Frontend `15/15`, build, Composer validate/audit, routes và diff checks pass. Browser employee responsive `320/375/768/1024/1440` pass với console sạch; avatar upload/replacement còn **blocked/unverified** vì Chrome file URL access. Không claim production readiness.
 
 ## Bắt đầu từ đâu
 
@@ -19,22 +19,39 @@
 6. [Frontend](docs/FRONTEND_GUIDE.md) — layout hiện tại, shell mục tiêu và checklist UI.
 7. [Roadmap](docs/ROADMAP.md) — thứ tự xử lý phụ thuộc.
 8. [Handoff cho phiên tiếp theo](docs/CODEX_NEXT_HANDOFF.md) — snapshot kỹ thuật ngắn, có thể thay đổi theo HEAD.
+9. [Hướng dẫn module Nhân viên](docs/EMPLOYEE_MODULE_GUIDE.md) — setup, database decision table, demo và bản đồ tiếp tục.
 
 Code và database live luôn có độ ưu tiên cao hơn snapshot trong tài liệu. Khi HEAD thay đổi, phải chạy lại route, test, build và kiểm tra hợp đồng database.
 
 ## Hiện trạng đã xác minh
 
-Snapshot này được đo trên nhánh `main`, HEAD `643563c029e10a49636f1a6f2e70b4e427f1dc7e`.
+Local rollout hiện có bằng chứng environment-specific: 16 bảng, 1 view, 8
+function, 10 trigger, 69 procedure; demo 5 employee/5 address, admin 5 quyền
+employee và bốn normal zero quyền. Đây không phải production claim; xem
+[EMPLOYEE_MODULE_GUIDE.md](docs/EMPLOYEE_MODULE_GUIDE.md) để biết target và
+cleanup safety.
+
+### Task 20 final evidence (2026-08-21)
+
+Acceptance disposable đã được Stop chính thức và postcheck về `0` cho
+schema/state/lock/run/upload/listener/PHP/public-storage; target
+`storage/app/public` được giữ. Browser evidence hẹp bao phủ login/logout,
+CRUD, auth/RBAC, stale/filter/flash/edit mapping và responsive; session restore
+sau khi chuyển nghỉ việc được automated-test riêng. Avatar file
+upload chưa verify vì browser extension policy. Xem chi tiết ở
+[PROJECT_STATUS.md](docs/PROJECT_STATUS.md) và ignored Task20 reports.
+
+Các số liệu Task 20 trong bảng là historical feature-branch evidence; hãy revalidate HEAD/upstream và các gate khi bắt đầu phiên mới. Merge tích hợp là `aa77419`, seed demo là `91bb7a1`, và focused attendance test là `9cd2c30`.
 
 | Hạng mục | Kết quả |
 | --- | --- |
-| Git | `main` đồng bộ `origin/main`; worktree sạch trước khi viết lại tài liệu |
+| Git | `main` đã chứa merge `aa77419` với parents `1677f20` và `91bb7a1`; luôn revalidate HEAD/upstream khi tiếp tục |
 | Laravel | 12.62.0 trên PHP 8.5.0; project target PHP 8.2+ |
-| Route ứng dụng | 44 route: 17 web `/admin/*`, 27 API `/api/v1/*` |
-| Frontend build | `npm run build` pass; Vite 7.3.6 build 6 entry JavaScript của lương/chấm công/nghỉ phép |
-| Test | 1 pass, 1 fail; test mặc định gọi `/` nhưng ứng dụng chưa có route này |
-| Database local | MariaDB 10.4.32; 14 bảng, 1 view, 8 function, 10 trigger, 63 procedure |
-| Auth/RBAC | Chưa có route đăng nhập, middleware auth hoặc kiểm tra quyền |
+| Route ứng dụng | 52 route; `/` đưa guest tới login và user đã xác thực tới dashboard; toàn bộ `/admin` yêu cầu auth và route nhân viên dùng Gate theo quyền |
+| Frontend | `npm run test:frontend` 15 pass; `npm run build` pass; Vite 7.3.6, 16 modules transformed |
+| Test | Scoped employee/auth snapshot `119 pass, 1141 assertions`; attendance compatibility `16 pass, 61 assertions`; full Laravel hiện tại `237 pass, 1820 assertions`; trước entrypoint `/` là `234 pass, 1 fail, 1815 assertions` |
+| Database local | MariaDB 10.4.32; rollout environment-specific 16 tables/1 view/8 functions/10 triggers/69 procedures và demo 5 employee/5 address; guarded rerun sau tích hợp timeout khoảng 184 giây, cleanup sạch; không phải production |
+| Auth/RBAC | Custom employee provider, login/logout, session fail-closed và 5 quyền nhân viên đã wired/test; role mặc định có 0 quyền |
 
 `route:list`, một response `200` hoặc Vite build thành công chỉ chứng minh phạm vi hẹp; không chứng minh workflow nghiệp vụ chạy đúng.
 
@@ -44,14 +61,15 @@ Snapshot này được đo trên nhánh `main`, HEAD `643563c029e10a49636f1a6f2e
 | --- | --- | --- |
 | Dashboard | Prototype | Route và Blade render được, chưa có dữ liệu nghiệp vụ |
 | Lương | Prototype — blocked | API danh sách phụ thuộc procedure không tồn tại; write contract chưa chặn trùng kỳ; export/đối soát chưa có handler đầy đủ |
-| Chấm công | Prototype — blocked | Hai procedure phân trang không tồn tại; validation có thể trả sai status; import/export chưa có workflow an toàn |
+| Chấm công | Prototype — blocked | Chi tiết dùng Query Builder vì procedure thiếu; update/read đã khóa auth, rollout và Gate; import/export chưa có workflow an toàn |
 | Nghỉ phép | Prototype | Có UI/API CRUD và duyệt; chưa có test nghiệp vụ hoặc kiểm chứng mutation đầy đủ |
 | Hệ số lương | Prototype | Có API đọc/thêm/sửa; JavaScript delete không có route DELETE; validation và schema còn lệch |
-| Nhân viên | Prototype | Danh sách đang dùng dữ liệu hard-code; store chưa lưu; edit/update/delete chưa có method tương ứng |
+| Nhân viên | Verified hẹp và đã tích hợp vào `main` qua `aa77419`; chưa production-ready | List/create/detail/edit, avatar ở automated tests, delete-or-terminate, reset password, login/session, RBAC 5 quyền và responsive browser đã kiểm tra trên disposable MariaDB. Browser upload/thay avatar còn blocked do quyền Chrome; entrypoint `/` đã có regression test guest/authenticated |
 | Phòng ban | Prototype — blocked | Route/controller/Blade/procedure chưa khớp |
 | Chức vụ | Prototype — unreachable | Có controller/service/repository/request/model nhưng chưa có route |
-| Hợp đồng, vai trò, quyền, tài khoản | Planned | Nhiều controller rỗng, chưa có workflow |
-| Đăng nhập/phân quyền | Planned — critical | Cần chốt nguồn tài khoản và chiến lược hash/session |
+| Hợp đồng | Planned | Chưa có workflow quản trị; hiện chỉ được dùng làm dependency khi kiểm tra kết thúc làm việc |
+| Vai trò/quyền | DB/RBAC nền tảng đã có; UI quản trị planned | Có 5 quyền nhân viên và procedure gán/xóa nội bộ; chưa expose workflow quản trị role qua web |
+| Đăng nhập/phân quyền | Verified hẹp cho module nhân viên | Custom provider dùng bảng nhân viên, session từ chối `DA_NGHI`, route/Gate fail-closed; chưa phải security audit production toàn hệ thống |
 | Báo cáo, backup/restore | Planned — unsafe legacy procedures | Procedure backup/restore hiện sinh cú pháp SQL Server, không dùng được cho MariaDB |
 
 Chi tiết và bằng chứng nằm trong [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
@@ -83,7 +101,7 @@ resources/js/               JavaScript và Vite entry
 routes/web.php              Route quản trị
 routes/api.php              API v1
 quan_ly_nhan_su.session.sql Schema nghiệp vụ hiện tại
-tests/                      Hiện mới có 2 test mẫu
+tests/                      Unit/Feature/Frontend/MariaDB integration và acceptance harness
 ```
 
 ## Yêu cầu môi trường
@@ -111,7 +129,7 @@ npm run build
 
 ### Cấu hình môi trường
 
-`.env.example` hiện vẫn là cấu hình Laravel mặc định dùng SQLite và database-backed session/cache/queue; cấu hình đó **không đủ** cho các module gọi stored procedure. Trước khi chạy nghiệp vụ, chỉnh `.env` local theo nguyên tắc:
+`.env.example` đã dùng MySQL/MariaDB, timezone `Asia/Ho_Chi_Minh`/`+07:00`, session/cache file và queue sync. Trước khi chạy nghiệp vụ, điền credential local và chỉ trỏ tới database disposable hoặc database local được phép dùng:
 
 ```dotenv
 APP_LOCALE=vi
@@ -122,6 +140,9 @@ DB_PORT=3306
 DB_DATABASE=quan_ly_nhan_su
 DB_USERNAME=<tai-khoan-local>
 DB_PASSWORD=<mat-khau-local>
+DB_TIMEZONE=+07:00
+
+NHAN_VIEN_MODULE_ENABLED=true
 
 SESSION_DRIVER=file
 CACHE_STORE=file
@@ -154,7 +175,7 @@ php artisan serve
 npm run dev
 ```
 
-Các trang có route hiện nằm dưới `/admin`; repository chưa có route `/`.
+Mở base URL `/` để vào luồng mặc định: guest được chuyển tới `/dang-nhap`, còn user đã xác thực được chuyển thẳng tới `/admin/bang-dieu-khien`. Các trang quản trị khác nằm dưới `/admin`.
 
 Không dùng `composer setup` như một lệnh “cài tất cả” ở trạng thái hiện tại, vì script này tự chạy migrations trong khi chiến lược import dump/migrations chưa được chốt.
 
@@ -165,33 +186,32 @@ php artisan route:list --except-vendor
 php artisan test
 npm run build
 composer validate --no-check-publish
+composer audit --locked
 git diff --check
 git status --short
 ```
 
-Baseline hiện tại:
+Baseline Task 20 trước delivery:
 
-- Route list: pass, 44 route.
-- Build: pass.
-- Composer metadata: hợp lệ.
-- Test: đang fail 1 test do `/` trả 404.
+- Route list: pass, 52 route; entrypoint `/` đã có redirect login/dashboard.
+- Frontend: 15 pass; build pass, 16 modules.
+- Composer validate/install dry-run pass; audit không còn advisory sau khi nâng sáu dependency tương thích trong lockfile.
+- Full Laravel hiện tại: 237 pass, 1820 assertions; trước thay đổi entrypoint là 234 pass, 1 fail, 1815 assertions. Baseline trước vòng authorization/guard là 224/1789.
+- Guarded MariaDB rerun sau tích hợp: timeout khoảng 184 giây; process/schema/state đã cleanup sạch, không claim pass. Kết quả `165/3367` là historical Task 20.
 
 Ngoài ra, `phpunit.xml` ép test dùng SQLite in-memory. Kể cả khi suite này xanh, nó vẫn không chứng minh stored procedure/trigger MariaDB hoạt động; cần một integration suite riêng trên database disposable.
 
-Không sửa test để “xanh” bằng cách bỏ assertion; hãy chốt route home mong muốn rồi cập nhật route và test cùng nhau.
+Entrypoint `/` được khóa bằng route và regression tests cho cả guest lẫn authenticated; không bỏ assertion để che lỗi.
 
 ## Các blocker ưu tiên
 
-1. Đồng bộ `.env.example`, DBMS, timezone và quy trình database/migrations.
-2. Tạo master data/seed tối thiểu cho phòng ban, chức vụ, trạng thái, vai trò, quyền và loại phép.
-3. Bổ sung hoặc thay thế bốn procedure còn thiếu:
-   `sp_phong_ban_chi_tiet`, `sp_cham_cong_nhan_vien_phan_trang`,
-   `sp_cham_cong_chi_tiet_phan_trang`, `sp_luong_tim_kiem_phan_trang`.
-4. Sửa route/action/Blade, API naming và validation/error contract.
-5. Khóa cả read/write contract lương, gồm unique `(ma_nv, ky_luong)`.
-6. Chốt auth/RBAC trước khi coi route quản trị là an toàn.
-7. Viết feature/integration test trên database disposable cho các module đã có UI/API.
-8. Xử lý tích hợp nhánh `frontend` như một workstream UI riêng; không merge tự động.
+1. Re-run full Laravel suite để cập nhật evidence sau khi bổ sung entrypoint `/`.
+2. Xác minh browser upload/thay avatar sau khi Chrome extension được cấp file URL access; không suy từ automated test thành browser pass.
+3. Tạo quy trình rollout/backup/master data cho môi trường dùng thật; không chạy canonical dump phá hủy trên database cần giữ dữ liệu.
+4. Bổ sung hai procedure còn thiếu ngoài module nhân viên: `sp_phong_ban_chi_tiet` và `sp_luong_tim_kiem_phan_trang`. Chấm công chi tiết đã chuyển sang Query Builder trong scope tích hợp.
+5. Sửa route/action/Blade, API naming và validation/error contract của các module còn lại.
+6. Khóa cả read/write contract lương, gồm unique `(ma_nv, ky_luong)`.
+7. Xử lý tích hợp nhánh `frontend` như một workstream UI riêng; không merge tự động.
 
 ## Làm việc nhóm
 

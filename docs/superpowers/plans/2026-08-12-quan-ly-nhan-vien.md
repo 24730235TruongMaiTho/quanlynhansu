@@ -1722,7 +1722,7 @@ git push
 - Consumes harness Task 19; không mutation configured live DB.
 - Trạng thái tài liệu chỉ dùng `verified hẹp`, `prototype`, `blocked`, `planned`; chỉ dùng “hoàn thành” khi đủ mọi acceptance criterion.
 
-- [ ] **Step 1: Re-run mọi automated gate từ clean checkout state**
+- [x] **Step 1: Re-run automated gates**
 
 ```powershell
 pwsh -NoProfile -File tests/Support/invoke-employee-mariadb-tests.ps1 -EnableDisposableMariaDb
@@ -1736,7 +1736,7 @@ git diff --check
 
 Chạy thêm `php artisan test` đầy đủ và ghi riêng kết quả. Nếu baseline `/` vẫn fail `404`, giữ assertion và báo đó là blocker cũ ngoài scope; không mô tả full suite xanh.
 
-- [ ] **Step 2: Tạo acceptance database disposable và account demo**
+- [x] **Step 2: Tạo acceptance database disposable và account demo**
 
 ```powershell
 pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 -Action Start -StateFile storage/framework/testing/employee-acceptance.json -EnableDisposableMariaDb
@@ -1745,6 +1745,11 @@ pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 -Action Start -State
 Harness fail nếu state literal đã tồn tại; tạo database guarded, chạy scripts, verify runtime target, bootstrap admin `NV001`, seed role acceptance, rồi start `http://127.0.0.1:8012` với APP_URL đúng origin, APP_KEY/cache paths ephemeral, guarded DB URL, socket rỗng, avatar prefix riêng và DB disposable. Password suy ra từ công thức đã duyệt, không đọc/in hash. JSON stdout cho URL, nhưng mọi bước sau dùng literal state path nên không phụ thuộc biến shell sống qua browser/tool turns. Nếu bất kỳ bước Start nào fail, harness chỉ dừng process có identity khớp và cleanup DB/file/link/state trong `finally` trước khi trả lỗi.
 
 - [ ] **Step 3: Dùng browser skill chạy acceptance thật**
+
+Trạng thái 2026-08-21: phần login/session, CRUD, lifecycle/RBAC, stale/filter/
+flash/edit mapping, console và responsive đã pass hẹp; riêng avatar
+upload/replacement bị Chrome extension chặn file URL access nên Step 3 cố ý giữ
+chưa hoàn tất.
 
 Đọc và dùng skill `browser-testing-with-devtools` tại thời điểm triển khai. Kiểm tra qua UI thật:
 
@@ -1761,11 +1766,11 @@ Harness fail nếu state literal đã tồn tại; tạo database guarded, chạ
 
 Chụp/ghi bằng chứng ở width `320`, `375`, `768`, `1024`, `1440`. Browser automation bị policy chặn phải được ghi là `blocked`, tách khỏi test/build; không suy diễn browser pass.
 
-- [ ] **Step 4: Cleanup acceptance environment fail-safe**
+- [x] **Step 4: Cleanup acceptance environment fail-safe**
 
 Ngay cả khi browser/tool step lỗi, bắt buộc chạy `pwsh -NoProfile -File tests/Support/employee-acceptance.ps1 -Action Stop -StateFile storage/framework/testing/employee-acceptance.json -EnableDisposableMariaDb`. Xác nhận process chỉ bị dừng khi toàn bộ identity khớp; exact run-specific avatar prefix (kể cả orphan) đã được dọn, database guarded không còn, state/temp/log đã xóa và link acceptance-created đã gỡ. Nếu process identity mismatch, không kill process đó; vẫn cleanup các resource còn lại và báo lỗi. Không xóa directory rộng hoặc dùng wildcard.
 
-- [ ] **Step 5: Security/boundary audit**
+- [x] **Step 5: Security/boundary audit**
 
 ```powershell
 rg -n 'mat_khau|password|SELECT \*|->getMessage\(|DB::(select|statement).*nhan_vien|sp_nhan_vien_(danh_sach|tim_kiem|xoa|dang_nhap)\b' app routes resources database/sql/employee
@@ -1776,11 +1781,11 @@ git status --short --branch
 
 Phân loại từng hit hợp lệ (hash chỉ trong auth/write path; `hop_dong` chỉ trong lifecycle dependency check) hoặc sửa trước khi bàn giao. Xác nhận `docs/CODEX_FRONTEND_HANDOFF.md`, `.env`, `public/build`, upload test và credential không tracked/staged.
 
-- [ ] **Step 6: Cập nhật tài liệu bằng bằng chứng thực tế**
+- [x] **Step 6: Cập nhật tài liệu bằng bằng chứng thực tế**
 
 Ghi procedure signatures/order/result shape và cách chạy MariaDB suite vào `DATABASE.md`; trạng thái module, test counts, browser matrix và giới hạn vào `PROJECT_STATUS.md`; quyết định tiếp theo/commit/upstream vào handoff; asset/page conventions, `php artisan storage:link` cho local và `Storage::url()` vào frontend guide. Đổi status của design spec theo đúng bằng chứng. Đánh dấu toàn bộ checkbox plan đã thực sự hoàn tất; checkbox browser giữ trống nếu bị policy chặn.
 
-- [ ] **Step 7: Final verification, documentation commit, and push**
+- [x] **Step 7: Final verification, documentation commit, and push**
 
 Đọc và dùng `superpowers:verification-before-completion` trước claim cuối. Chạy lại:
 
@@ -1794,17 +1799,21 @@ git diff --check
 git status --short --branch
 ```
 
-Stage đúng bốn tài liệu project, spec và plan; xem full staged diff, rồi:
+Stage đúng allowlist tài liệu thực sự thay đổi (13 file ở lần thực thi cuối), xem
+full staged diff, rồi:
 
 ```powershell
-git add -- docs/PROJECT_STATUS.md docs/DATABASE.md docs/CODEX_NEXT_HANDOFF.md docs/FRONTEND_GUIDE.md docs/superpowers/specs/2026-08-12-quan-ly-nhan-vien-design.md docs/superpowers/plans/2026-08-12-quan-ly-nhan-vien.md
 git diff --cached --check
 git diff --cached --stat
-git commit -m "docs(employee): record integrated acceptance evidence"
-git push
+git commit -m "docs: record employee module evidence and handoff"
+git push origin feature/quanly-nhan-vien
 ```
 
-- [ ] **Step 8: Prove remote handoff without merging**
+Kết quả delivery: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`,
+dependency locks `18ea209d89efce38596dd1440151f6d55ca90156` và documentation evidence
+`7bedcadf8c374b38d2e3451617f288bca6184d5f` đã push lên feature branch.
+
+- [x] **Step 8: Prove remote handoff without merging**
 
 ```powershell
 git rev-parse HEAD
@@ -1814,15 +1823,19 @@ git status --short --branch
 
 Expected: local/upstream SHA giống nhau sau push, worktree sạch, nhánh vẫn là `feature/quanly-nhan-vien`, `main` chưa merge. Không fetch, merge, rebase hoặc tạo PR.
 
+Đã xác minh checkpoint `7bedcadf8c374b38d2e3451617f288bca6184d5f`:
+local HEAD, tracking upstream và remote ref bằng nhau; worktree sạch; không merge
+vào `main`.
+
 ## Final Acceptance Checklist
 
-- [ ] Tất cả contract procedure/schema pass trên MariaDB disposable, gồm concurrency và rollback.
-- [ ] List/create/detail/edit/delete-or-terminate/reset dùng data thật qua repository procedure.
-- [ ] Password mặc định/reset là `nhom3@{năm}`, hash Laravel, không forced-change flag, không lộ hash.
-- [ ] Auth/RBAC đủ năm quyền, CRUD không expose `ma_vt`, target non-baseline bị chặn hai tầng và `DA_NGHI` fail closed.
+- [x] Tất cả contract procedure/schema pass trên MariaDB disposable, gồm concurrency và rollback.
+- [x] List/create/detail/edit/delete-or-terminate/reset dùng data thật qua repository procedure.
+- [x] Password mặc định/reset là `nhom3@{năm}`, hash Laravel, không forced-change flag, không lộ hash.
+- [x] Auth/RBAC đủ năm quyền, CRUD không expose `ma_vt`, target non-baseline bị chặn hai tầng và `DA_NGHI` fail closed.
 - [ ] UI có loading/empty/success/validation/server/submitting, accessible và responsive.
-- [ ] Employee module hoạt động khi không có controller/service/procedure hợp đồng.
-- [ ] Caller cũ và mã `ma_nv` chéo module đã regression-test; lookup chấm công chạy procedure thật với aggregate/pagination.
-- [ ] Automated gates và browser acceptance được báo đúng bằng chứng/giới hạn.
-- [ ] Mỗi vertical slice đã commit + push; không merge/rebase/force-push/PR.
-- [ ] Configured live database và local-only frontend handoff không bị mutation/stage.
+- [x] Employee module hoạt động độc lập khi chưa có workflow quản trị hợp đồng; lifecycle chỉ đọc dependency hiện có.
+- [x] Caller cũ và mã `ma_nv` chéo module đã regression-test; lookup chấm công chạy procedure thật với aggregate/pagination.
+- [x] Automated gates và browser acceptance được báo đúng bằng chứng/giới hạn.
+- [x] Mỗi vertical slice đã commit + push; không merge/rebase/force-push/PR.
+- [x] Configured live database và local-only frontend handoff không bị mutation/stage.

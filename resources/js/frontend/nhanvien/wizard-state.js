@@ -21,3 +21,15 @@ export function nextStep(current) {
 export function previousStep(current) {
     return Math.max(1, Math.min(3, Number(current) || 1) - 1);
 }
+
+export function reconcileAvatarChoice(changedControl, hasFile, deleteChecked) {
+    if (changedControl === 'file' && hasFile) {
+        return { hasFile: true, deleteChecked: false };
+    }
+
+    if (changedControl === 'delete' && deleteChecked) {
+        return { hasFile: false, deleteChecked: true };
+    }
+
+    return { hasFile, deleteChecked };
+}

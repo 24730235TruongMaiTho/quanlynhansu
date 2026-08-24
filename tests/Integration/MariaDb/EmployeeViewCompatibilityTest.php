@@ -42,7 +42,7 @@ class EmployeeViewCompatibilityTest extends MariaDbTestCase
         foreach (['sp_cham_cong_nhan_vien_tim_kiem', 'sp_luong_tim_kiem', 'sp_luong_xem'] as $procedure) {
             $this->installCanonicalRoutine('PROCEDURE', $procedure);
         }
-        foreach (['sp_nhan_vien_tim_kiem', 'sp_nhan_vien_danh_sach', 'sp_nhan_vien_chi_tiet'] as $procedure) {
+        foreach (['sp_nhan_vien_danh_sach_phan_trang', 'sp_nhan_vien_chi_tiet'] as $procedure) {
             $this->pdo()->exec("DROP PROCEDURE IF EXISTS `{$procedure}`");
             $this->installCanonicalRoutine('PROCEDURE', $procedure);
         }
@@ -51,17 +51,23 @@ class EmployeeViewCompatibilityTest extends MariaDbTestCase
         $attendance = $this->executeProcedure('CALL sp_cham_cong_nhan_vien_tim_kiem(?, ?)', ['NV001', '2026-08-01']);
         $payrollSearch = $this->executeProcedure('CALL sp_luong_tim_kiem(?, ?, ?, ?)', [null, '2026-08-01', null, null]);
         $payrollDetail = $this->executeProcedure('CALL sp_luong_xem(?, ?)', ['NV001', '2026-08-01']);
-        $employeeSearch = $this->executeProcedure('CALL sp_nhan_vien_tim_kiem(?, ?, ?, ?)', ['', null, null, null]);
-        $employeeList = $this->executeProcedure('CALL sp_nhan_vien_danh_sach()', []);
+        $this->pdo()->exec('SET @compat_employee_total = 0');
+        $employeeSearch = $this->executeProcedure(
+            'CALL sp_nhan_vien_danh_sach_phan_trang(?, ?, ?, ?, ?, ?, @compat_employee_total)',
+            ['', null, null, null, 1, 20],
+        );
         $employeeDetail = $this->executeProcedure('CALL sp_nhan_vien_chi_tiet(?)', ['NV001']);
 
         $this->assertSafeColumns($attendance, ['ma_nv', 'ho_ten', 'ngay_sinh', 'gioi_tinh_hien_thi', 'sdt', 'email', 'ten_pb', 'ten_cv']);
         $this->assertSafeColumns($payrollSearch, ['ma_nv', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'sdt', 'email', 'ngay_vao_lam', 'ma_pb', 'ten_pb', 'ma_cv', 'ten_cv', 'hoc_van']);
         $this->assertSafeColumns($payrollDetail, ['ma_nv', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'sdt', 'email', 'ngay_vao_lam', 'ma_pb', 'ten_pb', 'ma_cv', 'ten_cv', 'hoc_van']);
-        foreach ([$employeeSearch, $employeeList, $employeeDetail] as $employeeRow) {
-            $this->assertSame($this->safeEmployeeColumns(), array_keys($employeeRow));
-            $this->assertArrayNotHasKey('mat_khau', $employeeRow);
-        }
+        $this->assertSame([
+            'ma_nv', 'ho_ten', 'sdt', 'email', 'ngay_vao_lam', 'anh_dai_dien', 'ma_pb',
+            'ten_pb', 'ma_cv', 'ten_cv', 'ma_tt', 'ky_hieu', 'ten_tt',
+        ], array_keys($employeeSearch));
+        $this->assertSame($this->safeEmployeeColumns(), array_keys($employeeDetail));
+        $this->assertArrayNotHasKey('mat_khau', $employeeSearch);
+        $this->assertArrayNotHasKey('mat_khau', $employeeDetail);
 
         $definitions = $this->pdo()->query(
             "SELECT ROUTINE_DEFINITION FROM information_schema.ROUTINES
@@ -152,11 +158,11 @@ class EmployeeViewCompatibilityTest extends MariaDbTestCase
     private function safeEmployeeColumns(): array
     {
         return [
-            'ma_nv', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'gioi_tinh_hien_thi',
-            'sdt', 'email', 'ngay_vao_lam', 'ma_pb', 'ten_pb', 'ma_cv', 'ten_cv',
-            'he_so_phu_cap', 'dan_toc', 'cccd', 'noi_cap_cccd', 'hoc_van', 'ma_tt',
-            'ky_hieu', 'ten_tt', 'ngay_nghi_viec', 'ma_vt', 'ky_hieu_vai_tro',
-            'ten_vt', 'anh_dai_dien',
+            'ma_nv', 'ho_ten', 'ngay_sinh', 'gioi_tinh', 'sdt', 'email', 'ngay_vao_lam',
+            'ma_pb', 'ten_pb', 'ma_cv', 'ten_cv', 'dan_toc', 'cccd', 'noi_cap_cccd',
+            'hoc_van', 'ma_tt', 'ky_hieu', 'ten_tt', 'ngay_nghi_viec', 'ma_vt',
+            'ky_hieu_vai_tro', 'ten_vt', 'anh_dai_dien', 'dia_chi_cu_the', 'phuong_xa',
+            'quan_huyen', 'tinh_thanh',
         ];
     }
 }

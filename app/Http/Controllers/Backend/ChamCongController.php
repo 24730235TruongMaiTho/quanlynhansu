@@ -1,14 +1,14 @@
 <?php
 
 namespace App\Http\Controllers\Backend;
+
+use App\Contracts\NhanVienServiceContract;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-
-use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
 
 class ChamCongController extends Controller
 {
@@ -32,9 +32,8 @@ class ChamCongController extends Controller
      * page
      * per_page
      */
-    public function employees(
-        Request $request
-    ): JsonResponse {
+    public function employees(Request $request): JsonResponse
+    {
         try {
             $validated = $request->validate([
                 'tu_khoa' => [
@@ -75,90 +74,36 @@ class ChamCongController extends Controller
                 ],
             ]);
 
-            $tuKhoa = $this->nullIfEmpty(
-                $validated['tu_khoa'] ?? null
-            );
+            $filters = [
+                'tu_khoa' => $this->nullIfEmpty($validated['tu_khoa'] ?? null),
+                'ma_pb' => isset($validated['ma_pb']) ? (int) $validated['ma_pb'] : null,
+                'thang' => (int) ($validated['thang'] ?? now()->month),
+                'nam' => (int) ($validated['nam'] ?? now()->year),
+                'page' => (int) ($validated['page'] ?? 1),
+                'so_dong' => (int) ($validated['per_page'] ?? 15),
+            ];
 
-            $maPhongBan =
-                $validated['ma_pb'] ?? null;
-
-            $thang =
-                $validated['thang'] ??
-                (int) now()->month;
-
-            $nam =
-                $validated['nam'] ??
-                (int) now()->year;
-
-            $page = max(
-                1,
-                (int) ($validated['page'] ?? 1)
-            );
-
-            $perPage = min(
-                100,
-                max(
-                    1,
-                    (int) (
-                        $validated['per_page'] ?? 15
-                    )
-                )
-            );
-
-            /*
-             * SP:
-             *
-             * sp_cham_cong_nhan_vien_phan_trang(
-             *     tu_khoa,
-             *     ma_pb,
-             *     thang,
-             *     nam,
-             *     page,
-             *     per_page
-             * )
-             */
-            $rows = collect(
-                DB::select(
-                    '
-                    CALL sp_cham_cong_nhan_vien_phan_trang(
-                        ?, ?, ?, ?, ?, ?
-                    )
-                    ',
-                    [
-                        $tuKhoa,
-                        $maPhongBan,
-                        $thang,
-                        $nam,
-                        $page,
-                        $perPage,
-                    ]
-                )
-            );
-
-            $paginator =
-                $this->makePaginator(
-                    $rows,
-                    $page,
-                    $perPage
-                );
+            $paginator = $this->nhanVienService->paginateForAttendance($filters);
+            $paginator->withPath($request->url())->appends($request->query());
 
             return response()->json([
                 'success' => true,
                 'data' => $paginator,
             ]);
-
         } catch (QueryException $exception) {
+            report($exception);
 
-            return $this->queryError(
-                $exception,
-                'Không thể tải danh sách nhân viên.'
-            );
-
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể tải danh sách nhân viên.',
+            ], 500);
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Throwable $exception) {
 
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage(),
+                'message' => 'Không thể tải danh sách nhân viên.',
             ], 500);
         }
     }
@@ -178,7 +123,8 @@ class ChamCongController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        try {
+            $validated = $request->validate([
             'ma_nv' => [
                 'required',
                 'string',
@@ -206,9 +152,8 @@ class ChamCongController extends Controller
                 'min:1',
                 'max:100',
             ],
-        ]);
+            ]);
 
-        try {
             $maNhanVien = $validated['ma_nv'];
             $thang = (int) $validated['thang'];
             $nam = (int) $validated['nam'];
@@ -317,6 +262,8 @@ class ChamCongController extends Controller
                     'so_ngay_cham_cong' => (float) ($summary->so_ngay_cham_cong ?? 0),
                 ],
             ]);
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (QueryException $exception) {
             return $this->queryError(
                 $exception,
@@ -473,56 +420,16 @@ class ChamCongController extends Controller
                 'Không thể cập nhật chấm công.'
             );
 
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Throwable $exception) {
+            report($exception);
 
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage(),
+                'message' => 'Không thể cập nhật chấm công.',
             ], 500);
         }
-    }
-
-    /**
-     * =========================================================
-     * CREATE PAGINATOR TỪ RESULT STORED PROCEDURE
-     * =========================================================
-     *
-     * Stored procedure phải trả:
-     *
-     * total_count
-     */
-    private function makePaginator(
-        Collection $rows,
-        int $page,
-        int $perPage
-    ): LengthAwarePaginator {
-        $total = (int) (
-            $rows->first()->total_count ?? 0
-        );
-
-        $items = $rows
-            ->map(function ($row) {
-                unset(
-                    $row->total_count
-                );
-
-                return $row;
-            })
-            ->values();
-
-        return new LengthAwarePaginator(
-            $items,
-            $total,
-            $perPage,
-            $page,
-            [
-                'path' => LengthAwarePaginator::resolveCurrentPath(),
-
-                'query' => request()->query(),
-
-                'pageName' => 'page',
-            ]
-        );
     }
 
     /**

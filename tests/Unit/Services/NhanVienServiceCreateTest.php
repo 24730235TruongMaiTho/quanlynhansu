@@ -137,6 +137,41 @@ class NhanVienServiceCreateTest extends TestCase
         $this->assertSame([], Storage::disk('public')->allFiles('nhan-vien'));
     }
 
+    public function test_outer_rollback_compensates_a_successful_create_avatar(): void
+    {
+        Storage::fake('public');
+        $avatarPath = null;
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('create')->once()->withArgs(
+            function (array $profile, string $passwordHash, ?string $path) use (&$avatarPath): bool {
+                $avatarPath = $path;
+
+                return is_string($path);
+            },
+        )->andReturn('NV001');
+        $repository->shouldReceive('upsertAddress')->once();
+        $hasher = Mockery::mock(Hasher::class);
+        $hasher->shouldReceive('make')->once()->andReturn('laravel-hash');
+        $connection = DB::connection();
+        $connection->beginTransaction();
+
+        try {
+            $this->assertSame('NV001', $this->service($repository, $hasher)->create($this->validPayload([
+                'anh_dai_dien' => $this->fakePng(),
+            ])));
+            $this->assertNotNull($avatarPath);
+            Storage::disk('public')->assertExists($avatarPath);
+
+            $connection->rollBack();
+
+            Storage::disk('public')->assertMissing($avatarPath);
+        } finally {
+            if ($connection->transactionLevel() > 0) {
+                $connection->rollBack();
+            }
+        }
+    }
+
     public function test_move_failure_deletes_generated_owned_temporary_and_final_paths(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);

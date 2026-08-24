@@ -72,6 +72,13 @@
     min-width: 0;
 }
 
+.employee-page .employee-avatar-preview {
+    display: block;
+    object-fit: cover;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 50%;
+}
+
 .employee-page .employee-step-actions {
     display: flex;
     flex-wrap: wrap;

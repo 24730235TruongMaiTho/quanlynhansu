@@ -15,7 +15,8 @@ USE quan_ly_nhan_su;
    -------------------------------------- */
 CREATE TABLE phong_ban (
     ma_pb INT AUTO_INCREMENT PRIMARY KEY,
-    ten_pb NVARCHAR(100) NOT NULL
+    ten_pb NVARCHAR(100) NOT NULL,
+    CONSTRAINT uq_phong_ban_ten_pb UNIQUE (ten_pb)
 );
 
 /* --------------------------------------
@@ -45,11 +46,23 @@ VALUES (N'Nhân viên mặc định', N'Vai trò hệ thống mặc định khô
    Bảng quyền
    -------------------------------------- */
 CREATE TABLE quyen (
-    ma_quyen INT PRIMARY KEY,
+    ma_quyen INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     ky_hieu_quyen NVARCHAR(100) NOT NULL,
     ten_quyen NVARCHAR(50) NOT NULL,
-    module NVARCHAR(50) NOT NULL
+    module NVARCHAR(50) NOT NULL,
+    CONSTRAINT uq_quyen_ky_hieu_quyen UNIQUE (ky_hieu_quyen)
 );
+
+INSERT INTO quyen (ky_hieu_quyen, ten_quyen, module) VALUES
+    ('NHAN_VIEN_XEM', N'Xem nhân viên', 'NHAN_VIEN'),
+    ('NHAN_VIEN_TAO', N'Tạo nhân viên', 'NHAN_VIEN'),
+    ('NHAN_VIEN_SUA', N'Sửa nhân viên', 'NHAN_VIEN'),
+    ('NHAN_VIEN_XOA', N'Xóa hoặc kết thúc làm việc', 'NHAN_VIEN'),
+    ('NHAN_VIEN_DAT_LAI_MAT_KHAU', N'Đặt lại mật khẩu nhân viên', 'NHAN_VIEN'),
+    ('PHONG_BAN_XEM', N'Xem phòng ban', 'PHONG_BAN'),
+    ('PHONG_BAN_TAO', N'Tạo phòng ban', 'PHONG_BAN'),
+    ('PHONG_BAN_SUA', N'Sửa phòng ban', 'PHONG_BAN'),
+    ('PHONG_BAN_XOA', N'Xóa phòng ban', 'PHONG_BAN');
 
 /* --------------------------------------
    Bảng vai trò quyền
@@ -58,7 +71,8 @@ CREATE TABLE vai_tro_quyen (
     ma_vt INT NOT NULL,
     ma_quyen INT NOT NULL,
     PRIMARY KEY (ma_vt, ma_quyen),
-    CONSTRAINT fk_vai_tro_quyen_quyen FOREIGN KEY (ma_quyen) REFERENCES quyen(ma_quyen),
+    CONSTRAINT fk_vai_tro_quyen_quyen FOREIGN KEY (ma_quyen) REFERENCES quyen(ma_quyen)
+        ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT fk_vai_tro_quyen_vai_tro FOREIGN KEY (ma_vt) REFERENCES vai_tro(ma_vt)
 );
 
@@ -731,10 +745,13 @@ CREATE PROCEDURE sp_phong_ban_them(
 BEGIN
     SET p_ten_pb = LTRIM(RTRIM(IFNULL(p_ten_pb, N'')));
     IF p_ten_pb = N'' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban không được rỗng.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_REQUIRED';
+    END IF;
+    IF CHAR_LENGTH(p_ten_pb) > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_TOO_LONG';
     END IF;
     IF EXISTS (SELECT 1 FROM phong_ban WHERE ten_pb = p_ten_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban đã tồn tại.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_DUPLICATE';
     END IF;
     INSERT INTO phong_ban(ten_pb) VALUES (p_ten_pb);
 END//
@@ -750,14 +767,20 @@ CREATE PROCEDURE sp_phong_ban_sua(
 )
 BEGIN
     SET p_ten_pb = LTRIM(RTRIM(IFNULL(p_ten_pb, N'')));
+    IF p_ma_pb IS NULL OR p_ma_pb < 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_ID_INVALID';
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM phong_ban WHERE ma_pb = p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không tìm thấy phòng ban cần sửa.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NOT_FOUND';
     END IF;
     IF p_ten_pb = N'' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban không được rỗng.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_REQUIRED';
+    END IF;
+    IF CHAR_LENGTH(p_ten_pb) > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_TOO_LONG';
     END IF;
     IF EXISTS (SELECT 1 FROM phong_ban WHERE ten_pb = p_ten_pb AND ma_pb <> p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên phòng ban đã tồn tại.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NAME_DUPLICATE';
     END IF;
     UPDATE phong_ban SET ten_pb = p_ten_pb WHERE ma_pb = p_ma_pb;
 END//
@@ -771,11 +794,14 @@ CREATE PROCEDURE sp_phong_ban_xoa(
     IN p_ma_pb INT
 )
 BEGIN
+    IF p_ma_pb IS NULL OR p_ma_pb < 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_ID_INVALID';
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM phong_ban WHERE ma_pb = p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không tìm thấy phòng ban cần xóa.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NOT_FOUND';
     END IF;
     IF EXISTS (SELECT 1 FROM nhan_vien WHERE ma_pb = p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không thể xóa phòng ban vì đang có nhân viên thuộc phòng ban này.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_IN_USE';
     END IF;
     DELETE FROM phong_ban WHERE ma_pb = p_ma_pb;
 END//
@@ -790,6 +816,26 @@ BEGIN
     SELECT ma_pb, ten_pb, fn_dem_nhan_vien_theo_phong_ban(ma_pb) AS so_nhan_vien 
     FROM phong_ban 
     ORDER BY ma_pb;
+END//
+
+/* --------------------------------------
+   Chi tiết phòng ban
+   -------------------------------------- */
+DROP PROCEDURE IF EXISTS sp_phong_ban_chi_tiet//
+
+CREATE PROCEDURE sp_phong_ban_chi_tiet(
+    IN p_ma_pb INT
+)
+BEGIN
+    IF p_ma_pb IS NULL OR p_ma_pb < 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_ID_INVALID';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM phong_ban WHERE ma_pb = p_ma_pb) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'PB_NOT_FOUND';
+    END IF;
+    SELECT ma_pb, ten_pb, fn_dem_nhan_vien_theo_phong_ban(ma_pb) AS so_nhan_vien
+    FROM phong_ban
+    WHERE ma_pb = p_ma_pb;
 END//
 
 /* ============================
@@ -920,20 +966,25 @@ CREATE PROCEDURE sp_vai_tro_xoa(
     IN p_ma_vt INT
 )
 BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-    
-    START TRANSACTION;
-    IF NOT EXISTS (SELECT 1 FROM vai_tro WHERE ma_vt = p_ma_vt) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Vai trò không tồn tại.';
+    DECLARE v_ky_hieu_vai_tro VARCHAR(50);
+    DECLARE v_role_found TINYINT DEFAULT 1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_role_found = 0;
+
+    # WHY: the caller owns the transaction; lock first, then remove only the
+    # role and its mappings. Employees are never deleted by this routine.
+    SELECT ky_hieu INTO v_ky_hieu_vai_tro
+    FROM vai_tro WHERE ma_vt = p_ma_vt FOR UPDATE;
+    IF v_role_found = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_ROLE_NOT_FOUND';
     END IF;
-    DELETE FROM nhan_vien WHERE ma_vt = p_ma_vt;
+    IF BINARY v_ky_hieu_vai_tro = BINARY 'NHAN_VIEN_MAC_DINH' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_DEFAULT_ROLE_FORBIDDEN';
+    END IF;
+    IF EXISTS (SELECT 1 FROM nhan_vien WHERE ma_vt = p_ma_vt) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_DANG_DUOC_SU_DUNG';
+    END IF;
     DELETE FROM vai_tro_quyen WHERE ma_vt = p_ma_vt;
     DELETE FROM vai_tro WHERE ma_vt = p_ma_vt;
-    COMMIT;
 END//
 
 /* --------------------------------------
@@ -961,10 +1012,31 @@ CREATE PROCEDURE sp_quyen_them(
     IN p_module NVARCHAR(50)
 )
 BEGIN
-    IF EXISTS (SELECT 1 FROM quyen WHERE ky_hieu_quyen = p_ky_hieu_quyen) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Tên quyền đã tồn tại.';
+    DECLARE v_ky_hieu_quyen VARCHAR(100);
+    DECLARE v_ten_quyen VARCHAR(50);
+    DECLARE v_module VARCHAR(50);
+    SET v_ky_hieu_quyen = UPPER(TRIM(IFNULL(p_ky_hieu_quyen, '')));
+    SET v_ten_quyen = TRIM(IFNULL(p_ten_quyen, N''));
+    SET v_module = UPPER(TRIM(IFNULL(p_module, '')));
+    IF v_ky_hieu_quyen NOT REGEXP '^[A-Z][A-Z0-9_]{0,99}$'
+       OR v_ten_quyen = N''
+       OR v_module NOT REGEXP '^[A-Z][A-Z0-9_]{0,49}$' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'RBAC_PERMISSION_INVALID';
     END IF;
-    INSERT INTO quyen(ky_hieu_quyen, ten_quyen, module) VALUES(p_ky_hieu_quyen, p_ten_quyen, p_module);
+    IF EXISTS (SELECT 1 FROM quyen WHERE BINARY ky_hieu_quyen = BINARY v_ky_hieu_quyen) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'RBAC_PERMISSION_DUPLICATE';
+    END IF;
+    INSERT INTO quyen(ky_hieu_quyen, ten_quyen, module)
+    VALUES(v_ky_hieu_quyen, v_ten_quyen, v_module);
+END//
+
+DROP PROCEDURE IF EXISTS sp_quyen_danh_sach//
+
+CREATE PROCEDURE sp_quyen_danh_sach()
+BEGIN
+    SELECT q.ma_quyen, q.ky_hieu_quyen, q.ten_quyen, q.module
+    FROM quyen q
+    ORDER BY q.ky_hieu_quyen ASC, q.ma_quyen ASC;
 END//
 
 /* --------------------------------------
@@ -1000,10 +1072,12 @@ CREATE PROCEDURE sp_quyen_lay_theo_ma_nhan_vien(
     IN p_ma_nv VARCHAR(5)
 )
 BEGIN
-    SELECT q.ky_hieu_quyen FROM nhan_vien nv
-    JOIN vai_tro_quyen vq ON nv.ma_vt = vq.ma_vt
-    JOIN quyen q ON vq.ma_quyen = q.ma_quyen
-    WHERE nv.ma_nv = p_ma_nv;
+    SELECT DISTINCT UPPER(TRIM(q.ky_hieu_quyen)) AS ky_hieu_quyen
+    FROM nhan_vien nv
+    JOIN vai_tro_quyen vtq ON vtq.ma_vt = nv.ma_vt
+    JOIN quyen q ON q.ma_quyen = vtq.ma_quyen
+    WHERE BINARY nv.ma_nv = BINARY UPPER(TRIM(IFNULL(p_ma_nv, '')))
+    ORDER BY ky_hieu_quyen ASC;
 END//
 
 /* ============================
@@ -1020,14 +1094,25 @@ CREATE PROCEDURE sp_vai_tro_quyen_them(
     IN p_ma_quyen INT
 )
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM vai_tro WHERE ma_vt = p_ma_vt) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Vai trò không tồn tại.';
+    DECLARE v_ky_hieu_vai_tro VARCHAR(50);
+    DECLARE v_role_found TINYINT DEFAULT 1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_role_found = 0;
+
+    # WHY: lock the role before validating the baseline invariant so concurrent
+    # role edits cannot grant a system role a permission.
+    SELECT ky_hieu INTO v_ky_hieu_vai_tro
+    FROM vai_tro WHERE ma_vt = p_ma_vt FOR UPDATE;
+    IF v_role_found = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_ROLE_NOT_FOUND';
+    END IF;
+    IF BINARY v_ky_hieu_vai_tro = BINARY 'NHAN_VIEN_MAC_DINH' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_DEFAULT_ROLE_FORBIDDEN';
     END IF;
     IF NOT EXISTS (SELECT 1 FROM quyen WHERE ma_quyen = p_ma_quyen) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Quyền không tồn tại.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_PERMISSION_NOT_FOUND';
     END IF;
     IF EXISTS (SELECT 1 FROM vai_tro_quyen WHERE ma_vt = p_ma_vt AND ma_quyen = p_ma_quyen) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Vai trò đã được gán quyền này.';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_PERMISSION_DUPLICATE';
     END IF;
     INSERT INTO vai_tro_quyen(ma_vt, ma_quyen) VALUES(p_ma_vt, p_ma_quyen);
 END//
@@ -1054,6 +1139,57 @@ CREATE PROCEDURE sp_vai_tro_quyen_lay_quyen_theo_vai_tro(
 )
 BEGIN
     SELECT ma_quyen FROM vai_tro_quyen WHERE ma_vt = p_ma_vt;
+END//
+
+DROP PROCEDURE IF EXISTS sp_nhan_vien_gan_vai_tro_noi_bo//
+
+CREATE PROCEDURE sp_nhan_vien_gan_vai_tro_noi_bo(
+    IN p_ma_nv VARCHAR(5),
+    IN p_ma_vt INT
+)
+BEGIN
+    DECLARE v_ma_nv VARCHAR(5);
+    DECLARE v_ma_vt_hien_tai INT;
+    DECLARE v_ky_hieu_vai_tro_hien_tai VARCHAR(50);
+    DECLARE v_ky_hieu_vai_tro_moi VARCHAR(50);
+    DECLARE v_lookup_found TINYINT DEFAULT 1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_lookup_found = 0;
+
+    SET v_ma_nv = UPPER(TRIM(IFNULL(p_ma_nv, '')));
+
+    # WHY: employee then target-role is the single lock order for this internal
+    # seam; the caller owns commit/rollback and this routine changes only ma_vt.
+    SELECT nv.ma_vt, vt.ky_hieu
+    INTO v_ma_vt_hien_tai, v_ky_hieu_vai_tro_hien_tai
+    FROM nhan_vien nv
+    LEFT JOIN vai_tro vt ON vt.ma_vt = nv.ma_vt
+    WHERE BINARY nv.ma_nv = BINARY v_ma_nv
+    FOR UPDATE;
+
+    IF v_lookup_found = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_NOT_FOUND';
+    END IF;
+    IF BINARY IFNULL(v_ky_hieu_vai_tro_hien_tai, '') <> BINARY 'NHAN_VIEN_MAC_DINH' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_EMPLOYEE_ROLE_INVALID';
+    END IF;
+
+    SET v_lookup_found = 1;
+    SELECT ky_hieu
+    INTO v_ky_hieu_vai_tro_moi
+    FROM vai_tro
+    WHERE ma_vt = p_ma_vt
+    FOR UPDATE;
+
+    IF v_lookup_found = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_TARGET_ROLE_INVALID';
+    END IF;
+    IF BINARY v_ky_hieu_vai_tro_moi = BINARY 'NHAN_VIEN_MAC_DINH' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'VT_TARGET_ROLE_INVALID';
+    END IF;
+
+    UPDATE nhan_vien
+    SET ma_vt = p_ma_vt
+    WHERE BINARY ma_nv = BINARY v_ma_nv;
 END//
 
 /* ============================
@@ -1467,14 +1603,13 @@ END//
    Sửa nhân viên
    -------------------------------------- */
 DROP PROCEDURE IF EXISTS sp_nhan_vien_sua//
-
 CREATE PROCEDURE sp_nhan_vien_sua(
     IN p_ma_nv VARCHAR(5),
     IN p_ho_ten NVARCHAR(50),
     IN p_ngay_sinh DATE,
     IN p_gioi_tinh TINYINT,
     IN p_sdt VARCHAR(15),
-    IN p_email NVARCHAR(50),
+    IN p_email NVARCHAR(100),
     IN p_ngay_vao_lam DATE,
     IN p_ma_pb INT,
     IN p_ma_cv INT,
@@ -1482,148 +1617,328 @@ CREATE PROCEDURE sp_nhan_vien_sua(
     IN p_cccd VARCHAR(12),
     IN p_noi_cap_cccd NVARCHAR(50),
     IN p_hoc_van NVARCHAR(50),
-    IN p_ma_tt TINYINT,
-    IN p_mat_khau VARCHAR(255),
-    IN p_ma_vt INT
+    IN p_ma_tt TINYINT
 )
 BEGIN
-    DECLARE v_mat_khau VARCHAR(255);
-    
-    SET p_ma_nv = UPPER(LTRIM(RTRIM(IFNULL(p_ma_nv, ''))));
-    SET p_ho_ten = LTRIM(RTRIM(IFNULL(p_ho_ten, N'')));
-    SET p_sdt = LTRIM(RTRIM(IFNULL(p_sdt, '')));
-    SET p_email = LTRIM(RTRIM(IFNULL(p_email, N'')));
-    SET p_dan_toc = LTRIM(RTRIM(IFNULL(p_dan_toc, N'')));
-    SET p_cccd = LTRIM(RTRIM(IFNULL(p_cccd, '')));
-    SET p_noi_cap_cccd = LTRIM(RTRIM(IFNULL(p_noi_cap_cccd, N'')));
-    SET p_hoc_van = LTRIM(RTRIM(IFNULL(p_hoc_van, N'')));
-    
-    IF NOT EXISTS (SELECT 1 FROM nhan_vien WHERE ma_nv = p_ma_nv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không tìm thấy nhân viên cần sửa.';
+    DECLARE v_ma_nv VARCHAR(5);
+    DECLARE v_ho_ten NVARCHAR(50);
+    DECLARE v_sdt VARCHAR(15);
+    DECLARE v_email NVARCHAR(100);
+    DECLARE v_dan_toc NVARCHAR(50);
+    DECLARE v_cccd VARCHAR(12);
+    DECLARE v_noi_cap_cccd NVARCHAR(50);
+    DECLARE v_hoc_van NVARCHAR(50);
+    DECLARE v_ngay_nghi_viec DATE;
+    DECLARE v_ky_hieu_vai_tro VARCHAR(50);
+    DECLARE v_ky_hieu_trang_thai VARCHAR(20);
+    DECLARE v_ky_hieu_trang_thai_moi VARCHAR(20);
+    DECLARE v_tim_thay TINYINT DEFAULT 1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_tim_thay = 0;
+
+    SET v_ma_nv = UPPER(TRIM(IFNULL(p_ma_nv, '')));
+
+    # The caller owns the surrounding transaction; this routine only validates and mutates within it.
+    # Lock the target before the exact-role guard so privileged-target precedence is stable under
+    # concurrency and cannot become a validation/reference enumeration oracle.
+    SELECT nv.ngay_nghi_viec, vt.ky_hieu, tt.ky_hieu
+    INTO v_ngay_nghi_viec, v_ky_hieu_vai_tro, v_ky_hieu_trang_thai
+    FROM nhan_vien nv
+    LEFT JOIN vai_tro vt ON vt.ma_vt = nv.ma_vt
+    LEFT JOIN trang_thai_lam_viec tt ON tt.ma_tt = nv.ma_tt
+    WHERE BINARY nv.ma_nv = BINARY v_ma_nv
+    FOR UPDATE;
+
+    IF v_tim_thay = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_NOT_FOUND';
     END IF;
-    IF p_ho_ten = N'' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Họ tên không được rỗng.';
+
+    IF v_ky_hieu_vai_tro IS NULL
+       OR BINARY v_ky_hieu_vai_tro <> BINARY 'NHAN_VIEN_MAC_DINH' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_PRIVILEGED_TARGET';
     END IF;
-    IF p_gioi_tinh NOT IN (0, 1) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Giới tính không hợp lệ. Dùng 1 = Nam, 0 = Nữ.';
+
+    SET v_ho_ten = TRIM(IFNULL(p_ho_ten, N''));
+    SET v_sdt = TRIM(IFNULL(p_sdt, ''));
+    SET v_email = LOWER(TRIM(IFNULL(p_email, N'')));
+    SET v_dan_toc = TRIM(IFNULL(p_dan_toc, N''));
+    SET v_cccd = TRIM(IFNULL(p_cccd, ''));
+    SET v_noi_cap_cccd = TRIM(IFNULL(p_noi_cap_cccd, N''));
+    SET v_hoc_van = TRIM(IFNULL(p_hoc_van, N''));
+
+    IF v_ho_ten = N''
+       OR p_ngay_sinh IS NULL
+       OR p_ngay_vao_lam IS NULL
+       OR p_ngay_sinh >= p_ngay_vao_lam
+       OR TIMESTAMPDIFF(YEAR, p_ngay_sinh, p_ngay_vao_lam) < 18
+       OR p_gioi_tinh IS NULL OR p_gioi_tinh NOT IN (0, 1)
+       OR v_sdt NOT REGEXP '^0[0-9]{9}$'
+       OR v_email NOT REGEXP '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$'
+       OR v_dan_toc = N''
+       OR v_cccd NOT REGEXP '^[0-9]{12}$'
+       OR v_noi_cap_cccd = N''
+       OR v_hoc_van = N'' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_REFERENCE_INVALID';
     END IF;
-    IF p_ngay_sinh >= p_ngay_vao_lam THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Ngày sinh phải nhỏ hơn ngày vào làm.';
+
+    IF NOT EXISTS (SELECT 1 FROM phong_ban WHERE ma_pb = p_ma_pb)
+       OR NOT EXISTS (SELECT 1 FROM chuc_vu WHERE ma_cv = p_ma_cv) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_REFERENCE_INVALID';
     END IF;
-    IF TIMESTAMPDIFF(YEAR, p_ngay_sinh, p_ngay_vao_lam) < 18 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Nhân viên phải đủ 18 tuổi tại thời điểm vào làm.';
+
+    SET v_ky_hieu_trang_thai_moi = NULL;
+    SELECT ky_hieu INTO v_ky_hieu_trang_thai_moi
+    FROM trang_thai_lam_viec WHERE ma_tt = p_ma_tt;
+
+    IF v_ky_hieu_trang_thai IS NULL
+       OR v_ky_hieu_trang_thai_moi IS NULL
+       OR (BINARY v_ky_hieu_trang_thai IN (BINARY 'DANG_LAM', BINARY 'THU_VIEC')
+           AND (v_ngay_nghi_viec IS NOT NULL
+                OR BINARY v_ky_hieu_trang_thai_moi NOT IN (BINARY 'DANG_LAM', BINARY 'THU_VIEC')))
+       OR (BINARY v_ky_hieu_trang_thai = BINARY 'DA_NGHI'
+           AND (v_ngay_nghi_viec IS NULL OR BINARY v_ky_hieu_trang_thai_moi <> BINARY 'DA_NGHI'))
+       OR BINARY v_ky_hieu_trang_thai NOT IN (BINARY 'DANG_LAM', BINARY 'THU_VIEC', BINARY 'DA_NGHI') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_STATUS_MISSING';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM phong_ban WHERE ma_pb = p_ma_pb) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Mã phòng ban không tồn tại.';
+
+    IF EXISTS (SELECT 1 FROM nhan_vien
+               WHERE LOWER(TRIM(email)) = v_email AND BINARY ma_nv <> BINARY v_ma_nv) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_EMAIL_DUPLICATE';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM chuc_vu WHERE ma_cv = p_ma_cv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Mã chức vụ không tồn tại.';
+
+    IF EXISTS (SELECT 1 FROM nhan_vien
+               WHERE TRIM(cccd) = v_cccd AND BINARY ma_nv <> BINARY v_ma_nv) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_CCCD_DUPLICATE';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM trang_thai_lam_viec WHERE ma_tt = p_ma_tt) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Mã trạng thái làm việc không tồn tại.';
-    END IF;
-    IF p_cccd NOT REGEXP '^[0-9]{12}$' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'CCCD phải gồm đúng 12 chữ số.';
-    END IF;
-    IF EXISTS (SELECT 1 FROM nhan_vien WHERE cccd = p_cccd AND ma_nv <> p_ma_nv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'CCCD đã tồn tại ở nhân viên khác.';
-    END IF;
-    IF p_sdt = '' OR p_sdt NOT REGEXP '^[0-9]' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Số điện thoại không hợp lệ.';
-    END IF;
-    IF p_email = N'' OR p_email NOT LIKE '%_@_%_.%' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Email không hợp lệ.';
-    END IF;
-    
-    IF p_mat_khau IS NULL OR LTRIM(RTRIM(p_mat_khau)) = '' THEN
-        SET v_mat_khau = SHA2('123456', 256);
-    ELSE
-        SET v_mat_khau = SHA2(p_mat_khau, 256);
-    END IF;
-    
-    UPDATE nhan_vien SET 
-        ho_ten = p_ho_ten, 
-        ngay_sinh = p_ngay_sinh, 
-        gioi_tinh = p_gioi_tinh, 
-        sdt = p_sdt, 
-        email = p_email, 
+
+    UPDATE nhan_vien
+    SET ho_ten = v_ho_ten,
+        ngay_sinh = p_ngay_sinh,
+        gioi_tinh = p_gioi_tinh,
+        sdt = v_sdt,
+        email = v_email,
         ngay_vao_lam = p_ngay_vao_lam,
-        ma_pb = p_ma_pb, 
-        ma_cv = p_ma_cv, 
-        dan_toc = p_dan_toc, 
-        cccd = p_cccd, 
-        noi_cap_cccd = p_noi_cap_cccd, 
-        hoc_van = p_hoc_van, 
-        ma_tt = p_ma_tt,
-        mat_khau = v_mat_khau, 
-        ma_vt = p_ma_vt 
-    WHERE ma_nv = p_ma_nv;
+        ma_pb = p_ma_pb,
+        ma_cv = p_ma_cv,
+        dan_toc = v_dan_toc,
+        cccd = v_cccd,
+        noi_cap_cccd = v_noi_cap_cccd,
+        hoc_van = v_hoc_van,
+        ma_tt = p_ma_tt
+    WHERE BINARY ma_nv = BINARY v_ma_nv;
+END//
+
+DROP PROCEDURE IF EXISTS sp_nhan_vien_cap_nhat_anh//
+CREATE PROCEDURE sp_nhan_vien_cap_nhat_anh(
+    IN p_ma_nv VARCHAR(5),
+    IN p_anh_moi VARCHAR(255),
+    OUT p_anh_cu VARCHAR(255)
+)
+BEGIN
+    DECLARE v_ma_nv VARCHAR(5);
+    DECLARE v_anh_cu VARCHAR(255);
+    DECLARE v_ky_hieu_vai_tro VARCHAR(50);
+    DECLARE v_tim_thay TINYINT DEFAULT 1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_tim_thay = 0;
+
+    SET p_anh_cu = NULL;
+    SET v_ma_nv = UPPER(TRIM(IFNULL(p_ma_nv, '')));
+
+    # The caller owns the surrounding transaction. The row lock precedes the exact-role guard so
+    # target precedence remains stable under concurrent changes. This routine returns only the old
+    # path; PHP owns filesystem ownership checks and upload compensation/cleanup.
+    SELECT nv.anh_dai_dien, vt.ky_hieu
+    INTO v_anh_cu, v_ky_hieu_vai_tro
+    FROM nhan_vien nv
+    LEFT JOIN vai_tro vt ON vt.ma_vt = nv.ma_vt
+    WHERE BINARY nv.ma_nv = BINARY v_ma_nv
+    FOR UPDATE;
+
+    IF v_tim_thay = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_NOT_FOUND';
+    END IF;
+
+    IF v_ky_hieu_vai_tro IS NULL
+       OR BINARY v_ky_hieu_vai_tro <> BINARY 'NHAN_VIEN_MAC_DINH' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_PRIVILEGED_TARGET';
+    END IF;
+
+    IF p_anh_moi IS NOT NULL
+       AND (p_anh_moi = ''
+            OR BINARY p_anh_moi <> BINARY TRIM(p_anh_moi)
+            OR OCTET_LENGTH(p_anh_moi) > 255) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_REFERENCE_INVALID';
+    END IF;
+
+    SET p_anh_cu = v_anh_cu;
+
+    UPDATE nhan_vien SET anh_dai_dien = p_anh_moi
+    WHERE BINARY ma_nv = BINARY v_ma_nv;
 END//
 
 /* --------------------------------------
-   Xóa nhân viên
+   Lifecycle và authentication database contracts (Task 13)
    -------------------------------------- */
+# Legacy delete/login procedures owned transactions or accepted plaintext; remove them first.
 DROP PROCEDURE IF EXISTS sp_nhan_vien_xoa//
+DROP PROCEDURE IF EXISTS sp_nhan_vien_dang_nhap//
+DROP PROCEDURE IF EXISTS sp_nhan_vien_xoa_hoac_nghi_viec//
+DROP PROCEDURE IF EXISTS sp_nhan_vien_dat_lai_mat_khau//
+DROP PROCEDURE IF EXISTS sp_nhan_vien_cap_nhat_hash_xac_thuc//
+DROP PROCEDURE IF EXISTS sp_nhan_vien_lay_tai_khoan_dang_nhap//
 
-CREATE PROCEDURE sp_nhan_vien_xoa(
-    IN p_ma_nv VARCHAR(5)
+CREATE PROCEDURE sp_nhan_vien_xoa_hoac_nghi_viec(
+    IN p_ma_nv VARCHAR(5),
+    IN p_ngay_nghi_viec DATE,
+    OUT p_hanh_dong VARCHAR(12),
+    OUT p_anh_cu VARCHAR(255)
 )
 BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-    
-    SET p_ma_nv = UPPER(LTRIM(RTRIM(IFNULL(p_ma_nv, ''))));
-    IF p_ma_nv = '' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Mã nhân viên không được rỗng.';
+    DECLARE v_ma_nv VARCHAR(5);
+    DECLARE v_ngay_vao_lam DATE;
+    DECLARE v_ngay_nghi_cu DATE;
+    DECLARE v_ky_hieu_vai_tro VARCHAR(50);
+    DECLARE v_ky_hieu_trang_thai VARCHAR(20);
+    DECLARE v_ma_tt_da_nghi TINYINT;
+    DECLARE v_so_da_nghi INT DEFAULT 0;
+    DECLARE v_tim_thay TINYINT DEFAULT 1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_tim_thay = 0;
+
+    SET p_hanh_dong = NULL;
+    SET p_anh_cu = NULL;
+    SET v_ma_nv = UPPER(TRIM(IFNULL(p_ma_nv, '')));
+
+    # The caller owns the transaction; locking before role/dependency checks keeps precedence
+    # stable and makes the dependency decision atomic with the termination update or delete.
+    SELECT nv.ngay_vao_lam, nv.ngay_nghi_viec, nv.anh_dai_dien,
+           vt.ky_hieu, tt.ky_hieu
+    INTO v_ngay_vao_lam, v_ngay_nghi_cu, p_anh_cu,
+         v_ky_hieu_vai_tro, v_ky_hieu_trang_thai
+    FROM nhan_vien nv
+    LEFT JOIN vai_tro vt ON vt.ma_vt = nv.ma_vt
+    LEFT JOIN trang_thai_lam_viec tt ON tt.ma_tt = nv.ma_tt
+    WHERE BINARY nv.ma_nv = BINARY v_ma_nv
+    FOR UPDATE;
+
+    IF v_tim_thay = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_NOT_FOUND';
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM nhan_vien WHERE ma_nv = p_ma_nv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không tìm thấy nhân viên cần xóa.';
+    IF v_ky_hieu_vai_tro IS NULL
+       OR BINARY v_ky_hieu_vai_tro <> BINARY 'NHAN_VIEN_MAC_DINH' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_PRIVILEGED_TARGET';
     END IF;
-    
-    IF EXISTS (SELECT 1 FROM hop_dong WHERE ma_nv = p_ma_nv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không thể xóa nhân viên vì còn dữ liệu hợp đồng.';
+    IF p_ngay_nghi_viec IS NULL OR p_ngay_nghi_viec < v_ngay_vao_lam THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_REFERENCE_INVALID';
     END IF;
-    IF EXISTS (SELECT 1 FROM cham_cong WHERE ma_nv = p_ma_nv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không thể xóa nhân viên vì còn dữ liệu chấm công.';
+
+    # A committed DA_NGHI row is terminal: never inspect dependencies or overwrite its first date.
+    IF BINARY v_ky_hieu_trang_thai = BINARY 'DA_NGHI'
+       AND v_ngay_nghi_cu IS NOT NULL THEN
+        SET p_hanh_dong = 'TERMINATED';
+    ELSE
+        SELECT COUNT(*), MIN(ma_tt)
+        INTO v_so_da_nghi, v_ma_tt_da_nghi
+        FROM trang_thai_lam_viec
+        WHERE BINARY ky_hieu = BINARY 'DA_NGHI';
+        IF v_so_da_nghi <> 1 OR v_ma_tt_da_nghi IS NULL THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_STATUS_MISSING';
+        END IF;
+        IF v_ky_hieu_trang_thai IS NULL
+           OR BINARY v_ky_hieu_trang_thai NOT IN (BINARY 'DANG_LAM', BINARY 'THU_VIEC')
+           OR v_ngay_nghi_cu IS NOT NULL THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_STATUS_MISSING';
+        END IF;
+        IF EXISTS (SELECT 1 FROM hop_dong WHERE BINARY ma_nv = BINARY v_ma_nv)
+           OR EXISTS (SELECT 1 FROM cham_cong WHERE BINARY ma_nv = BINARY v_ma_nv)
+           OR EXISTS (SELECT 1 FROM nghi_phep WHERE BINARY ma_nv = BINARY v_ma_nv)
+           OR EXISTS (SELECT 1 FROM luong WHERE BINARY ma_nv = BINARY v_ma_nv)
+           OR EXISTS (SELECT 1 FROM lich_su_he_so_luong WHERE BINARY ma_nv = BINARY v_ma_nv) THEN
+            SET p_hanh_dong = 'TERMINATED';
+            UPDATE nhan_vien
+            SET ma_tt = v_ma_tt_da_nghi, ngay_nghi_viec = p_ngay_nghi_viec
+            WHERE BINARY ma_nv = BINARY v_ma_nv;
+        ELSE
+            SET p_hanh_dong = 'DELETED';
+            DELETE FROM nhan_vien WHERE BINARY ma_nv = BINARY v_ma_nv;
+        END IF;
     END IF;
-    IF EXISTS (SELECT 1 FROM nghi_phep WHERE ma_nv = p_ma_nv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không thể xóa nhân viên vì còn dữ liệu nghỉ phép.';
-    END IF;
-    IF EXISTS (SELECT 1 FROM luong WHERE ma_nv = p_ma_nv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không thể xóa nhân viên vì còn dữ liệu lương.';
-    END IF;
-    IF EXISTS (SELECT 1 FROM lich_su_he_so_luong WHERE ma_nv = p_ma_nv) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = N'Không thể xóa nhân viên vì còn lịch sử hệ số lương.';
-    END IF;
-    
-    START TRANSACTION;
-    DELETE FROM nhan_vien WHERE ma_nv = p_ma_nv;
-    COMMIT;
 END//
 
-/* --------------------------------------
-   Đăng nhập
-   -------------------------------------- */
-DROP PROCEDURE IF EXISTS sp_nhan_vien_dang_nhap//
-
-CREATE PROCEDURE sp_nhan_vien_dang_nhap(
-    IN p_ten_dang_nhap NVARCHAR(50),
-    IN p_mat_khau VARCHAR(255)
+CREATE PROCEDURE sp_nhan_vien_dat_lai_mat_khau(
+    IN p_ma_nv VARCHAR(5),
+    IN p_mat_khau_hash VARCHAR(255)
 )
 BEGIN
-    DECLARE v_mat_khau_hash VARCHAR(255);
-    SET v_mat_khau_hash = SHA2(p_mat_khau, 256);
-    
-    IF NOT EXISTS (SELECT 1 FROM nhan_vien WHERE ma_nv = p_ten_dang_nhap) THEN
-        SELECT -1 AS ket_qua, N'Tài khoản không tồn tại' AS thong_bao;
-    ELSEIF NOT EXISTS (SELECT 1 FROM nhan_vien WHERE ma_nv = p_ten_dang_nhap AND mat_khau = v_mat_khau_hash) THEN
-        SELECT -2 AS ket_qua, N'Sai mật khẩu' AS thong_bao;
-    ELSE
-        SELECT 1 AS ket_qua;
+    DECLARE v_ma_nv VARCHAR(5);
+    DECLARE v_ky_hieu_vai_tro VARCHAR(50);
+    DECLARE v_tim_thay TINYINT DEFAULT 1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_tim_thay = 0;
+    SET v_ma_nv = UPPER(TRIM(IFNULL(p_ma_nv, '')));
+
+    # Lock and authorize before validating the new hash so privileged-target precedence is fail closed.
+    SELECT vt.ky_hieu INTO v_ky_hieu_vai_tro
+    FROM nhan_vien nv
+    LEFT JOIN vai_tro vt ON vt.ma_vt = nv.ma_vt
+    WHERE BINARY nv.ma_nv = BINARY v_ma_nv
+    FOR UPDATE;
+    IF v_tim_thay = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_NOT_FOUND';
     END IF;
+    IF v_ky_hieu_vai_tro IS NULL
+       OR BINARY v_ky_hieu_vai_tro <> BINARY 'NHAN_VIEN_MAC_DINH' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_PRIVILEGED_TARGET';
+    END IF;
+    IF p_mat_khau_hash IS NULL OR TRIM(p_mat_khau_hash) = '' OR OCTET_LENGTH(p_mat_khau_hash) > 255 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_REFERENCE_INVALID';
+    END IF;
+    UPDATE nhan_vien SET mat_khau = p_mat_khau_hash
+    WHERE BINARY ma_nv = BINARY v_ma_nv;
+END//
+
+CREATE PROCEDURE sp_nhan_vien_cap_nhat_hash_xac_thuc(
+    IN p_ma_nv VARCHAR(5),
+    IN p_hash_hien_tai VARCHAR(255),
+    IN p_hash_moi VARCHAR(255)
+)
+BEGIN
+    DECLARE v_ma_nv VARCHAR(5);
+    DECLARE v_hash_hien_tai VARCHAR(255);
+    DECLARE v_tim_thay TINYINT DEFAULT 1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_tim_thay = 0;
+    SET v_ma_nv = UPPER(TRIM(IFNULL(p_ma_nv, '')));
+
+    # CAS locks every role because authentication rehash must not become a privileged-role bypass.
+    SELECT mat_khau INTO v_hash_hien_tai
+    FROM nhan_vien
+    WHERE BINARY ma_nv = BINARY v_ma_nv
+    FOR UPDATE;
+    IF v_tim_thay = 0
+       OR p_hash_hien_tai IS NULL
+       OR NOT (BINARY v_hash_hien_tai = BINARY p_hash_hien_tai) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_AUTH_HASH_STALE';
+    END IF;
+    IF p_hash_moi IS NULL OR TRIM(p_hash_moi) = '' OR OCTET_LENGTH(p_hash_moi) > 255 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'NV_REFERENCE_INVALID';
+    END IF;
+    UPDATE nhan_vien SET mat_khau = p_hash_moi
+    WHERE BINARY ma_nv = BINARY v_ma_nv;
+END//
+
+CREATE PROCEDURE sp_nhan_vien_lay_tai_khoan_dang_nhap(
+    IN p_dinh_danh NVARCHAR(100)
+)
+BEGIN
+    DECLARE v_dinh_danh VARCHAR(100);
+    SET v_dinh_danh = TRIM(IFNULL(p_dinh_danh, ''));
+
+    # Return only the six server-side auth fields; terminated status remains visible to the provider,
+    # which is the layer that rejects login/session creation in the later auth task.
+    SELECT nv.ma_nv, nv.ho_ten, nv.email, nv.mat_khau, nv.ma_vt, tt.ky_hieu
+    FROM nhan_vien nv
+    LEFT JOIN trang_thai_lam_viec tt ON tt.ma_tt = nv.ma_tt
+    WHERE BINARY UPPER(TRIM(nv.ma_nv)) = BINARY UPPER(v_dinh_danh)
+       OR BINARY LOWER(TRIM(nv.email)) = BINARY LOWER(v_dinh_danh)
+    ORDER BY nv.ma_nv ASC
+    LIMIT 1;
 END//
 
 /* ============================

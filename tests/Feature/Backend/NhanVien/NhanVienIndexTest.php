@@ -3,6 +3,7 @@
 namespace Tests\Feature\Backend\NhanVien;
 
 use App\Contracts\NhanVienServiceContract;
+use App\Enums\NhanVienRemovalAction;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Controllers\Backend\ChamCongController;
 use App\Http\Controllers\Backend\NghiPhepController;
@@ -47,6 +48,8 @@ class NhanVienIndexTest extends TestCase
 
     public function test_module_is_fail_closed_for_every_employee_web_and_api_route(): void
     {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        config()->set('nhanvien.enabled', false);
         $this->assertFalse(config('nhanvien.enabled'));
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
@@ -74,7 +77,10 @@ class NhanVienIndexTest extends TestCase
 
     public function test_enabled_index_normalizes_filters_and_renders_real_employee_data(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\NhanVienPermission::Tao,
+        ]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->with([
                 'tu_khoa' => 'NV001',
@@ -101,6 +107,8 @@ class NhanVienIndexTest extends TestCase
                 'so_dong' => 20,
             ])
             ->assertSee('NV001')
+            ->assertSee('name="tu_khoa"', false)
+            ->assertSee('value="NV001"', false)
             ->assertSee('Nguyễn An')
             ->assertSee('an@example.test')
             ->assertDontSee('mat_khau')
@@ -118,7 +126,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_index_uses_public_disk_url_for_canonical_relative_avatar_path(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         config()->set('filesystems.disks.public.url', '/storage');
         $employee = $this->employeePaginator()->items()[0];
         $employee->anh_dai_dien = 'nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png';
@@ -135,7 +143,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_index_avatar_payload_cannot_create_an_external_origin_src(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         config()->set('filesystems.disks.public.url', '/storage');
         $employees = collect(['https://evil.example/avatar.png', '//evil.example/avatar.png'])
             ->map(function (string $payload): array {
@@ -159,7 +167,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_enabled_index_passes_integer_filters_and_keeps_them_in_pagination_links(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $filters = [
             'tu_khoa' => null,
             'ma_pb' => 2,
@@ -177,7 +185,11 @@ class NhanVienIndexTest extends TestCase
 
         $response = $this->get('/admin/nhan-vien?ma_pb=2&ma_cv=3&ma_tt=1&page=2&so_dong=5');
 
-        $response->assertOk()->assertSee('ma_pb=2', false)->assertSee('so_dong=5', false);
+        $response->assertOk()
+            ->assertSee('ma_pb=2', false)
+            ->assertSee('so_dong=5', false)
+            ->assertSee('name="so_dong"', false)
+            ->assertSee('option value="5" selected', false);
         $employees = $response->viewData('employees');
         $this->assertSame(route('backend.nhanvien.index'), $employees->path());
         $this->assertStringContainsString('ma_cv=3', $employees->url(3));
@@ -186,7 +198,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_invalid_filters_do_not_call_the_service(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
@@ -200,7 +212,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_database_empty_and_filter_empty_are_distinct_states(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $service = $this->mock(NhanVienServiceContract::class);
         $service->shouldReceive('paginate')->twice()->andReturn(
             $this->employeePaginator([], 0),
@@ -221,7 +233,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_empty_current_page_with_existing_results_has_a_truthful_distinct_state(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $service = $this->mock(NhanVienServiceContract::class);
         $service->shouldReceive('paginate')->twice()->andReturn(
             $this->employeePaginator([], 11, 20, 999),
@@ -244,7 +256,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_domain_exception_is_rendered_as_a_safe_error_state(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->andThrow(
                 new NhanVienDomainException(
@@ -264,7 +276,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_flash_success_and_accessible_filter_table_markup_are_present(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator());
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
@@ -285,7 +297,7 @@ class NhanVienIndexTest extends TestCase
 
     public function test_legacy_redirect_is_guarded_and_preserves_the_query_string_when_enabled(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
@@ -309,6 +321,10 @@ class NhanVienIndexTest extends TestCase
                 'admin/nhan-vien',
                 'admin/nhan-vien/create',
                 'admin/nhan-vien',
+                'admin/nhan-vien/{ma_nv}/edit',
+                'admin/nhan-vien/{ma_nv}',
+                'admin/nhan-vien/{ma_nv}/dat-lai-mat-khau',
+                'admin/nhan-vien/{ma_nv}',
                 'admin/nhan-vien/{ma_nv}',
             ],
             $employeeRoutes->pluck('uri')->all(),
@@ -325,8 +341,35 @@ class NhanVienIndexTest extends TestCase
         $this->assertSame(['POST'], $storeRoute->methods());
         $this->assertSame(NhanVienController::class.'@store', $storeRoute->getActionName());
         $this->assertContains(EnsureNhanVienModuleEnabled::class, $storeRoute->gatherMiddleware());
-        $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.edit'));
-        $this->assertNull(Route::getRoutes()->getByName('backend.nhanvien.destroy'));
+        $editRoute = Route::getRoutes()->getByName('backend.nhanvien.edit');
+        $this->assertInstanceOf(RoutingRoute::class, $editRoute);
+        $this->assertSame(['GET', 'HEAD'], $editRoute->methods());
+        $this->assertSame(NhanVienController::class.'@edit', $editRoute->getActionName());
+        $this->assertContains(EnsureNhanVienModuleEnabled::class, $editRoute->gatherMiddleware());
+        $updateRoute = Route::getRoutes()->getByName('backend.nhanvien.update');
+        $this->assertInstanceOf(RoutingRoute::class, $updateRoute);
+        $this->assertSame(['PUT', 'PATCH'], $updateRoute->methods());
+        $this->assertSame(NhanVienController::class.'@update', $updateRoute->getActionName());
+        $this->assertContains(EnsureNhanVienModuleEnabled::class, $updateRoute->gatherMiddleware());
+        $resetRoute = Route::getRoutes()->getByName('backend.nhanvien.reset-password');
+        $this->assertInstanceOf(RoutingRoute::class, $resetRoute);
+        $this->assertSame(['PATCH'], $resetRoute->methods());
+        $this->assertSame(
+            NhanVienController::class.'@resetPassword',
+            $resetRoute->getActionName(),
+        );
+        $this->assertSame('NV[0-9]{3}', $resetRoute->wheres['ma_nv']);
+        $this->assertContains(EnsureNhanVienModuleEnabled::class, $resetRoute->gatherMiddleware());
+
+        $destroyRoute = Route::getRoutes()->getByName('backend.nhanvien.destroy');
+        $this->assertInstanceOf(RoutingRoute::class, $destroyRoute);
+        $this->assertSame(['DELETE'], $destroyRoute->methods());
+        $this->assertSame(
+            NhanVienController::class.'@destroy',
+            $destroyRoute->getActionName(),
+        );
+        $this->assertSame('NV[0-9]{3}', $destroyRoute->wheres['ma_nv']);
+        $this->assertContains(EnsureNhanVienModuleEnabled::class, $destroyRoute->gatherMiddleware());
 
         $showRoute = Route::getRoutes()->getByName('backend.nhanvien.show');
         $this->assertInstanceOf(RoutingRoute::class, $showRoute);
@@ -334,8 +377,16 @@ class NhanVienIndexTest extends TestCase
         $this->assertSame(NhanVienController::class.'@show', $showRoute->getActionName());
         $this->assertSame('NV[0-9]{3}', $showRoute->wheres['ma_nv']);
         $this->assertContains(EnsureNhanVienModuleEnabled::class, $showRoute->gatherMiddleware());
+        $this->assertLessThan(
+            array_search($showRoute, Route::getRoutes()->getRoutes(), true),
+            array_search($resetRoute, Route::getRoutes()->getRoutes(), true),
+        );
+        $this->assertLessThan(
+            array_search($showRoute, Route::getRoutes()->getRoutes(), true),
+            array_search($destroyRoute, Route::getRoutes()->getRoutes(), true),
+        );
 
-        $this->assertSame(5, $employeeRoutes->filter(
+        $this->assertSame(6, $employeeRoutes->filter(
             fn (RoutingRoute $route): bool => $route->methods() === ['GET', 'HEAD'],
         )->count());
     }
@@ -359,18 +410,28 @@ class NhanVienIndexTest extends TestCase
         }
     }
 
-    public function test_prototype_web_mutation_and_form_uris_are_not_dispatched(): void
+    public function test_lifecycle_delete_dispatches_through_guarded_service_contract(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Tao,
+            \App\Enums\NhanVienPermission::Xoa,
+        ]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
+            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn(
+                (object) ['ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH'],
+            );
+            $mock->shouldReceive('removeOrTerminate')->once()->with('NV001')->andReturn(
+                NhanVienRemovalAction::Deleted,
+            );
         });
 
         $this->get('/admin/nhan-vien/them-nhan-vien')->assertStatus(301);
         $this->get('/admin/nhan-vien/NV001/sua')->assertNotFound();
-        $this->put('/admin/nhan-vien/NV001')->assertMethodNotAllowed();
-        $this->delete('/admin/nhan-vien/NV001')->assertMethodNotAllowed();
+        $this->delete('/admin/nhan-vien/NV001')
+            ->assertRedirect(route('backend.nhanvien.index'))
+            ->assertSessionHas('success', 'Đã xóa hồ sơ nhân viên.');
     }
 
     private function employeePaginator(

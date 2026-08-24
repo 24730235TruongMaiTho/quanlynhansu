@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Contracts\NhanVienRepositoryContract;
 use App\Exceptions\NhanVienDomainException;
+use App\Support\NhanVienTargetGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
@@ -12,6 +13,31 @@ use Illuminate\Validation\Validator;
 
 class UpdateNhanVienRequest extends StoreNhanVienRequest
 {
+    private ?object $authorizedTarget = null;
+
+    public function authorize(): bool
+    {
+        $employees = $this->container->make(NhanVienRepositoryContract::class);
+        $guard = $this->container->make(NhanVienTargetGuard::class);
+        $maNv = $this->routeEmployeeCode();
+
+        try {
+            $employee = $employees->find($maNv);
+        } catch (NhanVienDomainException $exception) {
+            if ($exception->domainCode !== 'NV_NOT_FOUND') {
+                throw $exception;
+            }
+
+            abort(404);
+        }
+
+        abort_if($employee === null, 404);
+        $guard->assertManageable($employee);
+        $this->authorizedTarget = $employee;
+
+        return true;
+    }
+
     public function rules(): array
     {
         $rules = parent::rules();
@@ -23,9 +49,9 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
     /**
      * @return array<callable>
      */
-    public function after(NhanVienRepositoryContract $employees): array
+    public function after(): array
     {
-        return [function (Validator $validator) use ($employees): void {
+        return [function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }
@@ -40,34 +66,8 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
                 return;
             }
 
-            $maNv = $this->route('ma_nv');
-
-            if (! is_string($maNv) || $maNv === '') {
-                $validator->errors()->add('ma_nv', 'Không xác định được nhân viên cần cập nhật.');
-
-                return;
-            }
-
-            try {
-                $employee = $employees->find($maNv);
-            } catch (NhanVienDomainException $exception) {
-                if ($exception->domainCode !== 'NV_NOT_FOUND') {
-                    throw $exception;
-                }
-
-                $validator->errors()->add('ma_nv', 'Nhân viên không tồn tại.');
-
-                return;
-            }
-
-            if ($employee === null) {
-                $validator->errors()->add('ma_nv', 'Nhân viên không tồn tại.');
-
-                return;
-            }
-
             $targetStatus = $this->targetStatusSymbol();
-            $currentStatus = $employee->ky_hieu ?? null;
+            $currentStatus = $this->authorizedTarget?->ky_hieu ?? null;
 
             if (($currentStatus === 'DA_NGHI' && $targetStatus !== null && $targetStatus !== 'DA_NGHI')
                 || ($currentStatus !== 'DA_NGHI' && $targetStatus === 'DA_NGHI')) {

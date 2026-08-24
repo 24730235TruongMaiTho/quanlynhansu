@@ -10,16 +10,19 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
 use Mockery;
 use Tests\Support\CreatesEmployeeFeatureSchema;
+use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
 
 class NhanVienValidationTest extends TestCase
 {
     use CreatesEmployeeFeatureSchema;
+    use InteractsWithEmployeeModule;
 
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->enableEmployeeModule();
         $this->createEmployeeFeatureSchema();
         $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ky_hieu' => 'DANG_LAM']);
 
@@ -324,19 +327,23 @@ class NhanVienValidationTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('ma_tt');
     }
 
-    public function test_update_returns_validation_error_when_route_employee_does_not_exist(): void
+    public function test_update_returns_safe_not_found_before_validation_when_route_employee_does_not_exist(): void
     {
         $this->bindCurrentEmployee(null);
 
         $this->putJson('/_tests/nhan-vien/NV404', $this->validPayload())
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('ma_nv');
+            ->assertNotFound()
+            ->assertJsonMissingValidationErrors();
     }
 
-    public function test_update_does_not_call_repository_when_base_validation_already_failed(): void
+    public function test_update_authorizes_target_before_base_validation_and_reuses_that_lookup(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldNotReceive('find');
+        $repository->shouldReceive('find')->once()->with('NV001')->andReturn((object) [
+            'ma_nv' => 'NV001',
+            'ky_hieu' => 'DANG_LAM',
+            'ky_hieu_vai_tro' => 'NHAN_VIEN_MAC_DINH',
+        ]);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
         $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['email' => 'invalid']))
@@ -344,7 +351,7 @@ class NhanVienValidationTest extends TestCase
             ->assertJsonValidationErrors('email');
     }
 
-    public function test_update_maps_exact_repository_not_found_domain_error_to_safe_validation(): void
+    public function test_update_maps_exact_repository_not_found_domain_error_to_safe_404(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->andThrow(new NhanVienDomainException(
@@ -354,9 +361,8 @@ class NhanVienValidationTest extends TestCase
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
         $this->putJson('/_tests/nhan-vien/NV404', $this->validPayload())
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('ma_nv')
-            ->assertJsonPath('errors.ma_nv.0', 'Nhân viên không tồn tại.')
+            ->assertNotFound()
+            ->assertJsonMissingValidationErrors()
             ->assertDontSee('SQLSTATE');
     }
 
@@ -416,6 +422,10 @@ class NhanVienValidationTest extends TestCase
 
     private function bindCurrentEmployee(?object $employee): void
     {
+        if ($employee !== null && ! property_exists($employee, 'ky_hieu_vai_tro')) {
+            $employee->ky_hieu_vai_tro = 'NHAN_VIEN_MAC_DINH';
+        }
+
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->andReturn($employee);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);

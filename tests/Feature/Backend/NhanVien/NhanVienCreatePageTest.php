@@ -39,7 +39,7 @@ class NhanVienCreatePageTest extends TestCase
 
     public function test_enabled_create_renders_accessible_three_step_form_from_service_lookups(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('lookups')->once()->andReturn($this->completeLookups());
         });
@@ -90,7 +90,7 @@ class NhanVienCreatePageTest extends TestCase
 
     public function test_create_lists_each_missing_required_lookup_and_disables_submit(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('lookups')->once()->andReturn([
                 'phong_ban' => [],
@@ -113,7 +113,7 @@ class NhanVienCreatePageTest extends TestCase
 
     public function test_lookup_failure_renders_safe_locked_form_without_internal_details(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('lookups')->once()->andThrow(new NhanVienDomainException(
                 'SQLSTATE[42000]: sp_chuc_vu_danh_sach failed',
@@ -133,7 +133,7 @@ class NhanVienCreatePageTest extends TestCase
 
     public function test_validation_errors_restore_old_input_and_open_the_first_invalid_step(): void
     {
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('lookups')->once()->andReturn($this->completeLookups());
         });
@@ -177,10 +177,12 @@ class NhanVienCreatePageTest extends TestCase
             array_search($createRoute, Route::getRoutes()->getRoutes(), true),
         );
 
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
+        config()->set('nhanvien.enabled', false);
         $this->get('/admin/nhan-vien/create')->assertNotFound();
         $this->get('/admin/nhan-vien/them-nhan-vien')->assertNotFound();
 
-        $this->enableEmployeeModule();
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('lookups');
         });

@@ -1,4 +1,5 @@
 <section class="employee-form-section" aria-labelledby="address-fields-title">
+    @php($formEmployee = $employee ?? null)
     <h3 class="h6 fw-semibold" id="address-fields-title">Địa chỉ</h3>
     <div class="employee-form-grid">
         @foreach ([
@@ -16,7 +17,7 @@
                     type="text"
                     maxlength="{{ $maxLength }}"
                     autocomplete="{{ $autocomplete }}"
-                    value="{{ old($field) }}"
+                    value="{{ old($field, data_get($formEmployee, $field)) }}"
                     required
                     @error($field) aria-describedby="{{ $field }}-error" @enderror
                     @if ($firstErrorField === $field) data-error-focus @endif

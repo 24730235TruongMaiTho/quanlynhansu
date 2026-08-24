@@ -21,27 +21,40 @@
                     <span class="nav-title">Bảng điều khiển</span>
                 </a>
             </li>
-            <!-- Nhân sự -->
+            @can('NHAN_VIEN_XEM')
+                @if (config('nhanvien.enabled') === true)
+                <!-- Nhân sự -->
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-toggle="submenu">
+                        <i class="bi bi-people-fill"></i>
+                        <span class="nav-title">Nhân sự</span>
+                        <i class="bi bi-chevron-down menu-arrow rotated"></i>
+                    </a>
+                    <ul class="sub-menu">
+                        <li class="nav-item">
+                            <a href="{{ route('backend.nhanvien.index') }}" class="nav-link">
+                                <i class="bi bi-person-lines-fill"></i>
+                                <span class="nav-title">Danh sách nhân viên</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                @endif
+            @endcan
+            @can(\App\Enums\PhongBanPermission::Xem->value)
+                <li class="nav-item">
+                    <a href="{{ route('backend.phongban.index') }}" class="nav-link">
+                        <i class="bi bi-building" aria-hidden="true"></i>
+                        <span class="nav-title">Phòng ban</span>
+                    </a>
+                </li>
+            @endcan
+            <!-- Chấm công -->
             <li class="nav-item">
-                <a href="#" class="nav-link" data-toggle="submenu">
-                    <i class="bi bi-people-fill"></i>
-                    <span class="nav-title">Nhân sự</span>
-                    <i class="bi bi-chevron-down menu-arrow rotated"></i>
+                <a href="{{ route('backend.backend.chamcong.index') }}" class="nav-link">
+                    <i class="bi bi-calendar-check-fill"></i>
+                    <span class="nav-title">Chấm công</span>
                 </a>
-                <ul class="sub-menu">
-                    <li class="nav-item">
-                        <a href="/admin/nhan-vien/danh-sach-nhan-vien" class="nav-link">
-                            <i class="bi bi-person-lines-fill"></i>
-                            <span class="nav-title">Danh sách nhân viên</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/admin/nhan-vien/them-nhan-vien" class="nav-link">
-                            <i class="bi bi-person-plus-fill"></i>
-                            <span class="nav-title">Thêm mới</span>
-                        </a>
-                    </li>
-                </ul>
             </li>
         </ul>
     </div>
