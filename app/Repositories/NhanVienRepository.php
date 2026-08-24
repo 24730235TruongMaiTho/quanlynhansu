@@ -359,22 +359,6 @@ final class NhanVienRepository implements NhanVienRepositoryContract
         });
     }
 
-    /** @return list<int> */
-    public function permissionIds(string $maNv): array
-    {
-        return $this->databaseOperation(function () use ($maNv): array {
-            return $this->connection()->table('vai_tro_quyen as vtq')
-                ->join('nhan_vien as nv', 'nv.ma_vt', '=', 'vtq.ma_vt')
-                ->where('nv.ma_nv', $maNv)
-                ->orderBy('vtq.ma_quyen')
-                ->pluck('vtq.ma_quyen')
-                ->map(static fn (mixed $id): int => (int) $id)
-                ->unique()
-                ->values()
-                ->all();
-        });
-    }
-
     /** @internal Bootstrap-only role assignment; never expose through web flows. */
     public function assignRoleForBootstrap(string $maNv, int $maVt): void
     {

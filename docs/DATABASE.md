@@ -148,9 +148,9 @@ unique constraint qua connection độc lập, repository write cursor-drain,
 preflight refusal và catalog permission đã có trong các test MariaDB, nhưng
 chưa chạy trong phiên 2026-08-22.
 
-Bốn symbol `PHONG_BAN_XEM`, `PHONG_BAN_TAO`, `PHONG_BAN_SUA`, `PHONG_BAN_XOA`
-được provision idempotent vào catalog trong script và canonical dump; không có
-role mapping tự động. `PB_VIEW` không phải symbol hợp lệ.
+Fresh seed dùng bốn symbol `PB_VIEW`, `PB_CREATE`, `PB_EDIT`, `PB_DELETE` với
+`ma_quyen` 201–204 và module `PhongBan`. Script routine phòng ban bên trên là
+legacy history; không dùng nó để provision catalog cho fresh 15-table source.
 
 ## Setup local an toàn
 

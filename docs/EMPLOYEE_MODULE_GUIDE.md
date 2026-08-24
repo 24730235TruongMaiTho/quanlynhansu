@@ -167,15 +167,25 @@ role 2 (Quản trị Nhân sự) chỉ có `101–105, 201–204, 301–304, 401
 4 và 5 giữ các quyền theo mô tả module hiện có. Migration 16→15 chỉ bổ sung
 mapping role 2 còn thiếu và không thu hồi mapping module khác đã tồn tại.
 
+Gate dùng registry tĩnh tại `config/permissions.php` cho các module đã tích hợp;
+thêm enum module mới ở registration point này, không sửa provider/service. Mỗi lần kiểm tra đối chiếu
+đồng thời `ma_quyen`, `ky_hieu_quyen` và `module` từ projection RBAC; row malformed,
+catalog drift hoặc lỗi database đều fail closed. Projection được cache theo actor
+trong request scope, không truy vấn database khi application boot.
+
+Lookup nhân viên dùng chung của Chấm công và Nghỉ phép tiếp tục yêu cầu đúng
+`NV_VIEW`/Gate employee hiện hữu; đây là compatibility dependency, không cấp
+quyền nghiệp vụ mới cho hai module đó và không thay đổi UI/business path của chúng.
+
 Năm Gate ability nội bộ được đối chiếu với `ma_quyen`:
 
 | Ability | `ma_quyen` | Mục đích |
 | --- | ---: | --- |
-| NHAN_VIEN_XEM | 101 | xem danh sách/chi tiết và lookup dùng chung |
-| NHAN_VIEN_TAO | 102 | mở và submit tạo mới |
-| NHAN_VIEN_SUA | 103 | sửa hồ sơ/địa chỉ/avatar |
-| NHAN_VIEN_XOA | 104 | xóa hoặc chuyển nghỉ việc |
-| NHAN_VIEN_DAT_LAI_MAT_KHAU | 105 | reset mật khẩu |
+| NV_VIEW | 101 | xem danh sách/chi tiết và lookup dùng chung |
+| NV_CREATE | 102 | mở và submit tạo mới |
+| NV_EDIT | 103 | sửa hồ sơ/địa chỉ/avatar |
+| NV_DELETE | 104 | xóa hoặc chuyển nghỉ việc |
+| NV_RESET_PASSWORD | 105 | reset mật khẩu |
 
 Rollout flag NHAN_VIEN_MODULE_ENABLED phải bật trước; sau đó vẫn bắt buộc auth
 và Gate đúng hành động. Flow web chỉ quản lý target `ma_vt = 5`; target role
@@ -225,7 +235,12 @@ Các điểm vào chính:
 
 - Web routes và middleware: routes/web.php; auth/session ở app/Http/Controllers/Auth/AuthenticatedSessionController.php và app/Auth/NhanVienUserProvider.php.
 - Employee lifecycle: app/Http/Controllers/Backend/NhanVienController.php, app/Http/Requests/ListNhanVienRequest.php, StoreNhanVienRequest.php, UpdateNhanVienRequest.php, app/Services/NhanVienService.php, app/Repositories/NhanVienRepository.php.
-- Permission/rollout/target guard: app/Enums/NhanVienPermission.php, config/nhanvien.php, app/Http/Middleware/EnsureNhanVienModuleEnabled.php, app/Services/NhanVienPermissionService.php và app/Support/NhanVienTargetGuard.php.
+- Permission/rollout/target guard: app/Enums/PermissionAction.php,
+  app/Enums/NhanVienPermission.php, app/Enums/PhongBanPermission.php,
+  config/permissions.php, app/Authorization/PermissionRegistry.php,
+  app/Services/PermissionService.php, app/Repositories/PermissionRepository.php,
+  config/nhanvien.php, app/Http/Middleware/EnsureNhanVienModuleEnabled.php và
+  app/Support/NhanVienTargetGuard.php.
 - SQL contract active: `database/tao_bang.sql` + `database/du_lieu_mau.sql`; direct
   Query Builder employee/auth/RBAC path is covered by the Unit/Feature suites and
   the new guarded `FreshEmployeeSchemaContractTest`. The older
@@ -259,7 +274,7 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
 ## 7. Lệnh kiểm tra và mức bằng chứng
 
     php artisan route:list --except-vendor
-    php artisan test tests/Feature/Auth/EmployeeAuthenticationTest.php tests/Feature/Backend/NhanVien tests/Unit/Auth/NhanVienUserProviderTest.php tests/Unit/Models/NhanVienTest.php tests/Unit/Services/NhanVienPermissionServiceTest.php
+    php artisan test tests/Feature/Auth/EmployeeAuthenticationTest.php tests/Feature/Backend/NhanVien tests/Unit/Auth/NhanVienUserProviderTest.php tests/Unit/Models/NhanVienTest.php tests/Unit/Services/PermissionServiceTest.php
     php artisan test tests/Feature/Compatibility/ChamCongEmployeeLookupSecurityTest.php
     npm run test:frontend
     npm run build
@@ -268,7 +283,7 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
     git status --short
 
 Evidence hiện tại của slice này: route inventory 52; full Laravel
-`259 pass, 2057 assertions`; schema contract static `4 pass, 93 assertions`;
+`265 pass, 2086 assertions`; schema contract static `4 pass, 93 assertions`;
 attendance/leave compatibility và employee/auth scoped tests đều pass; guarded
 MariaDB fresh contract `5 tests, 161 assertions` pass, gồm parallel counter.
 Browser avatar chưa chạy.

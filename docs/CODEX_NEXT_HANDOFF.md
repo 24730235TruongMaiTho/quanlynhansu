@@ -44,7 +44,7 @@ Code, route, test và database đang được kiểm tra có ưu tiên cao hơn 
 
 Branch `feature/quan-ly-phong-ban-chuc-vu` hiện có server-rendered CRUD Phòng
 ban dưới auth với route names `backend.phongban.index/create/store/edit/update/destroy`,
-param dương `ma_pb`, bốn Gate canonical `PHONG_BAN_*`, model mapping chuẩn,
+param dương `ma_pb`, bốn Gate canonical `PB_*`, model mapping chuẩn,
 repository/service gọi stored procedures, form validation và UI runtime
 `backend.layouts.app`. Catalog permission được version và canonical dump đồng bộ;
 không tự grant role thật hoặc local demo admin.
@@ -65,6 +65,11 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
 - danh sách có filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar, xóa cứng hoặc chuyển nghỉ việc theo dependency, và reset mật khẩu;
 - custom employee auth provider, login/logout, session từ chối `ma_tt = 4`;
 - năm Gate ability employee được repository đối chiếu bằng `ma_quyen` 101–105;
+- registry Gate tại `config/permissions.php` dùng symbol thật `NV_*`/`PB_*` của catalog và đối chiếu đồng
+  thời ID, symbol, module; malformed row hoặc lỗi database fail closed, cache chỉ
+  sống trong request scope;
+- lookup employee của Chấm công/Nghỉ phép vẫn dùng shared `NV_VIEW` dependency hiện
+  hữu; không mở rộng permission/business/UI của hai module này;
 - seed role 2 có đúng `101–105, 201–204, 301–304, 401–404`; migration chỉ bổ
   sung các mapping thiếu và giữ nguyên mapping module khác hiện hữu;
 - route `/admin` yêu cầu auth; target employee flow phải có `ma_vt = 5` trước mutation;
@@ -78,7 +83,7 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
 ## Bằng chứng mới nhất
 
 - Full guarded MariaDB wrapper historical: `165 tests, 3367 assertions, 1 platform skip, exit 0`; rerun sau tích hợp timeout khoảng 184 giây, process/schema/state/marker cleanup sạch, không claim current pass.
-- Current full Laravel: `259 pass, 2057 assertions`; schema contract static:
+- Current full Laravel: `265 pass, 2086 assertions`; schema contract static:
   `4 pass, 93 assertions`; employee/auth and attendance/leave compatibility
   suites pass. Fresh MariaDB contract is `5 tests, 161 assertions` on a guarded
   disposable database, including parallel counter concurrency.

@@ -20,7 +20,7 @@
 ### Feature branch evidence — Phòng ban v1 (2026-08-22)
 
 Trên branch `feature/quan-ly-phong-ban-chuc-vu`, CRUD web Phòng ban đã được nối
-với route REST dưới auth và bốn Gate canonical `PHONG_BAN_XEM/TAO/SUA/XOA`.
+với route REST dưới auth và bốn Gate canonical `PB_VIEW/PB_CREATE/PB_EDIT/PB_DELETE`.
 Danh sách hiển thị `ma_pb`, `ten_pb`, `so_nhan_vien`; form có validation, old
 input, lỗi an toàn, empty/success/server-error, action gating và chặn xóa khi
 đang có nhân viên. Stored-procedure contract được version tại
@@ -45,7 +45,10 @@ acceptance đã verified.
   demo `nhom3@2026`; role 2 có đúng thêm `201–204, 301–304, 401–404` theo
   least privilege và counter 30. Backup/live DB không nằm trong scope.
 - Hướng dẫn authoritative: [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md). Avatar browser vẫn blocked/unverified và chưa claim MySQL 8.
-- Current full Laravel là `259 pass, 2057 assertions`; schema contract static là
+- Permission registry mở rộng qua `config/permissions.php`; sidebar module visibility
+  yêu cầu definition `_VIEW` đúng module, còn route/action vẫn exact Gate. Lookup
+  employee của Chấm công/Nghỉ phép chỉ giữ shared `NV_VIEW` compatibility dependency.
+- Current full Laravel là `265 pass, 2086 assertions`; schema contract static là
   `4 pass, 93 assertions`; Vite build, Composer, route inventory và diff check
   đều pass. Guarded MariaDB fresh replay pass `5 tests, 161 assertions` trên
   disposable DB; không claim live DB/production/browser pass.
@@ -62,7 +65,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
   mutation local đã được duyệt sau checkpoint đó.
 - Historical Task20 scoped/browser numbers remain historical only. Current
   employee/auth/compatibility Feature/Unit suites and schema contract static
-  test pass; full Laravel is `259 pass, 2057 assertions`. Fresh MariaDB
+  test pass; full Laravel is `265 pass, 2086 assertions`. Fresh MariaDB
   DDL/FK/seed/RBAC/CRUD/lifecycle/migration test pass `5/161`, including
   direct-repository parallel counter concurrency; browser avatar remains
   unverified.
@@ -100,7 +103,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | Git | Main tích hợp merge `aa77419`, parents `1677f20`/`91bb7a1`; revalidate HEAD/upstream khi tiếp tục |
 | MCP code graph | 1.819 node, 2.454 edge; dùng để khám phá code, không dùng thay cho route runtime |
 | `php artisan route:list --except-vendor` | Pass; department routes are present under `admin/phong-ban`; full inventory rechecked |
-| `php artisan test` | `259 pass, 2057 assertions`; includes scoped Phòng ban and employee/auth suites |
+| `php artisan test` | `265 pass, 2086 assertions`; includes scoped Phòng ban, employee/auth and real SQLite RBAC integration suites |
 | `npm run test:frontend` | Pass; 16 tests |
 | `npm run build` | Pass; Vite 7.3.6, 17 modules transformed |
 | Composer dependency gates | Validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates |

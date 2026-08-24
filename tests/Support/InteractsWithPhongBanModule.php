@@ -3,8 +3,9 @@
 namespace Tests\Support;
 
 use App\Enums\PhongBanPermission;
+use App\Contracts\PermissionDefinitionContract;
 use App\Models\NhanVien;
-use App\Services\PhongBanPermissionService;
+use App\Services\PermissionService;
 
 trait InteractsWithPhongBanModule
 {
@@ -22,7 +23,7 @@ trait InteractsWithPhongBanModule
             'email' => 'an@example.test',
             'mat_khau' => 'test-hash',
             'ma_vt' => 1,
-            'ky_hieu' => 'DANG_LAM',
+            'ma_tt' => 2,
         ]);
         $allowedSymbols = array_values(array_filter(array_map(
             static fn (mixed $symbol): ?string => $symbol instanceof PhongBanPermission
@@ -32,16 +33,33 @@ trait InteractsWithPhongBanModule
         )));
 
         $this->actingAs($employee);
-        $this->mock(PhongBanPermissionService::class, function ($mock) use ($employee, $allowedSymbols): void {
+        $this->mock(PermissionService::class, function ($mock) use ($employee, $allowedSymbols): void {
+            $mock->shouldReceive('canSeeModule')
+                ->withArgs(static function (mixed $candidate, mixed $module) use ($employee): bool {
+                    return $candidate instanceof NhanVien
+                        && $candidate->getAuthIdentifier() === $employee->getAuthIdentifier()
+                        && is_string($module);
+                })
+                ->andReturnUsing(static function (NhanVien $candidate, string $module) use ($employee, $allowedSymbols): bool {
+                    $viewSymbol = match ($module) {
+                        'NhanVien' => \App\Enums\NhanVienPermission::Xem->value,
+                        'PhongBan' => PhongBanPermission::Xem->value,
+                        default => null,
+                    };
+
+                    return $candidate->getAuthIdentifier() === $employee->getAuthIdentifier()
+                        && $viewSymbol !== null
+                        && in_array($viewSymbol, $allowedSymbols, true);
+                });
             $mock->shouldReceive('allows')
                 ->withArgs(static function (mixed $candidate, mixed $permission) use ($employee): bool {
                     return $candidate instanceof NhanVien
                         && $candidate->getAuthIdentifier() === $employee->getAuthIdentifier()
-                        && $permission instanceof PhongBanPermission;
+                        && ($permission instanceof PermissionDefinitionContract || is_string($permission));
                 })
-                ->andReturnUsing(static function (NhanVien $candidate, PhongBanPermission $permission) use ($employee, $allowedSymbols): bool {
+                ->andReturnUsing(static function (NhanVien $candidate, PermissionDefinitionContract|string $permission) use ($employee, $allowedSymbols): bool {
                     return $candidate->getAuthIdentifier() === $employee->getAuthIdentifier()
-                        && in_array($permission->value, $allowedSymbols, true);
+                        && in_array($permission instanceof PermissionDefinitionContract ? $permission->symbol() : $permission, $allowedSymbols, true);
                 });
         });
 

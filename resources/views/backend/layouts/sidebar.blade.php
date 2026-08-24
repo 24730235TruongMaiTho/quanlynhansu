@@ -21,8 +21,10 @@
                     <span class="nav-title">Bảng điều khiển</span>
                 </a>
             </li>
-            @can('NHAN_VIEN_XEM')
-                @if (config('nhanvien.enabled') === true)
+            @php($sidebarUser = auth()->user())
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && config('nhanvien.enabled') === true
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'NhanVien'))
                 <!-- Nhân sự -->
                 <li class="nav-item">
                     <a href="#" class="nav-link" data-toggle="submenu">
@@ -39,16 +41,16 @@
                         </li>
                     </ul>
                 </li>
-                @endif
-            @endcan
-            @can(\App\Enums\PhongBanPermission::Xem->value)
+            @endif
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'PhongBan'))
                 <li class="nav-item">
                     <a href="{{ route('backend.phongban.index') }}" class="nav-link">
                         <i class="bi bi-building" aria-hidden="true"></i>
                         <span class="nav-title">Phòng ban</span>
                     </a>
                 </li>
-            @endcan
+            @endif
             <!-- Chấm công -->
             <li class="nav-item">
                 <a href="{{ route('backend.backend.chamcong.index') }}" class="nav-link">
