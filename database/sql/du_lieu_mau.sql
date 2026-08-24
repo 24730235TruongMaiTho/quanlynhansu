@@ -1,129 +1,215 @@
-USE quan_ly_nhan_su;
+-- Tạm tắt kiểm tra khóa ngoại
+SET FOREIGN_KEY_CHECKS = 0;
 
--- 1. Dữ liệu bảng Phòng Ban
-INSERT INTO phong_ban (ten_pb) VALUES
-(N'Phòng Nhân sự'),
-(N'Phòng Kế toán'),
-(N'Phòng Công nghệ thông tin'),
-(N'Phòng Kinh doanh'),
-(N'Phòng Marketing');
+-- ==================== 1. PhongBan ====================
+INSERT INTO phong_ban (ma_pb, ten_pb) VALUES
+(1, N'IT'),
+(2, N'Ban giám đốc'),
+(3, N'Nhân sự'),
+(4, N'Kế toán'),
+(5, N'Kinh doanh');
+ALTER TABLE phong_ban AUTO_INCREMENT = 6;
 
--- 2. Dữ liệu bảng Chức Vụ
-INSERT INTO chuc_vu (ten_cv, he_so_phu_cap) VALUES
-(N'Giám đốc', 2.00),
-(N'Trưởng phòng', 1.50),
-(N'Phó phòng', 1.25),
-(N'Nhân viên chính thức', 1.00),
-(N'Thực tập sinh', 0.50);
+-- ==================== 2. VaiTro ====================
+INSERT INTO vai_tro (ma_vt, ten_vt, mo_ta) VALUES
+(1, N'Quản trị', N'Quản trị toàn hệ thống'),
+(2, N'Nhân sự', N'Quản lý nhân viên, quản lý hợp đồng, quản lý nghỉ phép, quản lý chấm công, xem bảng lương'),
+(3, N'Kế toán', N'Quản lý tính lương'),
+(4, N'Trưởng phòng', N'Duyệt nghỉ phép'),
+(5, N'Nhân viên', N'Xem và cập nhật thông tin cá nhân');
+ALTER TABLE vai_tro AUTO_INCREMENT = 6;
 
--- 3. Dữ liệu bảng Trạng Thái Làm Việc
-INSERT INTO trang_thai_lam_viec (ten_tt) VALUES
-(N'Thử việc'),
-(N'Đang làm việc'),
-(N'Tạm nghỉ không lương'),
-(N'Đã nghỉ việc');
+-- ==================== 3. TrangThaiLamViec ====================
+INSERT INTO trang_thai_lam_viec (ma_tt, ten_tt) VALUES
+(1, N'Đang làm việc'),
+(2, N'Thử việc'),
+(3, N'Thực tập'),
+(4, N'Đã nghỉ việc'),
+(5, N'Bị sa thải'),
+(6, N'Nghỉ hưu');
+ALTER TABLE trang_thai_lam_viec AUTO_INCREMENT = 7;
 
--- 4. Dữ liệu bảng Vai Trò
-INSERT INTO vai_tro (ten_vt, mo_ta) VALUES
-(N'Super Admin', N'Toàn quyền quản trị hệ thống'),
-(N'Quản trị Nhân sự', N'Quản lý nhân viên, hợp đồng, phòng ban, chức vụ'),
-(N'Quản trị CBL', N'Quản lý chấm công, nghỉ phép và tính lương'),
-(N'Trưởng phòng', N'Duyệt nghỉ phép và xem thông tin nhân viên phòng ban'),
-(N'Nhân viên', N'Xem thông tin cá nhân, chấm công, gửi đơn nghỉ phép');
+-- ==================== 4. ChucVu ====================
+INSERT INTO chuc_vu (ma_cv, ten_cv, he_so_phu_cap) VALUES
+(1, N'Giám đốc', 2.00),
+(2, N'Phó giám đốc', 1.50),
+(3, N'Trưởng phòng', 1.00),
+(4, N'Phó phòng', 0.75),
+(5, N'Tổ trưởng', 0.30),
+(6, N'Nhân viên', 0.00);
+ALTER TABLE chuc_vu AUTO_INCREMENT = 7;
 
--- 5. Dữ liệu bảng Quyền (Đầy đủ các Module: NhanVien, PhongBan, ChucVu, HopDong, Luong, NghiPhep, ChamCong, PhanQuyen)
--- Quy ước MaQuyen:
--- 1xx: Module Nhân viên | 2xx: Module Phòng ban | 3xx: Module Chức vụ | 4xx: Module Hợp đồng
--- 5xx: Module Lương     | 6xx: Module Nghỉ phép | 7xx: Module Chấm công | 8xx: Module Phân quyền
+-- ==================== 5. NhanVien ====================
+INSERT INTO nhan_vien (ma_nv, ho_ten, ngay_sinh, gioi_tinh, sdt, email, ngay_vao_lam, ma_pb, ma_cv, dan_toc, cccd, noi_cap_cccd, hoc_van, ma_tt, mat_khau, ma_vt) VALUES
+('00001', N'Nguyễn Văn An', '1979-12-11', 1, '0313645112', 'nguyenvanan@gmail.com', '2000-03-22', 1, 3, N'Kinh', '021334512155', N'Bộ Công an', N'Thạc sĩ', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 1),
+('00002', N'Trần Thị Bình', '1993-07-20', 0, '0987654321', 'binh.tran@gmail.com', '2019-08-15', 2, 1, N'Kinh', '123456789012', N'Bộ Công an', N'Thạc sĩ', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 1),
+('00003', N'Lê Văn Cường', '1990-01-10', 1, '0909123456', 'cuong.le@gmail.com', '2018-02-10', 2, 2, N'Kinh', '234567890123', N'Bộ Công an', N'Thạc sĩ', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 1),
+('00004', N'Phạm Thị Dung', '1996-11-05', 0, '0933123456', 'dung.pham@gmail.com', '2021-09-20', 3, 6, N'Kinh', '345678901234', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 2),
+('00005', N'Hoàng Văn Em', '1992-12-25', 1, '0978123456', 'em.hoang@gmail.com', '2017-03-30', 3, 3, N'Tày', '456789012345', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 4),
+('00006', N'Đinh Văn Hùng', '1991-05-25', 1, '0945671234', 'hung.dinh@company.com', '2017-11-22', 4, 6, N'Kinh', '079208010122', N'Bộ Công an', N'Cao đẳng', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 3),
+('00007', N'Vũ Thị Hạnh', '1998-02-09', 0, '0965123789', 'hanh.vu@company.com', '2020-07-12', 5, 6, N'Kinh', '079206008901', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00008', N'Nguyễn Thị Linh', '1996-10-14', 0, '0976543210', 'linh.nguyen@company.com', '2021-03-01', 5, 6, N'Kinh', '079208010123', N'Bộ Công an', N'Cao đẳng', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00009', N'Đăng Văn Ngữ', '1990-11-10', 1, '0124441421', 'dangvanngu@gmail.com', '2020-10-22', 5, 6, N'Kinh', '012325484121', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00010', N'Phạm Quốc Bảo', '1994-06-18', 1, '0912345678', 'bao.pham@company.com', '2022-04-15', 1, 6, N'Kinh', '079301234567', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00011', N'Nguyễn Thị Mai', '1997-09-22', 0, '0987654321', 'mai.nguyen@company.com', '2021-08-10', 3, 6, N'Kinh', '079301234568', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 2),
+('00012', N'Trần Minh Đức', '1988-03-05', 1, '0934567890', 'duc.tran@company.com', '2018-01-12', 4, 6, N'Kinh', '079301234569', N'Bộ Công an', N'Thạc sĩ', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00013', N'Lê Thị Thu Hà', '1995-11-14', 0, '0978123456', 'ha.le@company.com', '2020-07-20', 5, 6, N'Kinh', '079301234570', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00014', N'Võ Thanh Tùng', '1992-02-28', 1, '0961234567', 'tung.vo@company.com', '2019-09-05', 1, 6, N'Kinh', '079301234571', N'Bộ Công an', N'Cao đẳng', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00015', N'Đặng Ngọc Lan', '1996-08-17', 0, '0945678901', 'lan.dang@company.com', '2021-03-18', 4, 6, N'Kinh', '079301234572', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 3),
+('00016', N'Bùi Văn Khánh', '1989-12-09', 1, '0923456789', 'khanh.bui@company.com', '2017-06-01', 5, 6, N'Kinh', '079301234573', N'Bộ Công an', N'Thạc sĩ', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00017', N'Phan Thị Ngọc Ánh', '1998-05-25', 0, '0956789012', 'anh.phan@company.com', '2022-11-22', 3, 6, N'Kinh', '079301234574', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00018', N'Hoàng Đức Long', '1993-01-30', 1, '0901234567', 'long.hoang@company.com', '2019-02-14', 5, 6, N'Kinh', '079301234575', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
+('00019', N'Vũ Thị Hương', '1994-07-11', 0, '0998765432', 'huong.vu@company.com', '2020-05-08', 5, 6, N'Tày', '079301234576', N'Bộ Công an', N'Cao đẳng', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5);
+
+-- ==================== 6. Quyen ====================
 INSERT INTO quyen (ma_quyen, ky_hieu_quyen, ten_quyen, module) VALUES
--- Module Nhân viên
-(101, 'NV_VIEW', N'Xem danh sách nhân viên', 'NhanVien'),
-(102, 'NV_CREATE', N'Thêm mới nhân viên', 'NhanVien'),
-(103, 'NV_EDIT', N'Cập nhật nhân viên', 'NhanVien'),
-(104, 'NV_DELETE', N'Xóa nhân viên', 'NhanVien'),
+(1, N'VaiTro.Read', N'Đọc', N'VaiTro'),
+(2, N'VaiTro.Insert', N'Thêm', N'VaiTro'),
+(3, N'VaiTro.Update', N'Sửa', N'VaiTro'),
+(4, N'VaiTro.Delete', N'Xóa', N'VaiTro'),
+(5, N'PhanQuyen.Read', N'Đọc', N'PhanQuyen'),
+(6, N'PhanQuyen.Insert', N'Thêm', N'PhanQuyen'),
+(7, N'PhanQuyen.Update', N'Sửa', N'PhanQuyen'),
+(8, N'PhanQuyen.Delete', N'Xóa', N'PhanQuyen'),
+(9, N'PhongBan.Read', N'Đọc', N'PhongBan'),
+(10, N'PhongBan.Insert', N'Thêm', N'PhongBan'),
+(11, N'PhongBan.Update', N'Sửa', N'PhongBan'),
+(12, N'PhongBan.Delete', N'Xóa', N'PhongBan'),
+(13, N'ChucVu.Read', N'Đọc', N'ChucVu'),
+(14, N'ChucVu.Insert', N'Thêm', N'ChucVu'),
+(15, N'ChucVu.Update', N'Sửa', N'ChucVu'),
+(16, N'ChucVu.Delete', N'Xóa', N'ChucVu'),
+(17, N'NhanVien.Read', N'Đọc', N'NhanVien'),
+(18, N'NhanVien.Insert', N'Thêm', N'NhanVien'),
+(19, N'NhanVien.Update', N'Sửa', N'NhanVien'),
+(20, N'NhanVien.Delete', N'Xóa', N'NhanVien'),
+(21, N'HopDong.Read', N'Đọc', N'HopDong'),
+(22, N'HopDong.Insert', N'Thêm', N'HopDong'),
+(23, N'HopDong.Update', N'Sửa', N'HopDong'),
+(24, N'HopDong.Delete', N'Xóa', N'HopDong'),
+(25, N'NghiPhep.Read', N'Đọc', N'NghiPhep'),
+(26, N'NghiPhep.Insert', N'Thêm', N'NghiPhep'),
+(27, N'NghiPhep.Update', N'Sửa', N'NghiPhep'),
+(28, N'NghiPhep.Delete', N'Xóa', N'NghiPhep'),
+(29, N'ChamCong.Read', N'Đọc', N'ChamCong'),
+(30, N'ChamCong.Insert', N'Thêm', N'ChamCong'),
+(31, N'ChamCong.Update', N'Sửa', N'ChamCong'),
+(32, N'ChamCong.Delete', N'Xóa', N'ChamCong'),
+(33, N'Luong.Read', N'Đọc', N'Luong'),
+(34, N'Luong.Insert', N'Thêm', N'Luong'),
+(35, N'Luong.Update', N'Sửa', N'Luong'),
+(36, N'Luong.Delete', N'Xóa', N'Luong'),
+(37, N'HeThong.Config', N'Cấu hình', N'HeThong');
+ALTER TABLE quyen AUTO_INCREMENT = 38;
 
--- Module Phòng ban
-(201, 'PB_VIEW', N'Xem danh sách phòng ban', 'PhongBan'),
-(202, 'PB_CREATE', N'Thêm phòng ban', 'PhongBan'),
-(203, 'PB_EDIT', N'Cập nhật phòng ban', 'PhongBan'),
-(204, 'PB_DELETE', N'Xóa phòng ban', 'PhongBan'),
+-- ==================== 7. VaiTroQuyen ====================
+INSERT INTO vai_tro_quyen (ma_vt, ma_quyen) VALUES
+(1, 1),(1, 2),(1, 3),(1, 4),(1, 5),(1, 6),(1, 7),(1, 8),(1, 9),(1, 10),(1, 11),(1, 12),(1, 13),(1, 14),(1, 15),
+(1, 16),(1, 17),(1, 18),(1, 19),(1, 20),(1, 21),(1, 22),(1, 23),(1, 24),(1, 25),(1, 26),(1, 27),(1, 28),(1, 29),(1, 30),(1, 31),(1, 32),(1, 33),(1, 34),(1, 35),
+(1, 36),(1, 37),
+(2, 9),(2, 10),(2, 11),(2, 12),(2, 13),(2, 14),(2, 15),(2, 16),(2, 17),(2, 18),(2, 19),(2, 20),(2, 21),(2, 22),(2, 23),(2, 24),(2, 25),(2, 26),
+(2, 28),(2, 29),(2, 30),(2, 31),(2, 32),(2, 33),(2, 34),(2, 35),(2, 36),
+(3, 17),(3, 21),(3, 25),(3, 29),(3, 33),
+(4, 17),(4, 21),(4, 25),(4, 27),(4, 29);
 
--- Module Chức vụ
-(301, 'CV_VIEW', N'Xem danh sách chức vụ', 'ChucVu'),
-(302, 'CV_CREATE', N'Thêm chức vụ', 'ChucVu'),
-(303, 'CV_EDIT', N'Cập nhật chức vụ', 'ChucVu'),
-(304, 'CV_DELETE', N'Xóa chức vụ', 'ChucVu'),
+-- ==================== 8. LoaiHopDong ====================
+INSERT INTO loai_hop_dong (ma_lhd, ten_lhd) VALUES
+(1, N'Hợp đồng lao động không xác định thời hạn'),
+(2, N'Hợp đồng lao động xác định thời hạn'),
+(3, N'Hợp đồng lao động khoán'),
+(4, N'Hợp đồng thời vụ'),
+(5, N'Hợp đồng thử việc');
+ALTER TABLE loai_hop_dong AUTO_INCREMENT = 6;
 
--- Module Hợp đồng
-(401, 'HD_VIEW', N'Xem danh sách hợp đồng', 'HopDong'),
-(402, 'HD_CREATE', N'Tạo hợp đồng mới', 'HopDong'),
-(403, 'HD_EDIT', N'Cập nhật hợp đồng', 'HopDong'),
-(404, 'HD_DELETE', N'Hủy/Xóa hợp đồng', 'HopDong'),
+-- ==================== 9. HopDong ====================
+INSERT INTO hop_dong (ma_hd, ma_nv, ma_lhd, ngay_ky, ngay_het_han, luong_co_ban) VALUES
+(1, '00001', 1, '2022-01-10', NULL, 2350000),
+(2, '00002', 1, '2023-12-11', NULL, 2350000),
+(3, '00003', 4, '2026-01-12', '2026-12-12', 2350000),
+(4, '00004', 1, '2020-05-04', NULL, 2350000),
+(5, '00005', 1, '2016-09-05', NULL, 2350000),
+(6, '00006', 1, '2020-11-22', NULL, 2350000),
+(7, '00007', 1, '2021-08-07', NULL, 2350000),
+(8, '00008', 1, '2023-07-22', NULL, 2350000),
+(9, '00009', 1, '2023-10-09', NULL, 2350000),
+(10, '00010', 2, '2022-06-16', '2026-06-15', 2350000),
+(11, '00011', 2, '2024-06-16', '2027-06-15', 2350000),
+(12, '00012', 1, '2018-01-12', NULL, 2350000),
+(13, '00013', 2, '2020-07-20', '2027-07-19', 2350000),
+(14, '00014', 1, '2019-09-05', NULL, 2350000),
+(15, '00015', 2, '2023-03-18', '2027-03-17', 2350000),
+(16, '00016', 1, '2017-06-01', NULL, 2350000),
+(17, '00017', 3, '2024-11-22', '2027-01-22', 1500000),
+(18, '00018', 1, '2019-02-14', NULL, 2350000),
+(19, '00019', 4, '2026-04-08', '2026-07-08', 1200000);
+ALTER TABLE hop_dong AUTO_INCREMENT = 20;
 
--- Module Lương
-(501, 'LUONG_VIEW', N'Xem bảng lương', 'Luong'),
-(502, 'LUONG_CALC', N'Tính lương hàng tháng', 'Luong'),
-(503, 'LUONG_EDIT', N'Điều chỉnh thuởng/phạt', 'Luong'),
-(504, 'LUONG_LOCK', N'Chốt bảng lương', 'Luong'),
+-- ==================== 10. LoaiPhep ====================
+INSERT INTO loai_phep (ma_lp, ten_lp) VALUES
+(1, N'Nghỉ phép năm'),
+(2, N'Nghỉ ốm'),
+(3, N'Nghỉ thai sản'),
+(4, N'Nghỉ hiếu/hỉ'),
+(5, N'Nghỉ không lương');
+ALTER TABLE loai_phep AUTO_INCREMENT = 6;
 
--- Module Nghỉ phép
-(601, 'NP_VIEW', N'Xem danh sách nghỉ phép', 'NghiPhep'),
-(602, 'NP_CREATE', N'Tạo đơn xin nghỉ phép', 'NghiPhep'),
-(603, 'NP_APPROVE', N'Duyệt/Từ chối đơn nghỉ phép', 'NghiPhep'),
+-- ==================== 11. NghiPhep ====================
+INSERT INTO nghi_phep (ma_np, ma_nv, tu_ngay, den_ngay, ma_lp, ly_do, trang_thai_duyet) VALUES
+(1, '00002', '2026-05-20', '2026-05-20', 1, N'Đi du lịch', 2),
+(2, '00002', '2026-05-21', '2026-05-21', 1, N'bận việc gia đình', 1),
+(3, '00003', '2026-05-18', '2026-05-18', 4, N'Bận việc gia đình', 1),
+(4, '00003', '2026-05-20', '2026-05-20', 5, N'Bận việc gia đình', 1),
+(5, '00004', '2026-05-22', '2026-05-31', 3, N'nghỉ thai sản', 1),
+(6, '00002', '2026-05-01', '2026-05-01', 1, N'Bận việc gia đình', 2),
+(7, '00001', '2026-06-01', '2026-06-01', 2, N'Bị bệnh', 1);
+ALTER TABLE nghi_phep AUTO_INCREMENT = 8;
 
--- Module Chấm công
-(701, 'CC_VIEW', N'Xem dữ liệu chấm công', 'ChamCong'),
-(702, 'CC_IMPORT', N'Nhập/Ghi nhận chấm công', 'ChamCong'),
-(703, 'CC_EDIT', N'Sửa dữ liệu chấm công', 'ChamCong'),
+-- ==================== 12. LichSuHeSoLuong ====================
+INSERT INTO lich_su_he_so_luong (ma_ls, ma_nv, he_so_luong, tu_ngay, den_ngay) VALUES
+(1, '00001', 2.34, '2024-01-11', '2027-01-11'),
+(2, '00002', 2.34, '2025-05-01', '2027-06-01'),
+(3, '00003', 3.66, '2024-10-04', '2027-10-04'),
+(4, '00004', 3.00, '2019-05-28', '2027-05-27'),
+(5, '00005', 2.00, '2016-09-24', '2019-09-24'),
+(6, '00005', 3.33, '2019-09-25', '2022-09-25'),
+(7, '00006', 2.34, '2023-09-01', '2026-09-01'),
+(8, '00007', 2.66, '2023-09-01', '2026-09-01'),
+(9, '00008', 3.66, '2023-09-01', '2026-09-01'),
+(10, '00009', 2.34, '2023-09-01', '2026-09-01'),
+(11, '00010', 3.00, '2024-04-15', '2027-04-15'),
+(12, '00011', 3.00, '2024-08-10', '2027-08-10'),
+(13, '00012', 3.66, '2024-01-12', '2027-01-12'),
+(14, '00013', 3.00, '2024-07-20', '2027-07-20'),
+(15, '00014', 2.34, '2025-09-05', '2028-09-05'),
+(16, '00015', 3.00, '2025-03-18', '2028-03-18'),
+(17, '00016', 3.66, '2025-06-01', '2028-06-01'),
+(18, '00017', 3.00, '2024-11-22', '2026-11-22'),
+(19, '00018', 3.00, '2025-02-14', '2028-02-14'),
+(20, '00019', 2.34, '2025-05-08', '2028-05-08');
+ALTER TABLE lich_su_he_so_luong AUTO_INCREMENT = 21;
 
--- Module Phân quyền
-(801, 'PQ_ROLE_VIEW', N'Xem danh sách vai trò', 'PhanQuyen'),
-(802, 'PQ_ROLE_MANAGE', N'Quản lý vai trò & Gán quyền', 'PhanQuyen');
+-- ==================== 13. Luong ====================
+INSERT INTO luong (ma_luong, ma_nv, ky_luong, thuong, phat, bao_hiem, thue) VALUES
+(1, '00001', '2026-05-01', 50000, 0, 10000, 0),
+(2, '00002', '2026-05-01', 500000, 0, 100000, 10000),
+(3, '00003', '2026-05-01', 100000, 0, 100000, 10000),
+(4, '00004', '2026-05-01', 50000, 0, 100000, 20000),
+(5, '00005', '2026-05-01', 100000, 10000, 100000, 25000),
+(6, '00006', '2026-05-01', 10000, 50000, 100000, 100000),
+(7, '00007', '2026-05-01', 0, 0, 100000, 60000),
+(8, '00008', '2026-05-01', 10000, 0, 100000, 80000),
+(9, '00009', '2026-05-01', 10000, 0, 100000, 80000),
+(10, '00010', '2026-05-01', 300000, 0, 450000, 200000),
+(11, '00011', '2026-05-01', 450000, 50000, 500000, 350000),
+(12, '00012', '2026-05-01', 500000, 0, 500000, 500000),
+(13, '00013', '2026-05-01', 250000, 100000, 450000, 250000),
+(14, '00014', '2026-05-01', 400000, 0, 500000, 300000),
+(15, '00015', '2026-05-01', 350000, 50000, 450000, 250000),
+(16, '00016', '2026-05-01', 500000, 0, 500000, 500000),
+(17, '00017', '2026-05-01', 200000, 0, 300000, 100000),
+(18, '00018', '2026-05-01', 450000, 50000, 500000, 450000),
+(19, '00019', '2026-05-01', 150000, 100000, 250000, 50000);
+ALTER TABLE luong AUTO_INCREMENT = 20;
 
--- 6. Dữ liệu bảng Nhân Viên
-INSERT INTO nhan_vien (
-    ma_nv, ho_ten, ngay_sinh, gioi_tinh, sdt, email, 
-    ngay_vao_lam, ma_pb, ma_cv, dan_toc, cccd, noi_cap_cccd, 
-    hoc_van, ma_tt, mat_khau, ma_vt
-) VALUES
--- Ban Giám Đốc & Quản lý
-('NV001', N'Nguyễn Văn An', '1985-03-15', 1, '0901234567', 'an.nguyen@company.com', '2015-01-10', 3, 1, N'Kinh', '001085000001', N'Cục CSQLHC về trật tự xã hội', N'Thạc sĩ', 2, '', 1),
-('NV002', N'Trần Thị Bích', '1988-07-20', 0, '0902234567', 'bich.tran@company.com', '2016-03-01', 1, 2, N'Kinh', '001088000002', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 2),
-('NV003', N'Lê Hoàng Cường', '1987-11-05', 1, '0903234567', 'cuong.le@company.com', '2017-05-15', 2, 2, N'Kinh', '001087000003', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 3),
-('NV004', N'Phạm Minh Đức', '1990-01-12', 1, '0904234567', 'duc.pham@company.com', '2018-02-01', 3, 2, N'Kinh', '001090000004', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 4),
-('NV005', N'Hoàng Thùy Giang', '1991-09-18', 0, '0905234567', 'giang.hoang@company.com', '2018-08-10', 4, 2, N'Kinh', '001091000005', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 4),
-
--- Phòng Nhân sự & Kế toán
-('NV006', N'Vũ Thị Hoa', '1993-04-22', 0, '0906234567', 'hoa.vu@company.com', '2019-01-15', 1, 3, N'Kinh', '001093000006', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 2),
-('NV007', N'Đặng Văn Khoa', '1995-12-08', 1, '0907234567', 'khoa.dang@company.com', '2020-03-01', 1, 4, N'Kinh', '001095000007', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV008', N'Bùi Thị Lan', '1996-06-30', 0, '0908234567', 'lan.bui@company.com', '2021-06-15', 1, 4, N'Mường', '001096000008', N'Cục CSQLHC về trật tự xã hội', N'Cao đẳng', 2, '', 5),
-('NV009', N'Đỗ Minh Mỹ', '1992-08-14', 0, '0909234567', 'my.do@company.com', '2019-04-10', 2, 3, N'Kinh', '001092000009', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 3),
-('NV010', N'Nông Văn Nam', '1994-02-28', 1, '0910234567', 'nam.nong@company.com', '2020-09-01', 2, 4, N'Tày', '001094000010', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-
--- Phòng CNTT
-('NV011', N'Trịnh Quốc Oanh', '1993-10-10', 1, '0911234567', 'oanh.trinh@company.com', '2019-07-01', 3, 3, N'Kinh', '001093000011', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV012', N'Ngô Tấn Phát', '1997-05-19', 1, '0912234567', 'phat.ngo@company.com', '2021-02-15', 3, 4, N'Kinh', '001097000012', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV013', N'Lý Thị Quỳnh', '1998-01-25', 0, '0913234567', 'quynh.ly@company.com', '2022-01-10', 3, 4, N'Kinh', '001098000013', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV014', N'Dương Sơn Sơn', '1999-11-11', 1, '0914234567', 'son.duong@company.com', '2022-08-01', 3, 4, N'Kinh', '001099000014', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV015', N'Lương Phương Thảo', '2000-03-04', 0, '0915234567', 'thao.luong@company.com', '2023-03-15', 3, 4, N'Thái', '001200000015', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-
--- Phòng Kinh doanh
-('NV016', N'Mai Văn Tiến', '1990-07-07', 1, '0916234567', 'tien.mai@company.com', '2018-11-01', 4, 3, N'Kinh', '001090000016', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV017', N'Nguyễn Thị Uyên', '1995-09-23', 0, '0917234567', 'uyen.nguyen@company.com', '2020-05-15', 4, 4, N'Kinh', '001095000017', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV018', N'Phan Khánh Vinh', '1996-12-12', 1, '0918234567', 'vinh.phan@company.com', '2021-04-01', 4, 4, N'Kinh', '001096000018', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV019', N'Hà Thị Xuân', '1997-04-05', 0, '0919234567', 'xuan.ha@company.com', '2022-02-15', 4, 4, N'Kinh', '001097000019', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV020', N'Trương Công Yên', '1998-08-20', 1, '0920234567', 'yen.truong@company.com', '2022-10-01', 4, 4, N'Kinh', '001098000020', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-
--- Phòng Marketing
-('NV021', N'Lê Thị Anh', '1992-06-18', 0, '0921234567', 'anh.le@company.com', '2019-09-15', 5, 3, N'Kinh', '001092000021', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV022', N'Nguyễn Hoàng Bảo', '1996-03-30', 1, '0922234567', 'bao.nguyen@company.com', '2021-01-10', 5, 4, N'Kinh', '001096000022', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-('NV023', N'Đào Thị Cúc', '1997-10-15', 0, '0923234567', 'cuc.dao@company.com', '2022-05-01', 5, 4, N'Kinh', '001097000023', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 2, '', 5),
-
--- Nhân viên Thử việc & Trạng thái khác
-('NV024', N'Vũ Đình Dung', '2001-02-14', 1, '0924234567', 'dung.vu@company.com', '2024-01-15', 3, 5, N'Kinh', '001201000024', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 1, '', 5),
-('NV025', N'Trần Ngọc Đạt', '2001-07-09', 1, '0925234567', 'dat.tran@company.com', '2024-02-01', 4, 5, N'Kinh', '001201000025', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 1, '', 5),
-('NV026', N'Phạm Thu Hà', '2002-05-20', 0, '0926234567', 'ha.pham@company.com', '2024-03-01', 5, 5, N'Kinh', '001202000026', N'Cục CSQLHC về trật tự xã hội', N'Cao đẳng', 1, '', 5),
-('NV027', N'Hoàng Văn Khánh', '1994-11-30', 1, '0927234567', 'khanh.hoang@company.com', '2020-11-15', 2, 4, N'Kinh', '001094000027', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 3, '', 5),
-('NV028', N'Đỗ Thị Thúy', '1995-08-12', 0, '0928234567', 'thuy.do@company.com', '2021-07-01', 1, 4, N'Kinh', '001095000028', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 3, '', 5),
-('NV029', N'Nguyễn Văn Long', '1989-04-03', 1, '0929234567', 'long.nguyen@company.com', '2017-09-01', 4, 4, N'Kinh', '001089000029', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 4, '', 5),
-('NV030', N'Bùi Ánh Tuyết', '1993-09-27', 0, '0930234567', 'tuyet.bui@company.com', '2019-12-01', 5, 4, N'Kinh', '001093000030', N'Cục CSQLHC về trật tự xã hội', N'Đại học', 4, '', 5);
+-- Bật lại kiểm tra khóa ngoại
+SET FOREIGN_KEY_CHECKS = 1;
