@@ -43,8 +43,9 @@ chạy trên DB live. Sau postcheck, cleanup phải đi qua
 xóa view/routine employee cũ và có postcheck giữ nguyên routine module khác.
 
 Guarded MariaDB integration hiện đã replay fresh pair, kiểm tra migration từ
-fixture 16 bảng, cleanup allowlist và hai worker direct repository cấp mã đồng
-thời: `5 tests, 161 assertions` trên disposable database. Đây là verified hẹp,
+fixture 16 bảng, cleanup allowlist, Department CRUD trực tiếp và hai worker
+direct repository cấp mã đồng thời: `6 tests, 196 assertions` trên disposable
+database. Đây là verified hẹp,
 không phải bằng chứng live/production hay MySQL 8.
 
 Ba migration Laravel chỉ tạo users/password reset/session, cache và queue/jobs. Database live chưa có bảng `migrations` và các migration này chưa chạy.
@@ -107,11 +108,11 @@ contract của fresh 15-table source:
 
 | Procedure | Tham số theo caller | Trạng thái trong dump/live DB | Contract kết quả |
 | --- | --- | --- | --- |
-| `sp_phong_ban_danh_sach` | Không | Có | Row `ma_pb`, `ten_pb`, `so_nhan_vien` |
-| `sp_phong_ban_them` | `ten_pb` | Có | Write, không result set |
-| `sp_phong_ban_sua` | `ma_pb, ten_pb` | Có; repository dùng đủ hai placeholder | Write, không result set |
-| `sp_phong_ban_xoa` | `ma_pb` | Có | Write, không result set |
-| `sp_phong_ban_chi_tiet` | `ma_pb` | Có trong canonical + `database/sql/department/2026_08_22_001_department_contract.sql` | Row `ma_pb`, `ten_pb`, `so_nhan_vien` |
+| `sp_phong_ban_danh_sach` | Không | Legacy only; Department repository không gọi | Row `ma_pb`, `ten_pb`, `so_nhan_vien` |
+| `sp_phong_ban_them` | `ten_pb` | Legacy only; Department repository không gọi | Write, không result set |
+| `sp_phong_ban_sua` | `ma_pb, ten_pb` | Legacy only; Department repository không gọi | Write, không result set |
+| `sp_phong_ban_xoa` | `ma_pb` | Legacy only; Department repository không gọi | Write, không result set |
+| `sp_phong_ban_chi_tiet` | `ma_pb` | Legacy only; Department repository không gọi | Row `ma_pb`, `ten_pb`, `so_nhan_vien` |
 | `sp_cham_cong_nhan_vien_phan_trang` | filter + page/per-page + `OUT total` | Có; read routines 002 và dump canonical | Aggregate nhân viên an toàn + tổng số |
 | `sp_cham_cong_cap_nhat` | `ma_cc, ma_nv, ngay_lam, so_gio_lam, vao_muon, ve_som` | Có | Write; caller đọc lại table |
 | `sp_luong_tim_kiem_phan_trang` | `ma_nv, ky_luong, ma_pb, ma_cv, page, per_page` | **Thiếu** | Mỗi row phải có `total_count` |
@@ -123,7 +124,11 @@ contract của fresh 15-table source:
 Chấm công chi tiết đã có Query Builder contract; không suy rộng các routine
 chưa có trong dump thành đã hoàn tất.
 
-### Contract Phòng ban v1 (2026-08-22)
+### Contract Phòng ban v1 — legacy procedure appendix (2026-08-22)
+
+Phần này chỉ mô tả lịch sử routine để truy nguyên; nó không phải active
+contract của module Phòng ban. Active repository dùng Query Builder trực tiếp
+trên `phong_ban` và `nhan_vien` của fresh pair, không cần routine/view/trigger.
 
 Script `database/sql/department/2026_08_22_001_department_contract.sql` chạy sau
 schema nền trên target do caller chọn, không tự `USE`, `DROP/CREATE DATABASE`,
@@ -151,6 +156,19 @@ chưa chạy trong phiên 2026-08-22.
 Fresh seed dùng bốn symbol `PB_VIEW`, `PB_CREATE`, `PB_EDIT`, `PB_DELETE` với
 `ma_quyen` 201–204 và module `PhongBan`. Script routine phòng ban bên trên là
 legacy history; không dùng nó để provision catalog cho fresh 15-table source.
+
+### Active Department repository contract (2026-08-24)
+
+`App\Repositories\PhongBanRepository` dùng connection mặc định của Laravel và
+Query Builder trực tiếp. `all()`/`find()` chọn tường minh `pb.ma_pb`,
+`pb.ten_pb` và `COUNT(nv.ma_nv) AS so_nhan_vien`, `LEFT JOIN` nhân viên, group
+theo phòng ban và sắp xếp `ma_pb ASC`; không dùng `SELECT *` hoặc `CALL`.
+Create/update/delete trim tên, giới hạn 100 ký tự, dùng transaction; update và
+delete khóa target bằng `lockForUpdate()`. Unique database violation map về
+`PB_NAME_DUPLICATE`, dependency map về `PB_IN_USE`, target thiếu map về
+`PB_NOT_FOUND`, lỗi khác dùng thông báo generic. SQLite tests bảo vệ outcome;
+MariaDB fresh proof nằm trong `FreshEmployeeSchemaContractTest` và phải chạy
+qua disposable guard.
 
 ## Setup local an toàn
 
@@ -269,8 +287,9 @@ legacy drift cần xử lý riêng:
 | --- | --- | --- |
 | `sp_luong_tim_kiem_phan_trang` | `LuongRepository@all` | API danh sách lương trả lỗi |
 
-Phòng ban v1 đã sửa caller `sp_phong_ban_sua(?, ?)` và bổ sung detail routine;
-contract/error behavior được ghi ở mục Contract Phòng ban bên trên.
+Department repository không còn caller routine. `ChamCongController` vẫn có
+lookup procedure legacy riêng; việc thay caller đó thuộc phạm vi Chấm công và
+chưa được thực hiện trong lát cắt này.
 
 ## Rủi ro dữ liệu và bảo mật
 
@@ -336,7 +355,8 @@ runtime đã kiểm chứng; MySQL 8 chưa được claim.
 
 1. Tách dump thành schema, routines và seed hoặc chuyển sang migration/SQL script versioned.
 2. Thêm unique/check/index còn thiếu cho kỳ lương và các module ngoài nhân viên.
-3. Viết integration test cho procedure PHP của phòng ban/lương/chấm công/nghỉ phép.
+3. Xử lý các caller procedure legacy còn lại của module ngoài Phòng ban theo
+   từng contract riêng; không dùng legacy Department script làm active setup.
 
 ## Giới hạn của snapshot
 

@@ -1,3 +1,5 @@
+-- LEGACY HISTORICAL ONLY: superseded by the direct Query Builder Department
+-- repository and the fresh 15-table SQL pair. Do not run as active setup.
 -- Department contract v1 for MariaDB 10.4.
 -- Run only on an approved/disposable target selected by the caller.
 -- This script does not USE, CREATE, or DROP DATABASE, and never maps roles.

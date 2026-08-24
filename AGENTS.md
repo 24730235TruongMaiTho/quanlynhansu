@@ -11,7 +11,11 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
 - Nguồn dựng fresh hiện hành cho hợp đồng 15 bảng là `database/tao_bang.sql`
   rồi `database/du_lieu_mau.sql`; `quan_ly_nhan_su.session.sql` là dump lịch sử
   đã đánh dấu, không phải nguồn schema active.
-- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; phòng ban còn lỗi. Module nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`; xem handoff/guide để biết các SHA và giới hạn browser avatar.
+- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; Phòng ban đã
+  chuyển CRUD repository sang Query Builder trực tiếp trên fresh 15-table
+  contract, còn browser acceptance riêng. Module nhân viên + auth/RBAC Tasks
+  13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`; xem
+  handoff/guide để biết các SHA và giới hạn browser avatar.
 - Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
 ## Thứ tự đọc
@@ -70,7 +74,12 @@ Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa đ�
 - Module Nhân viên/auth/RBAC hiện dùng Query Builder trực tiếp trên hợp đồng 15
   bảng; không thêm procedure/view/trigger để né giới hạn bảng. Với procedure của
   module khác, kiểm tra tên, số tham số, thứ tự và result shape trong dump/live schema.
-- Hai procedure ngoài module nhân viên code đang gọi hiện không tồn tại: `sp_phong_ban_chi_tiet` và `sp_luong_tim_kiem_phan_trang`; không tự tạo bằng phỏng đoán. Chấm công chi tiết hiện dùng Query Builder trên cột canonical và không gọi `sp_cham_cong_chi_tiet_phan_trang`.
+- Department repository không gọi `sp_phong_ban_*`; các procedure Department
+  trong `database/sql/department` là legacy history. `LuongRepository` vẫn có
+  caller `sp_luong_tim_kiem_phan_trang` chưa có trong fresh source; ngoài ra
+  `ChamCongController` còn lookup Department legacy ngoài phạm vi lát cắt này.
+  Chấm công chi tiết hiện dùng Query Builder trên cột canonical và không gọi
+  `sp_cham_cong_chi_tiet_phan_trang`.
 - Chốt cùng timezone cho Laravel và DB trước các logic dùng `now()`/`CURDATE()`.
 - Chỉ test mutation trên database test/disposable.
 - Không dùng procedure backup/restore/import/export hiện tại từ web.
@@ -112,8 +121,8 @@ git status --short
 
 Evidence historical trên main ngày 2026-08-21 vẫn được giữ trong docs nhưng
 không thay cho gate fresh 15 bảng. Scoped employee/auth tests hiện tại dùng
-SQLite và đã pass hẹp; guarded fresh MariaDB contract đã pass `5 tests,
-161 assertions` trên disposable schema, gồm migration 16→15 và hai worker
+SQLite và đã pass hẹp; guarded fresh MariaDB contract đã pass `6 tests,
+196 assertions` trên disposable schema, gồm Department CRUD, migration 16→15 và hai worker
 counter trực tiếp. `phpunit.xml` mặc định dùng SQLite
 in-memory nên full suite vẫn không tự chứng minh MariaDB DDL; chạy
 `phpunit.mariadb.xml` để lặp lại gate fresh. Nếu HEAD/baseline đổi, cập nhật

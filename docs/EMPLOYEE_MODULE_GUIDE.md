@@ -209,7 +209,7 @@ Fresh pair đã được kiểm tra tĩnh và replay thật trên guarded dispos
 đúng 15 bảng, 30 employee, counter 30, direct address/avatar/date columns,
 bcrypt login seed `NV001`; role/RBAC explicit theo catalog; repository CRUD/address/avatar/lifecycle,
 migration 16→15, allowlisted cleanup và parallel direct-repository counter pass
-trong `5 tests, 161 assertions`. Đây không phải bằng chứng live production;
+trong `6 tests, 196 assertions`. Đây không phải bằng chứng live production;
 browser avatar vẫn là gate riêng.
 
 ### Legacy history
@@ -283,9 +283,9 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
     git status --short
 
 Evidence hiện tại của slice này: route inventory 52; full Laravel
-`265 pass, 2086 assertions`; schema contract static `4 pass, 93 assertions`;
+`272 pass, 2114 assertions`; schema contract static `4 pass, 93 assertions`;
 attendance/leave compatibility và employee/auth scoped tests đều pass; guarded
-MariaDB fresh contract `5 tests, 161 assertions` pass, gồm parallel counter.
+MariaDB fresh contract `6 tests, 196 assertions` pass, gồm Department CRUD và parallel counter.
 Browser avatar chưa chạy.
 
 MariaDB fresh-contract integration phải dùng wrapper guarded và switch bắt buộc,

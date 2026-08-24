@@ -4,6 +4,12 @@ namespace Tests\Integration\MariaDb;
 
 use PDOException;
 
+/**
+ * @group legacy
+ *
+ * Historical procedure rollout preflight; the active fresh schema does not
+ * provision these routines.
+ */
 class PhongBanContractPreflightTest extends MariaDbTestCase
 {
     public function test_rollout_refuses_untrimmed_department_data_before_unique_ddl(): void

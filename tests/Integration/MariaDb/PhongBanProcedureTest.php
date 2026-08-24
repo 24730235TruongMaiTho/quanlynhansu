@@ -8,6 +8,12 @@ use PDO;
 use PDOException;
 use PDOStatement;
 
+/**
+ * @group legacy
+ *
+ * Historical procedure contract. Active Department acceptance is the fresh
+ * pair plus PhongBanRepository coverage in FreshEmployeeSchemaContractTest.
+ */
 class PhongBanProcedureTest extends MariaDbTestCase
 {
     protected function setUp(): void

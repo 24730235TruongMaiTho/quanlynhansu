@@ -3,7 +3,9 @@
 namespace Tests\Integration\MariaDb;
 
 use App\Enums\NhanVienRemovalAction;
+use App\Exceptions\PhongBanDomainException;
 use App\Repositories\NhanVienRepository;
+use App\Repositories\PhongBanRepository;
 use App\Support\DisposableMariaDbGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -137,6 +139,55 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertSame('avatars/maria031.jpg', $repository->replaceAvatarPath('NV031', 'avatars/maria031-new.jpg'));
         self::assertSame('avatars/maria031-new.jpg', DB::table('nhan_vien')->where('ma_nv', 'NV031')->value('anh_dai_dien'));
         self::assertNotNull($repository->find('NV031'));
+    }
+
+    public function test_department_repository_uses_fresh_tables_directly_for_shape_and_crud_errors(): void
+    {
+        $this->runFreshPair();
+        $repository = app(PhongBanRepository::class);
+
+        $rows = $repository->all();
+        self::assertCount(5, $rows);
+        self::assertSame(['ma_pb', 'ten_pb', 'so_nhan_vien'], array_keys(get_object_vars($rows[0])));
+        self::assertSame(1, $rows[0]->ma_pb);
+        self::assertSame('Phòng Nhân sự', $rows[0]->ten_pb);
+        self::assertGreaterThan(0, $rows[0]->so_nhan_vien);
+
+        $repository->create('  Phòng Mới  ');
+        $created = $repository->find(6);
+        self::assertNotNull($created);
+        self::assertSame('Phòng Mới', $created->ten_pb);
+        self::assertSame(0, $created->so_nhan_vien);
+
+        $repository->update(6, '  Phòng Mới Cập nhật  ');
+        self::assertSame('Phòng Mới Cập nhật', $repository->find(6)?->ten_pb);
+
+        try {
+            $repository->create('Phòng Nhân sự');
+            self::fail('Fresh unique department names must be enforced by the database.');
+        } catch (PhongBanDomainException $exception) {
+            self::assertSame('PB_NAME_DUPLICATE', $exception->domainCode);
+        }
+
+        try {
+            $repository->delete(1);
+            self::fail('A department referenced by seed employees must not be deleted.');
+        } catch (PhongBanDomainException $exception) {
+            self::assertSame('PB_IN_USE', $exception->domainCode);
+        }
+
+        $repository->delete(6);
+        self::assertNull($repository->find(6));
+
+        try {
+            $repository->update(999, 'Không tồn tại');
+            self::fail('Missing department targets must be rejected.');
+        } catch (PhongBanDomainException $exception) {
+            self::assertSame('PB_NOT_FOUND', $exception->domainCode);
+        }
+
+        self::assertSame(0, (int) DB::table('information_schema.ROUTINES')
+            ->where('ROUTINE_SCHEMA', DB::raw('DATABASE()'))->count());
     }
 
     public function test_repository_terminates_with_dependency_and_hard_deletes_without_one(): void

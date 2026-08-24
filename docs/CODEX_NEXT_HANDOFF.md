@@ -40,23 +40,25 @@
 
 Code, route, test và database đang được kiểm tra có ưu tiên cao hơn snapshot này.
 
-## Feature branch evidence — Phòng ban v1 (2026-08-22)
+## Feature branch evidence — Phòng ban v1 (2026-08-24)
 
-Branch `feature/quan-ly-phong-ban-chuc-vu` hiện có server-rendered CRUD Phòng
+Branch `feature/quan-ly-phong-ban` hiện có server-rendered CRUD Phòng
 ban dưới auth với route names `backend.phongban.index/create/store/edit/update/destroy`,
 param dương `ma_pb`, bốn Gate canonical `PB_*`, model mapping chuẩn,
-repository/service gọi stored procedures, form validation và UI runtime
-`backend.layouts.app`. Catalog permission được version và canonical dump đồng bộ;
-không tự grant role thật hoặc local demo admin.
+repository/service dùng Query Builder trực tiếp trên bảng fresh (không gọi
+routine), form validation và UI runtime `backend.layouts.app`. Read trả shape
+tường minh `ma_pb`, `ten_pb`, `so_nhan_vien`; write có transaction, lock target,
+trim tên, mã lỗi domain an toàn và chặn xóa khi có nhân viên. Catalog và role
+mappings lấy từ fresh seed canonical; Department code không tự thay đổi role
+assignment.
 
-Evidence đã chạy: HTTP/controller/view, unit/mocked service và repository
-contract tests pass (scoped `16 tests/144 assertions`); full Laravel
-`253 tests/1964 assertions`, full feature suite dùng SQLite in-memory.
-Frontend `16/16`, Vite `17 modules`, Composer validate, route list và diff check.
-MariaDB guarded
-integration/preflight/concurrency test đã viết nhưng chưa chạy vì phiên này
-không có target disposable được cấp; browser acceptance chưa thực hiện. Không
-claim persistence routine/production/MySQL 8.
+Evidence trước lát cắt này: HTTP/controller/view, full Laravel và full feature
+suite dùng SQLite in-memory, frontend `16/16`, Vite `17 modules`, Composer
+validate, route list và diff check. Real SQLite Department repository/mapper
+hiện có combined `9 tests/35 assertions`; guarded MariaDB fresh suite hiện pass `6 tests,
+196 assertions`, gồm CRUD trực tiếp Phòng ban và các gate fresh employee/counter.
+Browser/production acceptance chưa claim. Legacy procedure script và procedure
+tests chỉ để truy nguyên, không phải active Department contract.
 
 ## Trạng thái module Nhân viên
 
