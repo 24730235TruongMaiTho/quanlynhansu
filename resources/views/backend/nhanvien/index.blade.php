@@ -19,6 +19,10 @@
             'page',
             'so_dong',
         ]);
+        if (array_key_exists('ma_pb', $listQuery) || ($departmentScopeNotice ?? null) !== null) {
+            $listQuery['ma_pb'] = $filters['ma_pb'];
+        }
+        $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Sua->value);
         $canResetPassword = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::DatLaiMatKhau->value);
         $canDestroy = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Xoa->value);
     @endphp
@@ -32,6 +36,11 @@
             </div>
             <h1 class="h3 fw-semibold mb-1" id="page-title">Danh sách nhân viên</h1>
             <p class="text-secondary mb-0">Tra cứu thông tin nhân viên theo phòng ban, chức vụ và trạng thái làm việc.</p>
+            @if ($departmentScopeNotice ?? null)
+                <div class="alert alert-info mt-3 mb-0" role="status">
+                    {{ $departmentScopeNotice }}
+                </div>
+            @endif
             @can(\App\Enums\NhanVienPermission::Tao->value)
                 <a class="btn btn-primary mt-3" href="{{ route('backend.nhanvien.create') }}">
                     <i class="bi bi-person-plus" aria-hidden="true"></i>
@@ -224,14 +233,20 @@
                                         >
                                             Xem
                                         </a>
-                                        @if ((int) ($employee->ma_vt ?? 0) === \App\Enums\NhanVienRole::Employee->value
-                                            && ($canResetPassword || $canDestroy))
+                                        @if ($canEdit || ((int) ($employee->ma_vt ?? 0) === \App\Enums\NhanVienRole::Employee->value
+                                            && ($canResetPassword || $canDestroy)))
                                             @php
                                                 $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);
                                                 $resetDialogId = 'employee-reset-password-' . $dialogKey;
                                                 $destroyDialogId = 'employee-destroy-' . $dialogKey;
                                             @endphp
                                             <div class="employee-action-dialogs d-inline-flex flex-wrap gap-2 mt-2" data-action-dialogs>
+                                                @can(\App\Enums\NhanVienPermission::Sua->value)
+                                                    <a class="btn btn-sm btn-outline-primary" href="{{ route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery) }}">
+                                                        Chỉnh sửa
+                                                    </a>
+                                                @endcan
+                                                @if ((int) ($employee->ma_vt ?? 0) === \App\Enums\NhanVienRole::Employee->value)
                                                 @can(\App\Enums\NhanVienPermission::DatLaiMatKhau->value)
                                                     <button class="btn btn-sm btn-outline-secondary" type="button" data-dialog-open="{{ $resetDialogId }}" aria-controls="{{ $resetDialogId }}">Đặt lại mật khẩu</button>
                                                     <dialog class="employee-action-dialog" id="{{ $resetDialogId }}" data-action-dialog aria-labelledby="{{ $resetDialogId }}-title">
@@ -262,6 +277,7 @@
                                                         </form>
                                                     </dialog>
                                                 @endcan
+                                                @endif
                                             </div>
                                         @endif
                                     </td>

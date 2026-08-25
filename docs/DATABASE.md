@@ -106,7 +106,21 @@ ban đang được dùng map `PB_IN_USE`; lỗi DB ngoài allowlist trả thông
 Quyền canonical là `201 PB_VIEW`, `202 PB_CREATE`, `203 PB_EDIT`, `204 PB_DELETE`,
 module `PhongBan`. Test SQLite thực và MariaDB guarded fresh pair kiểm tra shape,
 count, normalize, duplicate, missing, dependency, delete và không còn routine;
-fresh suite hiện pass `7 tests, 231 assertions` trên disposable schema.
+fresh suite hiện pass `7 tests, 231 assertions` trên disposable schema; đây là
+slice Phòng ban trước khi bổ sung employee row-scope, không phải tổng gate hiện hành.
+
+### Hợp đồng employee row-scope active (2026-08-24)
+
+Auth projection dùng bảy cột server-only, bổ sung `ma_pb` nhưng vẫn ẩn
+`mat_khau`. `NhanVienDepartmentScope` nhận actor tường minh: `ma_vt = 4` bị
+ép bộ lọc và lookup về đúng `ma_pb`, target khác phòng trả 404 generic, update
+đổi `ma_pb` trả validation error, còn actor thiếu hoặc sai `ma_pb` bị fail closed.
+Các role `1, 2, 3, 5` giữ quyền lọc theo phòng ban hiện có; seed role4 hiện chỉ
+được grant `NV_VIEW`. Repository filter/projection được kiểm tra trên SQLite
+thật và guarded fresh MariaDB; gate hiện hành là `11 tests, 344 assertions`
+trên disposable schema, không mutation live. Mutation pre-check chưa khóa
+expected `ma_pb` xuyên suốt transaction, nên concurrent department move vẫn là
+residual trước production rollout.
 
 ## Historical legacy procedure inventory (not active employee source)
 
@@ -337,7 +351,7 @@ active bên trên. Lookup legacy của Chấm công vẫn là dependency ngoài 
 
 `database/sql/employee/2026_08_12_004_update_routines.sql` là script versioned để replay sau schema 001, read routines 002 và create routines 003. `sp_nhan_vien_sua` có 14 tham số `IN`; routine khóa target và chỉ cho role `NHAN_VIEN_MAC_DINH`, đồng thời giữ các cột hệ thống. `sp_nhan_vien_cap_nhat_anh` trả avatar cũ qua `OUT` để service xóa sau commit; không routine nào tự mở/commit/rollback transaction. Historical Task 12 guarded disposable integration đã xác minh contract này với `20 tests, 436 assertions`; MySQL 8 chưa được claim.
 
-Task 13 tiếp tục bằng `2026_08_12_005_lifecycle_auth_routines.sql`: hard-delete chỉ khi không có dependency; có dependency thì chuyển exact status `DA_NGHI` và giữ ngày đầu; reset role-default tách khỏi auth hash CAS mọi role; lookup trả đúng sáu cột server-only. Tasks 14–18 đã nối contract này vào lifecycle/reset service/routes, custom auth provider và năm RBAC Gates. Các con số Task 12/13 cũ chỉ là lịch sử component; gate tổng hợp authoritative nằm ở mục 2026-08-21 bên dưới.
+Task 13 tiếp tục bằng `2026_08_12_005_lifecycle_auth_routines.sql`: hard-delete chỉ khi không có dependency; có dependency thì chuyển exact status `DA_NGHI` và giữ ngày đầu; reset role-default tách khỏi auth hash CAS mọi role; lookup routine lịch sử trả đúng sáu cột server-only. Contract hiện tại dùng direct Query Builder và auth projection bảy cột, thêm `ma_pb` cho row scope. Tasks 14–18 đã nối contract này vào lifecycle/reset service/routes, custom auth provider và năm RBAC Gates. Các con số Task 12/13 cũ chỉ là lịch sử component; gate tổng hợp authoritative nằm ở mục 2026-08-21 bên dưới.
 
 ### Contract và gate employee hiện tại (2026-08-21)
 

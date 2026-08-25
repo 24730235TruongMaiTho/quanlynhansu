@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use App\Contracts\NhanVienRepositoryContract;
 use App\Exceptions\NhanVienDomainException;
-use App\Support\NhanVienTargetGuard;
+use App\Support\NhanVienDepartmentScope;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\Rules\Unique;
@@ -14,10 +14,12 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
 {
     private ?object $authorizedTarget = null;
 
+    private ?int $authorizedDepartmentId = null;
+
     public function authorize(): bool
     {
         $employees = $this->container->make(NhanVienRepositoryContract::class);
-        $guard = $this->container->make(NhanVienTargetGuard::class);
+        $departmentScope = $this->container->make(NhanVienDepartmentScope::class);
         $maNv = $this->routeEmployeeCode();
 
         try {
@@ -31,8 +33,9 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
         }
 
         abort_if($employee === null, 404);
-        $guard->assertManageable($employee);
+        abort_unless($departmentScope->canView($this->user(), $employee), 404);
         $this->authorizedTarget = $employee;
+        $this->authorizedDepartmentId = $departmentScope->departmentId($this->user());
 
         return true;
     }
@@ -61,6 +64,16 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
                 $validator->errors()->add(
                     'xoa_anh_dai_dien',
                     'Không thể đồng thời tải ảnh mới và yêu cầu xóa ảnh đại diện.',
+                );
+
+                return;
+            }
+
+            if ($this->authorizedDepartmentId !== null
+                && (int) $this->input('ma_pb') !== $this->authorizedDepartmentId) {
+                $validator->errors()->add(
+                    'ma_pb',
+                    'Trưởng phòng chỉ được giữ nhân viên trong phòng ban của mình.',
                 );
 
                 return;

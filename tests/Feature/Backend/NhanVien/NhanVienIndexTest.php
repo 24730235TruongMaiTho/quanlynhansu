@@ -124,6 +124,30 @@ class NhanVienIndexTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
     }
 
+    public function test_index_shows_edit_for_privileged_target_when_actor_has_edit_permission(): void
+    {
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\NhanVienPermission::Sua,
+        ]);
+        $employee = (array) $this->employeePaginator()->items()[0];
+        $employee['ma_vt'] = 1;
+        $employee['ten_vt'] = 'Quản trị Nhân sự';
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator([$employee]));
+            $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
+        });
+
+        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => 'NV001']);
+
+        $this->get('/admin/nhan-vien')
+            ->assertOk()
+            ->assertSee('href="'.e($editUrl).'"', false)
+            ->assertSee('Chỉnh sửa')
+            ->assertDontSee('Xóa hoặc kết thúc')
+            ->assertDontSee('Đặt lại mật khẩu');
+    }
+
     public function test_index_uses_public_disk_url_for_canonical_relative_avatar_path(): void
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);

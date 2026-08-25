@@ -140,8 +140,14 @@ Auth/RBAC đã được tích hợp hẹp cho module nhân viên:
 - hash mới/rehash dùng Laravel hasher, lookup/hash CAS chỉ ở server boundary, session từ chối `DA_NGHI`;
 - toàn bộ `/admin` có `auth`; năm Gate ability employee được đối chiếu với
   `ma_quyen` 101–105 và cache trong một request;
-- employee Blade action và route dùng cùng permission; chỉ target `ma_vt = 5`
-  được quản lý, role khác bị guard trước mutation;
+- employee Blade action và route dùng cùng permission; `NV_EDIT` cho phép sửa
+  hồ sơ/địa chỉ/avatar của mọi target, còn xóa/chuyển nghỉ việc và reset mật khẩu
+  vẫn guard target `ma_vt = 5`;
+- row scope server-side giới hạn `ma_vt = 4` trong `ma_pb` của actor cho index,
+  show và các entrypoint edit/update/delete/reset; mismatch trả 404 generic,
+  payload update đổi `ma_pb` trả validation error, malformed identity fail closed.
+  Các mutation chưa khóa expected `ma_pb` xuyên suốt transaction; concurrent đổi
+  phòng ban giữa pre-check và mutation vẫn là residual cần xử lý khi rollout.
 - hai lookup nhân viên dùng chung ở chấm công/nghỉ phép yêu cầu web session, rollout và quyền XEM.
 
 Đây là verified hẹp trên automated/disposable/browser acceptance, chưa phải security audit production cho toàn ứng dụng. Các module ngoài nhân viên vẫn cần permission/audit riêng.

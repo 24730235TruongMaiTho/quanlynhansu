@@ -50,6 +50,7 @@ final class NhanVien extends Model implements AuthenticatableContract
             'mat_khau' => $row->mat_khau,
             'ma_vt' => $row->ma_vt,
             'ma_tt' => property_exists($row, 'ma_tt') ? $row->ma_tt : null,
+            'ma_pb' => property_exists($row, 'ma_pb') ? $row->ma_pb : null,
         ]);
         $employee->exists = true;
 

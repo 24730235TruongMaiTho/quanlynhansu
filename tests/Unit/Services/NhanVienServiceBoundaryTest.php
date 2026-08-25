@@ -7,6 +7,7 @@ use App\Contracts\NhanVienServiceContract;
 use App\Http\Controllers\Backend\NhanVienController;
 use App\Repositories\NhanVienRepository;
 use App\Services\NhanVienService;
+use App\Support\NhanVienDepartmentScope;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Filesystem\FilesystemManager;
@@ -22,7 +23,10 @@ class NhanVienServiceBoundaryTest extends TestCase
         $serviceTypes = $this->constructorTypes(NhanVienService::class);
         $repositoryTypes = $this->constructorTypes(NhanVienRepository::class);
 
-        $this->assertSame([NhanVienServiceContract::class], $controllerTypes);
+        $this->assertSame([
+            NhanVienServiceContract::class,
+            NhanVienDepartmentScope::class,
+        ], $controllerTypes);
         $this->assertSame([
             DatabaseManager::class,
             NhanVienRepositoryContract::class,

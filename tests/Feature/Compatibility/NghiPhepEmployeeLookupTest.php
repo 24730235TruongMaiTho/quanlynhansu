@@ -5,6 +5,7 @@ namespace Tests\Feature\Compatibility;
 use App\Contracts\NhanVienServiceContract;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
@@ -96,6 +97,80 @@ class NghiPhepEmployeeLookupTest extends TestCase
         $codes = array_column($response->json('data.data'), 'ma_nv');
         $this->assertSame(['NV001', 'NV002'], $codes);
         $this->assertSame($codes, array_values(array_unique($codes)));
+    }
+
+    public function test_department_manager_leave_lookup_forces_forged_and_omitted_department_filters(): void
+    {
+        $actor = $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+        ]);
+        $actor->forceFill([
+            'ma_vt' => \App\Enums\NhanVienRole::DepartmentManager->value,
+            'ma_pb' => 2,
+        ]);
+
+        $paginator = new LengthAwarePaginator([], 0, 15, 1);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
+            $mock->shouldReceive('paginate')->twice()
+                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 2)
+                ->andReturn($paginator);
+        });
+
+        $this->getJson('/api/v1/nghi-phep/nhan-vien?ma_pb=3')
+            ->assertOk();
+        $this->getJson('/api/v1/nghi-phep/nhan-vien')
+            ->assertOk();
+    }
+
+    public function test_department_manager_leave_lookup_with_missing_department_fails_closed(): void
+    {
+        $actor = $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+        ]);
+        $actor->forceFill([
+            'ma_vt' => \App\Enums\NhanVienRole::DepartmentManager->value,
+            'ma_pb' => null,
+        ]);
+        $paginator = new LengthAwarePaginator([], 0, 15, 1);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
+            $mock->shouldReceive('paginate')->once()
+                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 0)
+                ->andReturn($paginator);
+        });
+
+        $this->getJson('/api/v1/nghi-phep/nhan-vien')
+            ->assertOk();
+    }
+
+    #[DataProvider('unscopedRoles')]
+    public function test_unscoped_roles_keep_requested_leave_department_filter(int $role): void
+    {
+        $actor = $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+        ]);
+        $actor->forceFill([
+            'ma_vt' => $role,
+            'ma_pb' => 2,
+        ]);
+        $paginator = new LengthAwarePaginator([], 0, 15, 1);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
+            $mock->shouldReceive('paginate')->once()
+                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 3)
+                ->andReturn($paginator);
+        });
+
+        $this->getJson('/api/v1/nghi-phep/nhan-vien?ma_pb=3')
+            ->assertOk();
+    }
+
+    public static function unscopedRoles(): array
+    {
+        return [
+            'super admin' => [1],
+            'human resources' => [2],
+            'cbl admin' => [3],
+            'employee' => [5],
+        ];
     }
 
     public function test_enabled_lookup_returns_a_stable_error_without_internal_details(): void

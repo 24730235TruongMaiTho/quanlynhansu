@@ -8,6 +8,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
@@ -160,6 +161,82 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             ->assertJsonPath('data.data.0.so_lan_vao_muon', 2)
             ->assertJsonPath('data.data.0.so_lan_ve_som', 1)
             ->assertJsonPath('data.data.0.so_ngay_cham_cong', 20.5);
+    }
+
+    public function test_department_manager_attendance_lookup_forces_forged_and_omitted_department_filters(): void
+    {
+        $actor = $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+        ]);
+        $actor->forceFill([
+            'ma_vt' => \App\Enums\NhanVienRole::DepartmentManager->value,
+            'ma_pb' => 2,
+        ]);
+        DB::table('phong_ban')->insert(['ma_pb' => 3]);
+
+        $paginator = new LengthAwarePaginator([], 0, 15, 1);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
+            $mock->shouldReceive('paginateForAttendance')->twice()
+                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 2)
+                ->andReturn($paginator);
+        });
+
+        $this->getJson('/api/v1/cham-cong/nhan-vien?ma_pb=3&thang=8&nam=2026')
+            ->assertOk();
+        $this->getJson('/api/v1/cham-cong/nhan-vien?thang=8&nam=2026')
+            ->assertOk();
+    }
+
+    public function test_department_manager_attendance_lookup_with_missing_department_fails_closed(): void
+    {
+        $actor = $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+        ]);
+        $actor->forceFill([
+            'ma_vt' => \App\Enums\NhanVienRole::DepartmentManager->value,
+            'ma_pb' => null,
+        ]);
+        $paginator = new LengthAwarePaginator([], 0, 15, 1);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
+            $mock->shouldReceive('paginateForAttendance')->once()
+                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 0)
+                ->andReturn($paginator);
+        });
+
+        $this->getJson('/api/v1/cham-cong/nhan-vien?thang=8&nam=2026')
+            ->assertOk();
+    }
+
+    #[DataProvider('unscopedRoles')]
+    public function test_unscoped_roles_keep_requested_attendance_department_filter(int $role): void
+    {
+        $actor = $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+        ]);
+        $actor->forceFill([
+            'ma_vt' => $role,
+            'ma_pb' => 2,
+        ]);
+        DB::table('phong_ban')->insert(['ma_pb' => 3]);
+        $paginator = new LengthAwarePaginator([], 0, 15, 1);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
+            $mock->shouldReceive('paginateForAttendance')->once()
+                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 3)
+                ->andReturn($paginator);
+        });
+
+        $this->getJson('/api/v1/cham-cong/nhan-vien?ma_pb=3&thang=8&nam=2026')
+            ->assertOk();
+    }
+
+    public static function unscopedRoles(): array
+    {
+        return [
+            'super admin' => [1],
+            'human resources' => [2],
+            'cbl admin' => [3],
+            'employee' => [5],
+        ];
     }
 
     public function test_any_lookup_failure_returns_only_the_stable_public_error(): void

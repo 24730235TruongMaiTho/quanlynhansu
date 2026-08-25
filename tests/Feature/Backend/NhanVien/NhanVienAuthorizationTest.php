@@ -237,7 +237,7 @@ class NhanVienAuthorizationTest extends TestCase
         $this->delete('/admin/nhan-vien/NV001')->assertForbidden();
     }
 
-    public function test_target_guard_runs_before_lifecycle_mutation_for_privileged_targets(): void
+    public function test_target_guard_remains_on_lifecycle_mutations_for_privileged_targets(): void
     {
         $this->actingAsEmployeeWithPermissions([
             NhanVienPermission::Sua,
@@ -246,18 +246,17 @@ class NhanVienAuthorizationTest extends TestCase
         ]);
         $target = $this->employee(['ma_vt' => 1]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
-            $mock->shouldReceive('findOrFail')->times(3)->with('NV001')->andReturn($target);
+            $mock->shouldReceive('findOrFail')->times(2)->with('NV001')->andReturn($target);
             $mock->shouldNotReceive('update');
             $mock->shouldNotReceive('removeOrTerminate');
             $mock->shouldNotReceive('resetPassword');
         });
 
-        $this->get('/admin/nhan-vien/NV001/edit')->assertForbidden();
         $this->delete('/admin/nhan-vien/NV001')->assertForbidden();
         $this->patch('/admin/nhan-vien/NV001/dat-lai-mat-khau')->assertForbidden();
     }
 
-    public function test_non_baseline_nv002_target_is_forbidden_before_every_mutation_path(): void
+    public function test_non_baseline_nv002_target_allows_profile_update_but_forbids_destructive_paths(): void
     {
         $this->actingAsEmployeeWithPermissions([
             NhanVienPermission::Xem,
@@ -275,14 +274,15 @@ class NhanVienAuthorizationTest extends TestCase
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
             $mock->shouldReceive('findOrFail')->times(3)->with('NV002')->andReturn($target);
-            $mock->shouldNotReceive('update');
+            $mock->shouldReceive('update')->once()->with('NV002', Mockery::type('array'))->andReturn($target);
             $mock->shouldNotReceive('removeOrTerminate');
             $mock->shouldNotReceive('resetPassword');
-            $mock->shouldNotReceive('lookups');
+            $mock->shouldReceive('lookups')->once()->andReturn($this->lookups());
         });
 
-        $this->get('/admin/nhan-vien/NV002/edit')->assertForbidden();
-        $this->put('/admin/nhan-vien/NV002', [])->assertForbidden();
+        $this->get('/admin/nhan-vien/NV002/edit')->assertOk();
+        $this->put('/admin/nhan-vien/NV002', $this->validPayload())
+            ->assertRedirect(route('backend.nhanvien.show', ['ma_nv' => 'NV002']));
         $this->delete('/admin/nhan-vien/NV002')->assertForbidden();
         $this->patch('/admin/nhan-vien/NV002/dat-lai-mat-khau')->assertForbidden();
     }

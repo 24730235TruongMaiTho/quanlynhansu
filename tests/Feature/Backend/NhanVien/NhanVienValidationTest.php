@@ -6,6 +6,7 @@ use App\Contracts\NhanVienRepositoryContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Requests\StoreNhanVienRequest;
 use App\Http\Requests\UpdateNhanVienRequest;
+use App\Models\NhanVien;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
 use Mockery;
@@ -24,6 +25,15 @@ class NhanVienValidationTest extends TestCase
 
         $this->enableEmployeeModule();
         $this->createEmployeeFeatureSchema();
+        $this->actingAs(NhanVien::fromAuthRow((object) [
+            'ma_nv' => 'ACTOR',
+            'ho_ten' => 'Test actor',
+            'email' => 'actor@example.test',
+            'mat_khau' => 'test-hash',
+            'ma_vt' => 1,
+            'ma_tt' => 2,
+            'ma_pb' => 1,
+        ]));
         $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ma_tt' => 2]);
 
         Route::post('/_tests/nhan-vien', function (StoreNhanVienRequest $request) {

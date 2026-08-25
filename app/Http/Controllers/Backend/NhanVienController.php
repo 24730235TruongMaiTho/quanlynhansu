@@ -10,7 +10,9 @@ use App\Http\Requests\ListNhanVienRequest;
 use App\Http\Requests\StoreNhanVienRequest;
 use App\Http\Requests\UpdateNhanVienRequest;
 use App\Support\NhanVienAvatarPath;
+use App\Support\NhanVienDepartmentScope;
 use App\Support\NhanVienTargetGuard;
+use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
@@ -22,16 +24,23 @@ use Throwable;
 
 class NhanVienController extends Controller
 {
-    public function __construct(private NhanVienServiceContract $employees) {}
+    public function __construct(
+        private NhanVienServiceContract $employees,
+        private NhanVienDepartmentScope $departmentScope,
+    ) {}
 
     public function index(ListNhanVienRequest $request): View
     {
-        $filters = $request->filters();
+        $actor = $request->user();
+        $filters = $this->departmentScope->constrainFilters($request->filters(), $actor);
         $employeeError = null;
+        $departmentScopeNotice = $this->departmentScope->isDepartmentManager($actor)
+            ? 'Danh sách nhân viên được giới hạn theo phòng ban của bạn.'
+            : null;
 
         try {
             $employees = $this->employees->paginate($filters);
-            $lookups = $this->employees->lookups();
+            $lookups = $this->departmentScope->constrainLookups($this->employees->lookups(), $actor);
         } catch (NhanVienDomainException) {
             $employees = new LengthAwarePaginator(
                 collect(),
@@ -57,13 +66,17 @@ class NhanVienController extends Controller
             'lookups' => $lookups,
             'filters' => $filters,
             'employeeError' => $employeeError,
+            'departmentScopeNotice' => $departmentScopeNotice,
         ]);
     }
 
-    public function show(string $ma_nv): View
+    public function show(Request $request, string $ma_nv): View
     {
+        $employee = $this->employees->findOrFail($ma_nv);
+        abort_unless($this->departmentScope->canView($request->user(), $employee), 404);
+
         return view('backend.nhanvien.show', [
-            'employee' => $this->employees->findOrFail($ma_nv),
+            'employee' => $employee,
         ]);
     }
 
@@ -149,10 +162,10 @@ class NhanVienController extends Controller
             ]);
     }
 
-    public function edit(string $ma_nv, NhanVienTargetGuard $guard): View
+    public function edit(Request $request, string $ma_nv): View
     {
         $employee = $this->employees->findOrFail($ma_nv);
-        $guard->assertManageable($employee);
+        abort_unless($this->departmentScope->canView($request->user(), $employee), 404);
 
         $emptyLookups = [
             'phong_ban' => [],
@@ -163,7 +176,10 @@ class NhanVienController extends Controller
         $lookupError = null;
 
         try {
-            $lookups = array_replace($lookups, $this->employees->lookups());
+            $lookups = array_replace(
+                $lookups,
+                $this->departmentScope->constrainLookups($this->employees->lookups(), $request->user()),
+            );
             if ((int) ($employee->ma_tt ?? 0) !== NhanVienStatus::Terminated->value) {
                 $lookups['trang_thai'] = array_values(array_filter(
                     $lookups['trang_thai'],
@@ -250,10 +266,11 @@ class NhanVienController extends Controller
             ->with('success', 'Đã cập nhật hồ sơ nhân viên.');
     }
 
-    public function destroy(string $ma_nv, NhanVienTargetGuard $guard): RedirectResponse
+    public function destroy(Request $request, string $ma_nv, NhanVienTargetGuard $guard): RedirectResponse
     {
         try {
             $employee = $this->employees->findOrFail($ma_nv);
+            abort_unless($this->departmentScope->canView($request->user(), $employee), 404);
             $guard->assertManageable($employee);
             $action = $this->employees->removeOrTerminate($ma_nv);
         } catch (AuthorizationException) {
@@ -285,10 +302,11 @@ class NhanVienController extends Controller
                 : 'Đã ghi nhận nhân viên nghỉ việc theo lịch sử.');
     }
 
-    public function resetPassword(string $ma_nv, NhanVienTargetGuard $guard): RedirectResponse
+    public function resetPassword(Request $request, string $ma_nv, NhanVienTargetGuard $guard): RedirectResponse
     {
         try {
             $employee = $this->employees->findOrFail($ma_nv);
+            abort_unless($this->departmentScope->canView($request->user(), $employee), 404);
             $guard->assertManageable($employee);
             $this->employees->resetPassword($ma_nv);
         } catch (AuthorizationException) {
