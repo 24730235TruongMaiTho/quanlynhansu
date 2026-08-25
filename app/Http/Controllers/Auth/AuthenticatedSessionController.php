@@ -50,7 +50,7 @@ final class AuthenticatedSessionController
         $request->clearRateLimiter();
         $request->session()->regenerate();
 
-        return redirect()->intended(route('backend.bangdieukhien.index'));
+        return redirect()->intended(route('backend.tongquan.index'));
     }
 
     public function destroy(\Illuminate\Http\Request $request): RedirectResponse

@@ -59,14 +59,16 @@ function renderRoles(roles = state.roles) {
         return;
     }
 
+    const canManage = elements.page.dataset.roleCanManage === '1';
     elements.tableBody.innerHTML = visibleRoles.map((role) => `
         <tr>
             <th scope="row">${escapeHtml(role.ma_vt)}</th>
             <td class="fw-medium">${escapeHtml(role.ten_vt)}</td>
             <td>${escapeHtml(role.mo_ta || 'Chưa có mô tả')}</td>
             <td class="text-end text-nowrap">
-                <button class="btn btn-sm btn-outline-primary me-1" type="button" data-role-edit="${role.ma_vt}" aria-label="Sửa ${escapeHtml(role.ten_vt)}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
-                <button class="btn btn-sm btn-outline-danger" type="button" data-role-delete="${role.ma_vt}" aria-label="Xóa ${escapeHtml(role.ten_vt)}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                <a class="btn btn-sm btn-outline-secondary me-1" href="/vai-tro/${role.ma_vt}/phan-quyen" aria-label="Phân quyền ${escapeHtml(role.ten_vt)}"><i class="bi bi-key" aria-hidden="true"></i></a>
+                ${canManage ? `<button class="btn btn-sm btn-outline-primary me-1" type="button" data-role-edit="${role.ma_vt}" aria-label="Sửa ${escapeHtml(role.ten_vt)}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
+                <button class="btn btn-sm btn-outline-danger" type="button" data-role-delete="${role.ma_vt}" aria-label="Xóa ${escapeHtml(role.ten_vt)}"><i class="bi bi-trash" aria-hidden="true"></i></button>` : ''}
             </td>
         </tr>`).join('');
     elements.paginationSummary.textContent = `Hiển thị ${start + 1}-${Math.min(start + state.pageSize, roles.length)} trong tổng số ${roles.length} vai trò`;
@@ -163,7 +165,7 @@ async function deleteRole(id) {
 
 if (elements.searchForm) {
     elements.searchForm.addEventListener('submit', (event) => { event.preventDefault(); loadRoles(); });
-    document.querySelector('[data-role-create]').addEventListener('click', openCreate);
+    document.querySelector('[data-role-create]')?.addEventListener('click', openCreate);
     elements.form.addEventListener('submit', saveRole);
     elements.tableBody.addEventListener('click', (event) => {
         const editButton = event.target.closest('[data-role-edit]');

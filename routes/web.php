@@ -17,6 +17,8 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Enums\NhanVienPermission;
 use App\Enums\PhongBanPermission;
 use App\Enums\ChucVuPermission;
+use App\Enums\HopDongPermission;
+use App\Enums\PhanQuyenPermission;
 
 
 /*
@@ -36,6 +38,7 @@ use App\Http\Controllers\Backend\ {
     NhanVienController,
     NhomQuyenController,
     PhongBanController,
+    PhanQuyenController,
     QuyenController,
     TaiKhoanController,
     TruyCapController,
@@ -141,19 +144,35 @@ Route::prefix('')->name('backend.')
         ->name('phongban.destroy');
 
     // Trang và API quản lý vai trò.
-    Route::view('/vai-tro', 'backend.vaitro.index')->name('vaitro.index');
-    Route::get('/vai-tro/data', [VaiTroController::class, 'index'])->name('vaitro.data');
-    Route::get('/vai-tro/search', [VaiTroController::class, 'search'])->name('vaitro.search');
+    Route::view('/vai-tro', 'backend.vaitro.index')->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.index');
+    Route::get('/vai-tro/data', [VaiTroController::class, 'index'])->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.data');
+    Route::get('/vai-tro/search', [VaiTroController::class, 'search'])->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.search');
     Route::get('/vai-tro/{ma_vt}', [VaiTroController::class, 'show'])
         ->where('ma_vt', '[1-9][0-9]*')
-        ->name('vaitro.show');
-    Route::post('/vai-tro', [VaiTroController::class, 'store'])->name('vaitro.store');
+        ->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.show');
+    Route::post('/vai-tro', [VaiTroController::class, 'store'])->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('vaitro.store');
     Route::match(['put', 'patch'], '/vai-tro/{ma_vt}', [VaiTroController::class, 'update'])
         ->where('ma_vt', '[1-9][0-9]*')
-        ->name('vaitro.update');
+        ->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('vaitro.update');
     Route::delete('/vai-tro/{ma_vt}', [VaiTroController::class, 'destroy'])
         ->where('ma_vt', '[1-9][0-9]*')
-        ->name('vaitro.destroy');
+        ->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('vaitro.destroy');
+
+    Route::get('/vai-tro/{ma_vt}/phan-quyen', [PhanQuyenController::class, 'editRole'])
+        ->where('ma_vt', '[1-9][0-9]*')->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.permissions.edit');
+    Route::put('/vai-tro/{ma_vt}/phan-quyen', [PhanQuyenController::class, 'syncRole'])
+        ->where('ma_vt', '[1-9][0-9]*')->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('vaitro.permissions.update');
+    Route::get('/tai-khoan', [PhanQuyenController::class, 'accounts'])
+        ->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('taikhoan.index');
+    Route::patch('/tai-khoan/{ma_nv}/vai-tro', [PhanQuyenController::class, 'assignRole'])
+        ->where('ma_nv', 'NV[0-9]{3}')->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('taikhoan.assign-role');
+
+    Route::get('/hop-dong', [HopDongController::class, 'index'])->middleware(['auth', 'can:'.HopDongPermission::Xem->value])->name('hopdong.index');
+    Route::get('/hop-dong/create', [HopDongController::class, 'create'])->middleware(['auth', 'can:'.HopDongPermission::Tao->value])->name('hopdong.create');
+    Route::post('/hop-dong', [HopDongController::class, 'store'])->middleware(['auth', 'can:'.HopDongPermission::Tao->value])->name('hopdong.store');
+    Route::get('/hop-dong/{ma_hd}/edit', [HopDongController::class, 'edit'])->where('ma_hd', '[1-9][0-9]*')->middleware(['auth', 'can:'.HopDongPermission::Sua->value])->name('hopdong.edit');
+    Route::match(['put', 'patch'], '/hop-dong/{ma_hd}', [HopDongController::class, 'update'])->where('ma_hd', '[1-9][0-9]*')->middleware(['auth', 'can:'.HopDongPermission::Sua->value])->name('hopdong.update');
+    Route::delete('/hop-dong/{ma_hd}', [HopDongController::class, 'destroy'])->where('ma_hd', '[1-9][0-9]*')->middleware(['auth', 'can:'.HopDongPermission::Xoa->value])->name('hopdong.destroy');
 
     // Danh sách nhân viên.
     Route::get('/chuc-vu', [ChucVuController::class, 'index'])
