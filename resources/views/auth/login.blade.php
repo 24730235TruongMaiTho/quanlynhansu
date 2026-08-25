@@ -504,21 +504,22 @@
             </div>
 
             <!-- Form -->
-            <form class="login-form" id="loginForm" action="{{ route('login.store') }}" novalidate>
+            <form class="login-form" id="loginForm" method="POST" action="{{ route('login.store') }}" data-login-form>
+                @csrf
 
                 <!-- Error Alert -->
-                <div class="alert-error" id="loginError">
+                <div class="alert-error @if($errors->any()) show @endif" id="loginError" @if($errors->any()) role="alert" @endif>
                     <i class="bi bi-exclamation-circle-fill"></i>
-                    <span id="errorMessage">Email hoặc mật khẩu không đúng.</span>
+                    <span id="errorMessage">{{ $errors->first() ?: 'Thông tin đăng nhập không hợp lệ.' }}</span>
                 </div>
 
                 <!-- Email / Username -->
                 <div class="form-group">
-                    <label class="form-label" for="loginEmail">
+                    <label class="form-label" for="loginMaNV">
                         <i class="bi bi-people"></i> Mã nhân viên
                     </label>
                     <div class="input-group">
-                        <input type="text" class="form-control" id="loginMaNV" placeholder="Nhập mã nhân viên" value="" required />
+                        <input type="text" class="form-control @error('dinh_danh') is-invalid @enderror" id="loginMaNV" name="dinh_danh" placeholder="Nhập mã nhân viên hoặc email" value="{{ old('dinh_danh') }}" autocomplete="username" required autofocus>
                         <i class="bi bi-people input-icon"></i>
                     </div>
                     <div class="invalid-feedback" id="emailFeedback">Vui lòng nhập mã nhân viên hợp lệ.</div>
@@ -530,7 +531,7 @@
                         <i class="bi bi-lock"></i> Mật khẩu
                     </label>
                     <div class="input-group">
-                        <input type="password" class="form-control" id="loginPassword" placeholder="Nhập mật khẩu" value="" required />
+                        <input type="password" class="form-control @error('mat_khau') is-invalid @enderror" id="loginPassword" name="mat_khau" placeholder="Nhập mật khẩu" autocomplete="current-password" required>
                         <i class="bi bi-lock input-icon"></i>
                         <button type="button" class="toggle-password" id="togglePassword" tabindex="-1">
                             <i class="bi bi-eye" id="toggleIcon"></i>
@@ -552,7 +553,7 @@
                 </div>
 
                 <!-- Submit -->
-                <button type="submit" class="btn-login" id="loginBtn">
+                <button type="submit" class="btn-login" id="loginBtn" data-login-submit>
                     <span class="spinner"></span>
                     <span class="btn-text"><i class="bi bi-box-arrow-in-right"></i> Đăng nhập</span>
                 </button>
@@ -565,32 +566,6 @@
         </div>
     </div>
 
-    <main>
-        <h1>Đăng nhập</h1>
-        <form method="POST" action="{{ route('login.store') }}" data-login-form>
-            @csrf
-
-            <div>
-                <label for="dinh_danh">Mã nhân viên hoặc email</label>
-                <input id="dinh_danh" name="dinh_danh" type="text" value="{{ old('dinh_danh') }}"
-                       autocomplete="username" required @error('dinh_danh') aria-invalid="true" autofocus @enderror>
-                @error('dinh_danh')
-                    <p role="alert">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <div>
-                <label for="mat_khau">Mật khẩu</label>
-                <input id="mat_khau" name="mat_khau" type="password" autocomplete="current-password" required
-                       @error('mat_khau') aria-invalid="true" autofocus @enderror>
-                @error('mat_khau')
-                    <p role="alert">{{ $message }}</p>
-                @enderror
-            </div>
-
-            <button type="submit" data-login-submit>Đăng nhập</button>
-        </form>
-    </main>
     <!-- Bootstrap 5 JS Bundle -->
     <script 
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">

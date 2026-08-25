@@ -91,7 +91,8 @@
                     <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-person-badge"></i><span class="nav-title">Danh sách chức vụ</span></a></li>
                 </ul>
             </li>
-            <!-- Quản lý hợp đồng -->
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'HopDong'))
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
                     <i class="bi bi-file-earmark-text-fill"></i>
@@ -99,10 +100,10 @@
                     <i class="bi bi-chevron-down menu-arrow rotated"></i>
                 </a>
                 <ul class="sub-menu">
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-file-earmark-text"></i><span class="nav-title">Danh sách hợp đồng</span></a></li>
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-files"></i><span class="nav-title">Danh sách loại hợp đồng</span></a></li>
+                    <li class="nav-item"><a href="{{ route('backend.hopdong.index') }}" class="nav-link"><i class="bi bi-file-earmark-text"></i><span class="nav-title">Danh sách hợp đồng</span></a></li>
                 </ul>
             </li>
+            @endif
             <!-- Quản lý chấm công -->
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
@@ -138,7 +139,8 @@
                     <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-graph-up-arrow"></i><span class="nav-title">Danh sách hệ số lương</span></a></li>
                 </ul>
             </li>
-            <!-- Vai trò và phân quyền -->
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'PhanQuyen'))
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
                     <i class="bi bi-shield-lock-fill"></i>
@@ -147,9 +149,10 @@
                 </a>
                 <ul class="sub-menu">
                     <li class="nav-item"><a href="{{ route('backend.vaitro.index') }}" class="nav-link"><i class="bi bi-person-gear"></i><span class="nav-title">Danh sách vai trò</span></a></li>
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-key-fill"></i><span class="nav-title">Phân quyền</span></a></li>
+                    <li class="nav-item"><a href="{{ route('backend.taikhoan.index') }}" class="nav-link"><i class="bi bi-key-fill"></i><span class="nav-title">Phân quyền tài khoản</span></a></li>
                 </ul>
             </li>
+            @endif
         </ul>
     </div>
 </nav>

@@ -6,7 +6,8 @@
     <main class="content-area" aria-labelledby="role-page-title"
         data-role-data-url="{{ route('backend.vaitro.data') }}"
         data-role-search-url="{{ route('backend.vaitro.search') }}"
-        data-role-store-url="{{ route('backend.vaitro.store') }}">
+        data-role-store-url="{{ route('backend.vaitro.store') }}"
+        data-role-can-manage="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhanQuyenPermission::QuanLy->value) ? '1' : '0' }}">
         <div class="page-header">
             <div class="left">
                 <div>
@@ -31,9 +32,9 @@
                         <i class="bi bi-search" aria-hidden="true"></i>
                     </button>
                 </form>
-                <button class="btn btn-primary" type="button" data-role-create>
+                @can(\App\Enums\PhanQuyenPermission::QuanLy->value)<button class="btn btn-primary" type="button" data-role-create>
                     <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Thêm vai trò
-                </button>
+                </button>@endcan
             </div>
         </div>
 
