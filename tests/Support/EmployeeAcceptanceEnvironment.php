@@ -362,7 +362,7 @@ final class EmployeeAcceptanceEnvironment
         }
 
         return [
-            'expected_ma_nv' => 'NV001',
+            'expected_ma_nv' => '00001',
             'department' => 'PB Acceptance '.$runId,
             'position' => 'CV Acceptance '.$runId,
             'position_allowance' => '0.00',

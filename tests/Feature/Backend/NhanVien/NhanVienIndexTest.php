@@ -53,7 +53,7 @@ class NhanVienIndexTest extends TestCase
     {
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->with([
-                'tu_khoa' => 'NV001',
+                'tu_khoa' => '00001',
                 'ma_pb' => null,
                 'ma_cv' => null,
                 'ma_tt' => null,
@@ -63,22 +63,22 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
 
-        $response = $this->get('/nhan-vien?tu_khoa=NV001&ma_pb=&ma_cv=&ma_tt=&page=&so_dong=');
+        $response = $this->get('/nhan-vien?tu_khoa=00001&ma_pb=&ma_cv=&ma_tt=&page=&so_dong=');
 
         $response
             ->assertOk()
             ->assertViewIs('backend.nhanvien.index')
             ->assertViewHas('filters', [
-                'tu_khoa' => 'NV001',
+                'tu_khoa' => '00001',
                 'ma_pb' => null,
                 'ma_cv' => null,
                 'ma_tt' => null,
                 'page' => 1,
                 'so_dong' => 20,
             ])
-            ->assertSee('NV001')
+            ->assertSee('00001')
             ->assertSee('name="tu_khoa"', false)
-            ->assertSee('value="NV001"', false)
+            ->assertSee('value="00001"', false)
             ->assertSee('Nguyễn An')
             ->assertSee('an@example.test')
             ->assertDontSee('mat_khau')
@@ -104,7 +104,7 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
 
-        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => 'NV001']);
+        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => '00001']);
 
         $this->get('/nhan-vien')
             ->assertOk()
@@ -210,7 +210,7 @@ class NhanVienIndexTest extends TestCase
             ->assertSee('Chưa có nhân viên trong hệ thống')
             ->assertDontSee('Không tìm thấy nhân viên phù hợp');
 
-        $this->get('/nhan-vien?tu_khoa=NV999')
+        $this->get('/nhan-vien?tu_khoa=99999')
             ->assertOk()
             ->assertSee('Không tìm thấy nhân viên phù hợp')
             ->assertDontSee('Chưa có nhân viên trong hệ thống');
@@ -227,7 +227,7 @@ class NhanVienIndexTest extends TestCase
 
         foreach ([
             '/nhan-vien?page=999',
-            '/nhan-vien?tu_khoa=NV001&page=999',
+            '/nhan-vien?tu_khoa=00001&page=999',
         ] as $uri) {
             $this->get($uri)
                 ->assertOk()
@@ -284,9 +284,9 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldNotReceive('lookups');
         });
 
-        $this->get('/admin/nhan-vien/danh-sach-nhan-vien?tu_khoa=NV001&so_dong=50')
+        $this->get('/admin/nhan-vien/danh-sach-nhan-vien?tu_khoa=00001&so_dong=50')
             ->assertStatus(301)
-            ->assertRedirect('/nhan-vien?tu_khoa=NV001&so_dong=50');
+            ->assertRedirect('/nhan-vien?tu_khoa=00001&so_dong=50');
     }
 
     public function test_route_inventory_contains_the_canonical_index_show_and_protected_legacy_redirect(): void
@@ -333,13 +333,13 @@ class NhanVienIndexTest extends TestCase
             NhanVienController::class.'@destroy',
             $destroyRoute->getActionName(),
         );
-        $this->assertSame('NV[0-9]{3}', $destroyRoute->wheres['ma_nv']);
+        $this->assertSame('[0-9]{5}', $destroyRoute->wheres['ma_nv']);
 
         $showRoute = Route::getRoutes()->getByName('backend.nhanvien.show');
         $this->assertInstanceOf(RoutingRoute::class, $showRoute);
         $this->assertSame('nhan-vien/{ma_nv}', $showRoute->uri());
         $this->assertSame(NhanVienController::class.'@show', $showRoute->getActionName());
-        $this->assertSame('NV[0-9]{3}', $showRoute->wheres['ma_nv']);
+        $this->assertSame('[0-9]{5}', $showRoute->wheres['ma_nv']);
         $this->assertLessThan(
             array_search($showRoute, Route::getRoutes()->getRoutes(), true),
             array_search($destroyRoute, Route::getRoutes()->getRoutes(), true),
@@ -355,14 +355,14 @@ class NhanVienIndexTest extends TestCase
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
-            $mock->shouldReceive('removeOrTerminate')->once()->with('NV001')->andReturn(
+            $mock->shouldReceive('removeOrTerminate')->once()->with('00001')->andReturn(
                 NhanVienRemovalAction::Deleted,
             );
         });
 
         $this->get('/admin/nhan-vien/them-nhan-vien')->assertStatus(301);
-        $this->get('/nhan-vien/NV001/sua')->assertNotFound();
-        $this->delete('/nhan-vien/NV001')
+        $this->get('/nhan-vien/00001/sua')->assertNotFound();
+        $this->delete('/nhan-vien/00001')
             ->assertRedirect(route('backend.nhanvien.index'))
             ->assertSessionHas('success', 'Đã xóa hồ sơ nhân viên.');
     }
@@ -375,7 +375,7 @@ class NhanVienIndexTest extends TestCase
     ): LengthAwarePaginator {
         if ($items === [] && $total === null) {
             $items = [[
-                'ma_nv' => 'NV001',
+                'ma_nv' => '00001',
                 'ho_ten' => 'Nguyễn An',
                 'sdt' => '0900000001',
                 'email' => 'an@example.test',

@@ -32,9 +32,6 @@ interface NhanVienRepositoryContract
 
     public function findAccountByIdentifier(string $identifier): ?NhanVien;
 
-    /** @internal Chỉ dùng khi khởi tạo dữ liệu demo trên cơ sở dữ liệu disposable. */
-    public function assignRoleForBootstrap(string $maNv, int $maVt): void;
-
     /**
      * @return array{phong_ban: array, chuc_vu: array, trang_thai: array}
      */

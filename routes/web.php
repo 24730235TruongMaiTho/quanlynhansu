@@ -16,6 +16,10 @@ use App\Enums\PhongBanPermission;
 use App\Enums\ChucVuPermission;
 use App\Enums\HopDongPermission;
 use App\Enums\PhanQuyenPermission;
+use App\Enums\VaiTroPermission;
+use App\Enums\NghiPhepPermission;
+use App\Enums\ChamCongPermission;
+use App\Enums\LuongPermission;
 
 
 /*
@@ -99,7 +103,9 @@ Route::get('/admin/nhan-vien/them-nhan-vien', function (Request $request) {
 Route::prefix('')->name('backend.')
 ->group(function () {
     // Dashboard tổng quan.
-    Route::get('/tong-quan', [TongQuanController::class, 'index'])->name('tongquan.index');
+    Route::get('/tong-quan', [TongQuanController::class, 'index'])
+        ->middleware('auth')
+        ->name('tongquan.index');
 
     // Danh sách phòng ban, yêu cầu quyền xem.
     Route::get('/phong-ban', [PhongBanController::class, 'index'])
@@ -135,28 +141,28 @@ Route::prefix('')->name('backend.')
         ->name('phongban.destroy');
 
     // Trang và API quản lý vai trò.
-    Route::view('/vai-tro', 'backend.vaitro.index')->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.index');
-    Route::get('/vai-tro/data', [VaiTroController::class, 'index'])->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.data');
-    Route::get('/vai-tro/search', [VaiTroController::class, 'search'])->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.search');
+    Route::view('/vai-tro', 'backend.vaitro.index')->middleware(['auth', 'can:'.VaiTroPermission::Xem->value])->name('vaitro.index');
+    Route::get('/vai-tro/data', [VaiTroController::class, 'index'])->middleware(['auth', 'can:'.VaiTroPermission::Xem->value])->name('vaitro.data');
+    Route::get('/vai-tro/search', [VaiTroController::class, 'search'])->middleware(['auth', 'can:'.VaiTroPermission::Xem->value])->name('vaitro.search');
     Route::get('/vai-tro/{ma_vt}', [VaiTroController::class, 'show'])
         ->where('ma_vt', '[1-9][0-9]*')
-        ->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.show');
-    Route::post('/vai-tro', [VaiTroController::class, 'store'])->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('vaitro.store');
+        ->middleware(['auth', 'can:'.VaiTroPermission::Xem->value])->name('vaitro.show');
+    Route::post('/vai-tro', [VaiTroController::class, 'store'])->middleware(['auth', 'can:'.VaiTroPermission::Tao->value])->name('vaitro.store');
     Route::match(['put', 'patch'], '/vai-tro/{ma_vt}', [VaiTroController::class, 'update'])
         ->where('ma_vt', '[1-9][0-9]*')
-        ->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('vaitro.update');
+        ->middleware(['auth', 'can:'.VaiTroPermission::Sua->value])->name('vaitro.update');
     Route::delete('/vai-tro/{ma_vt}', [VaiTroController::class, 'destroy'])
         ->where('ma_vt', '[1-9][0-9]*')
-        ->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('vaitro.destroy');
+        ->middleware(['auth', 'can:'.VaiTroPermission::Xoa->value])->name('vaitro.destroy');
 
     Route::get('/vai-tro/{ma_vt}/phan-quyen', [PhanQuyenController::class, 'editRole'])
         ->where('ma_vt', '[1-9][0-9]*')->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('vaitro.permissions.edit');
     Route::put('/vai-tro/{ma_vt}/phan-quyen', [PhanQuyenController::class, 'syncRole'])
-        ->where('ma_vt', '[1-9][0-9]*')->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('vaitro.permissions.update');
+        ->where('ma_vt', '[1-9][0-9]*')->middleware(['auth', 'can:'.PhanQuyenPermission::Sua->value])->name('vaitro.permissions.update');
     Route::get('/tai-khoan', [PhanQuyenController::class, 'accounts'])
         ->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('taikhoan.index');
     Route::patch('/tai-khoan/{ma_nv}/vai-tro', [PhanQuyenController::class, 'assignRole'])
-        ->where('ma_nv', 'NV[0-9]{3}')->middleware(['auth', 'can:'.PhanQuyenPermission::QuanLy->value])->name('taikhoan.assign-role');
+        ->where('ma_nv', '[0-9]{5}')->middleware(['auth', 'can:'.PhanQuyenPermission::Sua->value])->name('taikhoan.assign-role');
 
     Route::get('/hop-dong', [HopDongController::class, 'index'])->middleware(['auth', 'can:'.HopDongPermission::Xem->value])->name('hopdong.index');
     Route::get('/hop-dong/create', [HopDongController::class, 'create'])->middleware(['auth', 'can:'.HopDongPermission::Tao->value])->name('hopdong.create');
@@ -209,41 +215,41 @@ Route::prefix('')->name('backend.')
 
     // Hiển thị form chỉnh sửa nhân viên.
     Route::get('/nhan-vien/{ma_nv}/edit', [NhanVienController::class, 'edit'])
-        ->where('ma_nv', 'NV[0-9]{3}')
+        ->where('ma_nv', '[0-9]{5}')
         ->middleware(['auth', 'can:'.NhanVienPermission::Sua->value])
         ->name('nhanvien.edit');
 
     // Cập nhật thông tin nhân viên.
     Route::match(['put', 'patch'], '/nhan-vien/{ma_nv}', [NhanVienController::class, 'update'])
-        ->where('ma_nv', 'NV[0-9]{3}')
+        ->where('ma_nv', '[0-9]{5}')
         ->middleware(['auth', 'can:'.NhanVienPermission::Sua->value])
         ->name('nhanvien.update');
 
     // Xóa hoặc chuyển trạng thái nhân viên theo nghiệp vụ controller.
     Route::delete('/nhan-vien/{ma_nv}', [NhanVienController::class, 'destroy'])
-        ->where('ma_nv', 'NV[0-9]{3}')
+        ->where('ma_nv', '[0-9]{5}')
         ->middleware(['auth', 'can:'.NhanVienPermission::Xoa->value])
         ->name('nhanvien.destroy');
 
     // Xem chi tiết nhân viên.
     Route::get('/nhan-vien/{ma_nv}', [NhanVienController::class, 'show'])
-        ->where('ma_nv', 'NV[0-9]{3}')
+        ->where('ma_nv', '[0-9]{5}')
         ->middleware(['auth', 'can:'.NhanVienPermission::Xem->value])
         ->name('nhanvien.show');
 
     // Trang quản lý lương hiện trả về view trực tiếp.
     Route::get('/luong', function () {
         return view('backend.luong.index');
-    })->name('luong.index');
+    })->middleware(['auth', 'can:'.LuongPermission::Xem->value])->name('luong.index');
 
     // Trang quản lý chấm công hiện trả về view trực tiếp.
     Route::get('/cham-cong', function () {
         return view('backend.chamcong.index');
-    })->name('chamcong.index');
+    })->middleware(['auth', 'can:'.ChamCongPermission::Xem->value])->name('chamcong.index');
 
     // Trang quản lý nghỉ phép hiện trả về view trực tiếp.
     Route::get('/nghi-phep', function () {
         return view('backend.nghiphep.index');
-    })->name('nghiphep.index');
+    })->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value])->name('nghiphep.index');
 
 });

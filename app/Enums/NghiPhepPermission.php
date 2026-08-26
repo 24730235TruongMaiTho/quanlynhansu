@@ -4,27 +4,24 @@ namespace App\Enums;
 
 use App\Contracts\PermissionDefinitionContract;
 
-enum PhanQuyenPermission: string implements PermissionDefinitionContract
+enum NghiPhepPermission: string implements PermissionDefinitionContract
 {
-    case Xem = 'PhanQuyen.Read';
-    case Tao = 'PhanQuyen.Insert';
-    case Sua = 'PhanQuyen.Update';
-    case Xoa = 'PhanQuyen.Delete';
+    case Xem = 'NghiPhep.Read';
+    case Tao = 'NghiPhep.Insert';
+    case Sua = 'NghiPhep.Update';
+    case Xoa = 'NghiPhep.Delete';
 
     public function id(): int
     {
         return match ($this) {
-            self::Xem => 5,
-            self::Tao => 6,
-            self::Sua => 7,
-            self::Xoa => 8,
+            self::Xem => 25, self::Tao => 26, self::Sua => 27, self::Xoa => 28,
         };
     }
 
     public function symbol(): string { return $this->value; }
-    public function module(): string { return 'PhanQuyen'; }
+    public function module(): string { return 'NghiPhep'; }
 
-    public function action(): ?PermissionAction
+    public function action(): PermissionAction
     {
         return match ($this) {
             self::Xem => PermissionAction::View,

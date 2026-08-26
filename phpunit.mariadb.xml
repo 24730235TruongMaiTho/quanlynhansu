@@ -5,9 +5,8 @@
          colors="true">
     <testsuites>
         <testsuite name="MariaDb">
-            <!-- The former directory contains Task 12–20 procedure tests for
-                 the superseded legacy schema. Keep the guarded harness on the
-                 active 15-table source only. -->
+            <!-- Các kiểm thử routine cũ còn lại thuộc contract lịch sử; harness
+                 active chỉ replay ba file SQL và database disposable. -->
             <file>tests/Integration/MariaDb/FreshEmployeeSchemaContractTest.php</file>
         </testsuite>
     </testsuites>

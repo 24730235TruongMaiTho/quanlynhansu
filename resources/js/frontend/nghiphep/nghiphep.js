@@ -59,6 +59,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const permissions = {
+        canCreate:
+            document.querySelector('[data-nghi-phep-can-create]')?.dataset.nghiPhepCanCreate === '1',
+        canUpdate:
+            document.querySelector('[data-nghi-phep-can-update]')?.dataset.nghiPhepCanUpdate === '1',
+        canDelete:
+            document.querySelector('[data-nghi-phep-can-delete]')?.dataset.nghiPhepCanDelete === '1',
+    };
+
     const state = {
         /*
          * Paging + filter của danh sách nhân viên.
@@ -760,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.leaveDescription.textContent =
             `Dữ liệu nghỉ phép của ${employee.ho_ten} (${employee.ma_nv}).`;
 
-        elements.createButton.disabled = false;
+        elements.createButton.disabled = !permissions.canCreate;
         elements.editButton.disabled = true;
         elements.deleteButton.disabled = true;
         elements.approveButton.disabled = true;
@@ -971,10 +980,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (radio) radio.checked = selected;
             });
 
-        elements.editButton.disabled = !leave;
-        elements.deleteButton.disabled = !leave;
+        elements.editButton.disabled = !permissions.canUpdate || !leave;
+        elements.deleteButton.disabled = !permissions.canDelete || !leave;
         elements.approveButton.disabled =
-            !leave || leave.trang_thai_duyet !== 0;
+            !permissions.canUpdate || !leave || leave.trang_thai_duyet !== 0;
     }
 
     function switchTab(tab) {
@@ -1032,7 +1041,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openCreateModal() {
-        if (!state.selectedEmployee) return;
+        if (!permissions.canCreate || !state.selectedEmployee) return;
 
         state.modalMode = 'create';
         resetModal();
@@ -1050,6 +1059,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openEditModal() {
+        if (!permissions.canUpdate) return;
+
         const leave = state.leaveRows.find(
             (item) =>
                 String(item.ma_np) ===
@@ -1126,6 +1137,12 @@ document.addEventListener('DOMContentLoaded', () => {
     async function submitLeaveForm(event) {
         event.preventDefault();
 
+        const isEdit = state.modalMode === 'edit';
+
+        if (isEdit ? !permissions.canUpdate : !permissions.canCreate) {
+            return;
+        }
+
         const payload = buildLeavePayload();
         const validationMessage =
             validateLeavePayload(payload);
@@ -1134,9 +1151,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showModalMessage(validationMessage);
             return;
         }
-
-        const isEdit =
-            state.modalMode === 'edit';
 
         const leaveId =
             elements.leaveId.value;
@@ -1169,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function deleteSelectedLeave() {
-        if (!state.selectedLeaveId) return;
+        if (!permissions.canDelete || !state.selectedLeaveId) return;
 
         if (
             !window.confirm(
@@ -1196,6 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function approveSelectedLeave() {
         if (
+            !permissions.canUpdate ||
             !state.selectedLeaveId ||
             !state.selectedEmployee
         ) {

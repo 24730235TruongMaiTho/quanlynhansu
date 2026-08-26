@@ -46,8 +46,8 @@ class ChucVuRepositoryTest extends TestCase
     {
         $this->insertPosition('Nhân viên', '1');
         $this->insertPosition('Giám đốc', '2.5');
-        $this->insertEmployee('NV001', 1);
-        $this->insertEmployee('NV002', 1);
+        $this->insertEmployee('00001', 1);
+        $this->insertEmployee('00002', 1);
 
         $rows = $this->repository->all();
 
@@ -140,7 +140,7 @@ class ChucVuRepositoryTest extends TestCase
     {
         $this->insertPosition('Kế toán', '1');
         $this->insertPosition('Nhân sự', '1');
-        $this->insertEmployee('NV001', 1);
+        $this->insertEmployee('00001', 1);
 
         try {
             $this->repository->delete(1);

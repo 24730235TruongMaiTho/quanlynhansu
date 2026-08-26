@@ -83,7 +83,7 @@ class NhanVienController extends Controller
             $lookups = array_replace($lookups, $this->employees->lookups());
             $lookups['trang_thai'] = array_values(array_filter(
                 $lookups['trang_thai'],
-                fn (mixed $status): bool => (int) data_get($status, 'ma_tt', 0) !== NhanVienStatus::Terminated->value,
+                fn (mixed $status): bool => ! NhanVienStatus::isTerminalValue((int) data_get($status, 'ma_tt', 0)),
             ));
         } catch (Throwable) {
             $lookups = $emptyLookups;
@@ -164,10 +164,10 @@ class NhanVienController extends Controller
 
         try {
             $lookups = array_replace($lookups, $this->employees->lookups());
-            if ((int) ($employee->ma_tt ?? 0) !== NhanVienStatus::Terminated->value) {
+            if (! NhanVienStatus::isTerminalValue((int) ($employee->ma_tt ?? 0))) {
                 $lookups['trang_thai'] = array_values(array_filter(
                     $lookups['trang_thai'],
-                    fn (mixed $status): bool => (int) data_get($status, 'ma_tt', 0) !== NhanVienStatus::Terminated->value,
+                    fn (mixed $status): bool => ! NhanVienStatus::isTerminalValue((int) data_get($status, 'ma_tt', 0)),
                 ));
             }
         } catch (Throwable) {
@@ -182,7 +182,7 @@ class NhanVienController extends Controller
         ];
         $missingLookups = [];
         foreach ($lookupLabels as $key => $label) {
-            if ($key === 'trang_thai' && (int) ($employee->ma_tt ?? 0) === NhanVienStatus::Terminated->value) {
+            if ($key === 'trang_thai' && NhanVienStatus::isTerminalValue((int) ($employee->ma_tt ?? 0))) {
                 continue;
             }
 

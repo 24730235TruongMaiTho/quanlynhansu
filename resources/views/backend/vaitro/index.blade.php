@@ -7,7 +7,10 @@
         data-role-data-url="{{ route('backend.vaitro.data') }}"
         data-role-search-url="{{ route('backend.vaitro.search') }}"
         data-role-store-url="{{ route('backend.vaitro.store') }}"
-        data-role-can-manage="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhanQuyenPermission::QuanLy->value) ? '1' : '0' }}">
+        data-role-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\VaiTroPermission::Tao->value) ? '1' : '0' }}"
+        data-role-can-edit="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\VaiTroPermission::Sua->value) ? '1' : '0' }}"
+        data-role-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\VaiTroPermission::Xoa->value) ? '1' : '0' }}"
+        data-role-can-permission="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhanQuyenPermission::Xem->value) ? '1' : '0' }}">
         <div class="page-header">
             <div class="left">
                 <div>
@@ -32,7 +35,7 @@
                         <i class="bi bi-search" aria-hidden="true"></i>
                     </button>
                 </form>
-                @can(\App\Enums\PhanQuyenPermission::QuanLy->value)<button class="btn btn-primary" type="button" data-role-create>
+                @can(\App\Enums\VaiTroPermission::Tao->value)<button class="btn btn-primary" type="button" data-role-create>
                     <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Thêm vai trò
                 </button>@endcan
             </div>

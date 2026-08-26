@@ -25,14 +25,14 @@ class NghiPhepEmployeeLookupTest extends TestCase
         $this->get('/api/v1/nghi-phep/nhan-vien')->assertRedirect(route('login'));
     }
 
-    public function test_permissioned_lookup_maps_legacy_query_to_the_canonical_employee_service(): void
+    public function test_permissioned_lookup_maps_to_the_canonical_employee_service(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NghiPhepPermission::Xem]);
 
         $paginator = new LengthAwarePaginator(
             collect([
                 (object) [
-                    'ma_nv' => 'NV001',
+                    'ma_nv' => '00001',
                     'ho_ten' => 'Nguyễn An',
                     'sdt' => '0900000001',
                     'email' => 'an@example.test',
@@ -47,7 +47,7 @@ class NghiPhepEmployeeLookupTest extends TestCase
                     'ten_tt' => 'Đang làm',
                 ],
                 (object) [
-                    'ma_nv' => 'NV002',
+                    'ma_nv' => '00002',
                     'ho_ten' => 'Trần Bình',
                     'sdt' => '0900000002',
                     'email' => 'binh@example.test',
@@ -94,13 +94,13 @@ class NghiPhepEmployeeLookupTest extends TestCase
             ->assertJsonMissingPath('data.data.1.mat_khau');
 
         $codes = array_column($response->json('data.data'), 'ma_nv');
-        $this->assertSame(['NV001', 'NV002'], $codes);
+        $this->assertSame(['00001', '00002'], $codes);
         $this->assertSame($codes, array_values(array_unique($codes)));
     }
 
     public function test_permissioned_lookup_returns_a_stable_error_without_internal_details(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NghiPhepPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->andThrow(
                 new RuntimeException('SQLSTATE[42000] mat_khau secret'),
@@ -117,10 +117,10 @@ class NghiPhepEmployeeLookupTest extends TestCase
 
     public function test_legacy_employee_mutations_are_removed_with_stable_http_semantics(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NghiPhepPermission::Xem]);
 
         $this->postJson('/api/v1/nghi-phep/nhan-vien')->assertMethodNotAllowed();
-        $this->putJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();
-        $this->patchJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();
+        $this->putJson('/api/v1/nghi-phep/nhan-vien/00001')->assertNotFound();
+        $this->patchJson('/api/v1/nghi-phep/nhan-vien/00001')->assertNotFound();
     }
 }

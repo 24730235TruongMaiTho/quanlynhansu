@@ -15,7 +15,6 @@ class VaiTro extends Model
 	protected $fillable = [
 		'ten_vt',
 		'mo_ta',
-		'ky_hieu',
 	];
 
 }

@@ -1,10 +1,9 @@
 # MariaDB integration test inventory
 
 `FreshEmployeeSchemaContractTest.php` is the active guarded gate for the
-15-table employee/auth/RBAC source. It also derives a disposable 16-table
-legacy fixture via `tests/Fixtures/MariaDb/employee_legacy_fifteen_plus_address.sql`
-to verify migration/copy/cleanup and starts two direct repository workers for
-the counter race. `phpunit.mariadb.xml` intentionally lists that file only.
+15-table employee/auth/RBAC source. Test replay ba file SQL active, kiểm tra thủ
+tục RBAC và khởi chạy hai worker repository disposable cho race bộ đếm.
+`phpunit.mariadb.xml` chỉ liệt kê file này.
 
 The remaining `*ProcedureTest.php`, `CanonicalDumpReplayTest.php`, legacy
 fixture tests and native procedure workers preserve Task 12–20 evidence for the

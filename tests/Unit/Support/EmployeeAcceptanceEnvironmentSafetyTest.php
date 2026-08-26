@@ -39,7 +39,7 @@ final class EmployeeAcceptanceEnvironmentSafetyTest extends TestCase
         $first = EmployeeAcceptanceEnvironment::syntheticFixture('a1b2c3d4e5f6');
         $second = EmployeeAcceptanceEnvironment::syntheticFixture('f6e5d4c3b2a1');
 
-        $this->assertSame('NV001', $first['expected_ma_nv']);
+        $this->assertSame('00001', $first['expected_ma_nv']);
         $this->assertMatchesRegularExpression('/\Aadmin-[a-f0-9]{12}@example\.test\z/', $first['admin_email']);
         $this->assertMatchesRegularExpression('/\A09[0-9]{8}\z/', $first['admin_phone']);
         $this->assertMatchesRegularExpression('/\A[0-9]{12}\z/', $first['admin_cccd']);

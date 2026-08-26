@@ -18,16 +18,16 @@ final class PermissionServiceTest extends TestCase
     public function test_permissions_are_cached_per_actor_and_require_exact_metadata(): void
     {
         $repository = Mockery::mock(PermissionRepositoryContract::class);
-        $repository->shouldReceive('permissionsForActor')->once()->with('NV001')->andReturn([
-            $this->row(101, 'NV_VIEW', 'NhanVien'),
-            $this->row(201, 'PB_VIEW', 'PhongBan'),
+        $repository->shouldReceive('permissionsForActor')->once()->with('00001')->andReturn([
+            $this->row(17, 'NhanVien.Read', 'NhanVien'),
+            $this->row(9, 'PhongBan.Read', 'PhongBan'),
         ]);
         $service = new PermissionService($repository, new PermissionRegistry());
 
-        $employee = $this->employee('NV001');
+        $employee = $this->employee('00001');
 
         $this->assertTrue($service->allows($employee, NhanVienPermission::Xem));
-        $this->assertTrue($service->allows($employee, 'NV_VIEW'));
+        $this->assertTrue($service->allows($employee, 'NhanVien.Read'));
         $this->assertTrue($service->allows($employee, PhongBanPermission::Xem));
         $this->assertFalse($service->allows($employee, NhanVienPermission::Tao));
     }
@@ -35,41 +35,41 @@ final class PermissionServiceTest extends TestCase
     public function test_distinct_actors_have_independent_permission_sets(): void
     {
         $repository = Mockery::mock(PermissionRepositoryContract::class);
-        $repository->shouldReceive('permissionsForActor')->once()->with('NV001')->andReturn([
-            $this->row(101, 'NV_VIEW', 'NhanVien'),
+        $repository->shouldReceive('permissionsForActor')->once()->with('00001')->andReturn([
+            $this->row(17, 'NhanVien.Read', 'NhanVien'),
         ]);
-        $repository->shouldReceive('permissionsForActor')->once()->with('NV002')->andReturn([
-            $this->row(102, 'NV_CREATE', 'NhanVien'),
+        $repository->shouldReceive('permissionsForActor')->once()->with('00002')->andReturn([
+            $this->row(18, 'NhanVien.Insert', 'NhanVien'),
         ]);
         $service = new PermissionService($repository, new PermissionRegistry());
 
-        $this->assertTrue($service->allows($this->employee('NV001'), NhanVienPermission::Xem));
-        $this->assertFalse($service->allows($this->employee('NV001'), NhanVienPermission::Tao));
-        $this->assertTrue($service->allows($this->employee('NV002'), NhanVienPermission::Tao));
-        $this->assertFalse($service->allows($this->employee('NV002'), NhanVienPermission::Xem));
+        $this->assertTrue($service->allows($this->employee('00001'), NhanVienPermission::Xem));
+        $this->assertFalse($service->allows($this->employee('00001'), NhanVienPermission::Tao));
+        $this->assertTrue($service->allows($this->employee('00002'), NhanVienPermission::Tao));
+        $this->assertFalse($service->allows($this->employee('00002'), NhanVienPermission::Xem));
     }
 
     public function test_metadata_drift_does_not_grant_even_when_permission_id_matches(): void
     {
         $repository = Mockery::mock(PermissionRepositoryContract::class);
         $repository->shouldReceive('permissionsForActor')->once()->andReturn([
-            $this->row(101, 'NV_CREATE', 'NhanVien'),
+            $this->row(18, 'NhanVien.Insert', 'NhanVien'),
         ]);
         $service = new PermissionService($repository, new PermissionRegistry());
 
-        $this->assertFalse($service->allows($this->employee('NV001'), NhanVienPermission::Xem));
+        $this->assertFalse($service->allows($this->employee('00001'), NhanVienPermission::Xem));
     }
 
     public function test_malformed_rows_fail_closed_without_granting_valid_rows(): void
     {
         $repository = Mockery::mock(PermissionRepositoryContract::class);
         $repository->shouldReceive('permissionsForActor')->once()->andReturn([
-            $this->row(101, 'NV_VIEW', 'NhanVien'),
-            ['ma_quyen' => 102, 'ky_hieu_quyen' => null, 'module' => 'NhanVien'],
+            $this->row(17, 'NhanVien.Read', 'NhanVien'),
+            ['ma_quyen' => 18, 'ky_hieu_quyen' => null, 'module' => 'NhanVien'],
         ]);
         $service = new PermissionService($repository, new PermissionRegistry());
 
-        $this->assertFalse($service->allows($this->employee('NV001'), NhanVienPermission::Xem));
+        $this->assertFalse($service->allows($this->employee('00001'), NhanVienPermission::Xem));
     }
 
     public function test_repository_failure_fails_closed(): void
@@ -78,7 +78,7 @@ final class PermissionServiceTest extends TestCase
         $repository->shouldReceive('permissionsForActor')->once()->andThrow(new \RuntimeException('database unavailable'));
         $service = new PermissionService($repository, new PermissionRegistry());
 
-        $this->assertFalse($service->allows($this->employee('NV001'), NhanVienPermission::Xem));
+        $this->assertFalse($service->allows($this->employee('00001'), NhanVienPermission::Xem));
     }
 
     public function test_unknown_ability_and_invalid_actor_do_not_access_repository(): void
@@ -87,7 +87,7 @@ final class PermissionServiceTest extends TestCase
         $repository->shouldNotReceive('permissionsForActor');
         $service = new PermissionService($repository, new PermissionRegistry());
 
-        $this->assertFalse($service->allows($this->employee('NV001'), 'NV_VIEW_DRIFT'));
+        $this->assertFalse($service->allows($this->employee('00001'), 'NhanVien.Read.Drift'));
         $this->assertFalse($service->allows($this->employee('not-an-employee'), NhanVienPermission::Xem));
     }
 
@@ -95,25 +95,25 @@ final class PermissionServiceTest extends TestCase
     {
         $registry = new PermissionRegistry();
 
-        $this->assertSame('NV_VIEW', NhanVienPermission::Xem->value);
+        $this->assertSame('NhanVien.Read', NhanVienPermission::Xem->value);
         $this->assertSame('NhanVien', NhanVienPermission::Xem->module());
-        $this->assertSame(101, $registry->forAbility('NV_VIEW')?->id());
-        $this->assertSame('PhongBan', $registry->forAbility('PB_VIEW')?->module());
-        $this->assertNull($registry->forAbility('NV_RESET_PASSWORD')?->action());
-        $this->assertNull($registry->forAbility('NV_RESET_PASSWORD '));
-        $this->assertNull($registry->forAbility('NV_LEGACY_VIEW'));
+        $this->assertSame(17, $registry->forAbility('NhanVien.Read')?->id());
+        $this->assertSame('PhongBan', $registry->forAbility('PhongBan.Read')?->module());
+        $this->assertNull($registry->forAbility('NhanVien.ResetPassword'));
+        $this->assertNull($registry->forAbility('NhanVien.ResetPassword '));
+        $this->assertNull($registry->forAbility('NhanVien.LegacyRead'));
     }
 
     public function test_module_action_and_visibility_require_registered_view_and_exact_action(): void
     {
         $repository = Mockery::mock(PermissionRepositoryContract::class);
-        $repository->shouldReceive('permissionsForActor')->once()->with('NV001')->andReturn([
-            $this->row(101, 'NV_VIEW', 'NhanVien'),
-            $this->row(102, 'NV_CREATE', 'NhanVien'),
-            $this->row(201, 'PB_VIEW', 'PhongBan'),
+        $repository->shouldReceive('permissionsForActor')->once()->with('00001')->andReturn([
+            $this->row(17, 'NhanVien.Read', 'NhanVien'),
+            $this->row(18, 'NhanVien.Insert', 'NhanVien'),
+            $this->row(9, 'PhongBan.Read', 'PhongBan'),
         ]);
         $service = new PermissionService($repository, new PermissionRegistry());
-        $employee = $this->employee('NV001');
+        $employee = $this->employee('00001');
 
         $this->assertTrue($service->allowsModuleAction($employee, 'NhanVien', PermissionAction::View));
         $this->assertTrue($service->allowsModuleAction($employee, 'NhanVien', PermissionAction::Create));
@@ -124,10 +124,12 @@ final class PermissionServiceTest extends TestCase
 
     public function test_action_parser_accepts_only_a_complete_known_suffix(): void
     {
-        $this->assertSame(PermissionAction::View, PermissionAction::fromSymbol('NV_VIEW'));
-        $this->assertSame(PermissionAction::Delete, PermissionAction::fromSymbol('PB_DELETE'));
+        $this->assertSame(PermissionAction::View, PermissionAction::fromSymbol('NhanVien.Read'));
+        $this->assertSame(PermissionAction::Delete, PermissionAction::fromSymbol('PhongBan.Delete'));
         $this->assertNull(PermissionAction::fromSymbol('VIEW'));
-        $this->assertNull(PermissionAction::fromSymbol('NV_VIEW_EXTRA'));
+        $this->assertNull(PermissionAction::fromSymbol('.Read'));
+        $this->assertNull(PermissionAction::fromSymbol('NhanVien.Nested.Read'));
+        $this->assertNull(PermissionAction::fromSymbol('NhanVien.ReadExtra'));
     }
 
     public function test_duplicate_registered_ids_fail_closed(): void
@@ -135,7 +137,7 @@ final class PermissionServiceTest extends TestCase
         $registry = new PermissionRegistry([DuplicatePermissionSet::class]);
 
         $this->assertSame([], $registry->all());
-        $this->assertNull($registry->forAbility('TEST_VIEW'));
+        $this->assertNull($registry->forAbility('Test.Read'));
         $this->assertNull($registry->forModuleAction('Test', PermissionAction::View));
     }
 
@@ -157,7 +159,7 @@ final class PermissionServiceTest extends TestCase
             'email' => $maNv.'@example.test',
             'mat_khau' => 'hash',
             'ma_vt' => 5,
-            'ma_tt' => 2,
+            'ma_tt' => 1,
         ]);
     }
 }
@@ -167,8 +169,8 @@ final class DuplicatePermissionSet implements PermissionDefinitionContract
     public static function cases(): array
     {
         return [
-            new TestPermissionDefinition(900, 'TEST_VIEW', 'Test', PermissionAction::View),
-            new TestPermissionDefinition(900, 'TEST_CREATE', 'Test', PermissionAction::Create),
+            new TestPermissionDefinition(900, 'Test.Read', 'Test', PermissionAction::View),
+            new TestPermissionDefinition(900, 'Test.Insert', 'Test', PermissionAction::Create),
         ];
     }
 

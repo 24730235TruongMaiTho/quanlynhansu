@@ -1,7 +1,8 @@
--- LEGACY SAMPLE DATA (superseded 2026-08-24). Do not execute as active setup.
--- Active fresh seed is database/du_lieu_mau.sql after database/tao_bang.sql.
--- This historical dump uses the former schema/routines and is retained only
--- for audit comparison.
+-- Dữ liệu mẫu active cho hợp đồng 15 bảng hiện hành.
+-- Chạy sau database/sql/tao_bang.sql và trước database/sql/quyen_vai_tro.sql
+-- trên cơ sở dữ liệu rỗng hoặc disposable đã được phê duyệt.
+
+USE quan_ly_nhan_su;
 
 -- Tạm tắt kiểm tra khóa ngoại
 SET FOREIGN_KEY_CHECKS = 0;
@@ -65,6 +66,9 @@ INSERT INTO nhan_vien (ma_nv, ho_ten, ngay_sinh, gioi_tinh, sdt, email, ngay_vao
 ('00017', N'Phan Thị Ngọc Ánh', '1998-05-25', 0, '0956789012', 'anh.phan@company.com', '2022-11-22', 3, 6, N'Kinh', '079301234574', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
 ('00018', N'Hoàng Đức Long', '1993-01-30', 1, '0901234567', 'long.hoang@company.com', '2019-02-14', 5, 6, N'Kinh', '079301234575', N'Bộ Công an', N'Đại học', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5),
 ('00019', N'Vũ Thị Hương', '1994-07-11', 0, '0998765432', 'huong.vu@company.com', '2020-05-08', 5, 6, N'Tày', '079301234576', N'Bộ Công an', N'Cao đẳng', 1, 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 5);
+
+-- Bộ đếm phải khớp mã lớn nhất đã cấp để lần tạo tiếp theo nhận 00020.
+INSERT INTO bo_dem_ma_nhan_vien (ten_bo_dem, so_da_cap) VALUES ('NHAN_VIEN', 19);
 
 -- ==================== 6. Quyen ====================
 INSERT INTO quyen (ma_quyen, ky_hieu_quyen, ten_quyen, module) VALUES

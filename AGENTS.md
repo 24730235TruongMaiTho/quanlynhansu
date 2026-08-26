@@ -8,10 +8,11 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
 
 - Đồ án: website quản lý nhân sự cho hai môn Web Application và UI/UX.
 - Stack: Laravel 12, PHP 8.2+, Blade, JavaScript, Vite 7, Tailwind CSS 4, Bootstrap, MariaDB/MySQL.
-- Nguồn dựng fresh hiện hành cho hợp đồng 15 bảng là `database/tao_bang.sql`
-  rồi `database/du_lieu_mau.sql`; `quan_ly_nhan_su.session.sql` là dump lịch sử
-  đã đánh dấu, không phải nguồn schema active.
-- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; module Nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`. Trên các feature branch, Phòng ban và Chức vụ phải bám đúng catalog `PB_*`/`CV_*` và fresh 15-table contract; xem handoff/guide để biết giới hạn browser.
+- Nguồn dựng fresh hiện hành cho hợp đồng 15 bảng là lần lượt
+  `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql` và
+  `database/sql/quyen_vai_tro.sql`; các file SQL ở thư mục gốc và
+  `quan_ly_nhan_su.session.sql` là lịch sử đã đánh dấu, không phải nguồn active.
+- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; module Nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`. Trên các feature branch, Phòng ban và Chức vụ phải bám đúng catalog quyền `PhongBan.*`/`ChucVu.*` và fresh 15-table contract; xem handoff/guide để biết giới hạn browser.
 - Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
 ## Thứ tự đọc
@@ -20,7 +21,8 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
 2. `docs/CODEX_NEXT_HANDOFF.md`.
 3. `docs/PROJECT_STATUS.md` và tài liệu chuyên đề liên quan. Với task module Nhân viên, đọc thêm [docs/EMPLOYEE_MODULE_GUIDE.md](docs/EMPLOYEE_MODULE_GUIDE.md).
 4. Route, controller, request, service/repository, model, Blade/JavaScript và test của task.
-5. `database/tao_bang.sql` và `database/du_lieu_mau.sql` trước thay đổi fresh;
+5. Ba file `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql` và
+   `database/sql/quyen_vai_tro.sql` trước thay đổi fresh;
    đọc `quan_ly_nhan_su.session.sql` chỉ để đối chiếu legacy khi cần.
 6. Instruction/skill phù hợp trong `.codex/`.
 
@@ -55,7 +57,7 @@ Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa đ�
 - Controller extend base controller Laravel.
 - Route name dùng `backend.<module>.<action>` hoặc `api.v1.<module>.<action>`.
 - Không lặp prefix `backend.backend.*`.
-- Runtime hiện còn resource API names không có `api.v1` prefix và route nghỉ phép chưa đặt tên; xem đây là drift cần sửa, không phải convention mới.
+- Runtime hiện còn resource API names không có `api.v1` prefix; các route phụ trợ nghỉ phép đã có tên riêng để kiểm thử middleware, không coi tên resource cũ là convention mới.
 - Blade path phải khớp chính xác thư mục (`layout` và `layouts` là hai path khác nhau).
 - Validate ở server và trả lỗi an toàn; không trả raw exception/SQL message.
 - Model phải map đúng table, primary key, casts và timestamps.
@@ -72,7 +74,8 @@ Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa đ�
   module khác, kiểm tra tên, số tham số, thứ tự và result shape trong dump/live schema.
 - Module Chức vụ hiện dùng Query Builder trực tiếp trên `chuc_vu` và `nhan_vien`,
   trả shape tường minh `ma_cv`, `ten_cv`, `he_so_phu_cap`, `so_nhan_vien` và
-  quyền `CV_VIEW/CV_CREATE/CV_EDIT/CV_DELETE` (301–304). Các `sp_chuc_vu_*`
+  quyền `ChucVu.Read`, `ChucVu.Insert`, `ChucVu.Update`, `ChucVu.Delete`
+  (13–16). Các `sp_chuc_vu_*`
   trong test/dump cũ chỉ là historical, không phải caller active.
 - Module Phòng ban hiện dùng Query Builder trực tiếp trên `phong_ban` và
   `nhan_vien`, trả shape `ma_pb`, `ten_pb`, `so_nhan_vien`, transaction/row lock

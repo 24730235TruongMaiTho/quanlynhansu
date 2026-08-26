@@ -51,8 +51,21 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('salary-year-select'),
     };
 
+    const permissions = {
+        canCreate:
+            document.querySelector('[data-luong-can-create]')?.dataset.luongCanCreate === '1',
+        canUpdate:
+            document.querySelector('[data-luong-can-update]')?.dataset.luongCanUpdate === '1',
+        canDelete:
+            document.querySelector('[data-luong-can-delete]')?.dataset.luongCanDelete === '1',
+    };
+
     if (!elements.modal || !elements.form) {
         return;
+    }
+
+    if (elements.createButton) {
+        elements.createButton.disabled = !permissions.canCreate;
     }
 
     const state = {
@@ -209,6 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openCreateModal() {
+        if (!permissions.canCreate) return;
+
         resetForm();
         setModalMode('create');
 
@@ -299,6 +314,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function openExistingSalary(id, mode) {
+        if (mode === 'edit' && !permissions.canUpdate) return;
+
         if (!id) {
             showMessage('Không tìm thấy mã lương.');
             return;
@@ -379,6 +396,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (
+            state.mode === 'edit'
+                ? !permissions.canUpdate
+                : !permissions.canCreate
+        ) {
+            return;
+        }
+
         clearMessage();
 
         const payload = buildPayload();
@@ -437,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function deleteSalary(id, employeeName) {
-        if (!id) {
+        if (!permissions.canDelete || !id) {
             return;
         }
 
@@ -518,6 +543,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const action =
                 button.dataset.salaryAction;
+
+            if (
+                (action === 'edit' && !permissions.canUpdate) ||
+                (action === 'delete' && !permissions.canDelete)
+            ) {
+                return;
+            }
 
             const id = button.dataset.id;
 

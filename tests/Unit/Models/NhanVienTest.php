@@ -12,7 +12,7 @@ class NhanVienTest extends TestCase
     public function test_employee_auth_mapping_uses_explicit_id_columns(): void
     {
         $employee = NhanVien::fromAuthRow((object) [
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => 'hash',
@@ -23,7 +23,7 @@ class NhanVienTest extends TestCase
         $this->assertContains(AuthenticatableContract::class, class_implements(NhanVien::class));
         $this->assertSame('nhan_vien', $employee->getTable());
         $this->assertSame('ma_nv', $employee->getKeyName());
-        $this->assertSame('NV001', $employee->getKey());
+        $this->assertSame('00001', $employee->getKey());
         $this->assertTrue($employee->exists);
         $this->assertSame('Nguyễn An', $employee->ho_ten);
         $this->assertSame('an@example.test', $employee->email);

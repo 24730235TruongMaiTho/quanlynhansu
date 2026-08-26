@@ -27,6 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
         pagination: document.getElementById('pagination'),
     };
 
+    const permissions = {
+        canUpdate:
+            document.querySelector('[data-luong-can-update]')?.dataset.luongCanUpdate === '1',
+        canDelete:
+            document.querySelector('[data-luong-can-delete]')?.dataset.luongCanDelete === '1',
+    };
+
     if (!elements.tbody) {
         console.warn('Không tìm thấy #salary-tbody');
 
@@ -451,6 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button
                                 class="btn salary-action-btn"
                                 type="button"
+                                ${permissions.canUpdate ? '' : 'disabled aria-disabled="true"'}
                                 data-salary-action="edit"
                                 data-id="${escapeHtml(salary.ma_luong || '')}"
                                 title="Chỉnh sửa"
@@ -462,6 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button
                                 class="btn btn-danger salary-action-btn"
                                 type="button"
+                                ${permissions.canDelete ? '' : 'disabled aria-disabled="true"'}
                                 data-salary-action="delete"
                                 data-id="${escapeHtml(salary.ma_luong || '')}"
                                 data-employee-name="${escapeHtml(employeeName)}"
@@ -846,9 +855,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderPaginationInfo(paginator);
             }
 
-            if (elements.reconcileButton) {
-                elements.reconcileButton.disabled = false;
-            }
+        if (elements.reconcileButton) {
+            elements.reconcileButton.disabled = !permissions.canUpdate;
+        }
         } catch (error) {
             if (error.name === 'AbortError') {
                 return;
@@ -868,7 +877,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (elements.reconcileButton) {
-                elements.reconcileButton.disabled = false;
+                elements.reconcileButton.disabled = !permissions.canUpdate;
             }
 
             if (elements.pagination) {
@@ -1001,6 +1010,16 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     elements.refresh?.addEventListener('click', () => {
         loadSalaryData(state.page);
+    });
+
+    elements.reconcileButton?.addEventListener('click', () => {
+        if (!permissions.canUpdate) return;
+
+        document.dispatchEvent(
+            new CustomEvent('salary:reconcile', {
+                detail: { page: state.page },
+            })
+        );
     });
 
     window.salaryFilterManager = {

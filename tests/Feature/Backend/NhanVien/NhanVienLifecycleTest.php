@@ -46,7 +46,7 @@ class NhanVienLifecycleTest extends TestCase
         $this->assertInstanceOf(RoutingRoute::class, $destroy);
         $this->assertSame('nhan-vien/{ma_nv}', $destroy->uri());
         $this->assertSame(['DELETE'], $destroy->methods());
-        $this->assertSame('NV[0-9]{3}', $destroy->wheres['ma_nv']);
+        $this->assertSame('[0-9]{5}', $destroy->wheres['ma_nv']);
         $this->assertLessThan(
             array_search($show, Route::getRoutes()->getRoutes(), true),
             array_search($destroy, Route::getRoutes()->getRoutes(), true),
@@ -59,7 +59,7 @@ class NhanVienLifecycleTest extends TestCase
             $mock->shouldReceive('removeOrTerminate')->once()->andReturn(NhanVienRemovalAction::Deleted);
         });
 
-        $this->delete('/nhan-vien/NV001')
+        $this->delete('/nhan-vien/00001')
             ->assertRedirect(route('backend.nhanvien.index'))
             ->assertSessionHas('success', 'Đã xóa hồ sơ nhân viên.');
     }
@@ -81,15 +81,15 @@ class NhanVienLifecycleTest extends TestCase
             ->assertSee('data-action-dialog', false)
             ->assertSee('name="_method" value="DELETE"', false)
             ->assertSee('Xóa cứng nếu chưa có lịch sử', false);
-        $this->get('/nhan-vien/NV001')->assertOk()->assertSee('data-action-dialog', false);
-        $this->get('/nhan-vien/NV001/edit')->assertOk()->assertSee('data-action-dialog', false);
+        $this->get('/nhan-vien/00001')->assertOk()->assertSee('data-action-dialog', false);
+        $this->get('/nhan-vien/00001/edit')->assertOk()->assertSee('data-action-dialog', false);
         $this->get('/nhan-vien/create')->assertOk()->assertDontSee('data-action-dialog', false);
     }
 
     private function employee(array $overrides = []): object
     {
         return (object) array_replace([
-            'ma_nv' => 'NV001', 'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '1990-01-01',
+            'ma_nv' => '00001', 'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '1990-01-01',
             'gioi_tinh' => 1, 'sdt' => '0901234567', 'email' => 'an@example.test',
             'ngay_vao_lam' => '2020-01-01', 'ma_pb' => 1, 'ten_pb' => 'Kỹ thuật',
             'ma_cv' => 1, 'ten_cv' => 'Lập trình viên', 'dan_toc' => 'Kinh',

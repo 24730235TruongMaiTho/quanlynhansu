@@ -10,20 +10,20 @@ use App\Services\PermissionService;
 trait InteractsWithPhongBanModule
 {
     /**
-     * Authenticate a deterministic actor and grant only the requested department symbols.
-     * The permission service is mocked at the Gate boundary; the HTTP contract stays real.
+     * Xác thực tác nhân cố định và chỉ cấp symbol quyền phòng ban được yêu cầu.
+     * PermissionService được mô phỏng ở ranh giới Gate, còn hợp đồng HTTP vẫn thật.
      *
      * @param array<int, string|PhongBanPermission> $symbols
      */
     protected function actingAsPhongBanEmployee(array $symbols): NhanVien
     {
         $employee = NhanVien::fromAuthRow((object) [
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => 'test-hash',
             'ma_vt' => 1,
-            'ma_tt' => 2,
+            'ma_tt' => 1,
         ]);
         $allowedSymbols = array_values(array_filter(array_map(
             static fn (mixed $symbol): ?string => $symbol instanceof PhongBanPermission

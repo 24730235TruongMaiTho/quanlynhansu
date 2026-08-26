@@ -34,17 +34,16 @@ final class EmployeeSchemaContractTest extends TestCase
         self::assertStringContainsString('ngay_nghi_viec', strtolower($schema));
     }
 
-    public function test_local_demo_seeder_defines_a_guarded_bcrypt_admin_and_permission_catalog(): void
+    public function test_active_sql_seed_defines_the_five_digit_employee_and_permission_catalog(): void
     {
-        $seed = file_get_contents(dirname(__DIR__, 3).'\\database\\seeders\\LocalDemoSeeder.php');
+        $seed = file_get_contents(dirname(__DIR__, 3).'\\database\\sql\\du_lieu_mau.sql');
         self::assertIsString($seed);
 
-        self::assertStringContainsString("private const ADMIN_CODE = 'NV001'", $seed);
-        self::assertStringContainsString("private const ADMIN_EMAIL = 'an.nguyen@company.com'", $seed);
-        self::assertStringContainsString("'mat_khau' => Hash::make('nhom3@2026')", $seed);
-        self::assertStringContainsString("DB::table('nhan_vien')->updateOrInsert", $seed);
-        self::assertStringContainsString("'NV_VIEW' => 'Xem nhân viên'", $seed);
-        self::assertStringContainsString('NhanVienPermission::cases()', $seed);
+        self::assertStringNotContainsString('LEGACY SAMPLE DATA', $seed);
+        self::assertStringContainsString("('00001'", $seed);
+        self::assertStringContainsString("N'NhanVien.Read'", $seed);
+        self::assertStringContainsString("('NHAN_VIEN', 19)", $seed);
+        self::assertStringContainsString('A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', $seed);
     }
 
     public function test_existing_schema_migration_is_preflighted_and_backup_friendly(): void
@@ -72,7 +71,6 @@ final class EmployeeSchemaContractTest extends TestCase
     {
         $root = dirname(__DIR__, 3);
         $historical = [
-            'database/sql/du_lieu_mau.sql',
             'database/sql/employee/2026_08_12_001_schema.sql',
             'database/sql/employee/2026_08_12_002_read_routines.sql',
             'database/sql/employee/2026_08_12_003_create_routines.sql',

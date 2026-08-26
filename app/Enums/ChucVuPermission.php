@@ -6,18 +6,18 @@ use App\Contracts\PermissionDefinitionContract;
 
 enum ChucVuPermission: string implements PermissionDefinitionContract
 {
-    case Xem = 'CV_VIEW';
-    case Tao = 'CV_CREATE';
-    case Sua = 'CV_EDIT';
-    case Xoa = 'CV_DELETE';
+    case Xem = 'ChucVu.Read';
+    case Tao = 'ChucVu.Insert';
+    case Sua = 'ChucVu.Update';
+    case Xoa = 'ChucVu.Delete';
 
     public function id(): int
     {
         return match ($this) {
-            self::Xem => 301,
-            self::Tao => 302,
-            self::Sua => 303,
-            self::Xoa => 304,
+            self::Xem => 13,
+            self::Tao => 14,
+            self::Sua => 15,
+            self::Xoa => 16,
         };
     }
 

@@ -11,7 +11,7 @@ class LuongHeSoLuongController extends Controller
 {
     /**
      * Trả về lịch sử hệ số lương của một nhân viên (dùng cho UI)
-     * GET /api/v1/luong/he-so-luong?ma_nv=NV001
+     * Phương thức GET /api/v1/luong/he-so-luong với mã nhân viên 00001.
      */
     public function index(Request $request): JsonResponse
     {

@@ -78,6 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const permissions = {
+        canCreate:
+            document.querySelector('[data-luong-can-create]')?.dataset.luongCanCreate === '1',
+        canUpdate:
+            document.querySelector('[data-luong-can-update]')?.dataset.luongCanUpdate === '1',
+    };
+
     const state = {
         mode: 'create',
         coefficientId: null,
@@ -343,6 +350,10 @@ document.addEventListener('DOMContentLoaded', () => {
         employeeCode,
         employeeName
     ) {
+        if (!permissions.canCreate) {
+            return;
+        }
+
         resetForm();
         setMode('create');
 
@@ -362,6 +373,10 @@ document.addEventListener('DOMContentLoaded', () => {
         employeeName,
         mode
     ) {
+        if (mode === 'edit' && !permissions.canUpdate) {
+            return;
+        }
+
         resetForm();
         setMode(mode);
 
@@ -396,6 +411,14 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
 
         if (state.mode === 'view') {
+            return;
+        }
+
+        if (
+            state.mode === 'edit'
+                ? !permissions.canUpdate
+                : !permissions.canCreate
+        ) {
             return;
         }
 
@@ -465,49 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function deleteCoefficient(
-        coefficientId,
-        employeeCode,
-        employeeName
-    ) {
-        const confirmed = window.confirm(
-            `Bạn có chắc muốn xóa hệ số lương này của ${
-                employeeName ||
-                employeeCode
-            } không?`
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        try {
-            await requestJson(
-                `${HE_SO_API_URL}/${encodeURIComponent(
-                    coefficientId
-                )}`,
-                {
-                    method: 'DELETE',
-                }
-            );
-
-            document.dispatchEvent(
-                new CustomEvent(
-                    'salary-coefficient:data-changed',
-                    {
-                        detail: {
-                            action: 'deleted',
-                            employeeCode,
-                        },
-                    }
-                )
-            );
-        } catch (error) {
-            console.error(error);
-            window.alert(error.message);
-        }
-    }
-
     document.addEventListener(
         'salary-coefficient:action',
         (event) => {
@@ -517,6 +497,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 employeeCode,
                 employeeName,
             } = event.detail || {};
+
+            if (
+                (action === 'create' && !permissions.canCreate) ||
+                (action === 'edit' && !permissions.canUpdate) ||
+                action === 'delete'
+            ) {
+                return;
+            }
 
             if (action === 'create') {
                 openCreate(
@@ -549,13 +537,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (action === 'delete') {
-                deleteCoefficient(
-                    coefficientId,
-                    employeeCode,
-                    employeeName
-                );
-            }
         }
     );
 

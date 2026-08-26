@@ -1,7 +1,8 @@
 # Kiến trúc hiện tại
 
-Tài liệu này mô tả code dùng chung và module Nhân viên tại snapshot 2026-08-24.
-Đây là kiến trúc **đang tồn tại**, không phải cam kết production cho mọi module.
+Tài liệu này mô tả runtime hiện hành của local `main` tại snapshot
+2026-08-26. Các đoạn có nhãn **Lịch sử** chỉ giữ lại quyết định hoặc contract
+cũ để truy nguyên, không phải đường chạy hiện tại.
 
 ## Sơ đồ request
 
@@ -21,7 +22,8 @@ flowchart LR
 
 Các đường truy cập database đang cùng tồn tại theo phạm vi module:
 
-- Employee/auth/RBAC: `Controller → Service → Repository → Query Builder/table`.
+- Nhân viên và CRUD danh mục: `Controller → Service → Repository → Query Builder/table`.
+- Auth/RBAC đồng nghiệp: provider/session → permission registry/Gate → route/action.
 - Các module legacy khác: `Controller → Service/Repository → procedure/query`.
 
 Không nên coi sơ đồ lớp là chuẩn hoàn chỉnh: một số module bỏ qua service/repository, và một số model chưa map đúng schema.
@@ -30,18 +32,21 @@ Không nên coi sơ đồ lớp là chuẩn hoàn chỉnh: một số module b�
 
 ### Web
 
-`routes/web.php` đăng ký login/logout và các route quản trị hiện hành:
+`routes/web.php` đăng ký login/logout và các route CRUD hiện hành:
 
 - Dashboard.
 - Phòng ban.
 - Nhân viên.
 - Trang lương, chấm công, nghỉ phép.
 
-Các route nghiệp vụ khai báo middleware `auth` và Gate theo từng quyền. Rollout
+Các route nghiệp vụ khai báo middleware `auth` và Gate theo từng quyền. Dashboard
+`/tong-quan` yêu cầu `auth`; lương, chấm công và nghỉ phép dùng riêng catalog
+`Luong.*` (33–36), `ChamCong.*` (29–32) và `NghiPhep.*` (25–28). Rollout
 middleware của module Nhân viên đã được loại bỏ; Hợp đồng và Phân quyền giữ
 nguyên contract quyền do code đồng nghiệp cung cấp.
 
-Named-route contract chưa đồng nhất: web có `backend.backend.*`, resource API không có `api.v1` prefix và một số route nghỉ phép chưa được đặt tên.
+Resource API vẫn giữ tên resource không có tiền tố `api.v1` để tương thích; các
+route phụ trợ nghỉ phép đã có tên riêng và đều đi qua auth/Gate.
 
 ### API
 
@@ -73,9 +78,10 @@ app/
 - `LuongController`, `NghiPhepController`, `ChucVuController` dùng service/repository cho CRUD chính.
 - `ChamCongController` gọi Query Builder/stored procedure trực tiếp và chứa logic pagination/response.
 - `LuongHeSoLuongController`, `LuongPhongBanController`, `LuongChucVuController` là endpoint phụ trợ.
-- `PhongBanController` gọi procedure trực tiếp nhưng hợp đồng hiện bị lệch.
-- `NhanVienController` có list/create/store/show/edit/update/lifecycle/reset; dữ
-  liệu employee/auth/RBAC đi qua repository Query Builder trực tiếp.
+- `PhongBanController` và `ChucVuController` dùng repository Query Builder trực tiếp.
+- `NhanVienController` có list/create/store/show/edit/update/lifecycle; dữ liệu
+  employee đi qua repository Query Builder trực tiếp, không còn reset mật khẩu,
+  rollout flag, department scope hoặc target-role guard của nhánh cũ.
 
 ### Request validation
 
@@ -119,16 +125,19 @@ Frontend layout cũ lại yêu cầu `resources/css/app.css` và `resources/js/a
 
 ## Database
 
-Nguồn fresh active là `database/sql/tao_bang.sql`, sau đó dùng
-`Database\\Seeders\\LocalDemoSeeder` cho dữ liệu local tối thiểu:
+Nguồn fresh active là ba file SQL chạy theo thứ tự:
+`database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql`, rồi
+`database/sql/quyen_vai_tro.sql`:
 
 - đúng 15 bảng;
-- không yêu cầu view/function/trigger/stored procedure;
+- 19 nhân viên, 37 quyền và 12 thủ tục RBAC có mã số tường minh;
 - `nhan_vien` chứa trực tiếp address/avatar/date columns;
-- role/status/permission dùng ID contracts và counter row lock.
+- role/status/permission dùng ID contracts, symbol dotted và counter row lock;
+- mã nhân viên seed/cấp mới dùng định dạng 5 chữ số; bộ đếm tự động thực tế
+  cấp trong dải `00001..65535` theo giới hạn `SMALLINT UNSIGNED`.
 
-`quan_ly_nhan_su.session.sql` cùng các script employee 001–006 là legacy
-history; xem [DATABASE.md](DATABASE.md) và không dùng làm fresh setup path.
+`Database\\Seeders\\LocalDemoSeeder`, `quan_ly_nhan_su.session.sql` cùng các
+script employee 001–006 là **Lịch sử**, không dùng làm fresh setup path.
 
 Ba migrations Laravel chỉ tạo hạ tầng users/session/cache/jobs và chưa được chạy trên database live. Xem [DATABASE.md](DATABASE.md).
 
@@ -136,18 +145,22 @@ Baseline hiện dùng `APP_TIMEZONE=Asia/Ho_Chi_Minh` và `DB_TIMEZONE=+07:00`. 
 
 ## Auth và ranh giới bảo mật
 
-Auth/RBAC đã được tích hợp hẹp cho module nhân viên:
+Auth/RBAC hiện hành vẫn được giữ theo kiến trúc đồng nghiệp:
 
 - route `dang-nhap`/`dang-xuat`, custom `nhan-vien` provider và `App\Models\NhanVien` làm identity;
-- hash mới/rehash dùng Laravel hasher, lookup/hash CAS chỉ ở server boundary, session từ chối `DA_NGHI`;
-- toàn bộ `/admin` có `auth`; năm Gate ability employee được đối chiếu với
-  `ma_quyen` 101–105 và cache trong một request;
+- hash mới/rehash dùng Laravel hasher; hash SHA-256 legacy chỉ được kiểm tra
+  tương thích rồi CAS rehash sang bcrypt; session từ chối trạng thái 4, 5, 6;
+- các route nghiệp vụ hiện hành có `auth`; Gate đối chiếu đồng thời `ma_quyen`,
+  `ky_hieu_quyen` dotted và `module`;
 - employee Blade action và route dùng cùng permission; CRUD hồ sơ không còn
-  chặn target theo `ma_vt`;
-- hai lookup nhân viên dùng chung ở chấm công/nghỉ phép yêu cầu web session và
-  quyền XEM, không còn phụ thuộc rollout flag.
+  chặn target theo `ma_vt` hay department scope riêng;
+- lookup nhân viên của Chấm công và Nghỉ phép yêu cầu web session cùng quyền
+  `.Read` đúng module (`ChamCong.Read` hoặc `NghiPhep.Read`), không dùng quyền
+  Nhân viên thay thế và không phụ thuộc rollout flag.
 
-Đây là verified hẹp trên automated/disposable/browser acceptance, chưa phải security audit production cho toàn ứng dụng. Các module ngoài nhân viên vẫn cần permission/audit riêng.
+Đây là verified hẹp trên automated và disposable MariaDB; browser chưa được
+kiểm chứng trong phiên hiện tại và đây chưa phải security audit production.
+Các module ngoài Nhân viên vẫn cần permission/audit riêng.
 
 ## Kiến trúc mục tiêu chưa tích hợp
 

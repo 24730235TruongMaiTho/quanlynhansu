@@ -38,24 +38,22 @@ final class PermissionIntegrationTest extends TestCase
             $table->primary(['ma_vt', 'ma_quyen']);
         });
 
-        DB::table('nhan_vien')->insert(['ma_nv' => 'NV001', 'ma_vt' => 1, 'ma_tt' => 2]);
+        DB::table('nhan_vien')->insert(['ma_nv' => '00001', 'ma_vt' => 1, 'ma_tt' => 1]);
         DB::table('quyen')->insert([
-            ['ma_quyen' => 101, 'ky_hieu_quyen' => 'NV_VIEW', 'module' => 'NhanVien'],
-            ['ma_quyen' => 102, 'ky_hieu_quyen' => 'NV_CREATE', 'module' => 'NhanVien'],
-            ['ma_quyen' => 105, 'ky_hieu_quyen' => 'NV_RESET_PASSWORD', 'module' => 'NhanVien'],
-            ['ma_quyen' => 201, 'ky_hieu_quyen' => 'PB_VIEW', 'module' => 'PhongBan'],
-            ['ma_quyen' => 202, 'ky_hieu_quyen' => 'PB_CREATE', 'module' => 'PhongBan'],
-            ['ma_quyen' => 301, 'ky_hieu_quyen' => 'CV_VIEW', 'module' => 'ChucVu'],
-            ['ma_quyen' => 302, 'ky_hieu_quyen' => 'CV_CREATE', 'module' => 'ChucVu'],
+            ['ma_quyen' => 17, 'ky_hieu_quyen' => 'NhanVien.Read', 'module' => 'NhanVien'],
+            ['ma_quyen' => 18, 'ky_hieu_quyen' => 'NhanVien.Insert', 'module' => 'NhanVien'],
+            ['ma_quyen' => 9, 'ky_hieu_quyen' => 'PhongBan.Read', 'module' => 'PhongBan'],
+            ['ma_quyen' => 10, 'ky_hieu_quyen' => 'PhongBan.Insert', 'module' => 'PhongBan'],
+            ['ma_quyen' => 13, 'ky_hieu_quyen' => 'ChucVu.Read', 'module' => 'ChucVu'],
+            ['ma_quyen' => 14, 'ky_hieu_quyen' => 'ChucVu.Insert', 'module' => 'ChucVu'],
         ]);
         DB::table('vai_tro_quyen')->insert([
-            ['ma_vt' => 1, 'ma_quyen' => 101],
-            ['ma_vt' => 1, 'ma_quyen' => 102],
-            ['ma_vt' => 1, 'ma_quyen' => 105],
-            ['ma_vt' => 1, 'ma_quyen' => 201],
-            ['ma_vt' => 1, 'ma_quyen' => 202],
-            ['ma_vt' => 1, 'ma_quyen' => 301],
-            ['ma_vt' => 1, 'ma_quyen' => 302],
+            ['ma_vt' => 1, 'ma_quyen' => 17],
+            ['ma_vt' => 1, 'ma_quyen' => 18],
+            ['ma_vt' => 1, 'ma_quyen' => 9],
+            ['ma_vt' => 1, 'ma_quyen' => 10],
+            ['ma_vt' => 1, 'ma_quyen' => 13],
+            ['ma_vt' => 1, 'ma_quyen' => 14],
         ]);
     }
 
@@ -80,26 +78,25 @@ final class PermissionIntegrationTest extends TestCase
         $this->assertTrue($service->allows($employee, ChucVuPermission::Xem));
         $this->assertTrue($service->allowsModuleAction($employee, 'ChucVu', PermissionAction::Create));
         $this->assertTrue($service->canSeeModule($employee, 'ChucVu'));
-        $this->assertTrue(Gate::forUser($employee)->allows('NV_VIEW'));
-        $this->assertTrue(Gate::forUser($employee)->allows('NV_RESET_PASSWORD'));
-        $this->assertFalse(Gate::forUser($employee)->allows('NV_DELETE'));
+        $this->assertTrue(Gate::forUser($employee)->allows('NhanVien.Read'));
+        $this->assertFalse(Gate::forUser($employee)->allows('NhanVien.Delete'));
     }
 
     public function test_gate_denies_when_id_symbol_or_module_metadata_drifts(): void
     {
-        DB::table('quyen')->where('ma_quyen', 101)->update(['module' => 'PhongBan']);
+        DB::table('quyen')->where('ma_quyen', 17)->update(['module' => 'PhongBan']);
         $service = new PermissionService(
             $this->app->make(PermissionRepositoryContract::class),
             new PermissionRegistry(),
         );
 
         $this->assertFalse($service->allows($this->employee(), NhanVienPermission::Xem));
-        $this->assertFalse(Gate::forUser($this->employee())->allows('NV_VIEW'));
+        $this->assertFalse(Gate::forUser($this->employee())->allows('NhanVien.Read'));
     }
 
     public function test_module_visibility_requires_the_registered_view_mapping(): void
     {
-        DB::table('vai_tro_quyen')->where('ma_vt', 1)->where('ma_quyen', 201)->delete();
+        DB::table('vai_tro_quyen')->where('ma_vt', 1)->where('ma_quyen', 9)->delete();
         $service = new PermissionService(
             $this->app->make(PermissionRepositoryContract::class),
             new PermissionRegistry(),
@@ -108,7 +105,7 @@ final class PermissionIntegrationTest extends TestCase
         $this->assertFalse($service->canSeeModule($this->employee(), 'PhongBan'));
         $this->assertTrue($service->allowsModuleAction($this->employee(), 'PhongBan', PermissionAction::Create));
 
-        DB::table('vai_tro_quyen')->where('ma_vt', 1)->where('ma_quyen', 301)->delete();
+        DB::table('vai_tro_quyen')->where('ma_vt', 1)->where('ma_quyen', 13)->delete();
         $service = new PermissionService(
             $this->app->make(PermissionRepositoryContract::class),
             new PermissionRegistry(),
@@ -120,12 +117,12 @@ final class PermissionIntegrationTest extends TestCase
     private function employee(): NhanVien
     {
         return NhanVien::fromAuthRow((object) [
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ho_ten' => 'Nguyễn Văn An',
             'email' => 'an.nguyen@company.com',
             'mat_khau' => 'hash',
             'ma_vt' => 1,
-            'ma_tt' => 2,
+            'ma_tt' => 1,
         ]);
     }
 }

@@ -6,18 +6,18 @@ use App\Contracts\PermissionDefinitionContract;
 
 enum PhongBanPermission: string implements PermissionDefinitionContract
 {
-    case Xem = 'PB_VIEW';
-    case Tao = 'PB_CREATE';
-    case Sua = 'PB_EDIT';
-    case Xoa = 'PB_DELETE';
+    case Xem = 'PhongBan.Read';
+    case Tao = 'PhongBan.Insert';
+    case Sua = 'PhongBan.Update';
+    case Xoa = 'PhongBan.Delete';
 
     public function id(): int
     {
         return match ($this) {
-            self::Xem => 201,
-            self::Tao => 202,
-            self::Sua => 203,
-            self::Xoa => 204,
+            self::Xem => 9,
+            self::Tao => 10,
+            self::Sua => 11,
+            self::Xoa => 12,
         };
     }
 

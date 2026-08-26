@@ -34,6 +34,17 @@ document.addEventListener('DOMContentLoaded', () => {
         avgDays: document.getElementById('avg-days'),
     };
 
+    const attendancePage =
+        document.querySelector('[data-cham-cong-can-update]');
+    const permissions = {
+        canRead:
+            attendancePage?.dataset.chamCongCanRead === '1',
+        canCreate:
+            attendancePage?.dataset.chamCongCanCreate === '1',
+        canUpdate:
+            attendancePage?.dataset.chamCongCanUpdate === '1',
+    };
+
     if (!elements.employeeTbody || !elements.attendanceTbody) return;
 
     const state = {
@@ -755,10 +766,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-        elements.updateButton.disabled = false;
+        elements.updateButton.disabled = !permissions.canUpdate;
     }
 
     async function updateSelectedAttendance() {
+        if (!permissions.canUpdate) return;
+
         const row = state.selectedAttendanceRow;
 
         if (!row || !state.selectedAttendanceId) return;
@@ -903,10 +916,14 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.updateButton?.addEventListener('click', updateSelectedAttendance);
 
     elements.importButton?.addEventListener('click', () => {
+        if (!permissions.canCreate) return;
+
         elements.importFile?.click();
     });
 
     elements.importFile?.addEventListener('change', (event) => {
+        if (!permissions.canCreate) return;
+
         const file = event.target.files?.[0];
         if (!file) return;
 
@@ -920,6 +937,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     elements.exportButton?.addEventListener('click', () => {
+        if (!permissions.canRead) return;
+
         document.dispatchEvent(
             new CustomEvent('attendance:export', {
                 detail: {

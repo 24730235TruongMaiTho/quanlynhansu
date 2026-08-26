@@ -20,7 +20,7 @@ class NhanVienValidationTest extends TestCase
         parent::setUp();
 
         $this->createEmployeeFeatureSchema();
-        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ma_tt' => 2]);
+        $this->bindCurrentEmployee((object) ['ma_nv' => '00001', 'ma_tt' => 2]);
 
         Route::post('/_tests/nhan-vien', function (StoreNhanVienRequest $request) {
             return response()->json(array_merge(
@@ -117,20 +117,22 @@ class NhanVienValidationTest extends TestCase
         ]))->assertUnprocessable()->assertJsonValidationErrors('cccd');
     }
 
-    public function test_store_accepts_only_active_and_probation_status_symbols(): void
+    public function test_store_accepts_working_probation_and_intern_status_symbols(): void
     {
-        foreach ([1, 2] as $status) {
+        foreach ([1, 2, 3] as $status) {
             $this->postJson('/_tests/nhan-vien', $this->validPayload(['ma_tt' => $status]))
                 ->assertOk();
         }
 
-        $this->postJson('/_tests/nhan-vien', $this->validPayload(['ma_tt' => 3]))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('ma_tt');
-
         $this->postJson('/_tests/nhan-vien', $this->validPayload(['ma_tt' => 4]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('ma_tt');
+
+        foreach ([5, 6] as $status) {
+            $this->postJson('/_tests/nhan-vien', $this->validPayload(['ma_tt' => $status]))
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('ma_tt');
+        }
     }
 
     public function test_store_rejects_each_missing_lookup(): void
@@ -228,7 +230,7 @@ class NhanVienValidationTest extends TestCase
     public function test_store_rejects_every_system_owned_field_and_avatar_removal_flag(): void
     {
         foreach ([
-            'ma_nv' => 'NV999',
+            'ma_nv' => '99999',
             'ma_vt' => 9,
             'mat_khau' => 'plaintext',
             'mat_khau_hash' => 'crafted-hash',
@@ -261,13 +263,13 @@ class NhanVienValidationTest extends TestCase
     public function test_update_rejects_every_system_owned_field(): void
     {
         foreach ([
-            'ma_nv' => 'NV999',
+            'ma_nv' => '99999',
             'ma_vt' => 9,
             'mat_khau' => 'plaintext',
             'mat_khau_hash' => 'crafted-hash',
             'ngay_nghi_viec' => '2026-08-12',
         ] as $field => $value) {
-            $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload([$field => $value]))
+            $this->putJson('/_tests/nhan-vien/00001', $this->validPayload([$field => $value]))
                 ->assertUnprocessable()
                 ->assertJsonValidationErrors($field);
         }
@@ -277,13 +279,13 @@ class NhanVienValidationTest extends TestCase
     {
         foreach (['ma_nv', 'ma_vt', 'mat_khau', 'mat_khau_hash', 'ngay_nghi_viec'] as $field) {
             foreach (['', null, []] as $value) {
-                $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload([$field => $value]))
+                $this->putJson('/_tests/nhan-vien/00001', $this->validPayload([$field => $value]))
                     ->assertUnprocessable()
                     ->assertJsonValidationErrors($field);
             }
         }
 
-        $response = $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload())->assertOk();
+        $response = $this->putJson('/_tests/nhan-vien/00001', $this->validPayload())->assertOk();
 
         foreach (['ma_nv', 'ma_vt', 'mat_khau', 'mat_khau_hash', 'ngay_nghi_viec'] as $field) {
             $response->assertJsonMissingPath($field);
@@ -299,8 +301,8 @@ class NhanVienValidationTest extends TestCase
             'cccd' => ' 001200000099 ',
         ]);
 
-        $this->putJson('/_tests/nhan-vien/NV001', $sameEmployee)->assertOk();
-        $this->putJson('/_tests/nhan-vien/NV002', $sameEmployee)
+        $this->putJson('/_tests/nhan-vien/00001', $sameEmployee)->assertOk();
+        $this->putJson('/_tests/nhan-vien/00002', $sameEmployee)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['email', 'cccd']);
     }
@@ -314,28 +316,40 @@ class NhanVienValidationTest extends TestCase
             'cccd' => '001200000099',
         ]);
 
-        $this->putJson('/_tests/nhan-vien/NV001', $payload)->assertOk();
-        $this->putJson('/_tests/nhan-vien/NV002', $payload)
+        $this->putJson('/_tests/nhan-vien/00001', $payload)->assertOk();
+        $this->putJson('/_tests/nhan-vien/00002', $payload)
             ->assertUnprocessable()
             ->assertJsonValidationErrors('email');
     }
 
     public function test_update_enforces_active_and_terminated_lifecycle_invariants(): void
     {
-        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ma_tt' => 2]);
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 2]))->assertOk();
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 4]))
+        $this->bindCurrentEmployee((object) ['ma_nv' => '00001', 'ma_tt' => 2]);
+        $this->putJson('/_tests/nhan-vien/00001', $this->validPayload(['ma_tt' => 2]))->assertOk();
+        $this->putJson('/_tests/nhan-vien/00001', $this->validPayload(['ma_tt' => 4]))
             ->assertUnprocessable()->assertJsonValidationErrors('ma_tt');
 
-        $this->bindCurrentEmployee((object) ['ma_nv' => 'NV001', 'ma_tt' => 4]);
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 4]))->assertOk();
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['ma_tt' => 1]))
+        $this->bindCurrentEmployee((object) ['ma_nv' => '00001', 'ma_tt' => 4]);
+        $this->putJson('/_tests/nhan-vien/00001', $this->validPayload(['ma_tt' => 4]))->assertOk();
+        $this->putJson('/_tests/nhan-vien/00001', $this->validPayload(['ma_tt' => 1]))
             ->assertUnprocessable()->assertJsonValidationErrors('ma_tt');
+
+        foreach ([
+            4 => [5, 6],
+            5 => [4, 6],
+            6 => [4, 5],
+        ] as $currentStatus => $otherTerminalStatuses) {
+            $this->bindCurrentEmployee((object) ['ma_nv' => '00001', 'ma_tt' => $currentStatus]);
+            foreach ($otherTerminalStatuses as $targetStatus) {
+                $this->putJson('/_tests/nhan-vien/00001', $this->validPayload(['ma_tt' => $targetStatus]))
+                    ->assertUnprocessable()->assertJsonValidationErrors('ma_tt');
+            }
+        }
     }
 
     public function test_update_requires_all_address_parts_or_none(): void
     {
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload([
+        $this->putJson('/_tests/nhan-vien/00001', $this->validPayload([
             'phuong_xa' => '   ',
         ]))
             ->assertUnprocessable()
@@ -346,7 +360,7 @@ class NhanVienValidationTest extends TestCase
     {
         $this->bindCurrentEmployee(null);
 
-        $this->putJson('/_tests/nhan-vien/NV404', $this->validPayload())
+        $this->putJson('/_tests/nhan-vien/99999', $this->validPayload())
             ->assertNotFound()
             ->assertJsonMissingValidationErrors();
     }
@@ -354,8 +368,8 @@ class NhanVienValidationTest extends TestCase
     public function test_update_authorizes_target_before_base_validation_and_reuses_that_lookup(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV001')->andReturn((object) [
-            'ma_nv' => 'NV001',
+        $repository->shouldReceive('find')->once()->with('00001')->andReturn((object) [
+            'ma_nv' => '00001',
             'ma_tt' => 2,
             'ma_vt' => 5,
             'ma_vt' => 5,
@@ -363,7 +377,7 @@ class NhanVienValidationTest extends TestCase
         ]);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload(['email' => 'invalid']))
+        $this->putJson('/_tests/nhan-vien/00001', $this->validPayload(['email' => 'invalid']))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('email');
     }
@@ -377,7 +391,7 @@ class NhanVienValidationTest extends TestCase
         ));
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
-        $this->putJson('/_tests/nhan-vien/NV404', $this->validPayload())
+        $this->putJson('/_tests/nhan-vien/99999', $this->validPayload())
             ->assertNotFound()
             ->assertJsonMissingValidationErrors()
             ->assertDontSee('SQLSTATE');
@@ -396,17 +410,17 @@ class NhanVienValidationTest extends TestCase
         $this->expectException(NhanVienDomainException::class);
         $this->expectExceptionMessage('Chi tiết hạ tầng không được chuyển thành not-found.');
 
-        $this->putJson('/_tests/nhan-vien/NV001', $this->validPayload());
+        $this->putJson('/_tests/nhan-vien/00001', $this->validPayload());
     }
 
     public function test_update_accepts_string_zero_for_boolean_flag_and_rejects_avatar_remove_conflict(): void
     {
-        $this->put('/_tests/nhan-vien/NV001', $this->validPayload([
+        $this->put('/_tests/nhan-vien/00001', $this->validPayload([
             'xoa_anh_dai_dien' => '0',
             'anh_dai_dien' => $this->fakeImage('avatar.jpg'),
         ]), ['Accept' => 'application/json'])->assertOk();
 
-        $this->put('/_tests/nhan-vien/NV001', $this->validPayload([
+        $this->put('/_tests/nhan-vien/00001', $this->validPayload([
             'xoa_anh_dai_dien' => true,
             'anh_dai_dien' => $this->fakeImage('avatar.jpg'),
         ]), ['Accept' => 'application/json'])

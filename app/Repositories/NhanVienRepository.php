@@ -26,6 +26,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
  */
 final class NhanVienRepository implements NhanVienRepositoryContract
 {
+    private const MAX_EMPLOYEE_CODE = 99999;
+
+    private const MAX_COUNTER_VALUE = 65535;
+
     private const PROFILE_COLUMNS = [
         'ho_ten', 'ngay_sinh', 'gioi_tinh', 'sdt', 'email', 'ngay_vao_lam',
         'ma_pb', 'ma_cv', 'dan_toc', 'cccd', 'noi_cap_cccd', 'hoc_van', 'ma_tt',
@@ -142,7 +146,7 @@ final class NhanVienRepository implements NhanVienRepositoryContract
                 }
 
                 $issued = (int) ($counter->so_da_cap ?? -1);
-                if ($issued < 0 || $issued >= 999) {
+                if ($issued < 0 || $issued >= self::MAX_COUNTER_VALUE) {
                     throw new NhanVienDomainException(
                         'Đã hết mã nhân viên khả dụng.',
                         'NV_COUNTER_EXHAUSTED',
@@ -151,14 +155,14 @@ final class NhanVienRepository implements NhanVienRepositoryContract
 
                 $maxExisting = 0;
                 foreach ($connection->table('nhan_vien')->pluck('ma_nv') as $existingCode) {
-                    if (! is_string($existingCode) || preg_match('/\ANV[0-9]{3}\z/', $existingCode) !== 1) {
+                    if (! is_string($existingCode) || preg_match('/\A[0-9]{5}\z/', $existingCode) !== 1) {
                         throw new NhanVienDomainException(
                             'Không thể cấp mã nhân viên do dữ liệu mã bị sai lệch.',
                             'NV_COUNTER_DRIFT',
                         );
                     }
 
-                    $maxExisting = max($maxExisting, (int) substr($existingCode, 2));
+                    $maxExisting = max($maxExisting, (int) $existingCode);
                 }
 
                 if ($issued < $maxExisting) {
@@ -169,7 +173,14 @@ final class NhanVienRepository implements NhanVienRepositoryContract
                 }
 
                 $next = $issued + 1;
-                $maNv = sprintf('NV%03d', $next);
+                if ($next > self::MAX_EMPLOYEE_CODE) {
+                    throw new NhanVienDomainException(
+                        'Đã hết mã nhân viên khả dụng.',
+                        'NV_COUNTER_EXHAUSTED',
+                    );
+                }
+
+                $maNv = sprintf('%05d', $next);
                 if ($connection->table('nhan_vien')->where('ma_nv', $maNv)->exists()) {
                     throw new NhanVienDomainException(
                         'Không thể cấp mã nhân viên do mã đã tồn tại.',
@@ -211,10 +222,7 @@ final class NhanVienRepository implements NhanVienRepositoryContract
                 $requestedStatus = $profileRow['ma_tt'] ?? null;
                 $currentStatus = (int) $target->ma_tt;
                 if ($requestedStatus !== null
-                    && (($currentStatus === NhanVienStatus::Terminated->value
-                        && (int) $requestedStatus !== NhanVienStatus::Terminated->value)
-                        || ($currentStatus !== NhanVienStatus::Terminated->value
-                            && (int) $requestedStatus === NhanVienStatus::Terminated->value))) {
+                    && ! NhanVienStatus::canTransitionValue($currentStatus, (int) $requestedStatus)) {
                     throw new NhanVienDomainException(
                         'Không thể thay đổi trạng thái đã nghỉ qua thao tác cập nhật hồ sơ.',
                         'NV_STATUS_TRANSITION_FORBIDDEN',
@@ -325,7 +333,7 @@ final class NhanVienRepository implements NhanVienRepositoryContract
             $updated = $this->connection()->table('nhan_vien')
                 ->where('ma_nv', $maNv)
                 ->where('mat_khau', $currentHash)
-                ->where('ma_tt', '<>', NhanVienStatus::Terminated->value)
+                ->whereNotIn('ma_tt', NhanVienStatus::terminalValues())
                 ->update(['mat_khau' => $newHash]);
 
             if ($updated === 0) {
@@ -349,20 +357,6 @@ final class NhanVienRepository implements NhanVienRepositoryContract
                 ->first();
 
             return $row === null ? null : NhanVien::fromAuthRow($row);
-        });
-    }
-
-    /** @internal Chỉ dùng khi khởi tạo dữ liệu demo trên cơ sở dữ liệu disposable. */
-    public function assignRoleForBootstrap(string $maNv, int $maVt): void
-    {
-        $this->databaseOperation(function () use ($maNv, $maVt): void {
-            $updated = $this->connection()->table('nhan_vien')
-                ->where('ma_nv', $maNv)
-                ->update(['ma_vt' => $maVt]);
-
-            if ($updated === 0) {
-                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
-            }
         });
     }
 

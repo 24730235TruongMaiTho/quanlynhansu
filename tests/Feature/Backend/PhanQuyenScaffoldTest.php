@@ -9,8 +9,7 @@ final class PhanQuyenScaffoldTest extends TestCase
 {
     public function test_rbac_management_permissions_use_reserved_ids(): void
     {
-        $this->assertSame(801, PhanQuyenPermission::Xem->id());
-        $this->assertSame(802, PhanQuyenPermission::QuanLy->id());
-        $this->assertSame('PhanQuyen', PhanQuyenPermission::QuanLy->module());
+        $this->assertSame([5, 6, 7, 8], array_map(fn ($permission) => $permission->id(), PhanQuyenPermission::cases()));
+        $this->assertSame('PhanQuyen', PhanQuyenPermission::Sua->module());
     }
 }

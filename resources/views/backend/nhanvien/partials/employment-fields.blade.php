@@ -1,7 +1,7 @@
 <section class="employee-form-section" aria-labelledby="employment-fields-title">
     @php
         $formEmployee = $employee ?? null;
-        $terminatedEmployee = (int) data_get($formEmployee, 'ma_tt', 0) === \App\Enums\NhanVienStatus::Terminated->value;
+        $terminatedEmployee = \App\Enums\NhanVienStatus::isTerminalValue((int) data_get($formEmployee, 'ma_tt', 0));
     @endphp
     <h3 class="h6 fw-semibold" id="employment-fields-title">Công việc và trạng thái</h3>
     <div class="employee-form-grid">

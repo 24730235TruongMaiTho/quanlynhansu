@@ -43,15 +43,15 @@ class NhanVienStoreTest extends TestCase
                 $this->assertArrayNotHasKey('mat_khau', $validated);
 
                 return true;
-            })->andReturn('NV001');
+            })->andReturn('00001');
         });
 
         $response = $this->post('/nhan-vien', $this->validPayload());
 
         $response
-            ->assertRedirect('/nhan-vien/NV001')
+            ->assertRedirect('/nhan-vien/00001')
             ->assertSessionHas('success', 'Đã tạo nhân viên; có thể bổ sung hợp đồng sau.')
-            ->assertSessionHas('created_employee_code', 'NV001')
+            ->assertSessionHas('created_employee_code', '00001')
             ->assertSessionMissing('mat_khau')
             ->assertSessionMissing('password')
             ->assertSessionMissing('password_hash');
@@ -63,7 +63,7 @@ class NhanVienStoreTest extends TestCase
     public function test_create_flash_is_rendered_accessibly_after_following_the_redirect(): void
     {
         $employee = (object) [
-            'ma_nv' => 'NV001', 'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '1990-01-01',
+            'ma_nv' => '00001', 'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '1990-01-01',
             'gioi_tinh' => 1, 'sdt' => '0901234567', 'email' => 'an@example.test',
             'ngay_vao_lam' => '2020-01-01', 'ma_pb' => 1, 'ten_pb' => 'Kỹ thuật',
             'ma_cv' => 1, 'ten_cv' => 'Lập trình viên', 'dan_toc' => 'Kinh',
@@ -74,8 +74,8 @@ class NhanVienStoreTest extends TestCase
             'dia_chi_cu_the' => null, 'phuong_xa' => null, 'quan_huyen' => null, 'tinh_thanh' => null,
         ];
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
-            $mock->shouldReceive('create')->once()->andReturn('NV001');
-            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
+            $mock->shouldReceive('create')->once()->andReturn('00001');
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($employee);
         });
 
         $this->followingRedirects()

@@ -27,7 +27,7 @@ class CanonicalEmployeeCodeValidationTest extends TestCase
 
         DB::table('nhan_vien')->insert(array_map(
             static fn (string $code): array => ['ma_nv' => $code],
-            ['NV001', '1', '001', 'NV01', 'NV0001'],
+            ['00001', '1', '001', '0001', '000001'],
         ));
     }
 
@@ -35,7 +35,7 @@ class CanonicalEmployeeCodeValidationTest extends TestCase
     public function test_request_accepts_an_existing_canonical_employee_code(string $requestClass): void
     {
         $validator = Validator::make(
-            ['ma_nv' => 'NV001'],
+            ['ma_nv' => '00001'],
             ['ma_nv' => (new $requestClass())->rules()['ma_nv']],
         );
 
@@ -47,7 +47,7 @@ class CanonicalEmployeeCodeValidationTest extends TestCase
     {
         $rules = ['ma_nv' => (new $requestClass())->rules()['ma_nv']];
 
-        foreach ([1, '001', 'NV01', 'NV0001'] as $invalidCode) {
+        foreach ([1, '001', '0001', '000001', 'NV001'] as $invalidCode) {
             $validator = Validator::make(['ma_nv' => $invalidCode], $rules);
             $this->assertTrue(
                 $validator->errors()->has('ma_nv'),
@@ -62,7 +62,7 @@ class CanonicalEmployeeCodeValidationTest extends TestCase
         $rules = ['ma_nv' => (new $requestClass())->rules()['ma_nv']];
 
         $this->assertTrue(Validator::make([], $rules)->errors()->has('ma_nv'));
-        $this->assertTrue(Validator::make(['ma_nv' => 'NV999'], $rules)->errors()->has('ma_nv'));
+        $this->assertTrue(Validator::make(['ma_nv' => '99999'], $rules)->errors()->has('ma_nv'));
     }
 
     public static function employeeRequests(): array

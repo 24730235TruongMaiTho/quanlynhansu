@@ -83,6 +83,8 @@
             </li>
             @endif
             <!-- Quản lý chấm công -->
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'ChamCong'))
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
                     <i class="bi bi-calendar-check-fill"></i>
@@ -93,7 +95,10 @@
                     <li class="nav-item"><a href="{{ route('backend.chamcong.index') }}" class="nav-link"><i class="bi bi-calendar3"></i><span class="nav-title">Danh sách chấm công</span></a></li>
                 </ul>
             </li>
+            @endif
             <!-- Quản lý nghỉ phép -->
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'NghiPhep'))
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
                     <i class="bi bi-calendar-x-fill"></i>
@@ -105,7 +110,10 @@
                     <li class="nav-item"><a href="{{ route('backend.nghiphep.index') }}" class="nav-link"><i class="bi bi-calendar3"></i><span class="nav-title">Danh sách nghỉ phép</span></a></li>
                 </ul>
             </li>
+            @endif
             <!-- Quản lý lương -->
+            @if ($sidebarUser instanceof \App\Models\NhanVien
+                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'Luong'))
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
                     <i class="bi bi-cash-stack"></i>
@@ -117,8 +125,10 @@
                     <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-graph-up-arrow"></i><span class="nav-title">Danh sách hệ số lương</span></a></li>
                 </ul>
             </li>
+            @endif
             @if ($sidebarUser instanceof \App\Models\NhanVien
-                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'PhanQuyen'))
+                && (app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'VaiTro')
+                    || app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'PhanQuyen')))
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
                     <i class="bi bi-shield-lock-fill"></i>
@@ -126,8 +136,12 @@
                     <i class="bi bi-chevron-down menu-arrow rotated"></i>
                 </a>
                 <ul class="sub-menu">
+                    @if (app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'VaiTro'))
                     <li class="nav-item"><a href="{{ route('backend.vaitro.index') }}" class="nav-link"><i class="bi bi-person-gear"></i><span class="nav-title">Danh sách vai trò</span></a></li>
+                    @endif
+                    @if (app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'PhanQuyen'))
                     <li class="nav-item"><a href="{{ route('backend.taikhoan.index') }}" class="nav-link"><i class="bi bi-key-fill"></i><span class="nav-title">Phân quyền tài khoản</span></a></li>
+                    @endif
                 </ul>
             </li>
             @endif

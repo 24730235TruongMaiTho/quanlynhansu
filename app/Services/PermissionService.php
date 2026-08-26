@@ -24,7 +24,7 @@ class PermissionService
         $definition = $this->resolveDefinition($permission);
         $maNv = $employee->getAuthIdentifier();
 
-        if ($definition === null || ! is_string($maNv) || preg_match('/\ANV[0-9]{3}\z/', $maNv) !== 1) {
+        if ($definition === null || ! is_string($maNv) || preg_match('/\A[0-9]{5}\z/', $maNv) !== 1) {
             return false;
         }
 

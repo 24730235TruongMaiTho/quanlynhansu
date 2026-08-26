@@ -2,7 +2,10 @@
 @section('title', 'Quản lý nghỉ phép')
 
 @section('content')
-    <main class="container-fluid container-xxl py-4 hr-page leave-page" aria-labelledby="page-title">
+    <main class="container-fluid container-xxl py-4 hr-page leave-page" aria-labelledby="page-title"
+        data-nghi-phep-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Tao->value) ? '1' : '0' }}"
+        data-nghi-phep-can-update="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value) ? '1' : '0' }}"
+        data-nghi-phep-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Xoa->value) ? '1' : '0' }}">
         <section class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-4">
             <div>
                 <div class="d-flex align-items-center gap-2 mb-1 small text-secondary">

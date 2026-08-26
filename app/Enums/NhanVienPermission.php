@@ -6,20 +6,18 @@ use App\Contracts\PermissionDefinitionContract;
 
 enum NhanVienPermission: string implements PermissionDefinitionContract
 {
-    case Xem = 'NV_VIEW';
-    case Tao = 'NV_CREATE';
-    case Sua = 'NV_EDIT';
-    case Xoa = 'NV_DELETE';
-    case DatLaiMatKhau = 'NV_RESET_PASSWORD';
+    case Xem = 'NhanVien.Read';
+    case Tao = 'NhanVien.Insert';
+    case Sua = 'NhanVien.Update';
+    case Xoa = 'NhanVien.Delete';
 
     public function id(): int
     {
         return match ($this) {
-            self::Xem => 101,
-            self::Tao => 102,
-            self::Sua => 103,
-            self::Xoa => 104,
-            self::DatLaiMatKhau => 105,
+            self::Xem => 17,
+            self::Tao => 18,
+            self::Sua => 19,
+            self::Xoa => 20,
         };
     }
 
@@ -40,7 +38,6 @@ enum NhanVienPermission: string implements PermissionDefinitionContract
             self::Tao => PermissionAction::Create,
             self::Sua => PermissionAction::Edit,
             self::Xoa => PermissionAction::Delete,
-            self::DatLaiMatKhau => null,
         };
     }
 }

@@ -40,7 +40,7 @@ class NhanVienServiceLifecycleTest extends TestCase
         Storage::disk('public')->put($oldPath, 'old');
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('removeOrTerminate')->once()->withArgs(function (string $maNv, $date): bool {
-            $this->assertSame('NV001', $maNv);
+            $this->assertSame('00001', $maNv);
             $this->assertSame(2, DB::connection()->transactionLevel());
             $this->assertSame('2026-08-19', $date->toDateString());
 
@@ -55,7 +55,7 @@ class NhanVienServiceLifecycleTest extends TestCase
         $connection->beginTransaction();
 
         try {
-            $result = $this->service($repository, $hasher)->removeOrTerminate('NV001');
+            $result = $this->service($repository, $hasher)->removeOrTerminate('00001');
             $this->assertSame(NhanVienRemovalAction::Deleted, $result);
             Storage::disk('public')->assertExists($oldPath);
 
@@ -84,7 +84,7 @@ class NhanVienServiceLifecycleTest extends TestCase
         $connection->beginTransaction();
 
         try {
-            $this->service($repository, $hasher)->removeOrTerminate('NV001');
+            $this->service($repository, $hasher)->removeOrTerminate('00001');
             $connection->rollBack();
 
             Storage::disk('public')->assertExists($oldPath);
@@ -110,7 +110,7 @@ class NhanVienServiceLifecycleTest extends TestCase
 
         $this->assertSame(
             NhanVienRemovalAction::Terminated,
-            $this->service($repository, $hasher)->removeOrTerminate('NV001'),
+            $this->service($repository, $hasher)->removeOrTerminate('00001'),
         );
         Storage::disk('public')->assertExists($oldPath);
     }
@@ -132,10 +132,10 @@ class NhanVienServiceLifecycleTest extends TestCase
             $hasher->shouldNotReceive('make');
             Log::shouldReceive('warning')->once()->with(
                 'employee_avatar_cleanup_skipped',
-                ['ma_nv' => 'NV001', 'reason' => 'UNOWNED_PATH'],
+                ['ma_nv' => '00001', 'reason' => 'UNOWNED_PATH'],
             );
 
-            $this->service($repository, $hasher)->removeOrTerminate('NV001');
+            $this->service($repository, $hasher)->removeOrTerminate('00001');
         }
     }
 
@@ -154,12 +154,12 @@ class NhanVienServiceLifecycleTest extends TestCase
         $files->shouldReceive('disk')->once()->with('public')->andReturn($disk);
         Log::shouldReceive('warning')->once()->with(
             'employee_avatar_cleanup_failed',
-            ['ma_nv' => 'NV001', 'reason' => 'DELETE_FALSE'],
+            ['ma_nv' => '00001', 'reason' => 'DELETE_FALSE'],
         )->andThrow(new RuntimeException('logger unavailable'));
 
         $this->assertSame(
             NhanVienRemovalAction::Deleted,
-            $this->service($repository, $hasher, $files)->removeOrTerminate('NV001'),
+            $this->service($repository, $hasher, $files)->removeOrTerminate('00001'),
         );
     }
 

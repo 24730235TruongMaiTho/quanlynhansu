@@ -1,25 +1,27 @@
 const state = { editingId: null, roles: [], currentPage: 1, pageSize: 10 };
 
+const dom = typeof document !== 'undefined' ? document : null;
+
 const elements = {
-    page: document.querySelector('[data-role-data-url]'),
-    tableBody: document.querySelector('#role-table-body'),
-    pagination: document.querySelector('#role-pagination'),
-    paginationSummary: document.querySelector('#role-pagination-summary'),
-    totalSummary: document.querySelector('#role-total-summary'),
-    pageSize: document.querySelector('#role-page-size'),
-    feedback: document.querySelector('#role-feedback'),
-    searchForm: document.querySelector('#role-search-form'),
-    form: document.querySelector('#role-form'),
-    modal: document.querySelector('#role-modal'),
-    modalTitle: document.querySelector('#role-modal-title'),
-    formError: document.querySelector('#role-form-error'),
-    submit: document.querySelector('#role-submit'),
-    name: document.querySelector('#role-name'),
-    description: document.querySelector('#role-description'),
+    page: dom?.querySelector('[data-role-data-url]'),
+    tableBody: dom?.querySelector('#role-table-body'),
+    pagination: dom?.querySelector('#role-pagination'),
+    paginationSummary: dom?.querySelector('#role-pagination-summary'),
+    totalSummary: dom?.querySelector('#role-total-summary'),
+    pageSize: dom?.querySelector('#role-page-size'),
+    feedback: dom?.querySelector('#role-feedback'),
+    searchForm: dom?.querySelector('#role-search-form'),
+    form: dom?.querySelector('#role-form'),
+    modal: dom?.querySelector('#role-modal'),
+    modalTitle: dom?.querySelector('#role-modal-title'),
+    formError: dom?.querySelector('#role-form-error'),
+    submit: dom?.querySelector('#role-submit'),
+    name: dom?.querySelector('#role-name'),
+    description: dom?.querySelector('#role-description'),
 };
 
 const modal = elements.modal ? bootstrap.Modal.getOrCreateInstance(elements.modal) : null;
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+const csrfToken = dom?.querySelector('meta[name="csrf-token"]')?.content;
 
 function showFeedback(message, type = 'success') {
     elements.feedback.innerHTML = `<div class="alert alert-${type}" role="${type === 'danger' ? 'alert' : 'status'}">${message}</div>`;
@@ -29,6 +31,24 @@ function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>'"]/g, (character) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;',
     }[character]));
+}
+
+function renderRoleActions(role, permissions) {
+    const roleId = encodeURIComponent(String(role.ma_vt ?? ''));
+    const roleName = escapeHtml(role.ten_vt);
+    const actions = [];
+
+    if (permissions.canViewPermissions) {
+        actions.push(`<a class="btn btn-sm btn-outline-secondary me-1" href="/vai-tro/${roleId}/phan-quyen" aria-label="Phân quyền ${roleName}"><i class="bi bi-key" aria-hidden="true"></i></a>`);
+    }
+    if (permissions.canEdit) {
+        actions.push(`<button class="btn btn-sm btn-outline-primary me-1" type="button" data-role-edit="${roleId}" aria-label="Sửa ${roleName}"><i class="bi bi-pencil" aria-hidden="true"></i></button>`);
+    }
+    if (permissions.canDelete) {
+        actions.push(`<button class="btn btn-sm btn-outline-danger" type="button" data-role-delete="${roleId}" aria-label="Xóa ${roleName}"><i class="bi bi-trash" aria-hidden="true"></i></button>`);
+    }
+
+    return actions.join('\n');
 }
 
 async function request(url, options = {}) {
@@ -59,16 +79,18 @@ function renderRoles(roles = state.roles) {
         return;
     }
 
-    const canManage = elements.page.dataset.roleCanManage === '1';
+    const permissions = {
+        canEdit: elements.page.dataset.roleCanEdit === '1',
+        canDelete: elements.page.dataset.roleCanDelete === '1',
+        canViewPermissions: elements.page.dataset.roleCanPermission === '1',
+    };
     elements.tableBody.innerHTML = visibleRoles.map((role) => `
         <tr>
             <th scope="row">${escapeHtml(role.ma_vt)}</th>
             <td class="fw-medium">${escapeHtml(role.ten_vt)}</td>
             <td>${escapeHtml(role.mo_ta || 'Chưa có mô tả')}</td>
             <td class="text-end text-nowrap">
-                <a class="btn btn-sm btn-outline-secondary me-1" href="/vai-tro/${role.ma_vt}/phan-quyen" aria-label="Phân quyền ${escapeHtml(role.ten_vt)}"><i class="bi bi-key" aria-hidden="true"></i></a>
-                ${canManage ? `<button class="btn btn-sm btn-outline-primary me-1" type="button" data-role-edit="${role.ma_vt}" aria-label="Sửa ${escapeHtml(role.ten_vt)}"><i class="bi bi-pencil" aria-hidden="true"></i></button>
-                <button class="btn btn-sm btn-outline-danger" type="button" data-role-delete="${role.ma_vt}" aria-label="Xóa ${escapeHtml(role.ten_vt)}"><i class="bi bi-trash" aria-hidden="true"></i></button>` : ''}
+                ${renderRoleActions(role, permissions)}
             </td>
         </tr>`).join('');
     elements.paginationSummary.textContent = `Hiển thị ${start + 1}-${Math.min(start + state.pageSize, roles.length)} trong tổng số ${roles.length} vai trò`;
@@ -187,4 +209,4 @@ if (elements.searchForm) {
     loadRoles();
 }
 
-export { renderRoles };
+export { renderRoleActions, renderRoles };

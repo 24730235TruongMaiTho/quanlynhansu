@@ -61,14 +61,14 @@ final class NhanVienUserProvider implements UserProvider
         $identifier = $user->getAuthIdentifier();
         unset($this->validatedHashes[$identifier]);
 
-        if ($this->isTerminated($user)) {
+        if (! $this->isActiveAccount($user)) {
             return false;
         }
 
         $password = $credentials['password'] ?? null;
         $currentHash = $user->getAuthPassword();
 
-        if (! is_string($password) || ! is_string($currentHash) || ! $this->hasher->check($password, $currentHash)) {
+        if (! is_string($password) || ! is_string($currentHash) || ! $this->passwordMatches($password, $currentHash)) {
             return false;
         }
 
@@ -90,11 +90,12 @@ final class NhanVienUserProvider implements UserProvider
         }
 
         try {
-            if ($this->isTerminated($user)) {
+            if (! $this->isActiveAccount($user)) {
                 return;
             }
 
-            if (! $force && ! $this->hasher->needsRehash($currentHash)) {
+            $legacyHash = $this->isLegacySha256($currentHash);
+            if (! $force && ! $legacyHash && ! $this->hasher->needsRehash($currentHash)) {
                 return;
             }
 
@@ -126,16 +127,35 @@ final class NhanVienUserProvider implements UserProvider
 
     private function activeAccount(?Authenticatable $user): ?Authenticatable
     {
-        if ($user === null || $this->isTerminated($user)) {
+        if ($user === null || ! $this->isActiveAccount($user)) {
             return null;
         }
 
         return $user;
     }
 
-    private function isTerminated(Authenticatable $user): bool
+    private function isActiveAccount(Authenticatable $user): bool
     {
         return $user instanceof \App\Models\NhanVien
-            && (int) $user->getAttribute('ma_tt') === NhanVienStatus::Terminated->value;
+            && NhanVienStatus::isActiveValue((int) $user->getAttribute('ma_tt'));
+    }
+
+    private function passwordMatches(string $password, string $storedHash): bool
+    {
+        try {
+            if ($this->hasher->check($password, $storedHash)) {
+                return true;
+            }
+        } catch (\RuntimeException) {
+            // Bộ băm bcrypt có thể từ chối định dạng SHA-256 cũ trước khi trả false.
+        }
+
+        return $this->isLegacySha256($storedHash)
+            && hash_equals(strtoupper($storedHash), strtoupper(hash('sha256', $password)));
+    }
+
+    private function isLegacySha256(string $storedHash): bool
+    {
+        return preg_match('/\A[0-9A-Fa-f]{64}\z/', $storedHash) === 1;
     }
 }

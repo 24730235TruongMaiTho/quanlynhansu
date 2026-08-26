@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Contracts\NhanVienRepositoryContract;
 use App\Exceptions\NhanVienDomainException;
+use App\Enums\NhanVienStatus;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\Rules\Unique;
@@ -66,8 +67,7 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
             $targetStatus = $this->targetStatusId();
             $currentStatus = (int) ($this->targetEmployee?->ma_tt ?? 0);
 
-            if (($currentStatus === 4 && $targetStatus !== null && $targetStatus !== 4)
-                || ($currentStatus !== 4 && $targetStatus === 4)) {
+            if ($targetStatus !== null && ! NhanVienStatus::canTransitionValue($currentStatus, $targetStatus)) {
                 $validator->errors()->add(
                     'ma_tt',
                     'Không thể thay đổi trạng thái đã nghỉ qua thao tác cập nhật hồ sơ.',

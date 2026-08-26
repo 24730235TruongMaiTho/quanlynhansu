@@ -171,7 +171,7 @@
                         <dt class="col-sm-5">Chức vụ</dt>
                         <dd class="col-sm-7" data-review-output="ma_cv">{{ $selectedLookup('chuc_vu', 'ma_cv', 'ten_cv') }}</dd>
                         <dt class="col-sm-5">Trạng thái</dt>
-                        @if ((int) ($employee->ma_tt ?? 0) === \App\Enums\NhanVienStatus::Terminated->value)
+                        @if (\App\Enums\NhanVienStatus::isTerminalValue((int) ($employee->ma_tt ?? 0)))
                             <dd class="col-sm-7">{{ $employee->ten_tt }}</dd>
                         @else
                             <dd class="col-sm-7" data-review-output="ma_tt">{{ $selectedLookup('trang_thai', 'ma_tt', 'ten_tt') }}</dd>

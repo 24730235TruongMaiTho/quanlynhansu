@@ -6,15 +6,15 @@ use App\Contracts\PermissionDefinitionContract;
 
 enum HopDongPermission: string implements PermissionDefinitionContract
 {
-    case Xem = 'HD_VIEW';
-    case Tao = 'HD_CREATE';
-    case Sua = 'HD_EDIT';
-    case Xoa = 'HD_DELETE';
+    case Xem = 'HopDong.Read';
+    case Tao = 'HopDong.Insert';
+    case Sua = 'HopDong.Update';
+    case Xoa = 'HopDong.Delete';
 
     public function id(): int
     {
         return match ($this) {
-            self::Xem => 401, self::Tao => 402, self::Sua => 403, self::Xoa => 404,
+            self::Xem => 21, self::Tao => 22, self::Sua => 23, self::Xoa => 24,
         };
     }
 

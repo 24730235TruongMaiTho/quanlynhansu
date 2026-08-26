@@ -20,7 +20,7 @@ class ChucVuFeatureTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->actingAsChucVuEmployee(['CV_VIEW', 'CV_CREATE', 'CV_EDIT', 'CV_DELETE']);
+        $this->actingAsChucVuEmployee(['ChucVu.Read', 'ChucVu.Insert', 'ChucVu.Update', 'ChucVu.Delete']);
         if (! Schema::hasTable('chuc_vu')) {
             Schema::create('chuc_vu', static function (Blueprint $table): void {
                 $table->increments('ma_cv');

@@ -67,7 +67,7 @@ class NhanVienUpdateTest extends TestCase
         $this->assertSame(['PUT', 'PATCH'], $update->methods());
         $this->assertSame(NhanVienController::class.'@update', $update->getActionName());
         foreach ([$edit, $update] as $route) {
-            $this->assertSame('NV[0-9]{3}', $route->wheres['ma_nv']);
+            $this->assertSame('[0-9]{5}', $route->wheres['ma_nv']);
             $this->assertLessThan(
                 array_search($show, Route::getRoutes()->getRoutes(), true),
                 array_search($route, Route::getRoutes()->getRoutes(), true),
@@ -75,14 +75,14 @@ class NhanVienUpdateTest extends TestCase
         }
     }
 
-    public function test_any_employee_role_can_edit_and_update_without_exposing_system_fields(): void
+    public function test_update_with_update_permission_does_not_expose_system_fields(): void
     {
         $target = $this->employee(['ma_vt' => 1, 'email' => 'admin@example.test']);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
-            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($target);
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($target);
             $mock->shouldReceive('lookups')->once()->andReturn($this->lookups());
             $mock->shouldReceive('update')->once()->withArgs(function (string $maNv, array $validated): bool {
-                return $maNv === 'NV001'
+                return $maNv === '00001'
                     && $validated['email'] === 'updated@example.test'
                     && ! array_key_exists('ma_nv', $validated)
                     && ! array_key_exists('ma_vt', $validated)
@@ -92,17 +92,17 @@ class NhanVienUpdateTest extends TestCase
             })->andReturn($target);
         });
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
+        $repository->shouldReceive('find')->once()->with('00001')->andReturn($target);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
-        $this->get('/nhan-vien/NV001/edit')
+        $this->get('/nhan-vien/00001/edit')
             ->assertOk()
             ->assertSee('Cập nhật hồ sơ nhân viên')
             ->assertSee('admin@example.test');
-        $this->put('/nhan-vien/NV001', $this->validPayload([
+        $this->put('/nhan-vien/00001', $this->validPayload([
             'email' => ' UPDATED@EXAMPLE.TEST ',
         ]))
-            ->assertRedirect(route('backend.nhanvien.show', ['ma_nv' => 'NV001']))
+            ->assertRedirect(route('backend.nhanvien.show', ['ma_nv' => '00001']))
             ->assertSessionHas('success', 'Đã cập nhật hồ sơ nhân viên.');
     }
 
@@ -110,14 +110,14 @@ class NhanVienUpdateTest extends TestCase
     {
         $target = $this->employee(['ma_vt' => 1]);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
+        $repository->shouldReceive('find')->once()->with('00001')->andReturn($target);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('update');
         });
 
-        $this->put('/nhan-vien/NV001', $this->validPayload([
-            'ma_nv' => 'NV999',
+        $this->put('/nhan-vien/00001', $this->validPayload([
+            'ma_nv' => '99999',
             'ma_vt' => 5,
             'mat_khau' => 'plaintext',
             'mat_khau_hash' => 'hash',
@@ -132,30 +132,30 @@ class NhanVienUpdateTest extends TestCase
     {
         $this->mock(NhanVienServiceContract::class, fn (MockInterface $mock) => $mock->shouldNotReceive('update'));
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV404')->andReturnNull();
+        $repository->shouldReceive('find')->once()->with('99999')->andReturnNull();
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
-        $this->put('/nhan-vien/NV404', ['email' => 'invalid'])
+        $this->put('/nhan-vien/99999', ['email' => 'invalid'])
             ->assertNotFound()
             ->assertDontSee('email');
     }
 
-    public function test_successful_update_uses_cached_target_and_redirects_with_exact_flash(): void
+    public function test_successful_update_uses_target_employee_and_redirects_with_exact_flash(): void
     {
         $target = $this->employee();
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
+        $repository->shouldReceive('find')->once()->with('00001')->andReturn($target);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('update')->once()->withArgs(fn (string $maNv, array $validated): bool => $maNv === 'NV001'
+            $mock->shouldReceive('update')->once()->withArgs(fn (string $maNv, array $validated): bool => $maNv === '00001'
                 && $validated['email'] === 'updated@example.test'
                 && ! array_key_exists('ma_vt', $validated)
             )->andReturn($this->employee(['email' => 'updated@example.test']));
         });
 
-        $this->put('/nhan-vien/NV001', $this->validPayload([
+        $this->put('/nhan-vien/00001', $this->validPayload([
             'email' => ' UPDATED@EXAMPLE.TEST ',
-        ]))->assertRedirect(route('backend.nhanvien.show', ['ma_nv' => 'NV001']))
+        ]))->assertRedirect(route('backend.nhanvien.show', ['ma_nv' => '00001']))
             ->assertSessionHas('success', 'Đã cập nhật hồ sơ nhân viên.');
     }
 
@@ -172,9 +172,9 @@ class NhanVienUpdateTest extends TestCase
             ));
         });
 
-        $this->from('/nhan-vien/NV001/edit')
-            ->put('/nhan-vien/NV001', $this->validPayload(['ma_tt' => 2]))
-            ->assertRedirect('/nhan-vien/NV001/edit')
+        $this->from('/nhan-vien/00001/edit')
+            ->put('/nhan-vien/00001', $this->validPayload(['ma_tt' => 2]))
+            ->assertRedirect('/nhan-vien/00001/edit')
             ->assertSessionHasErrors(['ma_tt'])
             ->assertDontSee('NV_STATUS_TRANSITION_FORBIDDEN')
             ->assertDontSee('SQLSTATE');
@@ -196,17 +196,17 @@ class NhanVienUpdateTest extends TestCase
             ));
         });
 
-        $this->from('/nhan-vien/NV001/edit')
-            ->put('/nhan-vien/NV001', $this->validPayload([
+        $this->from('/nhan-vien/00001/edit')
+            ->put('/nhan-vien/00001', $this->validPayload([
                 'email' => 'collision@example.test',
             ]))
-            ->assertRedirect('/nhan-vien/NV001/edit')
+            ->assertRedirect('/nhan-vien/00001/edit')
             ->assertSessionHasErrors(['email'])
             ->assertSessionHasInput('email', 'collision@example.test');
 
-        $this->from('/nhan-vien/NV001/edit')
-            ->put('/nhan-vien/NV001', $this->validPayload())
-            ->assertRedirect('/nhan-vien/NV001/edit')
+        $this->from('/nhan-vien/00001/edit')
+            ->put('/nhan-vien/00001', $this->validPayload())
+            ->assertRedirect('/nhan-vien/00001/edit')
             ->assertSessionHasErrors([
                 'nhan_vien' => 'Không thể cập nhật nhân viên lúc này. Vui lòng thử lại sau.',
             ])
@@ -216,7 +216,7 @@ class NhanVienUpdateTest extends TestCase
     public function test_active_edit_renders_safe_accessible_form_and_locks_on_missing_lookups(): void
     {
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('findOrFail')->twice()->with('NV001')->andReturn($this->employee());
+            $mock->shouldReceive('findOrFail')->twice()->with('00001')->andReturn($this->employee());
             $mock->shouldReceive('lookups')->once()->andReturn($this->lookups());
             $mock->shouldReceive('lookups')->once()->andReturn([
                 'phong_ban' => [],
@@ -225,12 +225,12 @@ class NhanVienUpdateTest extends TestCase
             ]);
         });
 
-        $response = $this->get('/nhan-vien/NV001/edit?'.http_build_query([
+        $response = $this->get('/nhan-vien/00001/edit?'.http_build_query([
             'tu_khoa' => 'An', 'ma_pb' => 1, 'page' => 2, 'redirect' => 'https://evil.example',
         ]));
         $response->assertOk()
             ->assertViewIs('backend.nhanvien.edit')
-            ->assertSee('action="'.route('backend.nhanvien.update', ['ma_nv' => 'NV001']).'"', false)
+            ->assertSee('action="'.route('backend.nhanvien.update', ['ma_nv' => '00001']).'"', false)
             ->assertSee('name="_method" value="PUT"', false)
             ->assertSee('value="Nguyễn An"', false)
             ->assertSee('name="sdt"', false)
@@ -251,7 +251,7 @@ class NhanVienUpdateTest extends TestCase
             ->assertSee('/build/nhanvien.js', false);
         $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
 
-        $this->get('/nhan-vien/NV001/edit')
+        $this->get('/nhan-vien/00001/edit')
             ->assertOk()
             ->assertSee('Thiếu dữ liệu danh mục bắt buộc')
             ->assertSee('data-submit-employee', false)
@@ -274,7 +274,7 @@ class NhanVienUpdateTest extends TestCase
             ));
         });
 
-        $this->get('/nhan-vien/NV001/edit')
+        $this->get('/nhan-vien/00001/edit')
             ->assertOk()
             ->assertSee('Trạng thái không thể thay đổi qua cập nhật hồ sơ')
             ->assertSee('type="hidden" name="ma_tt" value="4"', false)
@@ -282,7 +282,7 @@ class NhanVienUpdateTest extends TestCase
             ->assertDontSee('data-review-output="ma_tt"', false)
             ->assertDontSee('id="ma_tt"', false);
 
-        $this->get('/nhan-vien/NV001/edit')
+        $this->get('/nhan-vien/00001/edit')
             ->assertOk()
             ->assertSee('Không thể tải dữ liệu danh mục lúc này. Vui lòng thử lại sau.')
             ->assertSee('disabled', false)
@@ -298,7 +298,7 @@ class NhanVienUpdateTest extends TestCase
             $mock->shouldReceive('lookups')->once()->andReturn($this->lookups());
         });
 
-        $this->get('/nhan-vien/NV001/edit')
+        $this->get('/nhan-vien/00001/edit')
             ->assertOk()
             ->assertSee('&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;', false)
             ->assertDontSee('</title><script>alert(1)</script>', false);
@@ -330,7 +330,7 @@ class NhanVienUpdateTest extends TestCase
     private function employee(array $overrides = []): object
     {
         return (object) array_replace([
-            'ma_nv' => 'NV001', 'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '1990-01-01',
+            'ma_nv' => '00001', 'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '1990-01-01',
             'gioi_tinh' => 1, 'sdt' => '0901234567', 'email' => 'an@example.test',
             'ngay_vao_lam' => '2020-01-01', 'ma_pb' => 1, 'ten_pb' => 'Kỹ thuật',
             'ma_cv' => 1, 'ten_cv' => 'Lập trình viên', 'dan_toc' => 'Kinh',

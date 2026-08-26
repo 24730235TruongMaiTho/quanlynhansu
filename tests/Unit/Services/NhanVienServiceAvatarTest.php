@@ -30,7 +30,7 @@ class NhanVienServiceAvatarTest extends TestCase
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('update')->once()->ordered()->withArgs(function (string $maNv, array $profile): bool {
-            $this->assertSame('NV001', $maNv);
+            $this->assertSame('00001', $maNv);
             $this->assertSame(1, DB::connection()->transactionLevel());
             $this->assertSame($this->profile(), $profile);
 
@@ -40,11 +40,11 @@ class NhanVienServiceAvatarTest extends TestCase
             $this->assertSame(1, DB::connection()->transactionLevel());
             $this->assertSame($this->address(), $address);
 
-            return $maNv === 'NV001';
+            return $maNv === '00001';
         });
         $repository->shouldNotReceive('replaceAvatarPath');
-        $employee = (object) ['ma_nv' => 'NV001', 'ho_ten' => 'Nguyễn An'];
-        $repository->shouldReceive('find')->once()->ordered()->with('NV001')->andReturnUsing(function () use ($employee): object {
+        $employee = (object) ['ma_nv' => '00001', 'ho_ten' => 'Nguyễn An'];
+        $repository->shouldReceive('find')->once()->ordered()->with('00001')->andReturnUsing(function () use ($employee): object {
             $this->assertSame(1, DB::connection()->transactionLevel());
 
             return $employee;
@@ -52,8 +52,8 @@ class NhanVienServiceAvatarTest extends TestCase
         $hasher = Mockery::mock(Hasher::class);
         $hasher->shouldNotReceive('make');
 
-        $result = $this->service($repository, $hasher)->update('NV001', $this->payload([
-            'ma_nv' => 'NV999',
+        $result = $this->service($repository, $hasher)->update('00001', $this->payload([
+            'ma_nv' => '99999',
             'ma_vt' => 999,
             'mat_khau' => 'crafted',
             'ngay_nghi_viec' => '2026-08-13',
@@ -77,7 +77,7 @@ class NhanVienServiceAvatarTest extends TestCase
         $hasher->shouldNotReceive('make');
 
         try {
-            $this->service($repository, $hasher)->update('NV001', $this->payload());
+            $this->service($repository, $hasher)->update('00001', $this->payload());
             $this->fail('Hydration failure must abort the transaction.');
         } catch (NhanVienDomainException $exception) {
             $this->assertSame('NV_DATABASE_ERROR', $exception->domainCode);
@@ -99,7 +99,7 @@ class NhanVienServiceAvatarTest extends TestCase
             function (string $maNv, ?string $path) use (&$newPath): bool {
                 $newPath = $path;
 
-                return $maNv === 'NV001' && is_string($path);
+                return $maNv === '00001' && is_string($path);
             }
         )->andReturn($oldPath);
         $repository->shouldReceive('find')->once()->ordered()->andThrow(new NhanVienDomainException(
@@ -110,7 +110,7 @@ class NhanVienServiceAvatarTest extends TestCase
         $hasher->shouldNotReceive('make');
 
         try {
-            $this->service($repository, $hasher)->update('NV001', $this->payload([
+            $this->service($repository, $hasher)->update('00001', $this->payload([
                 'anh_dai_dien' => $this->fakePng(),
             ]));
             $this->fail('Hydration failure must abort and compensate the uploaded file.');
@@ -141,7 +141,7 @@ class NhanVienServiceAvatarTest extends TestCase
         Storage::disk('public')->put('nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png', 'old');
 
         try {
-            $this->service($repository, $hasher)->update('NV001', $this->payload([
+            $this->service($repository, $hasher)->update('00001', $this->payload([
                 'anh_dai_dien' => $this->fakePng(),
             ]));
             $this->fail('Database failure must be rethrown.');
@@ -170,15 +170,15 @@ class NhanVienServiceAvatarTest extends TestCase
                 $this->assertMatchesRegularExpression('#\Anhan-vien/avatars/[0-9a-f-]{36}\.png\z#', (string) $path);
                 $newPath = $path;
 
-                return $maNv === 'NV001';
+                return $maNv === '00001';
             }
         )->andReturn($oldPath);
-        $employee = (object) ['ma_nv' => 'NV001'];
+        $employee = (object) ['ma_nv' => '00001'];
         $repository->shouldReceive('find')->once()->ordered()->andReturn($employee);
         $hasher = Mockery::mock(Hasher::class);
         $hasher->shouldNotReceive('make');
 
-        $this->assertSame($employee, $this->service($repository, $hasher)->update('NV001', $this->payload([
+        $this->assertSame($employee, $this->service($repository, $hasher)->update('00001', $this->payload([
             'anh_dai_dien' => $this->fakePng(),
         ])));
 
@@ -200,10 +200,10 @@ class NhanVienServiceAvatarTest extends TestCase
             function (string $maNv, ?string $path) use (&$newPath): bool {
                 $newPath = $path;
 
-                return $maNv === 'NV001' && is_string($path);
+                return $maNv === '00001' && is_string($path);
             }
         )->andReturn($oldPath);
-        $employee = (object) ['ma_nv' => 'NV001'];
+        $employee = (object) ['ma_nv' => '00001'];
         $repository->shouldReceive('find')->once()->ordered()->andReturn($employee);
         $hasher = Mockery::mock(Hasher::class);
         $hasher->shouldNotReceive('make');
@@ -212,7 +212,7 @@ class NhanVienServiceAvatarTest extends TestCase
 
         try {
             $this->assertSame($employee, $this->service($repository, $hasher)->update(
-                'NV001',
+                '00001',
                 $this->payload(['anh_dai_dien' => $this->fakePng()]),
             ));
             $this->assertSame(1, $connection->transactionLevel());
@@ -244,17 +244,17 @@ class NhanVienServiceAvatarTest extends TestCase
             function (string $maNv, ?string $path) use (&$newPath): bool {
                 $newPath = $path;
 
-                return $maNv === 'NV001' && is_string($path);
+                return $maNv === '00001' && is_string($path);
             }
         )->andReturn($oldPath);
-        $repository->shouldReceive('find')->once()->ordered()->andReturn((object) ['ma_nv' => 'NV001']);
+        $repository->shouldReceive('find')->once()->ordered()->andReturn((object) ['ma_nv' => '00001']);
         $hasher = Mockery::mock(Hasher::class);
         $hasher->shouldNotReceive('make');
         $connection = DB::connection();
         $connection->beginTransaction();
 
         try {
-            $this->service($repository, $hasher)->update('NV001', $this->payload([
+            $this->service($repository, $hasher)->update('00001', $this->payload([
                 'anh_dai_dien' => $this->fakePng(),
             ]));
             $this->assertNotNull($newPath);
@@ -280,12 +280,12 @@ class NhanVienServiceAvatarTest extends TestCase
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('update')->once()->ordered();
         $repository->shouldReceive('upsertAddress')->once()->ordered();
-        $repository->shouldReceive('replaceAvatarPath')->once()->ordered()->with('NV001', null)->andReturn($oldPath);
-        $repository->shouldReceive('find')->once()->ordered()->andReturn((object) ['ma_nv' => 'NV001']);
+        $repository->shouldReceive('replaceAvatarPath')->once()->ordered()->with('00001', null)->andReturn($oldPath);
+        $repository->shouldReceive('find')->once()->ordered()->andReturn((object) ['ma_nv' => '00001']);
         $hasher = Mockery::mock(Hasher::class);
         $hasher->shouldNotReceive('make');
 
-        $this->service($repository, $hasher)->update('NV001', $this->payload([
+        $this->service($repository, $hasher)->update('00001', $this->payload([
             'xoa_anh_dai_dien' => true,
         ]));
 
@@ -304,16 +304,16 @@ class NhanVienServiceAvatarTest extends TestCase
             $repository = Mockery::mock(NhanVienRepositoryContract::class);
             $repository->shouldReceive('update')->once();
             $repository->shouldReceive('upsertAddress')->once();
-            $repository->shouldReceive('replaceAvatarPath')->once()->with('NV001', null)->andReturn($oldPath);
-            $repository->shouldReceive('find')->once()->andReturn((object) ['ma_nv' => 'NV001']);
+            $repository->shouldReceive('replaceAvatarPath')->once()->with('00001', null)->andReturn($oldPath);
+            $repository->shouldReceive('find')->once()->andReturn((object) ['ma_nv' => '00001']);
             $hasher = Mockery::mock(Hasher::class);
             $hasher->shouldNotReceive('make');
             Log::shouldReceive('warning')->once()->with(
                 'employee_avatar_cleanup_skipped',
-                ['ma_nv' => 'NV001', 'reason' => 'UNOWNED_PATH'],
+                ['ma_nv' => '00001', 'reason' => 'UNOWNED_PATH'],
             );
 
-            $this->service($repository, $hasher)->update('NV001', $this->payload([
+            $this->service($repository, $hasher)->update('00001', $this->payload([
                 'xoa_anh_dai_dien' => true,
                 'original_filename' => 'private-original.png',
                 'mat_khau_hash' => 'secret-hash',
@@ -329,7 +329,7 @@ class NhanVienServiceAvatarTest extends TestCase
             $repository->shouldReceive('update')->once();
             $repository->shouldReceive('upsertAddress')->once();
             $repository->shouldReceive('replaceAvatarPath')->once()->andReturn($oldPath);
-            $employee = (object) ['ma_nv' => 'NV001'];
+            $employee = (object) ['ma_nv' => '00001'];
             $repository->shouldReceive('find')->once()->andReturn($employee);
             $hasher = Mockery::mock(Hasher::class);
             $hasher->shouldNotReceive('make');
@@ -343,7 +343,7 @@ class NhanVienServiceAvatarTest extends TestCase
             $files->shouldReceive('disk')->once()->with('public')->andReturn($disk);
             Log::shouldReceive('warning')->once()->withArgs(function (string $event, array $context): bool {
                 $this->assertSame('employee_avatar_cleanup_failed', $event);
-                $this->assertSame('NV001', $context['ma_nv'] ?? null);
+                $this->assertSame('00001', $context['ma_nv'] ?? null);
                 $this->assertContains($context['reason'] ?? null, ['DELETE_FALSE', RuntimeException::class]);
                 $this->assertCount(2, $context);
 
@@ -355,7 +355,7 @@ class NhanVienServiceAvatarTest extends TestCase
                 $repository,
                 $files,
                 $hasher,
-            ))->update('NV001', $this->payload(['xoa_anh_dai_dien' => true]));
+            ))->update('00001', $this->payload(['xoa_anh_dai_dien' => true]));
 
             $this->assertSame($employee, $result);
         }
@@ -368,7 +368,7 @@ class NhanVienServiceAvatarTest extends TestCase
         $repository->shouldReceive('update')->once();
         $repository->shouldReceive('upsertAddress')->once();
         $repository->shouldReceive('replaceAvatarPath')->once()->andReturn($oldPath);
-        $employee = (object) ['ma_nv' => 'NV001'];
+        $employee = (object) ['ma_nv' => '00001'];
         $repository->shouldReceive('find')->once()->andReturn($employee);
         $hasher = Mockery::mock(Hasher::class);
         $hasher->shouldNotReceive('make');
@@ -383,7 +383,7 @@ class NhanVienServiceAvatarTest extends TestCase
             $repository,
             $files,
             $hasher,
-        ))->update('NV001', $this->payload(['xoa_anh_dai_dien' => true]));
+        ))->update('00001', $this->payload(['xoa_anh_dai_dien' => true]));
 
         $this->assertSame($employee, $result);
     }

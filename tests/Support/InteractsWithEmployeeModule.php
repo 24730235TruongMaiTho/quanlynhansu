@@ -3,6 +3,9 @@
 namespace Tests\Support;
 
 use App\Enums\NhanVienPermission;
+use App\Enums\ChamCongPermission;
+use App\Enums\NghiPhepPermission;
+use App\Enums\LuongPermission;
 use App\Contracts\PermissionDefinitionContract;
 use App\Models\NhanVien;
 use App\Services\PermissionService;
@@ -10,24 +13,24 @@ use App\Services\PermissionService;
 trait InteractsWithEmployeeModule
 {
     /**
-     * Authenticate a deterministic test actor and grant only the requested symbols.
-     * The permission service is mocked at the Gate boundary; controller target guards remain real.
+     * Xác thực một tác nhân kiểm thử cố định và chỉ cấp các symbol được yêu cầu.
+     * PermissionService được mô phỏng ở ranh giới Gate để kiểm thử route độc lập.
      *
-     * @param array<int, string|NhanVienPermission> $symbols
+     * @param array<int, string|PermissionDefinitionContract> $symbols
      */
     protected function actingAsEmployeeWithPermissions(array $symbols): NhanVien
     {
         $employee = NhanVien::fromAuthRow((object) [
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => 'test-hash',
             'ma_vt' => 1,
-            'ma_tt' => 2,
+            'ma_tt' => 1,
         ]);
         $allowedSymbols = array_values(array_filter(array_map(
-            static fn (mixed $symbol): ?string => $symbol instanceof NhanVienPermission
-                ? $symbol->value
+            static fn (mixed $symbol): ?string => $symbol instanceof PermissionDefinitionContract
+                ? $symbol->symbol()
                 : (is_string($symbol) ? $symbol : null),
             $symbols,
         )));
@@ -44,6 +47,9 @@ trait InteractsWithEmployeeModule
                     $viewSymbol = match ($module) {
                         'NhanVien' => NhanVienPermission::Xem->value,
                         'PhongBan' => \App\Enums\PhongBanPermission::Xem->value,
+                        'ChamCong' => ChamCongPermission::Xem->value,
+                        'NghiPhep' => NghiPhepPermission::Xem->value,
+                        'Luong' => LuongPermission::Xem->value,
                         default => null,
                     };
 

@@ -63,7 +63,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
     public function test_xem_actor_can_read_attendance_department_lookup(): void
     {
         $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\ChamCongPermission::Xem,
         ]);
         DB::shouldReceive('select')
             ->once()
@@ -81,7 +81,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
     public function test_permissioned_actor_can_read_department_lookup_without_rollout_switch(): void
     {
         $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\ChamCongPermission::Xem,
         ]);
         DB::shouldReceive('select')
             ->once()
@@ -95,7 +95,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_xem_only_actor_cannot_update_attendance_api(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Xem]);
 
         $this->putJson('/api/v1/cham-cong/1', [
             'so_gio_lam' => 8,
@@ -118,11 +118,11 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_permissioned_lookup_maps_filters_and_preserves_attendance_aggregates(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Xem]);
 
         $paginator = new LengthAwarePaginator(
             collect([(object) [
-                'ma_nv' => 'NV001',
+                'ma_nv' => '00001',
                 'ho_ten' => 'Nguyễn An',
                 'ma_pb' => 2,
                 'ten_pb' => 'Kỹ thuật',
@@ -140,7 +140,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
             $mock->shouldReceive('paginateForAttendance')->once()->with([
-                'tu_khoa' => 'NV001',
+                'tu_khoa' => '00001',
                 'ma_pb' => 2,
                 'thang' => 8,
                 'nam' => 2026,
@@ -150,14 +150,14 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         });
 
         $this->getJson(
-            '/api/v1/cham-cong/nhan-vien?tu_khoa=%20NV001%20&ma_pb=2&thang=8&nam=2026&page=3&per_page=25',
+            '/api/v1/cham-cong/nhan-vien?tu_khoa=%2000001%20&ma_pb=2&thang=8&nam=2026&page=3&per_page=25',
         )
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.current_page', 3)
             ->assertJsonPath('data.per_page', 25)
             ->assertJsonPath('data.total', 51)
-            ->assertJsonPath('data.data.0.ma_nv', 'NV001')
+            ->assertJsonPath('data.data.0.ma_nv', '00001')
             ->assertJsonPath('data.data.0.so_lan_vao_muon', 2)
             ->assertJsonPath('data.data.0.so_lan_ve_som', 1)
             ->assertJsonPath('data.data.0.so_ngay_cham_cong', 20.5);
@@ -165,7 +165,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_any_lookup_failure_returns_only_the_stable_public_error(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginateForAttendance')->once()->andThrow(
                 new RuntimeException('SQLSTATE[42000] CALL sp_internal mat_khau'),
@@ -191,7 +191,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_exists_validation_database_failure_returns_only_the_stable_public_error(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Xem]);
         Schema::drop('phong_ban');
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginateForAttendance');
@@ -216,7 +216,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_ordinary_invalid_filter_still_returns_laravel_validation_errors(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginateForAttendance');
         });
@@ -228,7 +228,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_uses_query_builder_pagination_and_summary(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Xem]);
 
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
@@ -242,24 +242,24 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             $table->boolean('ve_som');
         });
 
-        DB::table('nhan_vien')->insert(['ma_nv' => 'NV001']);
+        DB::table('nhan_vien')->insert(['ma_nv' => '00001']);
         DB::table('cham_cong')->insert([
             [
-                'ma_nv' => 'NV001',
+                'ma_nv' => '00001',
                 'ngay_lam' => '2026-08-01',
                 'so_gio_lam' => 8,
                 'vao_muon' => 1,
                 've_som' => 0,
             ],
             [
-                'ma_nv' => 'NV001',
+                'ma_nv' => '00001',
                 'ngay_lam' => '2026-08-02',
                 'so_gio_lam' => 4,
                 'vao_muon' => 0,
                 've_som' => 1,
             ],
             [
-                'ma_nv' => 'NV001',
+                'ma_nv' => '00001',
                 'ngay_lam' => '2026-07-31',
                 'so_gio_lam' => 8,
                 'vao_muon' => 0,
@@ -268,7 +268,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         ]);
 
         $response = $this->getJson(
-            '/api/v1/cham-cong?ma_nv=NV001&thang=8&nam=2026&per_page=1',
+            '/api/v1/cham-cong?ma_nv=00001&thang=8&nam=2026&per_page=1',
         );
 
         $response
@@ -285,15 +285,15 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_query_failure_returns_stable_error_without_sql(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Xem]);
 
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
         });
-        DB::table('nhan_vien')->insert(['ma_nv' => 'NV001']);
+        DB::table('nhan_vien')->insert(['ma_nv' => '00001']);
 
         $response = $this->getJson(
-            '/api/v1/cham-cong?ma_nv=NV001&thang=8&nam=2026',
+            '/api/v1/cham-cong?ma_nv=00001&thang=8&nam=2026',
         );
 
         $response
@@ -311,21 +311,21 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_invalid_filter_keeps_laravel_validation_contract(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Xem]);
 
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
         });
-        DB::table('nhan_vien')->insert(['ma_nv' => 'NV001']);
+        DB::table('nhan_vien')->insert(['ma_nv' => '00001']);
 
-        $this->getJson('/api/v1/cham-cong?ma_nv=NV001&thang=13&nam=2026')
+        $this->getJson('/api/v1/cham-cong?ma_nv=00001&thang=13&nam=2026')
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['thang']);
     }
 
-    public function test_authorized_update_reaches_controller_and_hides_database_error(): void
+    public function test_permissioned_update_reaches_controller_and_hides_database_error(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
+        $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Sua]);
 
         Schema::create('cham_cong', function (Blueprint $table): void {
             $table->increments('ma_cc');
@@ -336,7 +336,7 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             $table->boolean('ve_som');
         });
         DB::table('cham_cong')->insert([
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ngay_lam' => '2026-08-01',
             'so_gio_lam' => 8,
             'vao_muon' => 0,

@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Điền URL thật sau.
      *
      * API dự kiến:
-     * GET /api/v1/luong/he-so-luong?ma_nv=NV001
+     * Endpoint GET dự kiến: /api/v1/luong/he-so-luong với mã nhân viên 00001.
      */
     const HE_SO_LUONG_API_URL =
         '/api/v1/luong/he-so-luong';
@@ -64,6 +64,13 @@ document.addEventListener('DOMContentLoaded', () => {
     ) {
         return;
     }
+
+    const permissions = {
+        canCreate:
+            document.querySelector('[data-luong-can-create]')?.dataset.luongCanCreate === '1',
+        canUpdate:
+            document.querySelector('[data-luong-can-update]')?.dataset.luongCanUpdate === '1',
+    };
 
     const state = {
         employeeCode: null,
@@ -316,18 +323,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     type="button"
                                     data-coefficient-action="edit"
                                     data-id="${escapeHtml(item.ma_ls)}"
+                                    ${permissions.canUpdate ? '' : 'disabled aria-disabled="true"'}
                                 >
                                     Sửa
-                                </button>
-
-                                <button
-                                    class="btn btn-outline-danger
-                                           btn-sm coefficient-action-btn"
-                                    type="button"
-                                    data-coefficient-action="delete"
-                                    data-id="${escapeHtml(item.ma_ls)}"
-                                >
-                                    Xóa
                                 </button>
                             </div>
                         </td>
@@ -381,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 employeeName || employeeCode
             }.`;
 
-        elements.addButton.disabled = false;
+        elements.addButton.disabled = !permissions.canCreate;
         elements.editButton.disabled = true;
         elements.deleteButton.disabled = true;
 
@@ -520,8 +518,8 @@ document.addEventListener('DOMContentLoaded', () => {
             state.selectedCoefficientId =
                 checkbox.value;
 
-            elements.editButton.disabled = false;
-            elements.deleteButton.disabled = false;
+            elements.editButton.disabled = !permissions.canUpdate;
+            elements.deleteButton.disabled = true;
 
             elements.coefficientTbody
                 .querySelectorAll(
@@ -554,6 +552,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const action =
                 button.dataset.coefficientAction;
 
+            if (action === 'edit' && !permissions.canUpdate) {
+                return;
+            }
+
             const coefficientId =
                 button.dataset.id;
 
@@ -578,6 +580,10 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.addButton.addEventListener(
         'click',
         () => {
+            if (!permissions.canCreate) {
+                return;
+            }
+
             document.dispatchEvent(
                 new CustomEvent(
                     'salary-coefficient:action',
@@ -599,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.editButton.addEventListener(
         'click',
         () => {
-            if (!state.selectedCoefficientId) {
+            if (!permissions.canUpdate || !state.selectedCoefficientId) {
                 return;
             }
 
@@ -625,26 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.deleteButton.addEventListener(
         'click',
         () => {
-            if (!state.selectedCoefficientId) {
-                return;
-            }
-
-            document.dispatchEvent(
-                new CustomEvent(
-                    'salary-coefficient:action',
-                    {
-                        detail: {
-                            action: 'delete',
-                            coefficientId:
-                            state.selectedCoefficientId,
-                            employeeCode:
-                            state.employeeCode,
-                            employeeName:
-                            state.employeeName,
-                        },
-                    }
-                )
-            );
+            return;
         }
     );
 

@@ -11,12 +11,15 @@ enum PermissionAction: string
 
     public static function fromSymbol(string $symbol): ?self
     {
-        foreach (self::cases() as $action) {
-            if (str_ends_with($symbol, '_'.$action->value)) {
-                return $action;
-            }
+        if (preg_match('/\A[A-Za-z][A-Za-z0-9]*\.(Read|Insert|Update|Delete)\z/', $symbol, $matches) !== 1) {
+            return null;
         }
 
-        return null;
+        return match ($matches[1]) {
+            'Read' => self::View,
+            'Insert' => self::Create,
+            'Update' => self::Edit,
+            'Delete' => self::Delete,
+        };
     }
 }

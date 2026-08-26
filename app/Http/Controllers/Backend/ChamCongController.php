@@ -115,7 +115,7 @@ class ChamCongController extends Controller
      *
      * GET /api/v1/cham-cong
      *
-     * ?ma_nv=NV001
+     * Tham số mã nhân viên: 00001
      * &thang=8
      * &nam=2026
      * &page=1

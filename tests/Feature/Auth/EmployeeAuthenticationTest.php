@@ -48,13 +48,13 @@ class EmployeeAuthenticationTest extends TestCase
     public function test_invalid_password_payload_never_flashes_or_renders_plaintext(): void
     {
         $response = $this->from('/dang-nhap')->post('/dang-nhap', [
-            'dinh_danh' => ' NV001 ',
+            'dinh_danh' => ' 00001 ',
             'mat_khau' => ['secret'],
         ]);
 
         $response->assertRedirect('/dang-nhap');
         $oldInput = session('_old_input', []);
-        $this->assertSame('NV001', $oldInput['dinh_danh'] ?? null);
+        $this->assertSame('00001', $oldInput['dinh_danh'] ?? null);
         $this->assertArrayNotHasKey('mat_khau', $oldInput);
         $this->assertStringNotContainsString('secret', json_encode($oldInput, JSON_THROW_ON_ERROR));
 
@@ -68,14 +68,14 @@ class EmployeeAuthenticationTest extends TestCase
         $oldSessionId = $this->app['session']->getId();
 
         $response = $this->post('/dang-nhap', [
-            'dinh_danh' => ' NV001 ',
+            'dinh_danh' => ' 00001 ',
             'mat_khau' => 'secret',
         ]);
 
         $response->assertRedirect(route('backend.tongquan.index'));
         $this->assertTrue(Auth::check());
         $this->assertNotSame($oldSessionId, $this->app['session']->getId());
-        $this->assertSame('NV001', Auth::id());
+        $this->assertSame('00001', Auth::id());
     }
 
     public function test_login_by_email_normalizes_identifier_and_honors_intended_url(): void
@@ -103,10 +103,10 @@ class EmployeeAuthenticationTest extends TestCase
         ];
 
         foreach ($cases as $case => $result) {
-            RateLimiter::clear($this->throttleKey('NV001'));
+            RateLimiter::clear($this->throttleKey('00001'));
             if ($result instanceof NhanVienDomainException) {
                 $repository = Mockery::mock(NhanVienRepositoryContract::class);
-                $repository->shouldReceive('findAccountByIdentifier')->once()->with('NV001')->andThrow($result);
+                $repository->shouldReceive('findAccountByIdentifier')->once()->with('00001')->andThrow($result);
             } else {
                 $repository = Mockery::mock(NhanVienRepositoryContract::class);
                 $repository->shouldReceive('findAccountByIdentifier')->andReturn($result);
@@ -115,7 +115,7 @@ class EmployeeAuthenticationTest extends TestCase
             Auth::forgetGuards();
 
             $response = $this->from('/dang-nhap')->post('/dang-nhap', [
-                'dinh_danh' => 'NV001',
+                'dinh_danh' => '00001',
                 'mat_khau' => $case === 'wrong-password' ? 'secret' : 'wrong',
             ]);
 
@@ -129,16 +129,16 @@ class EmployeeAuthenticationTest extends TestCase
     public function test_login_is_limited_to_five_attempts_per_identifier_and_ip(): void
     {
         $this->bindRepository(return: null);
-        $key = $this->throttleKey('NV001');
+        $key = $this->throttleKey('00001');
 
         for ($attempt = 1; $attempt <= 5; $attempt++) {
-            $this->post('/dang-nhap', ['dinh_danh' => 'NV001', 'mat_khau' => 'bad'])
+            $this->post('/dang-nhap', ['dinh_danh' => '00001', 'mat_khau' => 'bad'])
                 ->assertRedirect('/dang-nhap')
                 ->assertSessionHasErrors('dinh_danh');
         }
 
         $this->assertTrue(RateLimiter::tooManyAttempts($key, 5));
-        $this->post('/dang-nhap', ['dinh_danh' => 'NV001', 'mat_khau' => 'bad'])
+        $this->post('/dang-nhap', ['dinh_danh' => '00001', 'mat_khau' => 'bad'])
             ->assertRedirect('/dang-nhap')
             ->assertSessionHasErrors(['dinh_danh' => 'Thông tin đăng nhập không hợp lệ.']);
     }
@@ -146,9 +146,9 @@ class EmployeeAuthenticationTest extends TestCase
     public function test_success_clears_rate_limit_and_logout_invalidates_session_and_token(): void
     {
         $this->bindRepository(return: $this->employee());
-        $key = $this->throttleKey('NV001');
+        $key = $this->throttleKey('00001');
         RateLimiter::hit($key, 60);
-        $this->post('/dang-nhap', ['dinh_danh' => 'NV001', 'mat_khau' => 'secret'])->assertRedirect();
+        $this->post('/dang-nhap', ['dinh_danh' => '00001', 'mat_khau' => 'secret'])->assertRedirect();
         $this->assertFalse(RateLimiter::tooManyAttempts($key, 5));
         $oldSessionId = $this->app['session']->getId();
         $oldToken = csrf_token();
@@ -164,8 +164,8 @@ class EmployeeAuthenticationTest extends TestCase
     {
         $employee = $this->employee(['ma_vt' => 9, 'mat_khau' => 'old-hash']);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('findAccountByIdentifier')->once()->with('NV001')->andReturn($employee);
-        $repository->shouldReceive('rehashAuthenticatedPassword')->once()->with('NV001', 'old-hash', 'new-hash')->andThrow(
+        $repository->shouldReceive('findAccountByIdentifier')->once()->with('00001')->andReturn($employee);
+        $repository->shouldReceive('rehashAuthenticatedPassword')->once()->with('00001', 'old-hash', 'new-hash')->andThrow(
             new NhanVienDomainException('Thông tin đăng nhập không hợp lệ.', 'NV_AUTH_HASH_STALE'),
         );
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
@@ -176,10 +176,10 @@ class EmployeeAuthenticationTest extends TestCase
         $this->app->instance(Hasher::class, $hasher);
         Log::shouldReceive('warning')->once()->with(
             'employee_auth_rehash_stale',
-            ['event_code' => 'NV_AUTH_HASH_STALE', 'ma_nv' => 'NV001'],
+            ['event_code' => 'NV_AUTH_HASH_STALE', 'ma_nv' => '00001'],
         );
 
-        $this->post('/dang-nhap', ['dinh_danh' => 'NV001', 'mat_khau' => 'secret'])
+        $this->post('/dang-nhap', ['dinh_danh' => '00001', 'mat_khau' => 'secret'])
             ->assertRedirect(route('backend.tongquan.index'));
         $this->assertTrue(Auth::check());
     }
@@ -188,7 +188,7 @@ class EmployeeAuthenticationTest extends TestCase
     {
         $employee = $this->employee(['mat_khau' => 'old-hash']);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('findAccountByIdentifier')->once()->with('NV001')->andReturn($employee);
+        $repository->shouldReceive('findAccountByIdentifier')->once()->with('00001')->andReturn($employee);
         $repository->shouldReceive('rehashAuthenticatedPassword')->once()->andThrow(
             new NhanVienDomainException('raw database details', 'NV_DATABASE_ERROR'),
         );
@@ -199,7 +199,7 @@ class EmployeeAuthenticationTest extends TestCase
         $hasher->shouldReceive('make')->once()->with('secret')->andReturn('new-hash');
         $this->app->instance(Hasher::class, $hasher);
 
-        $this->from('/dang-nhap')->post('/dang-nhap', ['dinh_danh' => 'NV001', 'mat_khau' => 'secret'])
+        $this->from('/dang-nhap')->post('/dang-nhap', ['dinh_danh' => '00001', 'mat_khau' => 'secret'])
             ->assertRedirect('/dang-nhap')
             ->assertSessionHasErrors(['dinh_danh' => 'Thông tin đăng nhập không hợp lệ.'])
             ->assertDontSee('raw database details');
@@ -211,10 +211,10 @@ class EmployeeAuthenticationTest extends TestCase
         $active = $this->employee();
         $terminated = $this->employee(['ma_tt' => 4]);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('findAccountByIdentifier')->with('NV001')->andReturn($active, $terminated);
+        $repository->shouldReceive('findAccountByIdentifier')->with('00001')->andReturn($active, $terminated);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
-        $this->post('/dang-nhap', ['dinh_danh' => 'NV001', 'mat_khau' => 'secret'])->assertRedirect();
+        $this->post('/dang-nhap', ['dinh_danh' => '00001', 'mat_khau' => 'secret'])->assertRedirect();
         Auth::forgetGuards();
         $this->get('/_test/employee-authenticated')->assertRedirect(route('login'));
     }
@@ -223,7 +223,7 @@ class EmployeeAuthenticationTest extends TestCase
     {
         $this->bindRepository(return: $this->employee());
         $response = $this->post('/dang-nhap', [
-            'dinh_danh' => 'NV001',
+            'dinh_danh' => '00001',
             'mat_khau' => 'secret',
             'remember' => '1',
         ]);
@@ -243,7 +243,7 @@ class EmployeeAuthenticationTest extends TestCase
     private function employee(array $overrides = []): NhanVien
     {
         return NhanVien::fromAuthRow((object) array_replace([
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => Hash::make('secret'),

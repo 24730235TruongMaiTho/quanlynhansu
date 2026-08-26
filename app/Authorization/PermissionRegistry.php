@@ -8,10 +8,10 @@ use App\Enums\PermissionAction;
 use Throwable;
 
 /**
- * Static authorization contract for the application-owned web modules.
+ * Hợp đồng quyền tĩnh của các module web thuộc ứng dụng.
  *
- * Construction has no database side effects. Database rows are checked by
- * PermissionService at request time against these stable definitions.
+ * Việc khởi tạo không ghi cơ sở dữ liệu; PermissionService đối chiếu hàng
+ * quyền thực tế với các định nghĩa ổn định này ở thời điểm xử lý yêu cầu.
  */
 final class PermissionRegistry implements PermissionRegistryContract
 {
@@ -151,7 +151,7 @@ final class PermissionRegistry implements PermissionRegistryContract
         }
 
         if ($id < 1
-            || preg_match('/\A[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*\z/', $symbol) !== 1
+            || preg_match('/\A[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*\z/', $symbol) !== 1
             || preg_match('/\A[A-Za-z][A-Za-z0-9]*\z/', $module) !== 1) {
             return null;
         }

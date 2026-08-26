@@ -38,9 +38,9 @@ trait CreatesEmployeeFeatureSchema
             ['ma_cv' => 1, 'ten_cv' => 'Lập trình viên'],
         ]);
         DB::table('trang_thai_lam_viec')->insert([
-            ['ma_tt' => 1, 'ten_tt' => 'Thử việc'],
-            ['ma_tt' => 2, 'ten_tt' => 'Đang làm việc'],
-            ['ma_tt' => 3, 'ten_tt' => 'Tạm nghỉ không lương'],
+            ['ma_tt' => 1, 'ten_tt' => 'Đang làm việc'],
+            ['ma_tt' => 2, 'ten_tt' => 'Thử việc'],
+            ['ma_tt' => 3, 'ten_tt' => 'Thực tập'],
             ['ma_tt' => 4, 'ten_tt' => 'Đã nghỉ việc'],
         ]);
     }
@@ -54,7 +54,7 @@ trait CreatesEmployeeFeatureSchema
     }
 
     protected function insertEmployeeIdentity(
-        string $maNv = 'NV001',
+        string $maNv = '00001',
         string $email = 'existing@example.test',
         string $cccd = '001200000099',
     ): void {

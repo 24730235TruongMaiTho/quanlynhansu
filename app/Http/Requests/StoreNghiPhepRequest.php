@@ -18,7 +18,7 @@ class StoreNghiPhepRequest extends FormRequest
             'ma_nv' => [
                 'required',
                 'string',
-                'regex:/\ANV[0-9]{3}\z/',
+                'regex:/\A[0-9]{5}\z/',
                 'max:5',
                 Rule::exists('nhan_vien', 'ma_nv'),
             ],

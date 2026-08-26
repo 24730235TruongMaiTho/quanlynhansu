@@ -94,7 +94,7 @@ class StoreNhanVienRequest extends FormRequest
     protected function statusExistsRule(): Exists
     {
         return Rule::exists('trang_thai_lam_viec', 'ma_tt')
-            ->whereIn('ma_tt', [1, 2]);
+            ->whereIn('ma_tt', [1, 2, 3]);
     }
 
     protected function ignoredEmployeeCodeForEmailUniqueness(): ?string

@@ -46,8 +46,8 @@ class PhongBanRepositoryTest extends TestCase
     {
         $this->insertDepartment('Kỹ thuật');
         $this->insertDepartment('Nhân sự');
-        $this->insertEmployee('NV001', 1);
-        $this->insertEmployee('NV002', 1);
+        $this->insertEmployee('00001', 1);
+        $this->insertEmployee('00002', 1);
 
         $rows = $this->repository->all();
 
@@ -127,7 +127,7 @@ class PhongBanRepositoryTest extends TestCase
     {
         $this->insertDepartment('Đang dùng');
         $this->insertDepartment('Trống');
-        $this->insertEmployee('NV001', 1);
+        $this->insertEmployee('00001', 1);
 
         try {
             $this->repository->delete(1);

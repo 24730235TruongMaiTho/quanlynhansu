@@ -46,14 +46,14 @@ class NhanVienRepositoryTest extends TestCase
     public function test_update_rechecks_terminated_status_under_lock_before_rejecting_transition(): void
     {
         DB::table('nhan_vien')->insert([
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ho_ten' => 'Đã nghỉ',
             'ma_tt' => 4,
             'ngay_nghi_viec' => '2026-08-24',
         ]);
 
         try {
-            $this->repository->update('NV001', [
+            $this->repository->update('00001', [
                 'ho_ten' => 'Không được ghi',
                 'ma_tt' => 2,
             ]);
@@ -63,7 +63,7 @@ class NhanVienRepositoryTest extends TestCase
             $this->assertSame('ma_tt', $exception->field);
         }
 
-        $row = DB::table('nhan_vien')->where('ma_nv', 'NV001')->first();
+        $row = DB::table('nhan_vien')->where('ma_nv', '00001')->first();
         $this->assertSame('Đã nghỉ', $row->ho_ten);
         $this->assertSame(4, (int) $row->ma_tt);
         $this->assertSame('2026-08-24', $row->ngay_nghi_viec);
@@ -72,14 +72,14 @@ class NhanVienRepositoryTest extends TestCase
     public function test_update_rechecks_active_status_under_lock_before_rejecting_termination(): void
     {
         DB::table('nhan_vien')->insert([
-            'ma_nv' => 'NV002',
+            'ma_nv' => '00002',
             'ho_ten' => 'Đang làm',
             'ma_tt' => 2,
             'ngay_nghi_viec' => null,
         ]);
 
         try {
-            $this->repository->update('NV002', [
+            $this->repository->update('00002', [
                 'ho_ten' => 'Không được ghi',
                 'ma_tt' => 4,
             ]);
@@ -89,10 +89,39 @@ class NhanVienRepositoryTest extends TestCase
             $this->assertSame('ma_tt', $exception->field);
         }
 
-        $row = DB::table('nhan_vien')->where('ma_nv', 'NV002')->first();
+        $row = DB::table('nhan_vien')->where('ma_nv', '00002')->first();
         $this->assertSame('Đang làm', $row->ho_ten);
         $this->assertSame(2, (int) $row->ma_tt);
         $this->assertNull($row->ngay_nghi_viec);
+    }
+
+    public function test_update_preserves_each_terminal_status_and_rejects_terminal_crossovers(): void
+    {
+        foreach ([
+            4 => [5, 6],
+            5 => [4, 6],
+            6 => [4, 5],
+        ] as $currentStatus => $otherTerminalStatuses) {
+            $maNv = sprintf('0000%d', $currentStatus);
+            DB::table('nhan_vien')->insert([
+                'ma_nv' => $maNv,
+                'ho_ten' => 'Nhân viên terminal '.$currentStatus,
+                'ma_tt' => $currentStatus,
+                'ngay_nghi_viec' => '2026-08-24',
+            ]);
+
+            foreach ($otherTerminalStatuses as $targetStatus) {
+                try {
+                    $this->repository->update($maNv, ['ma_tt' => $targetStatus]);
+                    $this->fail('Không được đổi giữa hai trạng thái terminal.');
+                } catch (NhanVienDomainException $exception) {
+                    $this->assertSame('NV_STATUS_TRANSITION_FORBIDDEN', $exception->domainCode);
+                }
+            }
+
+            $this->assertSame($currentStatus, (int) DB::table('nhan_vien')
+                ->where('ma_nv', $maNv)->value('ma_tt'));
+        }
     }
 
 }

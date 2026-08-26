@@ -11,7 +11,6 @@ use App\Repositories\NhanVienRepository;
 use App\Repositories\PhongBanRepository;
 use App\Support\DisposableMariaDbGuard;
 use Carbon\CarbonImmutable;
-use Database\Seeders\LocalDemoSeeder;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Symfony\Component\Process\Process;
@@ -42,30 +41,25 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
 
         self::assertSame(0, (int) DB::table('information_schema.VIEWS')
             ->where('TABLE_SCHEMA', DB::raw('DATABASE()'))->count());
-        self::assertSame(0, (int) DB::table('information_schema.ROUTINES')
+        self::assertSame(12, (int) DB::table('information_schema.ROUTINES')
             ->where('ROUTINE_SCHEMA', DB::raw('DATABASE()'))->count());
         self::assertSame(0, (int) DB::table('information_schema.TRIGGERS')
             ->where('TRIGGER_SCHEMA', DB::raw('DATABASE()'))->count());
-        self::assertSame(1, (int) DB::table('nhan_vien')->count());
-        self::assertSame(1, (int) DB::table('bo_dem_ma_nhan_vien')
+        self::assertSame(19, (int) DB::table('nhan_vien')->count());
+        self::assertSame(19, (int) DB::table('bo_dem_ma_nhan_vien')
             ->where('ten_bo_dem', 'NHAN_VIEN')->value('so_da_cap'));
 
-        $admin = DB::table('nhan_vien')->where('ma_nv', 'NV001')->first([
+        $admin = DB::table('nhan_vien')->where('ma_nv', '00001')->first([
             'ma_vt', 'ma_tt', 'mat_khau',
         ]);
         self::assertNotNull($admin);
         self::assertSame(1, (int) $admin->ma_vt);
-        self::assertSame(2, (int) $admin->ma_tt);
-        self::assertTrue(password_verify('nhom3@2026', (string) $admin->mat_khau));
+        self::assertSame(1, (int) $admin->ma_tt);
+        self::assertSame(64, strlen((string) $admin->mat_khau));
+        self::assertSame('A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', $admin->mat_khau);
         $permissionCatalog = DB::table('quyen')->orderBy('ma_quyen')->pluck('ma_quyen')
             ->map(static fn ($id): int => (int) $id)->all();
-        $expectedCatalog = [
-            101, 102, 103, 104, 105,
-            201, 202, 203, 204,
-            301, 302, 303, 304,
-            401, 402, 403, 404,
-            801, 802,
-        ];
+        $expectedCatalog = range(1, 37);
         self::assertSame($expectedCatalog, $permissionCatalog);
 
         $rolePermissions = DB::table('vai_tro_quyen')->where('ma_vt', 1)
@@ -75,12 +69,12 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
 
         $employeeContract = DB::table('nhan_vien')->orderBy('ma_nv')
             ->get(['ma_nv', 'ho_ten', 'ma_vt', 'ma_tt', 'anh_dai_dien', 'ngay_nghi_viec']);
-        self::assertSame(1, $employeeContract->count());
+        self::assertSame(19, $employeeContract->count());
         self::assertSame('Nguyễn Văn An', $employeeContract[0]->ho_ten);
-        self::assertSame([1], $employeeContract->pluck('ma_vt')->map(static fn ($id): int => (int) $id)->all());
-        self::assertSame([2], $employeeContract->pluck('ma_tt')->map(static fn ($id): int => (int) $id)->all());
-        self::assertCount(1, $employeeContract->whereNull('anh_dai_dien'));
-        self::assertNull($employeeContract[0]->ngay_nghi_viec);
+        self::assertSame([1, 1, 1, 2, 4, 3, 5, 5, 5, 5, 2, 5, 5, 5, 3, 5, 5, 5, 5], $employeeContract->pluck('ma_vt')->map(static fn ($id): int => (int) $id)->all());
+        self::assertSame([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], $employeeContract->pluck('ma_tt')->map(static fn ($id): int => (int) $id)->all());
+        self::assertCount(19, $employeeContract->whereNull('anh_dai_dien'));
+        self::assertSame(19, $employeeContract->whereNull('ngay_nghi_viec')->count());
     }
 
     public function test_repository_writes_direct_address_avatar_and_counter_contract(): void
@@ -104,10 +98,10 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             'ma_tt' => 2,
         ];
 
-        self::assertSame('NV002', $repository->create($profile, password_hash('secret', PASSWORD_BCRYPT), 'avatars/maria002.jpg'));
-        self::assertSame(2, (int) DB::table('bo_dem_ma_nhan_vien')->where('ten_bo_dem', 'NHAN_VIEN')->value('so_da_cap'));
+        self::assertSame('00020', $repository->create($profile, password_hash('secret', PASSWORD_BCRYPT), 'avatars/maria002.jpg'));
+        self::assertSame(20, (int) DB::table('bo_dem_ma_nhan_vien')->where('ten_bo_dem', 'NHAN_VIEN')->value('so_da_cap'));
 
-        $repository->upsertAddress('NV002', [
+        $repository->upsertAddress('00020', [
             'dia_chi_cu_the' => '02 Demo',
             'phuong_xa' => 'Phuong 1',
             'quan_huyen' => 'Quan 1',
@@ -118,12 +112,37 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             'phuong_xa' => 'Phuong 1',
             'quan_huyen' => 'Quan 1',
             'tinh_thanh' => 'TP HCM',
-        ], (array) DB::table('nhan_vien')->where('ma_nv', 'NV002')->first([
+        ], (array) DB::table('nhan_vien')->where('ma_nv', '00020')->first([
             'dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh',
         ]));
-        self::assertSame('avatars/maria002.jpg', $repository->replaceAvatarPath('NV002', 'avatars/maria002-new.jpg'));
-        self::assertSame('avatars/maria002-new.jpg', DB::table('nhan_vien')->where('ma_nv', 'NV002')->value('anh_dai_dien'));
-        self::assertNotNull($repository->find('NV002'));
+        self::assertSame('avatars/maria002.jpg', $repository->replaceAvatarPath('00020', 'avatars/maria002-new.jpg'));
+        self::assertSame('avatars/maria002-new.jpg', DB::table('nhan_vien')->where('ma_nv', '00020')->value('anh_dai_dien'));
+        self::assertNotNull($repository->find('00020'));
+    }
+
+    public function test_repository_stops_at_smallint_counter_limit_while_codes_remain_five_digits(): void
+    {
+        $this->runFreshPair();
+        $repository = app(NhanVienRepository::class);
+        DB::table('bo_dem_ma_nhan_vien')
+            ->where('ten_bo_dem', 'NHAN_VIEN')
+            ->update(['so_da_cap' => 65534]);
+
+        $profile = $this->parallelProfile('employee65535@example.test', '001000065535');
+        self::assertSame('65535', $repository->create($profile, password_hash('secret', PASSWORD_BCRYPT), null));
+        self::assertSame(65535, (int) DB::table('bo_dem_ma_nhan_vien')
+            ->where('ten_bo_dem', 'NHAN_VIEN')->value('so_da_cap'));
+
+        try {
+            $repository->create(
+                $this->parallelProfile('employee-after-limit@example.test', '001000065536'),
+                password_hash('secret', PASSWORD_BCRYPT),
+                null,
+            );
+            self::fail('Bộ đếm SMALLINT UNSIGNED phải dừng sau mã 65535.');
+        } catch (NhanVienDomainException $exception) {
+            self::assertSame('NV_COUNTER_EXHAUSTED', $exception->domainCode);
+        }
     }
 
     public function test_fresh_repository_preserves_department_identity_and_filters_rows_by_department(): void
@@ -137,7 +156,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertGreaterThan(1, $secondDepartment);
         $profile = $this->parallelProfile('department-two@example.test', '001099000002');
         $profile['ma_pb'] = $secondDepartment;
-        self::assertSame('NV002', $repository->create($profile, password_hash('secret', PASSWORD_BCRYPT), null));
+        self::assertSame('00020', $repository->create($profile, password_hash('secret', PASSWORD_BCRYPT), null));
 
         $firstDepartmentRows = $repository->paginate([
             'ma_pb' => 1,
@@ -150,8 +169,8 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             'so_dong' => 100,
         ]);
 
-        self::assertContains('NV001', $firstDepartmentRows->getCollection()->pluck('ma_nv')->all());
-        self::assertContains('NV002', $secondDepartmentRows->getCollection()->pluck('ma_nv')->all());
+        self::assertContains('00001', $firstDepartmentRows->getCollection()->pluck('ma_nv')->all());
+        self::assertContains('00020', $secondDepartmentRows->getCollection()->pluck('ma_nv')->all());
         self::assertTrue($firstDepartmentRows->getCollection()->every(
             static fn (object $row): bool => (int) $row->ma_pb === 1,
         ));
@@ -164,28 +183,28 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
     {
         $this->runFreshPair();
         $repository = app(NhanVienRepository::class);
-        $before = DB::table('nhan_vien')->where('ma_nv', 'NV001')->first([
+        $before = DB::table('nhan_vien')->where('ma_nv', '00001')->first([
             'ma_vt', 'mat_khau', 'ngay_nghi_viec',
         ]);
         self::assertNotNull($before);
 
-        $repository->update('NV001', [
+        $repository->update('00001', [
             'ho_ten' => 'Nguyễn Văn An cập nhật',
             'email' => 'an.updated@company.com',
             'ma_vt' => 5,
             'mat_khau' => 'plaintext-must-be-ignored',
             'ngay_nghi_viec' => '2026-08-24',
         ]);
-        $repository->upsertAddress('NV001', [
+        $repository->upsertAddress('00001', [
             'dia_chi_cu_the' => 'Số 01 mới',
             'phuong_xa' => 'Phường Bến Nghé',
             'quan_huyen' => 'Quận 1',
             'tinh_thanh' => 'TP Hồ Chí Minh',
             'ma_vt' => 5,
         ]);
-        $repository->replaceAvatarPath('NV001', 'avatars/nv001-updated.jpg');
+        $repository->replaceAvatarPath('00001', 'avatars/nv001-updated.jpg');
 
-        $after = DB::table('nhan_vien')->where('ma_nv', 'NV001')->first([
+        $after = DB::table('nhan_vien')->where('ma_nv', '00001')->first([
             'ho_ten', 'email', 'ma_vt', 'mat_khau', 'ngay_nghi_viec',
             'dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh', 'anh_dai_dien',
         ]);
@@ -205,7 +224,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         $repository = app(NhanVienRepository::class);
 
         try {
-            $repository->update('NV001', [
+            $repository->update('00001', [
                 'ho_ten' => 'Không được ghi',
                 'ma_tt' => 4,
             ]);
@@ -215,9 +234,9 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             self::assertSame('ma_tt', $exception->field);
         }
 
-        self::assertSame('Nguyễn Văn An', DB::table('nhan_vien')->where('ma_nv', 'NV001')->value('ho_ten'));
-        self::assertSame(2, (int) DB::table('nhan_vien')->where('ma_nv', 'NV001')->value('ma_tt'));
-        self::assertNull(DB::table('nhan_vien')->where('ma_nv', 'NV001')->value('ngay_nghi_viec'));
+        self::assertSame('Nguyễn Văn An', DB::table('nhan_vien')->where('ma_nv', '00001')->value('ho_ten'));
+        self::assertSame(1, (int) DB::table('nhan_vien')->where('ma_nv', '00001')->value('ma_tt'));
+        self::assertNull(DB::table('nhan_vien')->where('ma_nv', '00001')->value('ngay_nghi_viec'));
     }
 
     public function test_repository_rejects_terminated_to_active_transition_after_locking_current_status(): void
@@ -225,14 +244,14 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         $this->runFreshPair();
         $repository = app(NhanVienRepository::class);
         $profile = $this->parallelProfile('terminated@example.test', '001099000002');
-        self::assertSame('NV002', $repository->create($profile, password_hash('secret', PASSWORD_BCRYPT), null));
-        DB::table('nhan_vien')->where('ma_nv', 'NV002')->update([
+        self::assertSame('00020', $repository->create($profile, password_hash('secret', PASSWORD_BCRYPT), null));
+        DB::table('nhan_vien')->where('ma_nv', '00020')->update([
             'ma_tt' => 4,
             'ngay_nghi_viec' => '2026-08-24',
         ]);
 
         try {
-            $repository->update('NV002', [
+            $repository->update('00020', [
                 'ho_ten' => 'Không được ghi',
                 'ma_tt' => 2,
             ]);
@@ -242,7 +261,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             self::assertSame('ma_tt', $exception->field);
         }
 
-        $row = DB::table('nhan_vien')->where('ma_nv', 'NV002')->first(['ho_ten', 'ma_tt', 'ngay_nghi_viec']);
+        $row = DB::table('nhan_vien')->where('ma_nv', '00020')->first(['ho_ten', 'ma_tt', 'ngay_nghi_viec']);
         self::assertNotNull($row);
         self::assertSame('Nhân viên song song', $row->ho_ten);
         self::assertSame(4, (int) $row->ma_tt);
@@ -253,172 +272,85 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
     {
         $this->runFreshPair();
         $repository = app(NhanVienRepository::class);
-        self::assertSame('NV002', $repository->create(
+        self::assertSame('00020', $repository->create(
             $this->parallelProfile('with-history@example.test', '001099000002'),
             password_hash('secret', PASSWORD_BCRYPT),
             null,
         ));
-        self::assertSame('NV003', $repository->create(
+        self::assertSame('00021', $repository->create(
             $this->parallelProfile('without-history@example.test', '001099000003'),
             password_hash('secret', PASSWORD_BCRYPT),
             null,
         ));
 
         DB::table('cham_cong')->insert([
-            'ma_nv' => 'NV002',
+            'ma_nv' => '00020',
             'ngay_lam' => '2026-08-01',
             'so_gio_lam' => 8,
             'vao_muon' => 0,
             've_som' => 0,
         ]);
-        $terminated = $repository->removeOrTerminate('NV002', CarbonImmutable::parse('2026-08-24'));
+        $terminated = $repository->removeOrTerminate('00020', CarbonImmutable::parse('2026-08-24'));
         self::assertSame(NhanVienRemovalAction::Terminated, $terminated['action']);
-        self::assertSame(4, (int) DB::table('nhan_vien')->where('ma_nv', 'NV002')->value('ma_tt'));
-        self::assertSame('2026-08-24', DB::table('nhan_vien')->where('ma_nv', 'NV002')->value('ngay_nghi_viec'));
+        self::assertSame(4, (int) DB::table('nhan_vien')->where('ma_nv', '00020')->value('ma_tt'));
+        self::assertSame('2026-08-24', DB::table('nhan_vien')->where('ma_nv', '00020')->value('ngay_nghi_viec'));
 
-        $deleted = $repository->removeOrTerminate('NV003', CarbonImmutable::parse('2026-08-24'));
+        $deleted = $repository->removeOrTerminate('00021', CarbonImmutable::parse('2026-08-24'));
         self::assertSame(NhanVienRemovalAction::Deleted, $deleted['action']);
-        self::assertDatabaseMissing('nhan_vien', ['ma_nv' => 'NV003'], 'employee_test');
+        self::assertDatabaseMissing('nhan_vien', ['ma_nv' => '00021'], 'employee_test');
     }
 
-    public function test_legacy_sixteen_table_fixture_migrates_and_allowlisted_cleanup_is_safe(): void
+    public function test_role_and_permission_procedures_use_explicit_ids_and_protect_default_role(): void
     {
         $this->runFreshPair();
         $pdo = $this->pdo();
-
-        DB::table('vai_tro')->where('ma_vt', 1)->update(['ten_vt' => 'Super Admin']);
-        foreach ([
-            2 => 'Quản trị Nhân sự',
-            3 => 'Quản trị CBL',
-            4 => 'Trưởng phòng',
-            5 => 'Nhân viên',
-        ] as $roleId => $roleName) {
-            DB::table('vai_tro')->updateOrInsert(
-                ['ma_vt' => $roleId],
-                ['ten_vt' => $roleName, 'mo_ta' => null],
-            );
-        }
-        foreach ([
-            1 => 'Thử việc',
-            2 => 'Đang làm việc',
-            3 => 'Tạm nghỉ không lương',
-            4 => 'Đã nghỉ việc',
-        ] as $statusId => $statusName) {
-            DB::table('trang_thai_lam_viec')->updateOrInsert(
-                ['ma_tt' => $statusId],
-                ['ten_tt' => $statusName],
-            );
-        }
-        DB::table('quyen')->insert([
-            'ma_quyen' => 501,
-            'ky_hieu_quyen' => 'LUONG_VIEW',
-            'ten_quyen' => 'Xem bảng lương',
-            'module' => 'Luong',
-        ]);
-        foreach ([401, 402, 403, 404] as $permissionId) {
-            DB::table('vai_tro_quyen')->insert([
-                'ma_vt' => 2,
-                'ma_quyen' => $permissionId,
-            ]);
-        }
-
-        $this->runSql(base_path('tests/Fixtures/MariaDb/employee_legacy_fifteen_plus_address.sql'));
-        self::assertSame(5, (int) DB::table('vai_tro')->where(function ($query): void {
-            $query->where(fn ($item) => $item->where('ma_vt', 1)->where('ten_vt', 'Super Admin'))
-                ->orWhere(fn ($item) => $item->where('ma_vt', 2)->where('ten_vt', 'Quản trị Nhân sự'))
-                ->orWhere(fn ($item) => $item->where('ma_vt', 3)->where('ten_vt', 'Quản trị CBL'))
-                ->orWhere(fn ($item) => $item->where('ma_vt', 4)->where('ten_vt', 'Trưởng phòng'))
-                ->orWhere(fn ($item) => $item->where('ma_vt', 5)->where('ten_vt', 'Nhân viên'));
-        })->count(), 'Dữ liệu test phải có đủ năm vai trò với mã cố định.');
-        self::assertSame(4, (int) DB::table('trang_thai_lam_viec')->where(function ($query): void {
-            $query->where(fn ($item) => $item->where('ma_tt', 1)->where('ten_tt', 'Thử việc'))
-                ->orWhere(fn ($item) => $item->where('ma_tt', 2)->where('ten_tt', 'Đang làm việc'))
-                ->orWhere(fn ($item) => $item->where('ma_tt', 3)->where('ten_tt', 'Tạm nghỉ không lương'))
-                ->orWhere(fn ($item) => $item->where('ma_tt', 4)->where('ten_tt', 'Đã nghỉ việc'));
-        })->count(), 'Dữ liệu test phải có đủ bốn trạng thái với mã cố định.');
-        self::assertSame(0, (int) DB::table('nhan_vien')
-            ->whereNotBetween('ma_vt', [1, 5])
-            ->orWhereNotBetween('ma_tt', [1, 4])
-            ->count(), 'Nhân viên test phải tham chiếu đúng mã vai trò và trạng thái.');
-        foreach ([
-            101 => ['NV_VIEW', 'NhanVien'], 102 => ['NV_CREATE', 'NhanVien'],
-            103 => ['NV_EDIT', 'NhanVien'], 104 => ['NV_DELETE', 'NhanVien'],
-            201 => ['PB_VIEW', 'PhongBan'], 202 => ['PB_CREATE', 'PhongBan'],
-            203 => ['PB_EDIT', 'PhongBan'],
-            204 => ['PB_DELETE', 'PhongBan'], 301 => ['CV_VIEW', 'ChucVu'],
-            302 => ['CV_CREATE', 'ChucVu'], 303 => ['CV_EDIT', 'ChucVu'],
-            304 => ['CV_DELETE', 'ChucVu'],
-        ] as $permissionId => [$symbol, $module]) {
-            $permission = DB::table('quyen')->where('ma_quyen', $permissionId)->first([
-                'ky_hieu_quyen', 'module',
-            ]);
-            self::assertNotNull($permission, "Thiếu quyền {$permissionId} trong fixture migration.");
-            self::assertSame($symbol, $permission->ky_hieu_quyen);
-            self::assertSame($module, $permission->module);
-        }
-        $pdo->exec('CREATE VIEW vw_danh_sach_nhan_vien_chi_tiet AS SELECT ma_nv, ho_ten FROM nhan_vien');
-        $pdo->exec('CREATE PROCEDURE sp_nhan_vien_danh_sach() SELECT ma_nv FROM nhan_vien');
-        $pdo->exec('CREATE FUNCTION fn_dem_nhan_vien_theo_phong_ban(p_ma_pb INT) RETURNS INT DETERMINISTIC RETURN 0');
-        $pdo->exec('CREATE PROCEDURE sp_cham_cong_sentinel() SELECT 1');
-
-        self::assertSame(16, (int) $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.TABLES
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"
-        )->fetchColumn());
-
-        $this->runSql(base_path('database/sql/employee/2026_08_24_001_migrate_to_fifteen_tables.sql'));
-
-        self::assertSame(15, (int) $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.TABLES
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"
-        )->fetchColumn());
+        $result = $pdo->query('CALL sp_vai_tro_danh_sach()');
+        self::assertCount(5, $result->fetchAll());
+        $result->closeCursor();
+        $result = $pdo->query('CALL sp_quyen_danh_sach()');
+        self::assertCount(37, $result->fetchAll());
+        $result->closeCursor();
+        $result = $pdo->query("CALL sp_quyen_lay_theo_ma_nhan_vien('00001')");
+        self::assertCount(37, $result->fetchAll());
+        $result->closeCursor();
+        $pdo->exec("CALL sp_vai_tro_them('Vai trò thử nghiệm', 'Mô tả thử nghiệm')");
+        self::assertSame(6, (int) $pdo->query("SELECT MAX(ma_vt) FROM vai_tro")->fetchColumn());
+        $pdo->exec("CALL sp_quyen_them('Test.Read', 'Đọc thử nghiệm', 'Test')");
+        self::assertSame(38, (int) $pdo->query("SELECT MAX(ma_quyen) FROM quyen")->fetchColumn());
+        $pdo->exec('CALL sp_vai_tro_quyen_them(6, 38)');
         self::assertSame(1, (int) $pdo->query(
-            "SELECT COUNT(*) FROM nhan_vien
-             WHERE ma_nv = 'NV001' AND dia_chi_cu_the = 'Số 01 đường Lê Lợi'
-               AND phuong_xa = 'Phường Bến Nghé' AND quan_huyen = 'Quận 1'"
+            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 6 AND ma_quyen = 38'
         )->fetchColumn());
-        self::assertSame(1, (int) $pdo->query("SELECT COUNT(*) FROM quyen WHERE ma_quyen = 105")->fetchColumn());
-        self::assertSame(10, (int) $pdo->query(
-            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt IN (1, 2) AND ma_quyen BETWEEN 101 AND 105'
-        )->fetchColumn());
-        self::assertSame(1, (int) $pdo->query(
-            "SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 1 AND ma_quyen = 201"
-        )->fetchColumn());
-        self::assertSame(8, (int) $pdo->query(
-            "SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 2 AND ma_quyen IN (201, 202, 203, 204, 301, 302, 303, 304)"
-        )->fetchColumn());
-        self::assertSame(17, (int) $pdo->query(
-            "SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 2 AND ma_quyen IN (101, 102, 103, 104, 105, 201, 202, 203, 204, 301, 302, 303, 304, 401, 402, 403, 404)"
-        )->fetchColumn());
-        self::assertSame(1, (int) $pdo->query(
-            "SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 2 AND ma_quyen = 501"
-        )->fetchColumn());
+        $result = $pdo->query('CALL sp_vai_tro_quyen_lay_quyen_theo_vai_tro(6)');
+        self::assertSame(38, (int) $result->fetchColumn());
+        $result->closeCursor();
+        $pdo->exec('CALL sp_vai_tro_quyen_xoa(6)');
         self::assertSame(0, (int) $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('vai_tro', 'trang_thai_lam_viec')
-               AND COLUMN_NAME = 'ky_hieu'"
+            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 6'
         )->fetchColumn());
-        self::assertSame('1', (string) $pdo->query(
-            "SELECT so_da_cap FROM bo_dem_ma_nhan_vien WHERE ten_bo_dem = 'NHAN_VIEN'"
+        $pdo->exec("CALL sp_nhan_vien_gan_vai_tro_noi_bo('00019', 6)");
+        self::assertSame(6, (int) $pdo->query(
+            "SELECT ma_vt FROM nhan_vien WHERE ma_nv = '00019'"
+        )->fetchColumn());
+        $pdo->exec("CALL sp_vai_tro_them('Vai trò xóa thử nghiệm', 'Mô tả xóa thử nghiệm')");
+        self::assertSame(7, (int) $pdo->query("SELECT MAX(ma_vt) FROM vai_tro")->fetchColumn());
+        $pdo->exec('CALL sp_vai_tro_xoa(7)');
+        self::assertSame(0, (int) $pdo->query(
+            'SELECT COUNT(*) FROM vai_tro WHERE ma_vt = 7'
         )->fetchColumn());
 
-        $this->runSql(base_path('database/sql/employee/2026_08_24_002_cleanup_legacy_employee_objects.sql'));
-        self::assertSame(0, (int) $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.VIEWS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vw_danh_sach_nhan_vien_chi_tiet'"
-        )->fetchColumn());
-        self::assertSame(0, (int) $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.ROUTINES
-             WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_nhan_vien_danh_sach'"
-        )->fetchColumn());
-        self::assertSame(0, (int) $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.ROUTINES
-             WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'fn_dem_nhan_vien_theo_phong_ban'"
-        )->fetchColumn());
-        self::assertSame(1, (int) $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.ROUTINES
-             WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_cham_cong_sentinel'"
-        )->fetchColumn());
+        try {
+            $pdo->exec('CALL sp_vai_tro_quyen_them(5, 1)');
+            self::fail('Vai trò mặc định không được gán thêm quyền.');
+        } catch (\PDOException $exception) {
+            self::assertStringContainsString('VT_DEFAULT_ROLE_FORBIDDEN', $exception->getMessage());
+        }
+        try {
+            $pdo->exec('CALL sp_vai_tro_xoa(5)');
+            self::fail('Vai trò mặc định không được xóa.');
+        } catch (\PDOException $exception) {
+            self::assertStringContainsString('VT_DEFAULT_ROLE_FORBIDDEN', $exception->getMessage());
+        }
     }
 
     public function test_parallel_direct_repository_creates_issue_unique_consecutive_codes(): void
@@ -433,12 +365,12 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertTrue($second['ok'] ?? false, json_encode($second));
         $codes = [(string) $first['ma_nv'], (string) $second['ma_nv']];
         sort($codes);
-        self::assertSame(['NV002', 'NV003'], $codes);
-        self::assertSame(3, (int) $this->pdo()->query(
+        self::assertSame(['00020', '00021'], $codes);
+        self::assertSame(21, (int) $this->pdo()->query(
             "SELECT so_da_cap FROM bo_dem_ma_nhan_vien WHERE ten_bo_dem = 'NHAN_VIEN'"
         )->fetchColumn());
         self::assertSame(2, (int) $this->pdo()->query(
-            "SELECT COUNT(*) FROM nhan_vien WHERE ma_nv IN ('NV002', 'NV003')"
+            "SELECT COUNT(*) FROM nhan_vien WHERE ma_nv IN ('00020', '00021')"
         )->fetchColumn());
     }
 
@@ -448,32 +380,32 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         $repository = app(PhongBanRepository::class);
 
         $rows = $repository->all();
-        self::assertCount(1, $rows);
+        self::assertCount(5, $rows);
         self::assertSame(
             ['ma_pb', 'ten_pb', 'so_nhan_vien'],
             array_keys(get_object_vars($rows[0])),
         );
-        self::assertSame([1], array_map(
+        self::assertSame([1, 2, 3, 4, 5], array_map(
             static fn (object $row): int => $row->ma_pb,
             $rows,
         ));
-        self::assertSame([1], array_map(
+        self::assertSame([3, 2, 4, 3, 7], array_map(
             static fn (object $row): int => $row->so_nhan_vien,
             $rows,
         ));
-        self::assertSame('Phòng Công nghệ thông tin', $rows[0]->ten_pb);
+        self::assertSame('IT', $rows[0]->ten_pb);
 
         $repository->create('  Phòng mới  ');
-        $created = $repository->find(2);
+        $created = $repository->find(6);
         self::assertNotNull($created);
         self::assertSame('Phòng mới', $created->ten_pb);
         self::assertSame(0, $created->so_nhan_vien);
 
-        $repository->update(2, '  Phòng cập nhật  ');
-        self::assertSame('Phòng cập nhật', $repository->find(2)->ten_pb);
+        $repository->update(6, '  Phòng cập nhật  ');
+        self::assertSame('Phòng cập nhật', $repository->find(6)->ten_pb);
 
         try {
-            $repository->create('Phòng Công nghệ thông tin');
+            $repository->create('IT');
             self::fail('Expected duplicate department name to be rejected.');
         } catch (PhongBanDomainException $exception) {
             self::assertSame('PB_NAME_DUPLICATE', $exception->domainCode);
@@ -493,9 +425,9 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             self::assertSame('PB_IN_USE', $exception->domainCode);
         }
 
-        $repository->delete(2);
-        self::assertNull($repository->find(2));
-        self::assertSame(0, (int) $this->pdo()->query(
+        $repository->delete(6);
+        self::assertNull($repository->find(6));
+        self::assertSame(12, (int) $this->pdo()->query(
             "SELECT COUNT(*) FROM information_schema.ROUTINES
              WHERE ROUTINE_SCHEMA = DATABASE()"
         )->fetchColumn());
@@ -507,26 +439,26 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         $repository = app(ChucVuRepository::class);
 
         $rows = $repository->all();
-        self::assertCount(1, $rows);
+        self::assertCount(6, $rows);
         self::assertSame(
             ['ma_cv', 'ten_cv', 'he_so_phu_cap', 'so_nhan_vien'],
             array_keys(get_object_vars($rows[0])),
         );
-        self::assertSame('Quản trị hệ thống', $rows[0]->ten_cv);
-        self::assertSame('1.00', $rows[0]->he_so_phu_cap);
+        self::assertSame('Giám đốc', $rows[0]->ten_cv);
+        self::assertSame('2.00', $rows[0]->he_so_phu_cap);
 
         $repository->create('  Cố vấn  ', '1.5');
-        $created = $repository->find(2);
+        $created = $repository->find(7);
         self::assertNotNull($created);
         self::assertSame('Cố vấn', $created->ten_cv);
         self::assertSame('1.50', $created->he_so_phu_cap);
 
-        $repository->update(2, '  Trưởng cố vấn ', '2');
-        self::assertSame('Trưởng cố vấn', $repository->find(2)->ten_cv);
-        self::assertSame('2.00', $repository->find(2)->he_so_phu_cap);
+        $repository->update(7, '  Trưởng cố vấn ', '2');
+        self::assertSame('Trưởng cố vấn', $repository->find(7)->ten_cv);
+        self::assertSame('2.00', $repository->find(7)->he_so_phu_cap);
 
         try {
-            $repository->create('Quản trị hệ thống', '1');
+            $repository->create('Giám đốc', '1');
             self::fail('Expected duplicate position name to be rejected.');
         } catch (ChucVuDomainException $exception) {
             self::assertSame('CV_NAME_DUPLICATE', $exception->domainCode);
@@ -546,9 +478,9 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             self::assertSame('CV_IN_USE', $exception->domainCode);
         }
 
-        $repository->delete(2);
-        self::assertNull($repository->find(2));
-        self::assertSame(0, (int) $this->pdo()->query(
+        $repository->delete(7);
+        self::assertNull($repository->find(7));
+        self::assertSame(12, (int) $this->pdo()->query(
             "SELECT COUNT(*) FROM information_schema.ROUTINES
              WHERE ROUTINE_SCHEMA = DATABASE()"
         )->fetchColumn());
@@ -556,11 +488,12 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
 
     private function runFreshPair(): void
     {
-        $this->runFreshSource('database/sql/tao_bang.sql');
-        (new LocalDemoSeeder())->run();
+        $this->runFreshSource('database/sql/tao_bang.sql', 1);
+        $this->runFreshSource('database/sql/du_lieu_mau.sql', 1);
+        $this->runFreshSource('database/sql/quyen_vai_tro.sql', 1);
     }
 
-    private function runFreshSource(string $relativePath): void
+    private function runFreshSource(string $relativePath, int $expectedUseCount): void
     {
         $source = file_get_contents(base_path($relativePath));
         self::assertIsString($source);
@@ -572,7 +505,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             $count,
         );
         self::assertIsString($source);
-        self::assertSame(1, $count, "{$relativePath} must select the expected source database exactly once.");
+        self::assertSame($expectedUseCount, $count, "{$relativePath} phải chọn đúng cơ sở dữ liệu đích theo hợp đồng.");
 
         $path = tempnam(sys_get_temp_dir(), 'fresh-employee-sql-');
         self::assertNotFalse($path);

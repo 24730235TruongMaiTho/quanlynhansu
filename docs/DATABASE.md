@@ -2,14 +2,21 @@
 
 > Snapshot kiểm tra: 2026-08-26
 
-> **Nguồn fresh active do `main` quản lý:** chạy
-> `database/sql/tao_bang.sql` trên database rỗng/disposable, sau đó dùng
-> `Database\\Seeders\\LocalDemoSeeder` cho dữ liệu local tối thiểu. File
-> `database/sql/du_lieu_mau.sql`, `quan_ly_nhan_su.session.sql` và các script
-> employee `2026_08_12_001`–`006` chỉ dùng đối chiếu lịch sử. Schema active tạo
-> đúng 15 bảng và không yêu cầu routine cho CRUD Nhân viên, Phòng ban, Chức vụ.
+> **Nguồn fresh active do `main` quản lý:** chạy lần lượt
+> `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql` và
+> `database/sql/quyen_vai_tro.sql` trên database rỗng/disposable đã được phê
+> duyệt. `Database\\Seeders\\LocalDemoSeeder` là nguồn lịch sử đã thay thế,
+> không được dùng để dựng dữ liệu fresh. Bộ SQL active tạo đúng 15 bảng, 19
+> nhân viên, 37 quyền và 12 thủ tục vai trò/quyền.
 >
-> Runtime tham chiếu: MariaDB 10.4.32, schema `quan_ly_nhan_su` (rollout đã được kiểm chứng environment-specific; guarded disposable integration Task 20 là historical, rerun sau tích hợp timeout khoảng 184 giây và cleanup sạch)
+> Runtime tham chiếu: MariaDB 10.4.32, schema `quan_ly_nhan_su`. Sau khi backup
+> và restore thử thành công, local live đã được thay thế bằng ba SQL active và
+> hậu kiểm đạt 15 bảng, 19 nhân viên, 37 quyền, 12 thủ tục, counter 19 và
+> orphan khóa ngoại bằng 0. Không thay đổi database nào khác.
+
+> Backup trước thay thế: `storage/app/backups/quan_ly_nhan_su_backup_20260826_114823Z.sql`,
+> SHA-256 `14D73893CBED2E2415FF57ABE1F591FCF156944304EB4A3C5E3E00C91611BDC3`;
+> manifest và bằng chứng restore nằm cùng thư mục.
 >
 > Thao tác lịch sử Task 20 chỉ còn để đối chiếu caller/SQL/test; không dùng
 > routine dump cũ làm production acceptance.
@@ -23,7 +30,10 @@ không phải nguồn fresh active. Counts của hợp đồng hiện hành:
 | --- | ---: |
 | Bảng | 15 |
 | View/function/trigger bắt buộc | 0 |
-| Stored procedure bắt buộc cho employee/auth/RBAC/Phòng ban/Chức vụ | 0 |
+| Stored procedure active cho RBAC | 12 |
+| Nhân viên seed | 19 |
+| Quyền seed | 37 |
+| Bộ đếm `NHAN_VIEN` | 19 |
 
 ## Historical rollout (environment-specific, 2026-08-21)
 
@@ -43,12 +53,10 @@ chạy trên DB live. Sau postcheck, cleanup phải đi qua
 `2026_08_24_002_cleanup_legacy_employee_objects.sql`, một allowlist riêng chỉ
 xóa view/routine employee cũ và có postcheck giữ nguyên routine module khác.
 
-Historical guarded MariaDB integration trên base trước branch Chức vụ đã replay
-fresh pair, kiểm tra migration từ fixture 16 bảng, cleanup allowlist và hai worker
-direct repository cấp mã đồng thời: `5 tests, 161 assertions` trên disposable
-database. Trên branch Chức vụ, fresh harness hiện pass `7 tests, 231 assertions`
-trên disposable schema, gồm CRUD Chức vụ và Phòng ban; đây vẫn không phải bằng chứng
-live/production hay MySQL 8.
+Guarded MariaDB integration hiện hành replay cả ba file SQL active và pass
+`12 tests, 422 assertions` trên disposable schema, gồm kiểm tra 15 bảng, seed,
+12 thủ tục, CRUD ba repository, vòng đời nhân viên và hai worker cấp mã đồng
+thời. Đây là bằng chứng disposable, không tự chứng minh browser hay production.
 
 Ba migration Laravel chỉ tạo users/password reset/session, cache và queue/jobs. Database live chưa có bảng `migrations` và các migration này chưa chạy.
 
@@ -64,7 +72,7 @@ trang_thai_lam_viec ────────┤
                             ├── lich_su_he_so_luong
                             └── luong
 
-bo_dem_ma_nhan_vien ── cấp mã tuần tự NV001..NV999
+bo_dem_ma_nhan_vien ── cấp mã tuần tự 00001..65535 (định dạng 5 chữ số; SMALLINT UNSIGNED)
 
 vai_tro ── vai_tro_quyen ── quyen
 ```
@@ -88,10 +96,11 @@ Create/update/delete chạy trong transaction; update/delete khóa dòng bằng
 `lockForUpdate`, chuẩn hóa tên trim và hệ số phụ cấp tối đa hai chữ số thập phân.
 Tên trùng map `CV_NAME_DUPLICATE`, ID thiếu map `CV_NOT_FOUND`, chức vụ đang có
 nhân viên map `CV_IN_USE`; lỗi DB không thuộc allowlist trả thông báo generic.
-Catalog quyền canonical là `301 CV_VIEW`, `302 CV_CREATE`, `303 CV_EDIT`,
-`304 CV_DELETE`, module `ChucVu`. Test SQLite thực kiểm tra shape/count/normalize/
-duplicate/missing/dependency; test MariaDB guarded fresh pair có cùng contract
-và đã pass `7 tests, 231 assertions` trên disposable schema.
+Catalog quyền canonical là `13 ChucVu.Read`, `14 ChucVu.Insert`, `15
+ChucVu.Update`, `16 ChucVu.Delete`, module `ChucVu`. Test SQLite thực kiểm tra
+shape/count/normalize/duplicate/missing/dependency; test MariaDB guarded fresh
+pair có cùng contract và đã pass `12 tests, 422 assertions` trên disposable
+schema.
 
 ### Hợp đồng Phòng ban active (2026-08-24)
 
@@ -104,10 +113,10 @@ Create/update/delete chạy trong transaction; update/delete khóa dòng bằng
 `lockForUpdate`, tên được trim và giới hạn 100 ký tự. Tên trùng map
 `PB_NAME_DUPLICATE`, ID thiếu/không hợp lệ map `PB_NOT_FOUND`/`PB_ID_INVALID`, phòng
 ban đang được dùng map `PB_IN_USE`; lỗi DB ngoài allowlist trả thông báo generic.
-Quyền canonical là `201 PB_VIEW`, `202 PB_CREATE`, `203 PB_EDIT`, `204 PB_DELETE`,
-module `PhongBan`. Test SQLite thực và MariaDB guarded fresh pair kiểm tra shape,
-count, normalize, duplicate, missing, dependency, delete và không còn routine;
-fresh suite hiện pass `7 tests, 231 assertions` trên disposable schema.
+Quyền canonical là `9 PhongBan.Read`, `10 PhongBan.Insert`, `11 PhongBan.Update`,
+`12 PhongBan.Delete`, module `PhongBan`. Test SQLite thực và MariaDB guarded fresh
+pair kiểm tra shape, count, normalize, duplicate, missing, dependency và delete;
+fresh suite hiện pass `12 tests, 422 assertions` trên disposable schema.
 
 ## Historical legacy procedure inventory (not active employee source)
 
@@ -151,7 +160,7 @@ contract của fresh 15-table source:
 | `sp_cham_cong_cap_nhat` | `ma_cc, ma_nv, ngay_lam, so_gio_lam, vao_muon, ve_som` | Có | Write; caller đọc lại table |
 | `sp_luong_tim_kiem_phan_trang` | `ma_nv, ky_luong, ma_pb, ma_cv, page, per_page` | **Thiếu** | Mỗi row phải có `total_count` |
 | `sp_chuc_vu_danh_sach` | Không | Có trong legacy dump | Historical only; active repository dùng Query Builder và không yêu cầu routine |
-| `sp_trang_thai_lam_viec_danh_sach` | Không | Có | Row `ma_tt`, `ky_hieu`, `ten_tt` |
+| `sp_trang_thai_lam_viec_danh_sach` | Không | Có | Row `ma_tt`, `ten_tt`; schema active không có `ky_hieu` |
 | `sp_nghi_phep_duyet_phep` | `ma_np, ma_nv, trang_thai_duyet` | Có | Write, không result set |
 
 `sp_luong_tim_kiem_phan_trang` vẫn là procedure thiếu ngoài phạm vi Phòng ban.
@@ -185,8 +194,9 @@ chưa chạy trong phiên 2026-08-22. Đây là tài liệu lịch sử của co
 repository active hiện dùng Query Builder trực tiếp theo hợp đồng ở trên và fresh
 source không tạo routine.
 
-Fresh seed dùng bốn symbol `PB_VIEW`, `PB_CREATE`, `PB_EDIT`, `PB_DELETE` với
-`ma_quyen` 201–204 và module `PhongBan`. Script routine phòng ban bên trên là
+Fresh seed dùng bốn symbol `PhongBan.Read`, `PhongBan.Insert`,
+`PhongBan.Update`, `PhongBan.Delete` với `ma_quyen` 9–12 và module `PhongBan`.
+Script routine phòng ban bên trên là
 legacy history; không dùng nó để provision catalog cho fresh 15-table source.
 
 ## Setup local an toàn
@@ -234,16 +244,17 @@ Dùng MariaDB/MySQL client, phpMyAdmin, Workbench hoặc chế độ chạy SQL 
 
 Không chạy migrations trước import vì dump sẽ xóa database. Auth hiện dùng custom provider trên `nhan_vien`; migration `users` sẽ tạo kho identity thứ hai không được ứng dụng dùng. Nếu cần bảng session/cache/jobs, phải tách/chọn migration hạ tầng có chủ đích sau import, không chạy toàn bộ theo quán tính.
 
-### 5. Seed local tối thiểu
+### 5. Dựng dữ liệu fresh
 
-Sau khi chạy `database/sql/tao_bang.sql`, môi trường `local` hoặc `testing` có
-thể chạy `php artisan db:seed --class=Database\\Seeders\\LocalDemoSeeder`.
-Seeder của đồng nghiệp tạo dữ liệu tối thiểu theo cách lặp lại an toàn, gồm
-`NV001`, catalog quyền của các module đã tích hợp và bộ đếm nhân viên. Không
-chạy seeder này trên production hoặc thay nó bằng file dữ liệu mẫu legacy.
+Sau khi chạy `database/sql/tao_bang.sql`, chạy tiếp
+`database/sql/du_lieu_mau.sql` rồi `database/sql/quyen_vai_tro.sql` trên cơ sở
+dữ liệu rỗng/disposable đã được phê duyệt. Bộ SQL tạo 19 mã nhân viên
+`00001..00019`, catalog 37 quyền dotted, bộ đếm `NHAN_VIEN = 19` và các thủ
+tục RBAC có mã số tường minh. Không chạy chuỗi này trên production khi chưa có
+backup và kiểm tra khôi phục độc lập.
 
-Lệnh `employee:bootstrap-demo` là công cụ lịch sử có guard; không phải đường
-dẫn setup hiện hành và không được dùng trên database live.
+`Database\\Seeders\\LocalDemoSeeder` đã được thay thế và chỉ còn để đối chiếu
+lịch sử; command bootstrap demo không còn trong runtime hiện hành.
 
 ### 6. Preflight read-only
 
@@ -311,8 +322,8 @@ active bên trên. Lookup legacy của Chấm công vẫn là dependency ngoài 
 
 - View nhân viên hiện dùng danh sách cột tường minh, không chứa `mat_khau`; vẫn không trả nguyên row chưa rà soát ra UI/API.
 - Mật khẩu legacy có thể là hash SHA-256 không salt; contract `sp_nhan_vien_sua` mới không nhận mật khẩu và không reset hash khi cập nhật hồ sơ.
-- `sp_quyen_them` không cung cấp `ma_quyen` dù cột không auto-increment.
-- `sp_vai_tro_xoa` xóa nhân viên thuộc vai trò trước khi xóa vai trò.
+- Các thủ tục RBAC active cấp mã quyền/vai trò tường minh và từ chối xóa vai trò mặc định;
+  các mô tả ngược lại chỉ thuộc script legacy đã được thay thế.
 - `sp_cham_cong_import` luôn `SIGNAL` lỗi; đây là placeholder.
 - `sp_cham_cong_export` dùng `INTO OUTFILE`, phụ thuộc quyền `FILE`, `secure_file_priv` và đường dẫn server.
 - `sp_database_sao_luu`/`sp_database_khoi_phuc` sinh `BACKUP DATABASE`/`RESTORE DATABASE`, là cú pháp SQL Server và không chạy trên MariaDB/MySQL.

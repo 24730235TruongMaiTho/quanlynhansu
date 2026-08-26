@@ -13,6 +13,10 @@ final class NhanVienProcedureExceptionMapper
         'NV_CCCD_DUPLICATE' => ['Số CCCD đã được sử dụng.', 'cccd'],
         'NV_REFERENCE_INVALID' => ['Dữ liệu tham chiếu không hợp lệ.', null],
         'NV_CODE_EXHAUSTED' => ['Đã hết mã nhân viên để cấp.', null],
+        'NV_COUNTER_MISSING' => ['Không thể cấp mã nhân viên. Vui lòng kiểm tra cấu hình dữ liệu.', null],
+        'NV_COUNTER_EXHAUSTED' => ['Đã hết mã nhân viên khả dụng.', null],
+        'NV_COUNTER_DRIFT' => ['Không thể cấp mã nhân viên do bộ đếm bị sai lệch.', null],
+        'NV_STATUS_TRANSITION_FORBIDDEN' => ['Không thể thay đổi trạng thái giữa nhóm đang làm và nhóm đã nghỉ.', 'ma_tt'],
         'NV_STATUS_MISSING' => ['Trạng thái làm việc không hợp lệ.', 'ma_tt'],
         'NV_DEFAULT_ROLE_INVALID' => ['Vai trò mặc định không hợp lệ.', null],
         'NV_AUTH_HASH_STALE' => ['Thông tin đăng nhập không hợp lệ.', null],
@@ -23,7 +27,7 @@ final class NhanVienProcedureExceptionMapper
     {
         $databaseMessage = $exception->getPrevious()?->getMessage() ?? '';
 
-        if (preg_match('/\b(NV_(?:NOT_FOUND|EMAIL_DUPLICATE|CCCD_DUPLICATE|REFERENCE_INVALID|CODE_EXHAUSTED|STATUS_MISSING|DEFAULT_ROLE_INVALID|AUTH_HASH_STALE|PAGINATION_INVALID))\b/', $databaseMessage, $matches)) {
+        if (preg_match('/\b(NV_(?:NOT_FOUND|EMAIL_DUPLICATE|CCCD_DUPLICATE|REFERENCE_INVALID|CODE_EXHAUSTED|COUNTER_MISSING|COUNTER_EXHAUSTED|COUNTER_DRIFT|STATUS_MISSING|STATUS_TRANSITION_FORBIDDEN|DEFAULT_ROLE_INVALID|AUTH_HASH_STALE|PAGINATION_INVALID))\b/', $databaseMessage, $matches)) {
             return $this->domainException($matches[1]);
         }
 

@@ -12,12 +12,12 @@ trait InteractsWithChucVuModule
     protected function actingAsChucVuEmployee(array $symbols): NhanVien
     {
         $employee = NhanVien::fromAuthRow((object) [
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ho_ten' => 'Nguyễn Văn An',
             'email' => 'an.nguyen@company.com',
             'mat_khau' => 'test-hash',
             'ma_vt' => 1,
-            'ma_tt' => 2,
+            'ma_tt' => 1,
         ]);
 
         $this->actingAs($employee);
@@ -30,9 +30,9 @@ trait InteractsWithChucVuModule
                 })
                 ->andReturnUsing(static function (NhanVien $candidate, string $module) use ($employee, $symbols): bool {
                     $viewSymbol = match ($module) {
-                        'ChucVu' => 'CV_VIEW',
-                        'PhongBan' => 'PB_VIEW',
-                        'NhanVien' => 'NV_VIEW',
+                        'ChucVu' => 'ChucVu.Read',
+                        'PhongBan' => 'PhongBan.Read',
+                        'NhanVien' => 'NhanVien.Read',
                         default => null,
                     };
 

@@ -48,7 +48,7 @@ class NhanVienShowTest extends TestCase
     {
         $employee = $this->employee();
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($employee);
+        $repository->shouldReceive('find')->once()->with('00001')->andReturn($employee);
 
         $service = new NhanVienService(
             $this->app->make('db'),
@@ -57,13 +57,13 @@ class NhanVienShowTest extends TestCase
             $this->app->make(Hasher::class),
         );
 
-        $this->assertSame($employee, $service->findOrFail('NV001'));
+        $this->assertSame($employee, $service->findOrFail('00001'));
     }
 
     public function test_service_turns_a_missing_employee_into_a_safe_not_found_response(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV404')->andReturnNull();
+        $repository->shouldReceive('find')->once()->with('99999')->andReturnNull();
 
         $this->expectException(NotFoundHttpException::class);
         $this->expectExceptionMessage('');
@@ -73,13 +73,13 @@ class NhanVienShowTest extends TestCase
             $repository,
             $this->app->make(FilesystemManager::class),
             $this->app->make(Hasher::class),
-        ))->findOrFail('NV404');
+        ))->findOrFail('99999');
     }
 
     public function test_authenticated_show_renders_the_complete_safe_profile_and_whitelisted_back_link(): void
     {
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($this->employee());
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($this->employee());
         });
 
         $backUrl = route('backend.nhanvien.index', [
@@ -91,7 +91,7 @@ class NhanVienShowTest extends TestCase
             'so_dong' => '20',
         ]);
         $editUrl = route('backend.nhanvien.edit', [
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'tu_khoa' => 'Nguyễn An',
             'ma_pb' => '1',
             'ma_cv' => '2',
@@ -100,7 +100,7 @@ class NhanVienShowTest extends TestCase
             'so_dong' => '20',
         ]);
 
-        $response = $this->get('/nhan-vien/NV001?'.http_build_query([
+        $response = $this->get('/nhan-vien/00001?'.http_build_query([
             'tu_khoa' => 'Nguyễn An',
             'ma_pb' => 1,
             'ma_cv' => 2,
@@ -114,9 +114,9 @@ class NhanVienShowTest extends TestCase
         $response
             ->assertOk()
             ->assertViewIs('backend.nhanvien.show')
-            ->assertViewHas('employee', fn (object $employee): bool => $employee->ma_nv === 'NV001')
+            ->assertViewHas('employee', fn (object $employee): bool => $employee->ma_nv === '00001')
             ->assertSee('Nguyễn An')
-            ->assertSee('NV001')
+            ->assertSee('00001')
             ->assertSee('01/01/1990')
             ->assertSee('Nam')
             ->assertSee('0900000001')
@@ -146,19 +146,19 @@ class NhanVienShowTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
     }
 
-    public function test_show_renders_edit_and_delete_actions_for_any_employee_role(): void
+    public function test_show_renders_edit_and_delete_actions_with_update_permission(): void
     {
         $employee = $this->employee();
         $employee->ma_vt = 1;
         $employee->ten_vt = 'Quản trị viên';
 
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
-            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($employee);
         });
 
-        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => 'NV001']);
+        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => '00001']);
 
-        $this->get('/nhan-vien/NV001')
+        $this->get('/nhan-vien/00001')
             ->assertOk()
             ->assertSee('Chỉnh sửa')
             ->assertSee('href="'.e($editUrl).'"', false)
@@ -172,10 +172,10 @@ class NhanVienShowTest extends TestCase
         $employee->anh_dai_dien = null;
 
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
-            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($employee);
         });
 
-        $this->get('/nhan-vien/NV001')
+        $this->get('/nhan-vien/00001')
             ->assertOk()
             ->assertSee('aria-label="Ảnh đại diện của Nguyễn An"', false)
             ->assertSee('>NA<', false)
@@ -197,12 +197,12 @@ class NhanVienShowTest extends TestCase
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employees): void {
             $mock->shouldReceive('findOrFail')
                 ->twice()
-                ->with('NV001')
+                ->with('00001')
                 ->andReturn($employees[0], $employees[1]);
         });
 
         foreach ($employees as $employee) {
-            $this->get('/nhan-vien/NV001')
+            $this->get('/nhan-vien/00001')
                 ->assertOk()
                 ->assertSee('src="'.Storage::disk('public')->url($employee->anh_dai_dien).'"', false)
                 ->assertDontSee('src="https://tracker.example', false)
@@ -216,10 +216,10 @@ class NhanVienShowTest extends TestCase
         $employee->ho_ten = '</title><script>alert(1)</script>';
 
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
-            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($employee);
         });
 
-        $this->get('/nhan-vien/NV001')
+        $this->get('/nhan-vien/00001')
             ->assertOk()
             ->assertSee('&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;', false)
             ->assertDontSee('</title><script>alert(1)</script>', false);
@@ -228,10 +228,10 @@ class NhanVienShowTest extends TestCase
     public function test_missing_employee_returns_404_without_leaking_internal_details(): void
     {
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('findOrFail')->once()->with('NV404')->andThrow(new NotFoundHttpException);
+            $mock->shouldReceive('findOrFail')->once()->with('99999')->andThrow(new NotFoundHttpException);
         });
 
-        $this->get('/nhan-vien/NV404')
+        $this->get('/nhan-vien/99999')
             ->assertNotFound()
             ->assertDontSee('SQLSTATE');
     }
@@ -268,7 +268,7 @@ class NhanVienShowTest extends TestCase
             ]);
         });
 
-        $showUrl = route('backend.nhanvien.show', ['ma_nv' => 'NV001'] + $filters);
+        $showUrl = route('backend.nhanvien.show', ['ma_nv' => '00001'] + $filters);
 
         $this->get('/nhan-vien?'.http_build_query($filters + [
             'redirect' => 'https://evil.example/steal',
@@ -282,7 +282,7 @@ class NhanVienShowTest extends TestCase
     private function employee(): object
     {
         return (object) [
-            'ma_nv' => 'NV001',
+            'ma_nv' => '00001',
             'ho_ten' => 'Nguyễn An',
             'ngay_sinh' => '1990-01-01',
             'gioi_tinh' => 1,

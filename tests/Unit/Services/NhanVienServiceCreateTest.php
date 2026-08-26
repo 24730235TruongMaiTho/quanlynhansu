@@ -56,10 +56,10 @@ class NhanVienServiceCreateTest extends TestCase
             $this->assertArrayNotHasKey('mat_khau', $profile);
 
             return true;
-        })->andReturn('NV001');
+        })->andReturn('00001');
         $repository->shouldReceive('upsertAddress')->once()->withArgs(function (string $maNv, array $address): bool {
             $this->assertSame(1, DB::connection()->transactionLevel());
-            $this->assertSame('NV001', $maNv);
+            $this->assertSame('00001', $maNv);
             $this->assertSame([
                 'dia_chi_cu_the' => '1 Nguyễn Trãi',
                 'phuong_xa' => 'Bến Thành',
@@ -72,7 +72,7 @@ class NhanVienServiceCreateTest extends TestCase
 
         $service = $this->service($repository, $hasher);
 
-        $this->assertSame('NV001', $service->create($this->validPayload([
+        $this->assertSame('00001', $service->create($this->validPayload([
             'ma_vt' => 99,
             'mat_khau' => 'crafted',
             'ngay_nghi_viec' => '2026-08-12',
@@ -83,7 +83,7 @@ class NhanVienServiceCreateTest extends TestCase
     public function test_address_failure_rolls_back_and_never_returns_a_partial_code(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('create')->once()->andReturn('NV001');
+        $repository->shouldReceive('create')->once()->andReturn('00001');
         $repository->shouldReceive('upsertAddress')->once()->andThrow(new NhanVienDomainException(
             'Dữ liệu tham chiếu không hợp lệ.',
             'NV_REFERENCE_INVALID',
@@ -148,7 +148,7 @@ class NhanVienServiceCreateTest extends TestCase
 
                 return is_string($path);
             },
-        )->andReturn('NV001');
+        )->andReturn('00001');
         $repository->shouldReceive('upsertAddress')->once();
         $hasher = Mockery::mock(Hasher::class);
         $hasher->shouldReceive('make')->once()->andReturn('laravel-hash');
@@ -156,7 +156,7 @@ class NhanVienServiceCreateTest extends TestCase
         $connection->beginTransaction();
 
         try {
-            $this->assertSame('NV001', $this->service($repository, $hasher)->create($this->validPayload([
+            $this->assertSame('00001', $this->service($repository, $hasher)->create($this->validPayload([
                 'anh_dai_dien' => $this->fakePng(),
             ])));
             $this->assertNotNull($avatarPath);

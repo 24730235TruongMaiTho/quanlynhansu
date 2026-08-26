@@ -2,7 +2,10 @@
 @section('title', 'Quản lý chấm công')
 
 @section('content')
-    <main class="container-fluid container-xxl py-4 attendance-page" aria-labelledby="page-title">
+    <main class="container-fluid container-xxl py-4 attendance-page" aria-labelledby="page-title"
+        data-cham-cong-can-read="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChamCongPermission::Xem->value) ? '1' : '0' }}"
+        data-cham-cong-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChamCongPermission::Tao->value) ? '1' : '0' }}"
+        data-cham-cong-can-update="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChamCongPermission::Sua->value) ? '1' : '0' }}">
         <section class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-4">
             <div>
                 <div class="d-flex align-items-center gap-2 mb-1 small text-secondary">
@@ -14,8 +17,10 @@
             </div>
 
             <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-outline-secondary btn-sm" id="import-btn" type="button">Nhập bảng chấm công</button>
-                <button class="btn btn-outline-secondary btn-sm" id="export-btn" type="button">Xuất bảng chấm công</button>
+                <button class="btn btn-outline-secondary btn-sm" id="import-btn" type="button"
+                    {{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChamCongPermission::Tao->value) ? '' : 'disabled' }}>Nhập bảng chấm công</button>
+                <button class="btn btn-outline-secondary btn-sm" id="export-btn" type="button"
+                    {{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChamCongPermission::Xem->value) ? '' : 'disabled' }}>Xuất bảng chấm công</button>
                 <button class="btn btn-success btn-sm" id="update-btn" type="button" disabled>Cập nhật chấm công</button>
             </div>
         </section>

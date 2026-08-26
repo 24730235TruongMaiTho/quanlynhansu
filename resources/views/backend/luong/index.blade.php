@@ -2,7 +2,10 @@
 @section('title', 'Quản lý lương')
 
 @section('content')
-    <main class="container-fluid container-xxl py-4 salary-page hr-page" aria-labelledby="page-title">
+    <main class="container-fluid container-xxl py-4 salary-page hr-page" aria-labelledby="page-title"
+        data-luong-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\LuongPermission::Tao->value) ? '1' : '0' }}"
+        data-luong-can-update="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\LuongPermission::Sua->value) ? '1' : '0' }}"
+        data-luong-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\LuongPermission::Xoa->value) ? '1' : '0' }}">
         {{-- Page heading --}}
         <section class="page-heading d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-4">
             <div>
@@ -46,6 +49,7 @@
                     class="btn btn-success btn-sm"
                     id="create-salary-btn"
                     type="button"
+                    {{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\LuongPermission::Tao->value) ? '' : 'disabled' }}
                 >
                     + Thêm thông tin lương
                 </button>
@@ -235,6 +239,7 @@
                         class="btn btn-outline-secondary btn-sm"
                         id="reconcile-btn"
                         type="button"
+                        {{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\LuongPermission::Sua->value) ? '' : 'disabled' }}
                     >
                         Đối soát
                     </button>
@@ -351,6 +356,13 @@
                     >
                         + Thêm hệ số
                     </button>
+                    <button
+                        class="d-none"
+                        id="delete-coefficient-btn"
+                        type="button"
+                        hidden
+                        aria-hidden="true"
+                    ></button>
                 </div>
             </div>
 
@@ -502,7 +514,7 @@
                         id="salary-employee-code"
                         type="text"
                         maxlength="5"
-                        placeholder="Ví dụ: NV001"
+                        placeholder="Ví dụ: 00001"
                         autocomplete="off"
                         required
                     >
