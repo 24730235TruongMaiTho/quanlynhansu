@@ -1,7 +1,17 @@
 # Kiến trúc hiện tại
 
-Tài liệu này mô tả code dùng chung và module Nhân viên tại snapshot 2026-08-24.
+Tài liệu này mô tả code dùng chung và module Nhân viên tại snapshot 2026-08-26.
 Đây là kiến trúc **đang tồn tại**, không phải cam kết production cho mọi module.
+
+> **Runtime hiện hành:** Ba module Nhân viên, Phòng ban và Chức vụ là CRUD công
+> khai. Root `/` chuyển tới danh sách Nhân viên; không còn route/UI đăng nhập,
+> đăng xuất hoặc reset mật khẩu, cũng không còn auth/RBAC/Gate, department scope,
+> target-role guard hay rollout flag do chúng ta xây dựng. Các đoạn có nhãn
+> historical chỉ giữ để truy nguyên thay đổi trước đó.
+
+> **Evidence current 2026-08-26:** Full Laravel `208 tests, 2573 assertions`,
+> frontend `17/17`, Vite `18 modules`, route inventory `52`, MariaDB disposable
+> `11 tests, 341 assertions`; browser chưa kiểm chứng.
 
 ## Sơ đồ request
 
@@ -21,7 +31,7 @@ flowchart LR
 
 Các đường truy cập database đang cùng tồn tại theo phạm vi module:
 
-- Employee/auth/RBAC: `Controller → Service → Repository → Query Builder/table`.
+- Employee CRUD: `Controller → Service → Repository → Query Builder/table`.
 - Các module legacy khác: `Controller → Service/Repository → procedure/query`.
 
 Không nên coi sơ đồ lớp là chuẩn hoàn chỉnh: một số module bỏ qua service/repository, và một số model chưa map đúng schema.
@@ -30,14 +40,15 @@ Không nên coi sơ đồ lớp là chuẩn hoàn chỉnh: một số module b�
 
 ### Web
 
-`routes/web.php` đăng ký 22 web route tổng cộng, gồm login/logout và các route dưới `/admin`:
+`routes/web.php` đăng ký các web route hiện hành, gồm các route CRUD và route dưới `/admin`:
 
 - Dashboard.
 - Phòng ban.
 - Nhân viên.
 - Trang lương, chấm công, nghỉ phép.
 
-Toàn bộ group `/admin` yêu cầu middleware `auth`. Route nhân viên còn đi qua rollout middleware và Gate theo từng permission; các module khác mới chỉ có auth chung, chưa có permission contract riêng.
+Các route CRUD ba module không yêu cầu đăng nhập hoặc permission middleware. Một
+số route module khác vẫn là prototype và có thể còn lệch contract riêng.
 
 Named-route contract chưa đồng nhất: web có `backend.backend.*`, resource API không có `api.v1` prefix và một số route nghỉ phép chưa được đặt tên.
 
@@ -72,8 +83,8 @@ app/
 - `ChamCongController` gọi Query Builder/stored procedure trực tiếp và chứa logic pagination/response.
 - `LuongHeSoLuongController`, `LuongPhongBanController`, `LuongChucVuController` là endpoint phụ trợ.
 - `PhongBanController` gọi procedure trực tiếp nhưng hợp đồng hiện bị lệch.
-- `NhanVienController` có list/create/store/show/edit/update/lifecycle/reset; dữ
-  liệu employee/auth/RBAC đi qua repository Query Builder trực tiếp.
+- `NhanVienController` có list/create/store/show/edit/update/lifecycle; dữ liệu
+  employee đi qua repository Query Builder trực tiếp.
 
 ### Request validation
 
@@ -117,7 +128,7 @@ Frontend layout cũ lại yêu cầu `resources/css/app.css` và `resources/js/a
 
 ## Database
 
-Nguồn fresh active cho module employee/auth/RBAC là `database/tao_bang.sql` rồi
+Nguồn fresh active cho dữ liệu module employee là `database/tao_bang.sql` rồi
 `database/du_lieu_mau.sql`:
 
 - đúng 15 bảng;
@@ -132,9 +143,9 @@ Ba migrations Laravel chỉ tạo hạ tầng users/session/cache/jobs và chưa
 
 Baseline hiện dùng `APP_TIMEZONE=Asia/Ho_Chi_Minh` và `DB_TIMEZONE=+07:00`. Môi trường triển khai phải giữ hai giá trị đồng bộ vì SQL vẫn dùng `CURDATE()` và PHP dùng `now()`.
 
-## Auth và ranh giới bảo mật
+## Auth và ranh giới bảo mật (historical)
 
-Auth/RBAC đã được tích hợp hẹp cho module nhân viên:
+Auth/RBAC từng được tích hợp hẹp cho module nhân viên trong các Task 13–20 lịch sử:
 
 - route `dang-nhap`/`dang-xuat`, custom `nhan-vien` provider và `App\Models\NhanVien` làm identity;
 - hash mới/rehash dùng Laravel hasher, lookup/hash CAS chỉ ở server boundary, session từ chối `DA_NGHI`;
@@ -150,7 +161,11 @@ Auth/RBAC đã được tích hợp hẹp cho module nhân viên:
   phòng ban giữa pre-check và mutation vẫn là residual cần xử lý khi rollout.
 - hai lookup nhân viên dùng chung ở chấm công/nghỉ phép yêu cầu web session, rollout và quyền XEM.
 
-Đây là verified hẹp trên automated/disposable/browser acceptance, chưa phải security audit production cho toàn ứng dụng. Các module ngoài nhân viên vẫn cần permission/audit riêng.
+Các lớp historical nêu trên đã được tháo khỏi runtime của nhánh hiện hành; route
+CRUD không gọi auth provider, Gate hoặc department scope. Đây là verified hẹp
+trên automated/disposable, chưa phải security audit production cho toàn ứng dụng.
+Nếu cần auth/RBAC sau này, phải có quyết định kiến trúc riêng và ưu tiên code
+của module đồng nghiệp khi hợp nhất.
 
 ## Kiến trúc mục tiêu chưa tích hợp
 

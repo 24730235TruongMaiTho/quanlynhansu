@@ -5,19 +5,15 @@ namespace Tests\Feature\Backend\NhanVien;
 use App\Contracts\NhanVienServiceContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Controllers\Backend\NhanVienController;
-use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Mockery\MockInterface;
 use Tests\Support\CreatesEmployeeFeatureSchema;
-use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
 
 class NhanVienStoreTest extends TestCase
 {
     use CreatesEmployeeFeatureSchema;
-    use InteractsWithEmployeeModule;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -30,20 +26,8 @@ class NhanVienStoreTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_store_is_fail_closed_before_validation_or_service(): void
+    public function test_public_store_redirects_to_canonical_show_with_safe_exact_handoff_flash(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao, \App\Enums\NhanVienPermission::Xem]);
-        config()->set('nhanvien.enabled', false);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('create');
-        });
-
-        $this->post('/admin/nhan-vien', [])->assertNotFound();
-    }
-
-    public function test_enabled_store_redirects_to_canonical_show_with_safe_exact_handoff_flash(): void
-    {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('create')->once()->withArgs(function (array $validated): bool {
                 $this->assertArrayNotHasKey('ma_vt', $validated);
@@ -59,10 +43,6 @@ class NhanVienStoreTest extends TestCase
             ->assertRedirect('/admin/nhan-vien/NV001')
             ->assertSessionHas('success', 'Đã tạo nhân viên; có thể bổ sung hợp đồng sau.')
             ->assertSessionHas('created_employee_code', 'NV001')
-            ->assertSessionHas(
-                'password_convention',
-                'Tài khoản dùng quy ước mật khẩu demo nhom3@{năm tạo}.',
-            )
             ->assertSessionMissing('mat_khau')
             ->assertSessionMissing('password')
             ->assertSessionMissing('password_hash');
@@ -73,7 +53,6 @@ class NhanVienStoreTest extends TestCase
 
     public function test_create_flash_is_rendered_accessibly_after_following_the_redirect(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao, \App\Enums\NhanVienPermission::Xem]);
         $employee = (object) [
             'ma_nv' => 'NV001', 'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '1990-01-01',
             'gioi_tinh' => 1, 'sdt' => '0901234567', 'email' => 'an@example.test',
@@ -99,7 +78,6 @@ class NhanVienStoreTest extends TestCase
 
     public function test_domain_field_error_returns_old_safe_input_without_internal_details(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('create')->once()->andThrow(new NhanVienDomainException(
                 'Email đã được sử dụng.',
@@ -117,16 +95,13 @@ class NhanVienStoreTest extends TestCase
             ->assertSessionMissing('SQLSTATE');
     }
 
-    public function test_store_route_is_canonical_guarded_and_does_not_accept_client_role(): void
+    public function test_store_route_is_canonical_public_and_does_not_accept_client_role(): void
     {
         $route = Route::getRoutes()->getByName('backend.nhanvien.store');
         $this->assertInstanceOf(RoutingRoute::class, $route);
         $this->assertSame('admin/nhan-vien', $route->uri());
         $this->assertSame(['POST'], $route->methods());
         $this->assertSame(NhanVienController::class.'@store', $route->getActionName());
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $route->gatherMiddleware());
-
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('create');
         });

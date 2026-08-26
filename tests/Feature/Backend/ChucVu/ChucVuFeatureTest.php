@@ -10,13 +10,10 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\HtmlString;
 use Mockery\MockInterface;
-use Tests\Support\InteractsWithChucVuModule;
 use Tests\TestCase;
 
 class ChucVuFeatureTest extends TestCase
 {
-    use InteractsWithChucVuModule;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -59,44 +56,8 @@ class ChucVuFeatureTest extends TestCase
         $this->assertSame('[1-9][0-9]*', $destroy->wheres['ma_cv']);
     }
 
-    public function test_guest_is_redirected_from_every_position_entry_point(): void
+    public function test_public_list_renders_rows_and_mutation_actions(): void
     {
-        foreach ([
-            ['GET', '/admin/chuc-vu'],
-            ['GET', '/admin/chuc-vu/create'],
-            ['GET', '/admin/chuc-vu/1/edit'],
-            ['POST', '/admin/chuc-vu'],
-            ['PUT', '/admin/chuc-vu/1'],
-            ['PATCH', '/admin/chuc-vu/1'],
-            ['DELETE', '/admin/chuc-vu/1'],
-        ] as [$method, $uri]) {
-            $this->call($method, $uri)->assertRedirect(route('login'));
-        }
-    }
-
-    public function test_missing_permission_fails_closed_before_service_dispatch(): void
-    {
-        $this->actingAsChucVuEmployee([]);
-        $this->mock(ChucVuServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('all');
-            $mock->shouldNotReceive('findOrFail');
-            $mock->shouldNotReceive('create');
-            $mock->shouldNotReceive('update');
-            $mock->shouldNotReceive('delete');
-        });
-
-        foreach ([
-            ['GET', '/admin/chuc-vu'], ['GET', '/admin/chuc-vu/create'],
-            ['GET', '/admin/chuc-vu/1/edit'], ['POST', '/admin/chuc-vu'],
-            ['PUT', '/admin/chuc-vu/1'], ['DELETE', '/admin/chuc-vu/1'],
-        ] as [$method, $uri]) {
-            $this->call($method, $uri)->assertForbidden();
-        }
-    }
-
-    public function test_view_permission_renders_rows_and_hides_mutation_actions(): void
-    {
-        $this->actingAsChucVuEmployee(['CV_VIEW']);
         $rows = [
             (object) ['ma_cv' => 1, 'ten_cv' => 'Giám đốc', 'he_so_phu_cap' => '2.00', 'so_nhan_vien' => 2],
             (object) ['ma_cv' => 2, 'ten_cv' => 'Nhân viên', 'he_so_phu_cap' => '1.00', 'so_nhan_vien' => 0],
@@ -110,14 +71,13 @@ class ChucVuFeatureTest extends TestCase
             ->assertSee('Giám đốc')
             ->assertSee('2.00')
             ->assertSee('Chưa có nhân viên')
-            ->assertDontSee(route('backend.chucvu.create'))
-            ->assertDontSee('Chỉnh sửa')
-            ->assertDontSee('Xóa');
+            ->assertSee(route('backend.chucvu.create'))
+            ->assertSee('Chỉnh sửa')
+            ->assertSee('Xóa');
     }
 
-    public function test_all_permissions_render_actions_and_disable_delete_for_dependencies(): void
+    public function test_public_list_disables_delete_for_dependencies(): void
     {
-        $this->actingAsChucVuEmployee(['CV_VIEW', 'CV_CREATE', 'CV_EDIT', 'CV_DELETE']);
         $rows = [(object) ['ma_cv' => 1, 'ten_cv' => 'Giám đốc', 'he_so_phu_cap' => '2.00', 'so_nhan_vien' => 1]];
         $this->mock(ChucVuServiceContract::class, function (MockInterface $mock) use ($rows): void {
             $mock->shouldReceive('all')->once()->andReturn($rows);
@@ -132,7 +92,6 @@ class ChucVuFeatureTest extends TestCase
 
     public function test_store_update_and_delete_normalize_input_and_flash_success(): void
     {
-        $this->actingAsChucVuEmployee(['CV_VIEW', 'CV_CREATE', 'CV_EDIT', 'CV_DELETE']);
         $position = (object) ['ma_cv' => 1, 'ten_cv' => 'Giám đốc', 'he_so_phu_cap' => '2.00', 'so_nhan_vien' => 0];
         $this->mock(ChucVuServiceContract::class, function (MockInterface $mock) use ($position): void {
             $mock->shouldReceive('findOrFail')->once()->with(1)->andReturn($position);
@@ -155,7 +114,6 @@ class ChucVuFeatureTest extends TestCase
 
     public function test_validation_rejects_blank_overlong_and_invalid_decimal_before_service(): void
     {
-        $this->actingAsChucVuEmployee(['CV_CREATE']);
         $this->mock(ChucVuServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('create');
         });
@@ -173,7 +131,6 @@ class ChucVuFeatureTest extends TestCase
 
     public function test_not_found_and_generic_errors_are_safe(): void
     {
-        $this->actingAsChucVuEmployee(['CV_VIEW', 'CV_EDIT']);
         $this->mock(ChucVuServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('findOrFail')->once()->with(999)->andThrow(new \App\Exceptions\ChucVuDomainException('Không tìm thấy chức vụ.', 'CV_NOT_FOUND'));
             $mock->shouldReceive('update')->once()->andThrow(new \RuntimeException('SQLSTATE private details'));

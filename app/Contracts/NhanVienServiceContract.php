@@ -19,8 +19,6 @@ interface NhanVienServiceContract
 
     public function removeOrTerminate(string $maNv): NhanVienRemovalAction;
 
-    public function resetPassword(string $maNv): void;
-
     /**
      * @return array{phong_ban: array, chuc_vu: array, trang_thai: array}
      */

@@ -8,15 +8,11 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Mockery\MockInterface;
-use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
-use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
 
 class ChamCongEmployeeLookupSecurityTest extends TestCase
 {
-    use InteractsWithEmployeeModule;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,45 +23,8 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         DB::table('phong_ban')->insert(['ma_pb' => 2]);
     }
 
-    public function test_guest_cannot_read_or_update_attendance_api(): void
+    public function test_public_actor_can_read_attendance_department_lookup(): void
     {
-        $this->getJson('/api/v1/cham-cong')->assertUnauthorized();
-        $this->putJson('/api/v1/cham-cong/1', [
-            'so_gio_lam' => 8,
-            'vao_muon' => false,
-            've_som' => false,
-        ])->assertUnauthorized();
-    }
-
-    public function test_guest_cannot_read_attendance_department_lookup(): void
-    {
-        $this->getJson('/api/v1/cham-cong/phong-ban')->assertUnauthorized();
-    }
-
-    public function test_zero_permission_actor_cannot_read_or_update_attendance_api(): void
-    {
-        $this->actingAsEmployeeWithPermissions([]);
-
-        $this->getJson('/api/v1/cham-cong')->assertForbidden();
-        $this->putJson('/api/v1/cham-cong/1', [
-            'so_gio_lam' => 8,
-            'vao_muon' => false,
-            've_som' => false,
-        ])->assertForbidden();
-    }
-
-    public function test_zero_permission_actor_cannot_read_attendance_department_lookup(): void
-    {
-        $this->actingAsEmployeeWithPermissions([]);
-
-        $this->getJson('/api/v1/cham-cong/phong-ban')->assertForbidden();
-    }
-
-    public function test_xem_actor_can_read_attendance_department_lookup(): void
-    {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-        ]);
         DB::shouldReceive('select')
             ->once()
             ->with('CALL sp_phong_ban_danh_sach()')
@@ -79,47 +38,8 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             ]);
     }
 
-    public function test_rollout_disabled_hides_attendance_department_lookup(): void
+    public function test_public_lookup_maps_filters_and_preserves_attendance_aggregates(): void
     {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-        ]);
-        config()->set('nhanvien.enabled', false);
-
-        $this->getJson('/api/v1/cham-cong/phong-ban')->assertNotFound();
-    }
-
-    public function test_xem_only_actor_cannot_update_attendance_api(): void
-    {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
-
-        $this->putJson('/api/v1/cham-cong/1', [
-            'so_gio_lam' => 8,
-            'vao_muon' => false,
-            've_som' => false,
-        ])->assertForbidden();
-    }
-
-    public function test_rollout_disabled_precedes_attendance_permissions(): void
-    {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-            \App\Enums\NhanVienPermission::Sua,
-        ]);
-        config()->set('nhanvien.enabled', false);
-
-        $this->getJson('/api/v1/cham-cong')->assertNotFound();
-        $this->putJson('/api/v1/cham-cong/1', [
-            'so_gio_lam' => 8,
-            'vao_muon' => false,
-            've_som' => false,
-        ])->assertNotFound();
-    }
-
-    public function test_enabled_lookup_maps_filters_and_preserves_attendance_aggregates(): void
-    {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
-
         $paginator = new LengthAwarePaginator(
             collect([(object) [
                 'ma_nv' => 'NV001',
@@ -163,85 +83,8 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             ->assertJsonPath('data.data.0.so_ngay_cham_cong', 20.5);
     }
 
-    public function test_department_manager_attendance_lookup_forces_forged_and_omitted_department_filters(): void
-    {
-        $actor = $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-        ]);
-        $actor->forceFill([
-            'ma_vt' => \App\Enums\NhanVienRole::DepartmentManager->value,
-            'ma_pb' => 2,
-        ]);
-        DB::table('phong_ban')->insert(['ma_pb' => 3]);
-
-        $paginator = new LengthAwarePaginator([], 0, 15, 1);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
-            $mock->shouldReceive('paginateForAttendance')->twice()
-                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 2)
-                ->andReturn($paginator);
-        });
-
-        $this->getJson('/api/v1/cham-cong/nhan-vien?ma_pb=3&thang=8&nam=2026')
-            ->assertOk();
-        $this->getJson('/api/v1/cham-cong/nhan-vien?thang=8&nam=2026')
-            ->assertOk();
-    }
-
-    public function test_department_manager_attendance_lookup_with_missing_department_fails_closed(): void
-    {
-        $actor = $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-        ]);
-        $actor->forceFill([
-            'ma_vt' => \App\Enums\NhanVienRole::DepartmentManager->value,
-            'ma_pb' => null,
-        ]);
-        $paginator = new LengthAwarePaginator([], 0, 15, 1);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
-            $mock->shouldReceive('paginateForAttendance')->once()
-                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 0)
-                ->andReturn($paginator);
-        });
-
-        $this->getJson('/api/v1/cham-cong/nhan-vien?thang=8&nam=2026')
-            ->assertOk();
-    }
-
-    #[DataProvider('unscopedRoles')]
-    public function test_unscoped_roles_keep_requested_attendance_department_filter(int $role): void
-    {
-        $actor = $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-        ]);
-        $actor->forceFill([
-            'ma_vt' => $role,
-            'ma_pb' => 2,
-        ]);
-        DB::table('phong_ban')->insert(['ma_pb' => 3]);
-        $paginator = new LengthAwarePaginator([], 0, 15, 1);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($paginator): void {
-            $mock->shouldReceive('paginateForAttendance')->once()
-                ->withArgs(static fn (array $filters): bool => $filters['ma_pb'] === 3)
-                ->andReturn($paginator);
-        });
-
-        $this->getJson('/api/v1/cham-cong/nhan-vien?ma_pb=3&thang=8&nam=2026')
-            ->assertOk();
-    }
-
-    public static function unscopedRoles(): array
-    {
-        return [
-            'super admin' => [1],
-            'human resources' => [2],
-            'cbl admin' => [3],
-            'employee' => [5],
-        ];
-    }
-
     public function test_any_lookup_failure_returns_only_the_stable_public_error(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginateForAttendance')->once()->andThrow(
                 new RuntimeException('SQLSTATE[42000] CALL sp_internal mat_khau'),
@@ -267,7 +110,6 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_exists_validation_database_failure_returns_only_the_stable_public_error(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         Schema::drop('phong_ban');
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginateForAttendance');
@@ -292,7 +134,6 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_ordinary_invalid_filter_still_returns_laravel_validation_errors(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginateForAttendance');
         });
@@ -304,7 +145,6 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_uses_query_builder_pagination_and_summary(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
 
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
@@ -361,7 +201,6 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_query_failure_returns_stable_error_without_sql(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
 
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
@@ -387,7 +226,6 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
     public function test_attendance_detail_invalid_filter_keeps_laravel_validation_contract(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
 
         Schema::create('nhan_vien', function (Blueprint $table): void {
             $table->string('ma_nv', 5)->primary();
@@ -399,9 +237,8 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             ->assertJsonValidationErrors(['thang']);
     }
 
-    public function test_authorized_update_reaches_controller_and_hides_database_error(): void
+    public function test_public_update_reaches_controller_and_hides_database_error(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
 
         Schema::create('cham_cong', function (Blueprint $table): void {
             $table->increments('ma_cc');

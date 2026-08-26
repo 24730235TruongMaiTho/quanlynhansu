@@ -4,14 +4,13 @@ namespace Tests\Unit\Models;
 
 use App\Enums\NhanVienRemovalAction;
 use App\Models\NhanVien;
-use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Tests\TestCase;
 
 class NhanVienTest extends TestCase
 {
-    public function test_employee_auth_mapping_uses_explicit_id_columns(): void
+    public function test_employee_model_uses_explicit_table_and_key_columns(): void
     {
-        $employee = NhanVien::fromAuthRow((object) [
+        $employee = (new NhanVien())->forceFill([
             'ma_nv' => 'NV001',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
@@ -19,8 +18,9 @@ class NhanVienTest extends TestCase
             'ma_vt' => 1,
             'ma_tt' => 2,
         ]);
+        $employee->exists = true;
 
-        $this->assertContains(AuthenticatableContract::class, class_implements(NhanVien::class));
+        $this->assertNotContains(\Illuminate\Contracts\Auth\Authenticatable::class, class_implements(NhanVien::class));
         $this->assertSame('nhan_vien', $employee->getTable());
         $this->assertSame('ma_nv', $employee->getKeyName());
         $this->assertSame('NV001', $employee->getKey());
@@ -29,20 +29,15 @@ class NhanVienTest extends TestCase
         $this->assertSame('an@example.test', $employee->email);
         $this->assertSame(1, $employee->ma_vt);
         $this->assertSame(2, $employee->ma_tt);
-        $this->assertSame('mat_khau', $employee->getAuthPasswordName());
-        $this->assertSame('hash', $employee->getAuthPassword());
         $this->assertContains('mat_khau', $employee->getHidden());
     }
 
-    public function test_employee_does_not_support_remember_tokens(): void
+    public function test_employee_model_does_not_expose_authentication_methods(): void
     {
         $employee = new NhanVien();
 
-        $employee->setRememberToken('must-not-be-persisted');
-
-        $this->assertNull($employee->getRememberTokenName());
-        $this->assertNull($employee->getRememberToken());
-        $this->assertArrayNotHasKey('remember_token', $employee->getAttributes());
+        $this->assertFalse(method_exists($employee, 'getAuthPassword'));
+        $this->assertFalse(method_exists($employee, 'getRememberToken'));
     }
 
     public function test_removal_actions_match_the_repository_contract(): void

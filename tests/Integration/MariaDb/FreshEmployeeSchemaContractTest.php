@@ -171,10 +171,6 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             static fn (object $row): bool => (int) $row->ma_pb === 4,
         ));
 
-        $account = $repository->findAccountByIdentifier('NV004');
-        self::assertNotNull($account);
-        self::assertSame(3, (int) $account->ma_pb);
-        self::assertArrayNotHasKey('mat_khau', $account->toArray());
     }
 
     public function test_repository_updates_privileged_profile_address_and_avatar_without_system_field_mutation(): void

@@ -1,6 +1,16 @@
 # Handoff tiếp tục đồ án `quanlynhansu`
 
-> Snapshot: 2026-08-24 (Asia/Saigon)
+> **Cập nhật hiện hành 2026-08-26:** Nhánh này đang rút gọn ba module thành
+> CRUD công khai. `/` chuyển tới `backend.nhanvien.index`; không còn route hoặc
+> UI đăng nhập/đăng xuất/reset mật khẩu, auth/RBAC/Gate, department scope,
+> target-role guard hay rollout flag do nhánh này xây dựng. Các đoạn bên dưới
+> mang nhãn historical chỉ để truy nguyên và không mô tả runtime hiện tại.
+
+> **Evidence current:** Full Laravel `208 tests, 2573 assertions`; frontend
+> `17/17`; Vite `18 modules`; MariaDB disposable `11 tests, 341 assertions`;
+> route inventory `52`. Browser smoke chưa kiểm chứng.
+
+> Snapshot: 2026-08-26 (Asia/Saigon)
 >
 > Delivery target: `main`; lát cắt Chức vụ và refactor Phòng ban được chuẩn bị
 > từ nền `4357647`. Luôn revalidate HEAD/upstream sau khi tích hợp và trước phiên mới.
@@ -17,7 +27,7 @@
 > routine/view/trigger. `quan_ly_nhan_su.session.sql` and
 > `database/sql/employee/2026_08_12_001`–`006` are retained as marked legacy
 > history only. The guarded fresh MariaDB harness replays this source pair with
-> no routine/view/trigger and employee status-race/department-scope checks passed `11 tests, 344
+> no routine/view/trigger and employee status-race checks passed `11 tests, 341
 > assertions` on a disposable schema in this turn and covers direct Chức vụ/Phòng
 > ban CRUD/count behavior. No
 > live DB was mutated;
@@ -43,10 +53,10 @@
 
 Code, route, test và database đang được kiểm tra có ưu tiên cao hơn snapshot này.
 
-## Phòng ban v1 — active direct repository (2026-08-24)
+## Phòng ban v1 — historical direct repository (2026-08-24)
 
-Branch `feature/quan-ly-chuc-vu` hiện có server-rendered CRUD Phòng
-ban dưới auth với route names `backend.phongban.index/create/store/edit/update/destroy`,
+Branch lịch sử có server-rendered CRUD Phòng ban với route names
+`backend.phongban.index/create/store/edit/update/destroy`,
 param dương `ma_pb`, bốn Gate canonical `PB_*`, model mapping chuẩn,
 repository/service dùng Query Builder trực tiếp, form validation và UI runtime
 `backend.layouts.app`. Danh sách trả explicit `ma_pb`, `ten_pb`,
@@ -60,7 +70,7 @@ Evidence đã chạy: HTTP/controller/view và real SQLite repository/mapper pas
 missing/in-use/delete và postcheck 0 routine. Không claim live mutation,
 production/MySQL 8 hoặc browser acceptance.
 
-## Feature branch evidence — Chức vụ v1 (2026-08-24)
+## Feature branch evidence — Chức vụ v1 (historical, 2026-08-24)
 
 Trên `feature/quan-ly-chuc-vu`, module Chức vụ có server-rendered CRUD dưới
 `/admin` với route names `backend.chucvu.index/create/store/edit/update/destroy`,
@@ -80,9 +90,10 @@ Guarded MariaDB fresh suite passed `7 tests, 231 assertions` on a random
 disposable schema and cleaned it up; no live DB mutation. Browser acceptance and
 production rollout remain unverified.
 
-## Trạng thái module Nhân viên
+## Trạng thái module Nhân viên (historical Tasks 13–20)
 
-Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên feature branch**; code hiện đã tích hợp vào `main`, chưa phải production-ready:
+Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên feature branch**;
+những capability auth/RBAC bên dưới đã được loại khỏi runtime hiện hành:
 
 - danh sách có filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar, xóa cứng hoặc chuyển nghỉ việc theo dependency, và reset mật khẩu;
 - custom employee auth provider, login/logout, session từ chối `ma_tt = 4`;
@@ -114,19 +125,19 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
 - Full guarded MariaDB wrapper historical: `165 tests, 3367 assertions, 1 platform skip, exit 0`; rerun sau tích hợp timeout khoảng 184 giây, process/schema/state/marker cleanup sạch, không claim current pass.
 - Current full Laravel trên branch này: `317 pass, 2384 assertions`; schema contract static:
   `4 pass, 93 assertions`; employee/auth and attendance/leave compatibility
-  suites pass. Fresh MariaDB contract hiện pass `11 tests, 344 assertions` trên
+  suites pass. Fresh MariaDB contract historical hiện pass `11 tests, 341 assertions` trên
   disposable schema, gồm employee profile-edit/status-race, CRUD Chức vụ/Phòng ban, migration/cleanup và parallel counter;
   không claim live production hoặc MySQL 8.
 - Historical frontend snapshot: `15/15`; Vite 7.3.6 build pass với 16 modules.
 - Historical pre-refactor full snapshot: `237 pass, 1820 assertions`; current
   full result is recorded above and must be used for this handoff.
-- Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `58` và `git diff --check` pass trong các gate tương ứng.
+- Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `52` và `git diff --check` pass trong các gate tương ứng.
 - Task 19 process-identity/atomic-state regressions đều nằm trong full wrapper sạch; skip duy nhất là Windows từ chối tạo disposable state symlink.
 - Independent review của checkpoint trước đã được supersede bởi vòng authorization/guard này; kiểm tra mới phải dựa trên HEAD hiện tại.
 
 `phpunit.xml` dùng SQLite in-memory; `phpunit.mariadb.xml` chạy fresh 15-table
 contract, migration/cleanup, direct counter worker và Chức vụ/Phòng ban
-repository; pass `11 tests, 344 assertions` trên disposable schema. Không claim live production
+  repository; pass `11 tests, 341 assertions` trên disposable schema. Không claim live production
 hoặc MySQL 8; browser avatar vẫn riêng.
 
 ## Browser acceptance Task 20

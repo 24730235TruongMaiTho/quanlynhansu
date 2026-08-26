@@ -3,7 +3,6 @@
 namespace App\Contracts;
 
 use App\Enums\NhanVienRemovalAction;
-use App\Models\NhanVien;
 use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -27,15 +26,6 @@ interface NhanVienRepositoryContract
      * @return array{action: NhanVienRemovalAction, avatar_path: ?string}
      */
     public function removeOrTerminate(string $maNv, CarbonImmutable $date): array;
-
-    public function resetPasswordHash(string $maNv, string $hash): void;
-
-    public function rehashAuthenticatedPassword(string $maNv, string $currentHash, string $newHash): void;
-
-    public function findAccountByIdentifier(string $identifier): ?NhanVien;
-
-    /** @internal Bootstrap-only role assignment; never expose through web flows. */
-    public function assignRoleForBootstrap(string $maNv, int $maVt): void;
 
     /**
      * @return array{phong_ban: array, chuc_vu: array, trang_thai: array}

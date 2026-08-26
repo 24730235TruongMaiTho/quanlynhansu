@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\NhanVien;
-
 return [
     'defaults' => [
         'guard' => env('AUTH_GUARD', 'web'),
@@ -16,8 +14,8 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => 'nhan-vien',
-            'model' => NhanVien::class,
+            'driver' => 'database',
+            'table' => 'users',
         ],
     ],
 

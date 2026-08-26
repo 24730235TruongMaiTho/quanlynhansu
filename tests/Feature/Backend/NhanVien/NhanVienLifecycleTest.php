@@ -4,19 +4,15 @@ namespace Tests\Feature\Backend\NhanVien;
 
 use App\Contracts\NhanVienServiceContract;
 use App\Enums\NhanVienRemovalAction;
-use App\Exceptions\NhanVienDomainException;
 use Illuminate\Foundation\Vite;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\HtmlString;
 use Mockery\MockInterface;
-use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
 
 class NhanVienLifecycleTest extends TestCase
 {
-    use InteractsWithEmployeeModule;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -35,15 +31,10 @@ class NhanVienLifecycleTest extends TestCase
 
     public function test_lifecycle_routes_are_constrained_and_before_dynamic_show(): void
     {
-        $reset = Route::getRoutes()->getByName('backend.nhanvien.reset-password');
         $destroy = Route::getRoutes()->getByName('backend.nhanvien.destroy');
         $show = Route::getRoutes()->getByName('backend.nhanvien.show');
 
-        $this->assertInstanceOf(RoutingRoute::class, $reset);
         $this->assertInstanceOf(RoutingRoute::class, $destroy);
-        $this->assertSame('admin/nhan-vien/{ma_nv}/dat-lai-mat-khau', $reset->uri());
-        $this->assertSame(['PATCH'], $reset->methods());
-        $this->assertSame('NV[0-9]{3}', $reset->wheres['ma_nv']);
         $this->assertSame('admin/nhan-vien/{ma_nv}', $destroy->uri());
         $this->assertSame(['DELETE'], $destroy->methods());
         $this->assertSame('NV[0-9]{3}', $destroy->wheres['ma_nv']);
@@ -53,100 +44,19 @@ class NhanVienLifecycleTest extends TestCase
         );
     }
 
-    public function test_invalid_codes_and_disabled_module_do_not_dispatch_lifecycle(): void
+    public function test_destroy_flash_uses_only_a_safe_static_message(): void
     {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xoa,
-            \App\Enums\NhanVienPermission::DatLaiMatKhau,
-        ]);
-        config()->set('nhanvien.enabled', false);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('findOrFail');
-            $mock->shouldNotReceive('removeOrTerminate');
-            $mock->shouldNotReceive('resetPassword');
-        });
-
-        $this->delete('/admin/nhan-vien/NV001')->assertNotFound();
-        $this->patch('/admin/nhan-vien/NV001/dat-lai-mat-khau')->assertNotFound();
-
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xoa,
-            \App\Enums\NhanVienPermission::DatLaiMatKhau,
-        ]);
-        foreach (['NV1', 'NV0001', 'nv001'] as $code) {
-            $this->delete("/admin/nhan-vien/{$code}")->assertNotFound();
-            $this->patch("/admin/nhan-vien/{$code}/dat-lai-mat-khau")->assertNotFound();
-        }
-    }
-
-    public function test_privileged_target_is_forbidden_before_lifecycle_mutation(): void
-    {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xoa,
-            \App\Enums\NhanVienPermission::DatLaiMatKhau,
-        ]);
-        $target = $this->employee(['ma_vt' => 1]);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
-            $mock->shouldReceive('findOrFail')->twice()->with('NV001')->andReturn($target);
-            $mock->shouldNotReceive('removeOrTerminate');
-            $mock->shouldNotReceive('resetPassword');
-        });
-
-        $this->delete('/admin/nhan-vien/NV001')->assertForbidden();
-        $this->patch('/admin/nhan-vien/NV001/dat-lai-mat-khau')->assertForbidden();
-    }
-
-    public function test_race_time_privileged_error_is_generic_forbidden(): void
-    {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xoa]);
-        $target = $this->employee();
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
-            $mock->shouldReceive('findOrFail')->once()->andReturn($target);
-            $mock->shouldReceive('removeOrTerminate')->once()->andThrow(new NhanVienDomainException(
-                'Bạn không có quyền thực hiện thao tác này.',
-                'NV_PRIVILEGED_TARGET',
-            ));
-        });
-
-        $this->delete('/admin/nhan-vien/NV001')
-            ->assertForbidden()
-            ->assertDontSee('NV_PRIVILEGED_TARGET');
-    }
-
-    public function test_destroy_and_reset_flash_only_safe_static_messages(): void
-    {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-            \App\Enums\NhanVienPermission::Tao,
-            \App\Enums\NhanVienPermission::Sua,
-            \App\Enums\NhanVienPermission::Xoa,
-            \App\Enums\NhanVienPermission::DatLaiMatKhau,
-        ]);
-        $target = $this->employee();
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
-            $mock->shouldReceive('findOrFail')->twice()->andReturn($target);
             $mock->shouldReceive('removeOrTerminate')->once()->andReturn(NhanVienRemovalAction::Deleted);
-            $mock->shouldReceive('resetPassword')->once();
         });
 
         $this->delete('/admin/nhan-vien/NV001')
             ->assertRedirect(route('backend.nhanvien.index'))
             ->assertSessionHas('success', 'Đã xóa hồ sơ nhân viên.');
-        $this->patch('/admin/nhan-vien/NV001/dat-lai-mat-khau')
-            ->assertRedirect(route('backend.nhanvien.show', ['ma_nv' => 'NV001']))
-            ->assertSessionHas('success', 'Đã đặt lại mật khẩu theo quy ước nhom3@{năm thao tác}.')
-            ->assertDontSee('hashed-reset-password');
     }
 
     public function test_forms_are_accessible_and_partial_is_not_present_on_create(): void
     {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-            \App\Enums\NhanVienPermission::Tao,
-            \App\Enums\NhanVienPermission::Sua,
-            \App\Enums\NhanVienPermission::Xoa,
-            \App\Enums\NhanVienPermission::DatLaiMatKhau,
-        ]);
         $target = $this->employee();
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
             $mock->shouldReceive('paginate')->once()->andReturn(new \Illuminate\Pagination\LengthAwarePaginator(
@@ -160,7 +70,6 @@ class NhanVienLifecycleTest extends TestCase
 
         $this->get('/admin/nhan-vien')->assertOk()
             ->assertSee('data-action-dialog', false)
-            ->assertSee('name="_method" value="PATCH"', false)
             ->assertSee('name="_method" value="DELETE"', false)
             ->assertSee('Xóa cứng nếu chưa có lịch sử', false);
         $this->get('/admin/nhan-vien/NV001')->assertOk()->assertSee('data-action-dialog', false);

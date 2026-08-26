@@ -1,5 +1,13 @@
 # Database và hợp đồng 15 bảng
 
+> **Cập nhật hiện hành 2026-08-26:** Database source và live không thay đổi.
+> Ba module CRUD dùng hợp đồng 15 bảng hiện có; auth/RBAC/department scope chỉ
+> còn trong lịch sử tài liệu, không phải runtime của nhánh hiện tại.
+
+> **Evidence current 2026-08-26:** Full Laravel `208 tests, 2573 assertions`,
+> frontend `17/17`, Vite `18 modules`, route inventory `52`, MariaDB disposable
+> `11 tests, 341 assertions`; browser chưa kiểm chứng.
+
 > Snapshot kiểm tra: 2026-08-24
 
 > **Nguồn fresh active:** chạy `database/tao_bang.sql` rồi
@@ -109,7 +117,7 @@ count, normalize, duplicate, missing, dependency, delete và không còn routine
 fresh suite hiện pass `7 tests, 231 assertions` trên disposable schema; đây là
 slice Phòng ban trước khi bổ sung employee row-scope, không phải tổng gate hiện hành.
 
-### Hợp đồng employee row-scope active (2026-08-24)
+### Hợp đồng employee row-scope historical (2026-08-24)
 
 Auth projection dùng bảy cột server-only, bổ sung `ma_pb` nhưng vẫn ẩn
 `mat_khau`. `NhanVienDepartmentScope` nhận actor tường minh: `ma_vt = 4` bị
@@ -245,7 +253,7 @@ Import sẽ xóa toàn bộ database cùng tên. Chỉ dùng database local/disp
 
 Dùng MariaDB/MySQL client, phpMyAdmin, Workbench hoặc chế độ chạy SQL script của IDE. Dump dùng `DELIMITER`, nên không gửi toàn file như một query JDBC duy nhất.
 
-Không chạy migrations trước import vì dump sẽ xóa database. Auth hiện dùng custom provider trên `nhan_vien`; migration `users` sẽ tạo kho identity thứ hai không được ứng dụng dùng. Nếu cần bảng session/cache/jobs, phải tách/chọn migration hạ tầng có chủ đích sau import, không chạy toàn bộ theo quán tính.
+Không chạy migrations trước import vì dump sẽ xóa database. Auth/RBAC đã được tháo khỏi runtime; `config/auth.php` chỉ giữ cấu hình provider database trung tính và không được các route CRUD sử dụng. Nếu cần bảng session/cache/jobs, phải tách/chọn migration hạ tầng có chủ đích sau import, không chạy toàn bộ theo quán tính.
 
 ### 5. Seed fresh deterministic
 
@@ -257,7 +265,8 @@ statuses 1–4, 30 Vietnamese employee rows from the project Git sample,
 rows use the local/demo password convention `nhom3@2026`; do not use it in
 production.
 Run it only after `database/tao_bang.sql` on an empty/disposable database.
-`employee:bootstrap-demo` remains guarded and must never target live data.
+Command bootstrap nhân viên đã được loại khỏi runtime và không còn là đường dẫn
+được ứng dụng sử dụng.
 
 Không chạy `php artisan db:seed` cho tới khi có model và seeder hợp lệ.
 

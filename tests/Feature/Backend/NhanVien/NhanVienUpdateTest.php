@@ -6,24 +6,19 @@ use App\Contracts\NhanVienRepositoryContract;
 use App\Contracts\NhanVienServiceContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Controllers\Backend\NhanVienController;
-use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 use Illuminate\Foundation\Vite;
 use Illuminate\Routing\Route as RoutingRoute;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\HtmlString;
 use Mockery;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\Support\CreatesEmployeeFeatureSchema;
-use Tests\Support\InteractsWithEmployeeModule;
 use Tests\TestCase;
 
 class NhanVienUpdateTest extends TestCase
 {
     use CreatesEmployeeFeatureSchema;
-    use InteractsWithEmployeeModule;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -48,7 +43,7 @@ class NhanVienUpdateTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_edit_and_update_routes_are_guarded_constrained_and_declared_before_show(): void
+    public function test_edit_and_update_routes_are_public_constrained_and_declared_before_show(): void
     {
         $edit = Route::getRoutes()->getByName('backend.nhanvien.edit');
         $update = Route::getRoutes()->getByName('backend.nhanvien.update');
@@ -64,7 +59,6 @@ class NhanVienUpdateTest extends TestCase
         $this->assertSame(NhanVienController::class.'@update', $update->getActionName());
         foreach ([$edit, $update] as $route) {
             $this->assertSame('NV[0-9]{3}', $route->wheres['ma_nv']);
-            $this->assertContains(EnsureNhanVienModuleEnabled::class, $route->gatherMiddleware());
             $this->assertLessThan(
                 array_search($show, Route::getRoutes()->getRoutes(), true),
                 array_search($route, Route::getRoutes()->getRoutes(), true),
@@ -72,34 +66,11 @@ class NhanVienUpdateTest extends TestCase
         }
     }
 
-    public function test_rollout_disabled_or_invalid_codes_never_dispatch_edit_or_update(): void
+    public function test_any_employee_role_can_edit_and_update_without_exposing_system_fields(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
-        config()->set('nhanvien.enabled', false);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('findOrFail');
-            $mock->shouldNotReceive('update');
-        });
-        $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldNotReceive('find');
-        $this->app->instance(NhanVienRepositoryContract::class, $repository);
-
-        $this->get('/admin/nhan-vien/NV001/edit')->assertNotFound();
-        $this->put('/admin/nhan-vien/NV001', $this->validPayload())->assertNotFound();
-
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
-        foreach (['NV1', 'NV0001', 'nv001'] as $code) {
-            $this->get("/admin/nhan-vien/{$code}/edit")->assertNotFound();
-            $this->put("/admin/nhan-vien/{$code}", $this->validPayload())->assertNotFound();
-        }
-    }
-
-    public function test_privileged_edit_and_update_are_allowed_with_sua_without_exposing_system_fields(): void
-    {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
-        $privileged = $this->employee(['ma_vt' => 1, 'email' => 'admin@example.test']);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($privileged): void {
-            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($privileged);
+        $target = $this->employee(['ma_vt' => 1, 'email' => 'admin@example.test']);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
+            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($target);
             $mock->shouldReceive('lookups')->once()->andReturn($this->lookups());
             $mock->shouldReceive('update')->once()->withArgs(function (string $maNv, array $validated): bool {
                 return $maNv === 'NV001'
@@ -109,10 +80,10 @@ class NhanVienUpdateTest extends TestCase
                     && ! array_key_exists('mat_khau', $validated)
                     && ! array_key_exists('mat_khau_hash', $validated)
                     && ! array_key_exists('ngay_nghi_viec', $validated);
-            })->andReturn($privileged);
+            })->andReturn($target);
         });
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($privileged);
+        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
         $this->get('/admin/nhan-vien/NV001/edit')
@@ -128,7 +99,6 @@ class NhanVienUpdateTest extends TestCase
 
     public function test_update_rejects_system_owned_fields_before_dispatching_service(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $target = $this->employee(['ma_vt' => 1]);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
@@ -149,35 +119,8 @@ class NhanVienUpdateTest extends TestCase
             ]);
     }
 
-    public function test_department_manager_cannot_move_same_department_target_with_forged_department(): void
-    {
-        $actor = $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Sua,
-        ]);
-        $actor->forceFill([
-            'ma_vt' => \App\Enums\NhanVienRole::DepartmentManager->value,
-            'ma_pb' => 1,
-        ]);
-        DB::table('phong_ban')->insert([
-            'ma_pb' => 2,
-            'ten_pb' => 'Phòng khác',
-        ]);
-
-        $target = $this->employee(['ma_pb' => 1]);
-        $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
-        $this->app->instance(NhanVienRepositoryContract::class, $repository);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('update');
-        });
-
-        $this->put('/admin/nhan-vien/NV001', $this->validPayload(['ma_pb' => 2]))
-            ->assertSessionHasErrors(['ma_pb']);
-    }
-
     public function test_missing_update_target_is_safe_404_before_validation_and_mutation(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $this->mock(NhanVienServiceContract::class, fn (MockInterface $mock) => $mock->shouldNotReceive('update'));
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->once()->with('NV404')->andReturnNull();
@@ -188,9 +131,8 @@ class NhanVienUpdateTest extends TestCase
             ->assertDontSee('email');
     }
 
-    public function test_successful_update_uses_cached_authorized_target_and_redirects_with_exact_flash(): void
+    public function test_successful_update_uses_cached_target_and_redirects_with_exact_flash(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $target = $this->employee();
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
@@ -208,27 +150,8 @@ class NhanVienUpdateTest extends TestCase
             ->assertSessionHas('success', 'Đã cập nhật hồ sơ nhân viên.');
     }
 
-    public function test_race_time_privileged_domain_error_maps_to_safe_403(): void
-    {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
-        $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->once()->andReturn($this->employee());
-        $this->app->instance(NhanVienRepositoryContract::class, $repository);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('update')->once()->andThrow(new NhanVienDomainException(
-                'Bạn không có quyền thực hiện thao tác này.',
-                'NV_PRIVILEGED_TARGET',
-            ));
-        });
-
-        $this->put('/admin/nhan-vien/NV001', $this->validPayload())
-            ->assertForbidden()
-            ->assertDontSee('NV_PRIVILEGED_TARGET');
-    }
-
     public function test_race_time_status_transition_error_maps_to_safe_field_error(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->once()->andReturn($this->employee(['ma_tt' => 2]));
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
@@ -250,7 +173,6 @@ class NhanVienUpdateTest extends TestCase
 
     public function test_domain_field_error_preserves_only_safe_old_input_and_generic_error_leaks_nothing(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
         $repository->shouldReceive('find')->twice()->andReturn($this->employee());
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
@@ -284,7 +206,6 @@ class NhanVienUpdateTest extends TestCase
 
     public function test_active_edit_renders_safe_accessible_form_and_locks_on_missing_lookups(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('findOrFail')->twice()->with('NV001')->andReturn($this->employee());
             $mock->shouldReceive('lookups')->once()->andReturn($this->lookups());
@@ -330,7 +251,6 @@ class NhanVienUpdateTest extends TestCase
 
     public function test_terminated_edit_keeps_canonical_status_read_only_and_lookup_failure_is_safe_locked(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $terminated = $this->employee([
             'ma_tt' => 4,
             'ten_tt' => 'Đã nghỉ việc',
@@ -363,7 +283,6 @@ class NhanVienUpdateTest extends TestCase
 
     public function test_dynamic_employee_name_is_escaped_in_the_document_title(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $employee = $this->employee(['ho_ten' => '</title><script>alert(1)</script>']);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
             $mock->shouldReceive('findOrFail')->once()->andReturn($employee);

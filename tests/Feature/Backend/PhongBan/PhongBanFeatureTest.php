@@ -3,7 +3,6 @@
 namespace Tests\Feature\Backend\PhongBan;
 
 use App\Contracts\PhongBanServiceContract;
-use App\Enums\PhongBanPermission;
 use App\Exceptions\PhongBanDomainException;
 use Illuminate\Foundation\Vite;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -11,13 +10,10 @@ use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\HtmlString;
 use Mockery\MockInterface;
-use Tests\Support\InteractsWithPhongBanModule;
 use Tests\TestCase;
 
 class PhongBanFeatureTest extends TestCase
 {
-    use InteractsWithPhongBanModule;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -57,47 +53,8 @@ class PhongBanFeatureTest extends TestCase
         $this->assertSame('[1-9][0-9]*', $destroy->wheres['ma_pb']);
     }
 
-    public function test_guest_is_redirected_from_every_department_entry_point(): void
+    public function test_public_list_renders_rows_and_mutations(): void
     {
-        foreach ([
-            ['GET', '/admin/phong-ban'],
-            ['GET', '/admin/phong-ban/create'],
-            ['GET', '/admin/phong-ban/1/edit'],
-            ['POST', '/admin/phong-ban'],
-            ['PUT', '/admin/phong-ban/1'],
-            ['PATCH', '/admin/phong-ban/1'],
-            ['DELETE', '/admin/phong-ban/1'],
-        ] as [$method, $uri]) {
-            $this->call($method, $uri)->assertRedirect(route('login'));
-        }
-    }
-
-    public function test_permission_gates_are_fail_closed_and_do_not_dispatch_service(): void
-    {
-        $this->actingAsPhongBanEmployee([]);
-        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('all');
-            $mock->shouldNotReceive('findOrFail');
-            $mock->shouldNotReceive('create');
-            $mock->shouldNotReceive('update');
-            $mock->shouldNotReceive('delete');
-        });
-
-        foreach ([
-            ['GET', '/admin/phong-ban'],
-            ['GET', '/admin/phong-ban/create'],
-            ['GET', '/admin/phong-ban/1/edit'],
-            ['POST', '/admin/phong-ban'],
-            ['PUT', '/admin/phong-ban/1'],
-            ['DELETE', '/admin/phong-ban/1'],
-        ] as [$method, $uri]) {
-            $this->call($method, $uri)->assertForbidden();
-        }
-    }
-
-    public function test_view_permission_renders_list_and_hides_mutations(): void
-    {
-        $this->actingAsPhongBanEmployee([PhongBanPermission::Xem]);
         $rows = [
             (object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật', 'so_nhan_vien' => 2],
             (object) ['ma_pb' => 2, 'ten_pb' => 'Nhân sự', 'so_nhan_vien' => 0],
@@ -115,19 +72,13 @@ class PhongBanFeatureTest extends TestCase
             ->assertSee('2', false)
             ->assertSee('Nhân sự')
             ->assertSee('Chưa có nhân viên')
-            ->assertDontSee(route('backend.phongban.create'))
-            ->assertDontSee('Chỉnh sửa')
-            ->assertDontSee('Xóa');
+            ->assertSee(route('backend.phongban.create'))
+            ->assertSee('Chỉnh sửa')
+            ->assertSee('Xóa');
     }
 
-    public function test_all_permission_list_renders_create_edit_and_safe_delete_actions(): void
+    public function test_public_list_renders_create_edit_and_safe_delete_actions(): void
     {
-        $this->actingAsPhongBanEmployee([
-            PhongBanPermission::Xem,
-            PhongBanPermission::Tao,
-            PhongBanPermission::Sua,
-            PhongBanPermission::Xoa,
-        ]);
         $rows = [
             (object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật', 'so_nhan_vien' => 2],
             (object) ['ma_pb' => 2, 'ten_pb' => 'Nhân sự', 'so_nhan_vien' => 0],
@@ -148,7 +99,6 @@ class PhongBanFeatureTest extends TestCase
 
     public function test_empty_state_is_safe(): void
     {
-        $this->actingAsPhongBanEmployee([PhongBanPermission::Xem]);
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('all')->once()->andReturn([]);
         });
@@ -157,7 +107,6 @@ class PhongBanFeatureTest extends TestCase
 
     public function test_service_error_state_is_safe(): void
     {
-        $this->actingAsPhongBanEmployee([PhongBanPermission::Xem]);
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('all')->once()->andThrow(new \RuntimeException('SQLSTATE private details'));
         });
@@ -169,7 +118,6 @@ class PhongBanFeatureTest extends TestCase
 
     public function test_create_page_and_store_normalize_input_and_flash_safe_success(): void
     {
-        $this->actingAsPhongBanEmployee([PhongBanPermission::Tao]);
         $this->get('/admin/phong-ban/create')->assertOk()
             ->assertViewIs('backend.phongban.create')
             ->assertSee('label', false)
@@ -185,11 +133,6 @@ class PhongBanFeatureTest extends TestCase
 
     public function test_update_accepts_put_and_patch_and_delete_redirects(): void
     {
-        $this->actingAsPhongBanEmployee([
-            PhongBanPermission::Xem,
-            PhongBanPermission::Sua,
-            PhongBanPermission::Xoa,
-        ]);
         $department = (object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật', 'so_nhan_vien' => 0];
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock) use ($department): void {
             $mock->shouldReceive('findOrFail')->once()->with(1)->andReturn($department);
@@ -209,7 +152,6 @@ class PhongBanFeatureTest extends TestCase
 
     public function test_validation_rejects_blank_and_overlong_names_before_service(): void
     {
-        $this->actingAsPhongBanEmployee([PhongBanPermission::Tao]);
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('create');
         });
@@ -221,12 +163,6 @@ class PhongBanFeatureTest extends TestCase
 
     public function test_not_found_invalid_id_domain_errors_and_generic_errors_are_safe(): void
     {
-        $this->actingAsPhongBanEmployee([
-            PhongBanPermission::Xem,
-            PhongBanPermission::Sua,
-            PhongBanPermission::Xoa,
-            PhongBanPermission::Tao,
-        ]);
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('findOrFail')->once()->with(999)->andThrow(new PhongBanDomainException(
                 'Không tìm thấy phòng ban.', 'PB_NOT_FOUND',

@@ -3,12 +3,6 @@
 @section('title', 'Quản lý phòng ban')
 
 @section('content')
-    @php
-        $canCreate = Gate::allows(\App\Enums\PhongBanPermission::Tao->value);
-        $canEdit = Gate::allows(\App\Enums\PhongBanPermission::Sua->value);
-        $canDelete = Gate::allows(\App\Enums\PhongBanPermission::Xoa->value);
-    @endphp
-
     <main class="container-fluid container-xxl py-4" aria-labelledby="department-page-title">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
@@ -16,12 +10,10 @@
                 <h1 class="h3 fw-semibold mb-1" id="department-page-title">Danh sách phòng ban</h1>
                 <p class="text-secondary mb-0">Quản lý tên phòng ban và theo dõi số nhân viên đang thuộc từng phòng ban.</p>
             </div>
-            @if ($canCreate)
-                <a class="btn btn-primary" href="{{ route('backend.phongban.create') }}">
-                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                    Thêm phòng ban
-                </a>
-            @endif
+            <a class="btn btn-primary" href="{{ route('backend.phongban.create') }}">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Thêm phòng ban
+            </a>
         </div>
 
         @if (session('success'))
@@ -65,9 +57,7 @@
                                 <th scope="col">Mã phòng ban</th>
                                 <th scope="col">Tên phòng ban</th>
                                 <th scope="col">Số nhân viên</th>
-                                @if ($canEdit || $canDelete)
-                                    <th scope="col">Thao tác</th>
-                                @endif
+                                <th scope="col">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -83,26 +73,22 @@
                                             <span class="text-secondary">Chưa có nhân viên</span>
                                         @endif
                                     </td>
-                                    @if ($canEdit || $canDelete)
-                                        <td>
-                                            <div class="d-flex flex-wrap gap-2">
-                                                @if ($canEdit)
-                                                    <a class="btn btn-sm btn-outline-primary" href="{{ route('backend.phongban.edit', ['ma_pb' => $department->ma_pb]) }}">
-                                                        Chỉnh sửa
-                                                    </a>
-                                                @endif
-                                                @if ($canDelete && ! $hasEmployees)
-                                                    <form method="POST" action="{{ route('backend.phongban.destroy', ['ma_pb' => $department->ma_pb]) }}" data-confirm-delete="Xác nhận xóa phòng ban này?">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button class="btn btn-sm btn-outline-danger" type="submit" data-submit> Xóa </button>
-                                                    </form>
-                                                @elseif ($canDelete)
-                                                    <button class="btn btn-sm btn-outline-secondary" type="button" disabled title="Không thể xóa phòng ban đang có nhân viên">Xóa</button>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    @endif
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a class="btn btn-sm btn-outline-primary" href="{{ route('backend.phongban.edit', ['ma_pb' => $department->ma_pb]) }}">
+                                                Chỉnh sửa
+                                            </a>
+                                            @if (! $hasEmployees)
+                                                <form method="POST" action="{{ route('backend.phongban.destroy', ['ma_pb' => $department->ma_pb]) }}" data-confirm-delete="Xác nhận xóa phòng ban này?">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="btn btn-sm btn-outline-danger" type="submit" data-submit> Xóa </button>
+                                                </form>
+                                            @else
+                                                <button class="btn btn-sm btn-outline-secondary" type="button" disabled title="Không thể xóa phòng ban đang có nhân viên">Xóa</button>
+                                            @endif
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

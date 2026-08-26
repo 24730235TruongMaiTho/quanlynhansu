@@ -8,8 +8,6 @@ use App\Http\Controllers\Backend\NghiPhepController;
 use App\Http\Controllers\Backend\LuongChucVuController;
 use App\Http\Controllers\Backend\LuongPhongBanController;
 use App\Http\Controllers\Backend\LuongHeSoLuongController;
-use App\Http\Middleware\EnsureNhanVienModuleEnabled;
-use App\Enums\NhanVienPermission;
 
 Route::middleware('api')
     ->prefix('v1')
@@ -28,12 +26,6 @@ Route::middleware('api')
                     'nhan-vien',
                     [ChamCongController::class, 'employees']
                 )
-                ->middleware([
-                    'web',
-                    'auth',
-                    EnsureNhanVienModuleEnabled::class,
-                    'can:'.NhanVienPermission::Xem->value,
-                ])
                 ->name(
                     'api.v1.cham-cong.nhan-vien'
                 );
@@ -42,12 +34,6 @@ Route::middleware('api')
                     'phong-ban',
                     [ChamCongController::class, 'phongBan']
                 )
-                ->middleware([
-                    'web',
-                    'auth',
-                    EnsureNhanVienModuleEnabled::class,
-                    'can:'.NhanVienPermission::Xem->value,
-                ])
                 ->name(
                     'api.v1.cham-cong.phong-ban'
                 );
@@ -58,11 +44,6 @@ Route::middleware('api')
             ChamCongController::class
         )->only([
             'index',
-        ])->middleware([
-            'web',
-            'auth',
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Xem->value,
         ]);
 
         Route::apiResource(
@@ -70,11 +51,6 @@ Route::middleware('api')
             ChamCongController::class
         )->only([
             'update',
-        ])->middleware([
-            'web',
-            'auth',
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Sua->value,
         ]);
 
 
@@ -90,13 +66,7 @@ Route::middleware('api')
                 Route::get(
                     'nhan-vien',
                     [NghiPhepController::class, 'employees']
-                )
-                ->middleware([
-                    'web',
-                    'auth',
-                    EnsureNhanVienModuleEnabled::class,
-                    'can:'.NhanVienPermission::Xem->value,
-                ]);
+                );
 
                 Route::get(
                     'phong-ban',

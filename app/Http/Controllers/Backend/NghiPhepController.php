@@ -6,7 +6,6 @@ use App\Contracts\NhanVienServiceContract;
 use App\Http\Requests\StoreNghiPhepRequest;
 use App\Http\Requests\UpdateNghiPhepRequest;
 use App\Services\NghiPhepService;
-use App\Support\NhanVienDepartmentScope;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +17,6 @@ class NghiPhepController extends Controller
     public function __construct(
         NghiPhepService $service,
         private NhanVienServiceContract $nhanVienService,
-        private NhanVienDepartmentScope $departmentScope,
     ) {
         $this->service = $service;
     }
@@ -102,13 +100,10 @@ class NghiPhepController extends Controller
             'so_dong' => (int) ($validated['per_page'] ?? 15),
         ];
 
-        $actor = $request->user();
-        $filters = $this->departmentScope->constrainFilters($filters, $actor);
-
         try {
             $paginator = $this->nhanVienService->paginate($filters);
             $query = $request->query();
-            if (array_key_exists('ma_pb', $query) || $this->departmentScope->isDepartmentManager($actor)) {
+            if (array_key_exists('ma_pb', $query)) {
                 $query['ma_pb'] = $filters['ma_pb'];
             }
             $paginator->withPath($request->url())->appends($query);

@@ -95,23 +95,4 @@ class NhanVienRepositoryTest extends TestCase
         $this->assertNull($row->ngay_nghi_viec);
     }
 
-    public function test_auth_projection_hydrates_department_without_exposing_password(): void
-    {
-        DB::table('nhan_vien')->insert([
-            'ma_nv' => 'NV004',
-            'ho_ten' => 'Trưởng phòng',
-            'email' => 'truong.phong@example.test',
-            'mat_khau' => 'bcrypt-secret',
-            'ma_vt' => 4,
-            'ma_pb' => 3,
-            'ma_tt' => 2,
-        ]);
-
-        $employee = $this->repository->findAccountByIdentifier('NV004');
-
-        $this->assertNotNull($employee);
-        $this->assertSame(3, (int) $employee->ma_pb);
-        $this->assertArrayNotHasKey('mat_khau', $employee->toArray());
-        $this->assertSame('bcrypt-secret', $employee->getAuthPassword());
-    }
 }

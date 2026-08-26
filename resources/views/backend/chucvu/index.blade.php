@@ -3,12 +3,6 @@
 @section('title', 'Quản lý chức vụ')
 
 @section('content')
-    @php
-        $canCreate = Gate::allows(\App\Enums\ChucVuPermission::Tao->value);
-        $canEdit = Gate::allows(\App\Enums\ChucVuPermission::Sua->value);
-        $canDelete = Gate::allows(\App\Enums\ChucVuPermission::Xoa->value);
-    @endphp
-
     <main class="container-fluid container-xxl py-4" aria-labelledby="position-page-title">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
@@ -16,12 +10,10 @@
                 <h1 class="h3 fw-semibold mb-1" id="position-page-title">Danh sách chức vụ</h1>
                 <p class="text-secondary mb-0">Quản lý tên chức vụ, hệ số phụ cấp và số nhân viên đang sử dụng.</p>
             </div>
-            @if ($canCreate)
-                <a class="btn btn-primary" href="{{ route('backend.chucvu.create') }}">
-                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                    Thêm chức vụ
-                </a>
-            @endif
+            <a class="btn btn-primary" href="{{ route('backend.chucvu.create') }}">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Thêm chức vụ
+            </a>
         </div>
 
         @if (session('success'))
@@ -66,9 +58,7 @@
                                 <th scope="col">Tên chức vụ</th>
                                 <th scope="col">Hệ số phụ cấp</th>
                                 <th scope="col">Số nhân viên</th>
-                                @if ($canEdit || $canDelete)
-                                    <th scope="col">Thao tác</th>
-                                @endif
+                                <th scope="col">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -85,24 +75,20 @@
                                             <span class="text-secondary">Chưa có nhân viên</span>
                                         @endif
                                     </td>
-                                    @if ($canEdit || $canDelete)
-                                        <td>
-                                            <div class="d-flex flex-wrap gap-2">
-                                                @if ($canEdit)
-                                                    <a class="btn btn-sm btn-outline-primary" href="{{ route('backend.chucvu.edit', ['ma_cv' => $position->ma_cv]) }}">Chỉnh sửa</a>
-                                                @endif
-                                                @if ($canDelete && ! $hasEmployees)
-                                                    <form method="POST" action="{{ route('backend.chucvu.destroy', ['ma_cv' => $position->ma_cv]) }}" data-confirm-delete="Xác nhận xóa chức vụ này?">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button class="btn btn-sm btn-outline-danger" type="submit" data-submit>Xóa</button>
-                                                    </form>
-                                                @elseif ($canDelete)
-                                                    <button class="btn btn-sm btn-outline-secondary" type="button" disabled title="Không thể xóa chức vụ đang có nhân viên">Xóa</button>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    @endif
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a class="btn btn-sm btn-outline-primary" href="{{ route('backend.chucvu.edit', ['ma_cv' => $position->ma_cv]) }}">Chỉnh sửa</a>
+                                            @if (! $hasEmployees)
+                                                <form method="POST" action="{{ route('backend.chucvu.destroy', ['ma_cv' => $position->ma_cv]) }}" data-confirm-delete="Xác nhận xóa chức vụ này?">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="btn btn-sm btn-outline-danger" type="submit" data-submit>Xóa</button>
+                                                </form>
+                                            @else
+                                                <button class="btn btn-sm btn-outline-secondary" type="button" disabled title="Không thể xóa chức vụ đang có nhân viên">Xóa</button>
+                                            @endif
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
