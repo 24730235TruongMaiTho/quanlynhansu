@@ -385,16 +385,6 @@
             font-size: 13px;
         }
 
-        .login-footer a {
-            color: #e94560;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .login-footer a:hover {
-            text-decoration: underline;
-        }
-
         /* ===== RESPONSIVE ===== */
         @media (max-width: 480px) {
             .login-card {
@@ -533,7 +523,7 @@
                     <div class="input-group">
                         <input type="password" class="form-control @error('mat_khau') is-invalid @enderror" id="loginPassword" name="mat_khau" placeholder="Nhập mật khẩu" autocomplete="current-password" required>
                         <i class="bi bi-lock input-icon"></i>
-                        <button type="button" class="toggle-password" id="togglePassword" tabindex="-1">
+                        <button type="button" class="toggle-password" id="togglePassword" tabindex="-1" aria-label="Hiển thị mật khẩu">
                             <i class="bi bi-eye" id="toggleIcon"></i>
                         </button>
                     </div>
@@ -550,11 +540,6 @@
                     <span class="spinner"></span>
                     <span class="btn-text"><i class="bi bi-box-arrow-in-right"></i> Đăng nhập</span>
                 </button>
-
-                <!-- Footer -->
-                <div class="login-footer">
-                    Chưa có tài khoản? <a href="#">Đăng ký ngay</a>
-                </div>
             </form>
         </div>
     </div>
@@ -564,13 +549,45 @@
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
     </script>
     <script>
-        document.querySelector('[data-login-form]')?.addEventListener('submit', function () {
-            const button = this.querySelector('[data-login-submit]');
-            if (!button) return;
-            button.disabled = true;
-            button.setAttribute('aria-busy', 'true');
-            button.textContent = 'Đang đăng nhập...';
-        });
+        (function() {
+            'use strict';
+
+            // ===== HIỂN THỊ / ẨN MẬT KHẨU =====
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('loginPassword');
+            const toggleIcon = document.getElementById('toggleIcon');
+
+            if (togglePassword && passwordInput) {
+                togglePassword.addEventListener('click', function() {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    
+                    // Đổi icon
+                    if (type === 'text') {
+                        toggleIcon.classList.remove('bi-eye');
+                        toggleIcon.classList.add('bi-eye-slash');
+                        togglePassword.setAttribute('aria-label', 'Ẩn mật khẩu');
+                    } else {
+                        toggleIcon.classList.remove('bi-eye-slash');
+                        toggleIcon.classList.add('bi-eye');
+                        togglePassword.setAttribute('aria-label', 'Hiển thị mật khẩu');
+                    }
+                });
+            }
+
+            // ===== LOADING KHI SUBMIT =====
+            const loginForm = document.querySelector('[data-login-form]');
+            const loginBtn = document.querySelector('[data-login-submit]');
+            
+            if (loginForm && loginBtn) {
+                loginForm.addEventListener('submit', function() {
+                    loginBtn.disabled = true;
+                    loginBtn.classList.add('loading');
+                    loginBtn.setAttribute('aria-busy', 'true');
+                });
+            }
+
+        })();
     </script>
 </body>
 </html>

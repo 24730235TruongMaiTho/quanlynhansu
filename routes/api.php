@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\ChamCongController;
 use App\Http\Controllers\Backend\LuongController;
 use App\Http\Controllers\Backend\NghiPhepController;
@@ -308,4 +308,31 @@ Route::middleware('api')
             'auth',
             'can:'.LuongPermission::Xoa->value,
         ]);
+    });
+
+/*
+ * ==================================================
+ * DASHBOARD - API cho trang tổng quan
+ * ==================================================
+ */
+Route::middleware(['web', 'auth'])
+    ->prefix('v1/dashboard')
+    ->group(function () {
+        Route::get('overview', [DashboardController::class, 'overview'])
+            ->name('api.v1.dashboard.overview');
+        
+        Route::get('education-stats', [DashboardController::class, 'educationStats'])
+            ->name('api.v1.dashboard.education-stats');
+        
+        Route::get('department-stats', [DashboardController::class, 'departmentStats'])
+            ->name('api.v1.dashboard.department-stats');
+        
+        Route::get('expiring-contracts', [DashboardController::class, 'expiringContracts'])
+            ->name('api.v1.dashboard.expiring-contracts');
+        
+        Route::get('attendance-report', [DashboardController::class, 'attendanceReport'])
+            ->name('api.v1.dashboard.attendance-report');
+        
+        Route::get('salary-report', [DashboardController::class, 'salaryReport'])
+            ->name('api.v1.dashboard.salary-report');
     });

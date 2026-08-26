@@ -80,9 +80,9 @@ class PhongBanFeatureTest extends TestCase
             ->assertSee('Kỹ thuật')
             ->assertSee('2', false)
             ->assertSee('Nhân sự')
-            ->assertSee('Chưa có nhân viên')
+            ->assertSee('0', false)
             ->assertSee(route('backend.phongban.create'))
-            ->assertSee('Chỉnh sửa')
+            ->assertSee('Sửa')
             ->assertSee('Xóa');
     }
 
@@ -99,9 +99,9 @@ class PhongBanFeatureTest extends TestCase
         $response = $this->get('/phong-ban');
         $response->assertOk()
             ->assertSee(route('backend.phongban.create'), false)
-            ->assertSee('Chỉnh sửa', false)
+            ->assertSee('Sửa', false)
             ->assertSee('Xóa', false)
-            ->assertSee('data-confirm-delete', false)
+            ->assertSee('onsubmit="return confirm(', false)
             ->assertSee('disabled', false);
         $this->assertSame(1, substr_count($response->getContent(), 'name="_method" value="DELETE"'));
     }

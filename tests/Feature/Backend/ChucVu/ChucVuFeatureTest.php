@@ -74,9 +74,9 @@ class ChucVuFeatureTest extends TestCase
             ->assertViewIs('backend.chucvu.index')
             ->assertSee('Giám đốc')
             ->assertSee('2.00')
-            ->assertSee('Chưa có nhân viên')
             ->assertSee(route('backend.chucvu.create'))
-            ->assertSee('Chỉnh sửa')
+            ->assertSee('Chưa có nhân viên')
+            ->assertSee('Sửa')
             ->assertSee('Xóa');
     }
 
@@ -89,7 +89,7 @@ class ChucVuFeatureTest extends TestCase
 
         $this->get('/chuc-vu')->assertOk()
             ->assertSee(route('backend.chucvu.create'), false)
-            ->assertSee('Chỉnh sửa', false)
+            ->assertSee('Sửa', false)
             ->assertSee('disabled', false)
             ->assertSee('Không thể xóa chức vụ đang có nhân viên', false);
     }
