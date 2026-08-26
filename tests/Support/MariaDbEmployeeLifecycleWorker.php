@@ -166,7 +166,7 @@ try {
     }
 
     $message = $exception->getMessage();
-    $safeCode = preg_match('/\bNV_(?:NOT_FOUND|REFERENCE_INVALID|STATUS_MISSING|PRIVILEGED_TARGET|AUTH_HASH_STALE)\b/', $message, $matches) === 1
+    $safeCode = preg_match('/\bNV_(?:NOT_FOUND|REFERENCE_INVALID|STATUS_MISSING)\b/', $message, $matches) === 1
         ? $matches[0]
         : 'WORKER_FAILED';
     fwrite(STDERR, json_encode(['ok' => false, 'error' => $safeCode], JSON_THROW_ON_ERROR));

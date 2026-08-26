@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use App\Contracts\NhanVienRepositoryContract;
 use App\Exceptions\NhanVienDomainException;
-use App\Support\NhanVienTargetGuard;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\Rules\Unique;
@@ -12,12 +11,11 @@ use Illuminate\Validation\Validator;
 
 class UpdateNhanVienRequest extends StoreNhanVienRequest
 {
-    private ?object $authorizedTarget = null;
+    private ?object $targetEmployee = null;
 
     public function authorize(): bool
     {
         $employees = $this->container->make(NhanVienRepositoryContract::class);
-        $guard = $this->container->make(NhanVienTargetGuard::class);
         $maNv = $this->routeEmployeeCode();
 
         try {
@@ -31,8 +29,7 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
         }
 
         abort_if($employee === null, 404);
-        $guard->assertManageable($employee);
-        $this->authorizedTarget = $employee;
+        $this->targetEmployee = $employee;
 
         return true;
     }
@@ -67,7 +64,7 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
             }
 
             $targetStatus = $this->targetStatusId();
-            $currentStatus = (int) ($this->authorizedTarget?->ma_tt ?? 0);
+            $currentStatus = (int) ($this->targetEmployee?->ma_tt ?? 0);
 
             if (($currentStatus === 4 && $targetStatus !== null && $targetStatus !== 4)
                 || ($currentStatus !== 4 && $targetStatus === 4)) {

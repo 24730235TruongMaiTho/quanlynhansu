@@ -1,12 +1,13 @@
 # Database và hợp đồng 15 bảng
 
-> Snapshot kiểm tra: 2026-08-24
+> Snapshot kiểm tra: 2026-08-26
 
-> **Nguồn fresh active:** chạy `database/tao_bang.sql` rồi
-> `database/du_lieu_mau.sql` trên database disposable. Hai file này tạo đúng
-> 15 bảng và không yêu cầu view, trigger, function hay stored procedure cho
-> module Nhân viên/auth/RBAC/Phòng ban/Chức vụ. `quan_ly_nhan_su.session.sql` và các script
-> employee `2026_08_12_001`–`006` là legacy history, không dùng làm setup path.
+> **Nguồn fresh active do `main` quản lý:** chạy
+> `database/sql/tao_bang.sql` trên database rỗng/disposable, sau đó dùng
+> `Database\\Seeders\\LocalDemoSeeder` cho dữ liệu local tối thiểu. File
+> `database/sql/du_lieu_mau.sql`, `quan_ly_nhan_su.session.sql` và các script
+> employee `2026_08_12_001`–`006` chỉ dùng đối chiếu lịch sử. Schema active tạo
+> đúng 15 bảng và không yêu cầu routine cho CRUD Nhân viên, Phòng ban, Chức vụ.
 >
 > Runtime tham chiếu: MariaDB 10.4.32, schema `quan_ly_nhan_su` (rollout đã được kiểm chứng environment-specific; guarded disposable integration Task 20 là historical, rerun sau tích hợp timeout khoảng 184 giây và cleanup sạch)
 >
@@ -233,19 +234,16 @@ Dùng MariaDB/MySQL client, phpMyAdmin, Workbench hoặc chế độ chạy SQL 
 
 Không chạy migrations trước import vì dump sẽ xóa database. Auth hiện dùng custom provider trên `nhan_vien`; migration `users` sẽ tạo kho identity thứ hai không được ứng dụng dùng. Nếu cần bảng session/cache/jobs, phải tách/chọn migration hạ tầng có chủ đích sau import, không chạy toàn bộ theo quán tính.
 
-### 5. Seed fresh deterministic
+### 5. Seed local tối thiểu
 
-`database/du_lieu_mau.sql` seed explicit master IDs and the 29 permission IDs
-across the `101–802` module ranges,
-statuses 1–4, 30 Vietnamese employee rows from the project Git sample,
-`NV001` (`Nguyễn Văn An`, `ma_vt = 1`, `ma_tt = 2`,
-`an.nguyen@company.com`) with a valid bcrypt hash, and counter 30. All 30
-rows use the local/demo password convention `nhom3@2026`; do not use it in
-production.
-Run it only after `database/tao_bang.sql` on an empty/disposable database.
-`employee:bootstrap-demo` remains guarded and must never target live data.
+Sau khi chạy `database/sql/tao_bang.sql`, môi trường `local` hoặc `testing` có
+thể chạy `php artisan db:seed --class=Database\\Seeders\\LocalDemoSeeder`.
+Seeder của đồng nghiệp tạo dữ liệu tối thiểu theo cách lặp lại an toàn, gồm
+`NV001`, catalog quyền của các module đã tích hợp và bộ đếm nhân viên. Không
+chạy seeder này trên production hoặc thay nó bằng file dữ liệu mẫu legacy.
 
-Không chạy `php artisan db:seed` cho tới khi có model và seeder hợp lệ.
+Lệnh `employee:bootstrap-demo` là công cụ lịch sử có guard; không phải đường
+dẫn setup hiện hành và không được dùng trên database live.
 
 ### 6. Preflight read-only
 

@@ -90,16 +90,6 @@ class EmployeeAuthProcedureTest extends MariaDbTestCase
         $this->assertArrayNotHasKey('plaintext', $employee->getAttributes());
     }
 
-    public function test_repository_reset_contract_passes_only_the_hash_to_the_guarded_routine(): void
-    {
-        $maNv = $this->createEmployee();
-        $repository = $this->repository();
-
-        $repository->resetPasswordHash($maNv, 'repository-reset-hash');
-
-        $this->assertSame('repository-reset-hash', $this->pdo()->query("SELECT mat_khau FROM nhan_vien WHERE ma_nv = '{$maNv}'")->fetchColumn());
-    }
-
     public function test_compare_and_swap_updates_baseline_and_admin_roles(): void
     {
         $baseline = $this->createEmployee();

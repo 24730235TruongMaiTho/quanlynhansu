@@ -8,7 +8,7 @@ final class EmployeeSchemaContractTest extends TestCase
 {
     public function test_fresh_employee_schema_is_exactly_the_fifteen_table_contract(): void
     {
-        $schema = file_get_contents(dirname(__DIR__, 3).'\\database\\tao_bang.sql');
+        $schema = file_get_contents(dirname(__DIR__, 3).'\\database\\sql\\tao_bang.sql');
         self::assertIsString($schema);
 
         preg_match_all('/CREATE TABLE(?: IF NOT EXISTS)?\s+([a-z_]+)/i', $schema, $matches);
@@ -34,24 +34,17 @@ final class EmployeeSchemaContractTest extends TestCase
         self::assertStringContainsString('ngay_nghi_viec', strtolower($schema));
     }
 
-    public function test_seed_has_explicit_master_ids_thirty_employee_rows_and_a_bcrypt_admin(): void
+    public function test_local_demo_seeder_defines_a_guarded_bcrypt_admin_and_permission_catalog(): void
     {
-        $seed = file_get_contents(dirname(__DIR__, 3).'\\database\\du_lieu_mau.sql');
+        $seed = file_get_contents(dirname(__DIR__, 3).'\\database\\seeders\\LocalDemoSeeder.php');
         self::assertIsString($seed);
 
-        self::assertStringContainsString('ma_vt,', strtolower($seed));
-        self::assertSame(30, preg_match_all("/\('NV[0-9]{3}'/", $seed));
-        self::assertSame(30, preg_match_all('/\$2y\$10\$[A-Za-z0-9.\/]{53}/', $seed));
-        self::assertStringContainsString('(105,', $seed);
-        self::assertStringContainsString("('NHAN_VIEN', 30)", $seed);
-        self::assertStringContainsString("('NV001', N'Nguyễn Văn An'", $seed);
-        self::assertStringContainsString("('NV030', N'Bùi Ánh Tuyết'", $seed);
-        self::assertStringContainsString("'TP Hồ Chí Minh', NULL, '2025-02-01'", $seed);
-        preg_match('/INSERT INTO quyen .*?;\R\R-- Role/is', $seed, $permissionBlock);
-        self::assertSame(29, preg_match_all('/\(\d{3},/', $permissionBlock[0] ?? ''));
-        foreach ([101, 102, 103, 104, 105, 201, 202, 203, 204, 301, 302, 303, 304, 401, 402, 403, 404, 501, 502, 503, 504, 601, 602, 603, 701, 702, 703, 801, 802] as $permissionId) {
-            self::assertStringContainsString("({$permissionId},", $permissionBlock[0] ?? '');
-        }
+        self::assertStringContainsString("private const ADMIN_CODE = 'NV001'", $seed);
+        self::assertStringContainsString("private const ADMIN_EMAIL = 'an.nguyen@company.com'", $seed);
+        self::assertStringContainsString("'mat_khau' => Hash::make('nhom3@2026')", $seed);
+        self::assertStringContainsString("DB::table('nhan_vien')->updateOrInsert", $seed);
+        self::assertStringContainsString("'NV_VIEW' => 'Xem nhân viên'", $seed);
+        self::assertStringContainsString('NhanVienPermission::cases()', $seed);
     }
 
     public function test_existing_schema_migration_is_preflighted_and_backup_friendly(): void

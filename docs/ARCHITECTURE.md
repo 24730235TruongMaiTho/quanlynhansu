@@ -30,14 +30,16 @@ Không nên coi sơ đồ lớp là chuẩn hoàn chỉnh: một số module b�
 
 ### Web
 
-`routes/web.php` đăng ký 22 web route tổng cộng, gồm login/logout và các route dưới `/admin`:
+`routes/web.php` đăng ký login/logout và các route quản trị hiện hành:
 
 - Dashboard.
 - Phòng ban.
 - Nhân viên.
 - Trang lương, chấm công, nghỉ phép.
 
-Toàn bộ group `/admin` yêu cầu middleware `auth`. Route nhân viên còn đi qua rollout middleware và Gate theo từng permission; các module khác mới chỉ có auth chung, chưa có permission contract riêng.
+Các route nghiệp vụ khai báo middleware `auth` và Gate theo từng quyền. Rollout
+middleware của module Nhân viên đã được loại bỏ; Hợp đồng và Phân quyền giữ
+nguyên contract quyền do code đồng nghiệp cung cấp.
 
 Named-route contract chưa đồng nhất: web có `backend.backend.*`, resource API không có `api.v1` prefix và một số route nghỉ phép chưa được đặt tên.
 
@@ -117,8 +119,8 @@ Frontend layout cũ lại yêu cầu `resources/css/app.css` và `resources/js/a
 
 ## Database
 
-Nguồn fresh active cho module employee/auth/RBAC là `database/tao_bang.sql` rồi
-`database/du_lieu_mau.sql`:
+Nguồn fresh active là `database/sql/tao_bang.sql`, sau đó dùng
+`Database\\Seeders\\LocalDemoSeeder` cho dữ liệu local tối thiểu:
 
 - đúng 15 bảng;
 - không yêu cầu view/function/trigger/stored procedure;
@@ -140,9 +142,10 @@ Auth/RBAC đã được tích hợp hẹp cho module nhân viên:
 - hash mới/rehash dùng Laravel hasher, lookup/hash CAS chỉ ở server boundary, session từ chối `DA_NGHI`;
 - toàn bộ `/admin` có `auth`; năm Gate ability employee được đối chiếu với
   `ma_quyen` 101–105 và cache trong một request;
-- employee Blade action và route dùng cùng permission; chỉ target `ma_vt = 5`
-  được quản lý, role khác bị guard trước mutation;
-- hai lookup nhân viên dùng chung ở chấm công/nghỉ phép yêu cầu web session, rollout và quyền XEM.
+- employee Blade action và route dùng cùng permission; CRUD hồ sơ không còn
+  chặn target theo `ma_vt`;
+- hai lookup nhân viên dùng chung ở chấm công/nghỉ phép yêu cầu web session và
+  quyền XEM, không còn phụ thuộc rollout flag.
 
 Đây là verified hẹp trên automated/disposable/browser acceptance, chưa phải security audit production cho toàn ứng dụng. Các module ngoài nhân viên vẫn cần permission/audit riêng.
 

@@ -1,5 +1,15 @@
 # Trạng thái dự án
 
+> **Cập nhật hiện hành 2026-08-26:** local `main` đã tích hợp CRUD Nhân viên,
+> Phòng ban và Chức vụ trên nền `ef4685d`; auth/RBAC, Hợp đồng và Phân quyền của
+> đồng nghiệp được ưu tiên giữ nguyên. Reset mật khẩu, rollout flag, department
+> scope và target-role guard từ nhánh CRUD cũ đã được loại khỏi runtime.
+>
+> **Nguồn database:** `database/sql/tao_bang.sql` và
+> `Database\\Seeders\\LocalDemoSeeder`. `database/sql/du_lieu_mau.sql` là
+> legacy, không phải seed fresh hiện hành. Các snapshot 2026-08-24 bên dưới là
+> lịch sử nếu mâu thuẫn với cập nhật này.
+
 > Snapshot: 2026-08-24
 >
 > Historical Task 20 branch: `feature/quanly-nhan-vien`; lát cắt Chức vụ và
@@ -8,8 +18,8 @@
 >
 > Phạm vi historical: Tasks 13–20 đã được kiểm chứng hẹp, commit và push lên `origin/feature/quanly-nhan-vien`: source/test/SQL `ba6e0189e64eb3046164ae5183950afe0b5722be`, dependency locks `18ea209d89efce38596dd1440151f6d55ca90156`, documentation evidence `7bedcadf8c374b38d2e3451617f288bca6184d5f`. Main đã fast-forward tới `origin/main` `1677f202f70e020ce75ef0fa88b11b9db44fa047` và merge feature tại `aa7741914e60acb0243fcfe08f2d1dbee27b4a1f`; focused attendance tests ở `9cd2c30`. Khi tiếp tục phải revalidate HEAD/upstream, không dùng snapshot này để suy ra trạng thái remote.
 
-> **Fresh DB contract (2026-08-24):** `database/tao_bang.sql` plus
-> `database/du_lieu_mau.sql` is now the active fresh source: exactly 15 tables,
+> **Fresh DB contract hiện hành:** `database/sql/tao_bang.sql` cùng
+> `LocalDemoSeeder` là nguồn fresh: đúng 15 bảng,
 > no required routine/view/trigger, direct address columns on `nhan_vien`,
 > explicit role/status/permission IDs and locked `NV001..NV999` counter. The
 > former 16-table/routine dump is historical only. Focused SQLite tests are
@@ -125,7 +135,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | Composer dependency gates | Validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates |
 | MariaDB fresh contract | **Verified hẹp**; guarded disposable replay `7 tests, 231 assertions`, including Chức vụ/Phòng ban direct CRUD/count, migration/cleanup and counter concurrency; no live mutation |
 | Task 19 harness regression/review | Historical Task 20 wrapper có process-identity/atomic-state evidence; rerun hiện tại chưa pass nên không suy rộng review cũ thành current DB gate |
-| Employee rollout flag | `env('NHAN_VIEN_MODULE_ENABLED', true)`; đặt `false` sẽ fail-closed 404 nhưng không thay thế auth/Gate |
+| Employee rollout flag | Đã loại khỏi runtime; auth/Gate là ranh giới truy cập |
 | `php artisan migrate:status` | Fail: chưa có bảng `migrations` |
 
 ## Ma trận module
@@ -135,11 +145,11 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 | Home/landing | Root `/` redirect guest tới login và authenticated tới dashboard; named route `backend.frontend.home` tại `/admin` vẫn thiếu target view `frontend.home` | Không | Root redirect test pass | **Prototype — landing view blocked** |
 | Dashboard | `/admin/bang-dieu-khien` render 200 | Chưa có dữ liệu | Không | **Prototype** |
 | Phòng ban | Server-rendered index/create/edit; action gating và trạng thái an toàn | Direct Query Builder trên `phong_ban` + employee count; transaction/row lock; không routine | HTTP/controller/view + real SQLite repository/mapper `19/157`; MariaDB `7/231` disposable fresh CRUD/count/error; browser unverified | **Verified hẹp trên SQLite/MariaDB disposable; browser acceptance và live rollout unverified** |
-| Nhân viên | List/create/detail/edit/lifecycle/reset/login UI; responsive browser pass hẹp | Fresh 15-table SQL pair, direct Query Builder repository/service, auth provider, session guard và 5 ID-based permission Gates | Scoped employee/auth tests pass; MariaDB fresh contract `7/231` pass, gồm Chức vụ/Phòng ban, migration/cleanup và counter concurrency; browser avatar chưa chạy | **Verified hẹp và chưa production-ready**: live rollout/browser avatar còn unverified |
+| Nhân viên | List/create/detail/edit/lifecycle và login UI; không còn action reset | Fresh 15-table schema, direct Query Builder repository/service, auth provider, session guard và permission Gates | Employee/auth tests pass; MariaDB disposable phải chạy lại sau đổi nguồn seed; browser avatar chưa chạy | **Verified hẹp và chưa production-ready**: live rollout/browser avatar còn unverified |
 | Chức vụ | Server-rendered index/create/edit, exact CV_* action gating, empty/error/success/submitting states | Direct Query Builder on fresh `chuc_vu` + employee count; transaction/row lock; no routine | HTTP `8/88`; repository+mapper real SQLite and RBAC included in scoped `20/97`; MariaDB `7/231` disposable | **Verified hẹp trên SQLite/HTTP/MariaDB disposable; browser unverified** |
 | Lương | Trang render, JS CRUD và hệ số được build | API resource + service/repository | Không | **Prototype — blocked**: thiếu procedure danh sách; write contract chưa ngăn trùng `(ma_nv, ky_luong)`; export/đối soát chưa có handler đầy đủ |
 | Hệ số lương | UI tích hợp trong trang lương | API đọc/thêm/sửa dùng Query Builder; JavaScript có delete nhưng API chưa có route DELETE | Không | **Prototype — blocked action**: validation lệch schema, mutation chưa xác minh |
-| Chấm công | Trang render, JS tải/cập nhật được nối | 4 API route; index Query Builder, lookup/read/update có auth + rollout + Gate | Attendance compatibility `16 pass, 61 assertions` | **Prototype — blocked**: import/export chưa có consumer an toàn; các module khác còn contract riêng |
+| Chấm công | Trang render, JS tải/cập nhật được nối | 4 API route; index Query Builder, lookup/read/update có auth + Gate | Attendance compatibility đã chạy lại trong full suite | **Prototype — blocked**: import/export chưa có consumer an toàn; các module khác còn contract riêng |
 | Nghỉ phép | Trang render, JS CRUD/duyệt được nối | 12 API route, service/repository và một số query trực tiếp | Không | **Prototype**: lookup/danh sách hẹp trả 200 trên DB rỗng; mutation chưa xác minh |
 | Hợp đồng | Không | Controller rỗng, model shell | Không | **Planned** |
 | Vai trò/quyền/tài khoản | Chưa có UI quản trị | 15-table RBAC schema và assignment nội bộ guarded cho bootstrap | SQLite/unit ID contract + MariaDB fresh `7/231` pass; UI chưa có | **Nền tảng verified hẹp; UI quản trị planned** |
@@ -150,7 +160,7 @@ truy nguyên nhưng không được dùng thay cho gate mới.
 ## Module Nhân viên (snapshot 2026-08-24)
 
 Module có list/filter/pagination, create, detail, update hồ sơ/địa chỉ/avatar,
-delete-or-terminate, reset password, custom authentication và năm Gate nhân
+delete-or-terminate, custom authentication và catalog Gate nhân
 viên. Route khóa mã `NV###`; request/service/repository không nhận role, mã,
 hash hoặc ngày nghỉ từ client. Target web phải có `ma_vt = 5`; target role khác
 bị chặn trước mutation. Role/status/permission đều
@@ -158,11 +168,13 @@ dùng ID, không dùng symbol DB.
 
 ### Rollout và authorization
 
-`config/nhanvien.php` dùng `env('NHAN_VIEN_MODULE_ENABLED', true)`. Cờ `false` vẫn trả 404 trước Gate/service; khi bật, mọi `/admin` yêu cầu `auth` và mỗi employee route/Blade action dùng đúng một trong năm quyền. Hai lookup nhân viên dùng chung ở chấm công/nghỉ phép cũng yêu cầu auth, rollout và quyền XEM. Cờ rollout chỉ là kill switch, không phải authorization.
+Mỗi employee route/Blade action dùng auth và quyền tương ứng. Hai lookup nhân
+viên dùng chung ở chấm công/nghỉ phép cũng yêu cầu auth và quyền XEM; không còn
+rollout flag trong runtime.
 
 Auth provider lookup trả đúng sáu cột server-only và không expose hash ra controller/UI. Login dùng generic error, throttle theo identifier/IP, session regenerate; session restore từ chối `DA_NGHI`. Reset/lifecycle chỉ tạo hoặc truyền hash trong Laravel/repository boundary; plaintext không được flash/log/trả về.
 
-Fresh SQL contract nằm ở `database/tao_bang.sql` + `database/du_lieu_mau.sql`
+Fresh SQL contract nằm ở `database/sql/tao_bang.sql` + `LocalDemoSeeder`
 với đúng 15 bảng. Hồ sơ + địa chỉ + avatar chạy trong một transaction write;
 file avatar mới được bù trừ khi rollback, file cũ chỉ xóa sau commit nếu path
 thuộc prefix an toàn. Lifecycle hard-delete khi không có dependency, ngược lại
@@ -186,7 +198,8 @@ với param số dương `ma_pb`; các lệch route còn lại bên dưới thu�
 Module Chức vụ v1 dùng route `backend.chucvu.*`, Gate `CV_*` và direct Query
 Builder; không còn caller active tới các routine `sp_chuc_vu_*` legacy.
 
-Module nhân viên đã có index/create/store/show/edit/update/destroy/reset-password; các route này được bảo vệ bởi auth, rollout và Gate tương ứng.
+Module nhân viên có index/create/store/show/edit/update/destroy; các route này
+được bảo vệ bởi auth và Gate tương ứng.
 
 Các route lương/chấm công/nghỉ phép nằm trong group đã có prefix tên `backend.` nhưng lại tự thêm `backend.`, tạo các tên:
 

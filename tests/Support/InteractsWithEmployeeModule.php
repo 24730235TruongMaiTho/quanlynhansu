@@ -9,11 +9,6 @@ use App\Services\PermissionService;
 
 trait InteractsWithEmployeeModule
 {
-    protected function enableEmployeeModule(): void
-    {
-        config()->set('nhanvien.enabled', true);
-    }
-
     /**
      * Authenticate a deterministic test actor and grant only the requested symbols.
      * The permission service is mocked at the Gate boundary; controller target guards remain real.
@@ -22,7 +17,6 @@ trait InteractsWithEmployeeModule
      */
     protected function actingAsEmployeeWithPermissions(array $symbols): NhanVien
     {
-        $this->enableEmployeeModule();
         $employee = NhanVien::fromAuthRow((object) [
             'ma_nv' => 'NV001',
             'ho_ten' => 'Nguyễn An',

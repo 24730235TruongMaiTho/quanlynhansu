@@ -8,7 +8,6 @@ use App\Http\Controllers\Backend\NghiPhepController;
 use App\Http\Controllers\Backend\LuongChucVuController;
 use App\Http\Controllers\Backend\LuongPhongBanController;
 use App\Http\Controllers\Backend\LuongHeSoLuongController;
-use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 use App\Enums\NhanVienPermission;
 
 Route::middleware('api')
@@ -31,7 +30,6 @@ Route::middleware('api')
                 ->middleware([
                     'web',
                     'auth',
-                    EnsureNhanVienModuleEnabled::class,
                     'can:'.NhanVienPermission::Xem->value,
                 ])
                 ->name(
@@ -45,7 +43,6 @@ Route::middleware('api')
                 ->middleware([
                     'web',
                     'auth',
-                    EnsureNhanVienModuleEnabled::class,
                     'can:'.NhanVienPermission::Xem->value,
                 ])
                 ->name(
@@ -61,7 +58,6 @@ Route::middleware('api')
         ])->middleware([
             'web',
             'auth',
-            EnsureNhanVienModuleEnabled::class,
             'can:'.NhanVienPermission::Xem->value,
         ]);
 
@@ -73,7 +69,6 @@ Route::middleware('api')
         ])->middleware([
             'web',
             'auth',
-            EnsureNhanVienModuleEnabled::class,
             'can:'.NhanVienPermission::Sua->value,
         ]);
 
@@ -94,7 +89,6 @@ Route::middleware('api')
                 ->middleware([
                     'web',
                     'auth',
-                    EnsureNhanVienModuleEnabled::class,
                     'can:'.NhanVienPermission::Xem->value,
                 ]);
 

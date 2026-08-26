@@ -4,9 +4,9 @@
 
 @section('content')
     @php
-        $canCreate = Gate::allows(\App\Enums\PhongBanPermission::Tao->value);
-        $canEdit = Gate::allows(\App\Enums\PhongBanPermission::Sua->value);
-        $canDelete = Gate::allows(\App\Enums\PhongBanPermission::Xoa->value);
+        $canCreate = \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhongBanPermission::Tao->value);
+        $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhongBanPermission::Sua->value);
+        $canDelete = \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhongBanPermission::Xoa->value);
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="department-page-title">

@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
- * Employee data access against the 15-table contract.
+ * Truy cập dữ liệu CRUD nhân viên theo hợp đồng 15 bảng.
  *
- * Employee/auth/RBAC deliberately use explicit Query Builder projections. The
- * canonical fresh schema has no employee procedures, views or address table;
- * callers own the transaction around multi-step writes.
+ * Repository dùng phép chiếu Query Builder tường minh. Lược đồ fresh không có
+ * procedure, view hoặc bảng địa chỉ riêng cho nhân viên; bên gọi sở hữu
+ * transaction bao quanh các lần ghi nhiều bước.
  */
 final class NhanVienRepository implements NhanVienRepositoryContract
 {
@@ -197,21 +197,37 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     public function update(string $maNv, array $profile): void
     {
         $this->databaseOperation(function () use ($maNv, $profile): void {
-            $this->connection()->table('nhan_vien')
-                ->where('ma_nv', $maNv)
-                ->where('ma_vt', NhanVienRole::Employee->value)
-                ->update($this->profileRow($profile));
+            $this->transactionIfNeeded(function () use ($maNv, $profile): void {
+                $target = $this->connection()->table('nhan_vien')
+                    ->where('ma_nv', $maNv)
+                    ->lockForUpdate()
+                    ->first(['ma_nv', 'ma_tt']);
 
-            $targetRole = $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->value('ma_vt');
-            if ($targetRole === null) {
-                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
-            }
-            if ((int) $targetRole !== NhanVienRole::Employee->value) {
-                throw new NhanVienDomainException(
-                    'Không thể cập nhật tài khoản đặc quyền.',
-                    'NV_PRIVILEGED_TARGET',
-                );
-            }
+                if ($target === null) {
+                    throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+                }
+
+                $profileRow = $this->profileRow($profile);
+                $requestedStatus = $profileRow['ma_tt'] ?? null;
+                $currentStatus = (int) $target->ma_tt;
+                if ($requestedStatus !== null
+                    && (($currentStatus === NhanVienStatus::Terminated->value
+                        && (int) $requestedStatus !== NhanVienStatus::Terminated->value)
+                        || ($currentStatus !== NhanVienStatus::Terminated->value
+                            && (int) $requestedStatus === NhanVienStatus::Terminated->value))) {
+                    throw new NhanVienDomainException(
+                        'Không thể thay đổi trạng thái đã nghỉ qua thao tác cập nhật hồ sơ.',
+                        'NV_STATUS_TRANSITION_FORBIDDEN',
+                        'ma_tt',
+                    );
+                }
+
+                if ($profileRow !== []) {
+                    $this->connection()->table('nhan_vien')
+                        ->where('ma_nv', $maNv)
+                        ->update($profileRow);
+                }
+            });
         });
     }
 
@@ -220,19 +236,13 @@ final class NhanVienRepository implements NhanVienRepositoryContract
         return $this->databaseOperation(function () use ($maNv, $newPath): ?string {
             return $this->transactionIfNeeded(function () use ($maNv, $newPath): ?string {
                 $row = $this->connection()->table('nhan_vien')
-                    ->select(['anh_dai_dien', 'ma_vt'])
+                    ->select(['anh_dai_dien'])
                     ->where('ma_nv', $maNv)
                     ->lockForUpdate()
                     ->first();
 
                 if ($row === null) {
                     throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
-                }
-                if ((int) $row->ma_vt !== NhanVienRole::Employee->value) {
-                    throw new NhanVienDomainException(
-                        'Không thể cập nhật tài khoản đặc quyền.',
-                        'NV_PRIVILEGED_TARGET',
-                    );
                 }
 
                 $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->update([
@@ -247,21 +257,23 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     public function upsertAddress(string $maNv, array $address): void
     {
         $this->databaseOperation(function () use ($maNv, $address): void {
-            $addressRow = array_intersect_key($address, array_flip(self::ADDRESS_COLUMNS));
-            if ($addressRow !== []) {
-                $this->connection()->table('nhan_vien')
+            $this->transactionIfNeeded(function () use ($maNv, $address): void {
+                $target = $this->connection()->table('nhan_vien')
                     ->where('ma_nv', $maNv)
-                    ->where('ma_vt', NhanVienRole::Employee->value)
-                    ->update($addressRow);
-            }
+                    ->lockForUpdate()
+                    ->first(['ma_nv']);
 
-            $targetRole = $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->value('ma_vt');
-            if ($targetRole === null) {
-                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
-            }
-            if ((int) $targetRole !== NhanVienRole::Employee->value) {
-                throw new NhanVienDomainException('Không thể cập nhật tài khoản đặc quyền.', 'NV_PRIVILEGED_TARGET');
-            }
+                if ($target === null) {
+                    throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+                }
+
+                $addressRow = array_intersect_key($address, array_flip(self::ADDRESS_COLUMNS));
+                if ($addressRow !== []) {
+                    $this->connection()->table('nhan_vien')
+                        ->where('ma_nv', $maNv)
+                        ->update($addressRow);
+                }
+            });
         });
     }
 
@@ -272,7 +284,7 @@ final class NhanVienRepository implements NhanVienRepositoryContract
             return $this->transactionIfNeeded(function () use ($maNv, $date): array {
                 $connection = $this->connection();
                 $employee = $connection->table('nhan_vien')
-                    ->select(['ma_nv', 'ma_vt', 'ma_tt', 'anh_dai_dien'])
+                    ->select(['ma_nv', 'ma_tt', 'anh_dai_dien'])
                     ->where('ma_nv', $maNv)
                     ->lockForUpdate()
                     ->first();
@@ -280,10 +292,6 @@ final class NhanVienRepository implements NhanVienRepositoryContract
                 if ($employee === null) {
                     throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
                 }
-                if ((int) $employee->ma_vt !== NhanVienRole::Employee->value) {
-                    throw new NhanVienDomainException('Không thể xử lý tài khoản đặc quyền.', 'NV_PRIVILEGED_TARGET');
-                }
-
                 $hasDependency = false;
                 foreach (self::DEPENDENCY_TABLES as $table) {
                     if ($connection->table($table)->where('ma_nv', $maNv)->exists()) {
@@ -308,21 +316,6 @@ final class NhanVienRepository implements NhanVienRepositoryContract
                     'avatar_path' => is_string($employee->anh_dai_dien) ? $employee->anh_dai_dien : null,
                 ];
             });
-        });
-    }
-
-    public function resetPasswordHash(string $maNv, string $hash): void
-    {
-        $this->databaseOperation(function () use ($maNv, $hash): void {
-            $updated = $this->connection()->table('nhan_vien')
-                ->where('ma_nv', $maNv)
-                ->where('ma_vt', NhanVienRole::Employee->value)
-                ->where('ma_tt', '<>', NhanVienStatus::Terminated->value)
-                ->update(['mat_khau' => $hash]);
-
-            if ($updated === 0) {
-                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
-            }
         });
     }
 
@@ -359,11 +352,14 @@ final class NhanVienRepository implements NhanVienRepositoryContract
         });
     }
 
-    /** @internal Bootstrap-only role assignment; never expose through web flows. */
+    /** @internal Chỉ dùng khi khởi tạo dữ liệu demo trên cơ sở dữ liệu disposable. */
     public function assignRoleForBootstrap(string $maNv, int $maVt): void
     {
         $this->databaseOperation(function () use ($maNv, $maVt): void {
-            $updated = $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->update(['ma_vt' => $maVt]);
+            $updated = $this->connection()->table('nhan_vien')
+                ->where('ma_nv', $maNv)
+                ->update(['ma_vt' => $maVt]);
+
             if ($updated === 0) {
                 throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
             }

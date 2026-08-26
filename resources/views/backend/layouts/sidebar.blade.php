@@ -23,7 +23,6 @@
             </li>
             @php($sidebarUser = auth()->user())
             @if ($sidebarUser instanceof \App\Models\NhanVien
-                && config('nhanvien.enabled') === true
                 && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'NhanVien'))
                 <!-- Nhân sự -->
                 <li class="nav-item">
@@ -69,28 +68,7 @@
                     </a>
                 </li>
             @endif
-            <!-- Chấm công -->
-            <li class="nav-item">
-                <a href="#" class="nav-link" data-toggle="submenu">
-                    <i class="bi bi-building-fill"></i>
-                    <span class="nav-title">Quản lý phòng ban</span>
-                    <i class="bi bi-chevron-down menu-arrow rotated"></i>
-                </a>
-                <ul class="sub-menu">
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-list-ul"></i><span class="nav-title">Danh sách phòng ban</span></a></li>
-                </ul>
-            </li>
-            <!-- Quản lý chức vụ -->
-            <li class="nav-item">
-                <a href="#" class="nav-link" data-toggle="submenu">
-                    <i class="bi bi-person-badge-fill"></i>
-                    <span class="nav-title">Quản lý chức vụ</span>
-                    <i class="bi bi-chevron-down menu-arrow rotated"></i>
-                </a>
-                <ul class="sub-menu">
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-person-badge"></i><span class="nav-title">Danh sách chức vụ</span></a></li>
-                </ul>
-            </li>
+            <!-- Quản lý hợp đồng -->
             @if ($sidebarUser instanceof \App\Models\NhanVien
                 && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'HopDong'))
             <li class="nav-item">

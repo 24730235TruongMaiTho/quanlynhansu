@@ -78,14 +78,19 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             ]);
     }
 
-    public function test_rollout_disabled_hides_attendance_department_lookup(): void
+    public function test_permissioned_actor_can_read_department_lookup_without_rollout_switch(): void
     {
         $this->actingAsEmployeeWithPermissions([
             \App\Enums\NhanVienPermission::Xem,
         ]);
-        config()->set('nhanvien.enabled', false);
+        DB::shouldReceive('select')
+            ->once()
+            ->with('CALL sp_phong_ban_danh_sach()')
+            ->andReturn([]);
 
-        $this->getJson('/api/v1/cham-cong/phong-ban')->assertNotFound();
+        $this->getJson('/api/v1/cham-cong/phong-ban')
+            ->assertOk()
+            ->assertExactJson(['success' => true, 'data' => []]);
     }
 
     public function test_xem_only_actor_cannot_update_attendance_api(): void
@@ -99,23 +104,19 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         ])->assertForbidden();
     }
 
-    public function test_rollout_disabled_precedes_attendance_permissions(): void
+    public function test_permission_middleware_remains_authoritative_without_rollout_switch(): void
     {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-            \App\Enums\NhanVienPermission::Sua,
-        ]);
-        config()->set('nhanvien.enabled', false);
+        $this->actingAsEmployeeWithPermissions([]);
 
-        $this->getJson('/api/v1/cham-cong')->assertNotFound();
+        $this->getJson('/api/v1/cham-cong')->assertForbidden();
         $this->putJson('/api/v1/cham-cong/1', [
             'so_gio_lam' => 8,
             'vao_muon' => false,
             've_som' => false,
-        ])->assertNotFound();
+        ])->assertForbidden();
     }
 
-    public function test_enabled_lookup_maps_filters_and_preserves_attendance_aggregates(): void
+    public function test_permissioned_lookup_maps_filters_and_preserves_attendance_aggregates(): void
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
 

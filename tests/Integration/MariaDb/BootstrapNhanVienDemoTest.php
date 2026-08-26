@@ -811,11 +811,6 @@ final class FaultInjectingNhanVienRepository implements NhanVienRepositoryContra
         return $this->inner->removeOrTerminate($maNv, $date);
     }
 
-    public function resetPasswordHash(string $maNv, string $hash): void
-    {
-        $this->inner->resetPasswordHash($maNv, $hash);
-    }
-
     public function rehashAuthenticatedPassword(string $maNv, string $currentHash, string $newHash): void
     {
         $this->inner->rehashAuthenticatedPassword($maNv, $currentHash, $newHash);
@@ -881,11 +876,6 @@ final class CapturingNhanVienService implements NhanVienServiceContract
     public function removeOrTerminate(string $maNv): NhanVienRemovalAction
     {
         return $this->inner->removeOrTerminate($maNv);
-    }
-
-    public function resetPassword(string $maNv): void
-    {
-        $this->inner->resetPassword($maNv);
     }
 
     public function lookups(): array

@@ -542,13 +542,6 @@
 
                 <!-- Options -->
                 <div class="login-options">
-                    <div class="form-check">
-                        <input type="checkbox" id="rememberMe" checked />
-                        <label for="rememberMe">
-                            <span class="checkmark"><i class="bi bi-check-lg"></i></span>
-                            Ghi nhớ đăng nhập
-                        </label>
-                    </div>
                     <a href="#" class="forgot-link">Quên mật khẩu?</a>
                 </div>
 

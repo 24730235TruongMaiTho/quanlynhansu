@@ -15,7 +15,6 @@ final class NhanVienProcedureExceptionMapper
         'NV_CODE_EXHAUSTED' => ['Đã hết mã nhân viên để cấp.', null],
         'NV_STATUS_MISSING' => ['Trạng thái làm việc không hợp lệ.', 'ma_tt'],
         'NV_DEFAULT_ROLE_INVALID' => ['Vai trò mặc định không hợp lệ.', null],
-        'NV_PRIVILEGED_TARGET' => ['Bạn không có quyền thực hiện thao tác này.', null],
         'NV_AUTH_HASH_STALE' => ['Thông tin đăng nhập không hợp lệ.', null],
         'NV_PAGINATION_INVALID' => ['Thông tin phân trang không hợp lệ.', null],
     ];
@@ -24,7 +23,7 @@ final class NhanVienProcedureExceptionMapper
     {
         $databaseMessage = $exception->getPrevious()?->getMessage() ?? '';
 
-        if (preg_match('/\b(NV_(?:NOT_FOUND|EMAIL_DUPLICATE|CCCD_DUPLICATE|REFERENCE_INVALID|CODE_EXHAUSTED|STATUS_MISSING|DEFAULT_ROLE_INVALID|PRIVILEGED_TARGET|AUTH_HASH_STALE|PAGINATION_INVALID))\b/', $databaseMessage, $matches)) {
+        if (preg_match('/\b(NV_(?:NOT_FOUND|EMAIL_DUPLICATE|CCCD_DUPLICATE|REFERENCE_INVALID|CODE_EXHAUSTED|STATUS_MISSING|DEFAULT_ROLE_INVALID|AUTH_HASH_STALE|PAGINATION_INVALID))\b/', $databaseMessage, $matches)) {
             return $this->domainException($matches[1]);
         }
 

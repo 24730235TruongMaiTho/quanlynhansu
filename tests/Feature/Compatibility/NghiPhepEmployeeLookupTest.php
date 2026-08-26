@@ -25,7 +25,7 @@ class NghiPhepEmployeeLookupTest extends TestCase
         $this->get('/api/v1/nghi-phep/nhan-vien')->assertRedirect(route('login'));
     }
 
-    public function test_enabled_lookup_maps_legacy_query_to_the_canonical_employee_service(): void
+    public function test_permissioned_lookup_maps_legacy_query_to_the_canonical_employee_service(): void
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
 
@@ -98,7 +98,7 @@ class NghiPhepEmployeeLookupTest extends TestCase
         $this->assertSame($codes, array_values(array_unique($codes)));
     }
 
-    public function test_enabled_lookup_returns_a_stable_error_without_internal_details(): void
+    public function test_permissioned_lookup_returns_a_stable_error_without_internal_details(): void
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {

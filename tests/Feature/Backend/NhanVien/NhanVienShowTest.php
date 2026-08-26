@@ -24,6 +24,12 @@ class NhanVienShowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\NhanVienPermission::Tao,
+            \App\Enums\NhanVienPermission::Sua,
+            \App\Enums\NhanVienPermission::Xoa,
+        ]);
 
         $this->app->instance(Vite::class, new class extends Vite
         {
@@ -70,13 +76,8 @@ class NhanVienShowTest extends TestCase
         ))->findOrFail('NV404');
     }
 
-    public function test_enabled_show_renders_the_complete_safe_profile_and_whitelisted_back_link(): void
+    public function test_authenticated_show_renders_the_complete_safe_profile_and_whitelisted_back_link(): void
     {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-            \App\Enums\NhanVienPermission::Sua,
-            \App\Enums\NhanVienPermission::DatLaiMatKhau,
-        ]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($this->employee());
         });
@@ -99,7 +100,7 @@ class NhanVienShowTest extends TestCase
             'so_dong' => '20',
         ]);
 
-        $response = $this->get('/admin/nhan-vien/NV001?'.http_build_query([
+        $response = $this->get('/nhan-vien/NV001?'.http_build_query([
             'tu_khoa' => 'Nguyễn An',
             'ma_pb' => 1,
             'ma_cv' => 2,
@@ -138,23 +139,15 @@ class NhanVienShowTest extends TestCase
             ->assertDontSee('secret-hash-value')
             ->assertDontSee('mat_khau')
             ->assertSee('Chỉnh sửa')
-            ->assertDontSee('Xóa nhân viên')
+            ->assertSee('Xóa hoặc kết thúc')
             ->assertSee('data-action-dialog', false)
-            ->assertSee(
-                'action="'.e(route('backend.nhanvien.reset-password', ['ma_nv' => 'NV001'])).'"',
-                false,
-            )
-            ->assertSee('name="_token"', false)
-            ->assertSee('name="_method" value="PATCH"', false)
-            ->assertSee('Đặt lại mật khẩu')
             ->assertSee('/build/nhanvien.js', false);
 
         $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
     }
 
-    public function test_show_hides_the_edit_action_for_a_privileged_employee(): void
+    public function test_show_renders_edit_and_delete_actions_for_any_employee_role(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $employee = $this->employee();
         $employee->ma_vt = 1;
         $employee->ten_vt = 'Quản trị viên';
@@ -165,15 +158,16 @@ class NhanVienShowTest extends TestCase
 
         $editUrl = route('backend.nhanvien.edit', ['ma_nv' => 'NV001']);
 
-        $this->get('/admin/nhan-vien/NV001')
+        $this->get('/nhan-vien/NV001')
             ->assertOk()
-            ->assertDontSee('Chỉnh sửa')
-            ->assertDontSee('href="'.e($editUrl).'"', false);
+            ->assertSee('Chỉnh sửa')
+            ->assertSee('href="'.e($editUrl).'"', false)
+            ->assertSee('Xóa hoặc kết thúc')
+            ->assertDontSee('Đặt lại mật khẩu');
     }
 
     public function test_show_renders_initials_when_the_employee_has_no_avatar(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $employee = $this->employee();
         $employee->anh_dai_dien = null;
 
@@ -181,7 +175,7 @@ class NhanVienShowTest extends TestCase
             $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
         });
 
-        $this->get('/admin/nhan-vien/NV001')
+        $this->get('/nhan-vien/NV001')
             ->assertOk()
             ->assertSee('aria-label="Ảnh đại diện của Nguyễn An"', false)
             ->assertSee('>NA<', false)
@@ -190,7 +184,6 @@ class NhanVienShowTest extends TestCase
 
     public function test_show_never_renders_an_external_avatar_origin(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $employees = collect([
             'https://tracker.example/pixel.png',
             '//tracker.example/pixel.png',
@@ -209,7 +202,7 @@ class NhanVienShowTest extends TestCase
         });
 
         foreach ($employees as $employee) {
-            $this->get('/admin/nhan-vien/NV001')
+            $this->get('/nhan-vien/NV001')
                 ->assertOk()
                 ->assertSee('src="'.Storage::disk('public')->url($employee->anh_dai_dien).'"', false)
                 ->assertDontSee('src="https://tracker.example', false)
@@ -219,7 +212,6 @@ class NhanVienShowTest extends TestCase
 
     public function test_dynamic_employee_name_is_escaped_in_the_document_title(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $employee = $this->employee();
         $employee->ho_ten = '</title><script>alert(1)</script>';
 
@@ -227,7 +219,7 @@ class NhanVienShowTest extends TestCase
             $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($employee);
         });
 
-        $this->get('/admin/nhan-vien/NV001')
+        $this->get('/nhan-vien/NV001')
             ->assertOk()
             ->assertSee('&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;', false)
             ->assertDontSee('</title><script>alert(1)</script>', false);
@@ -235,42 +227,28 @@ class NhanVienShowTest extends TestCase
 
     public function test_missing_employee_returns_404_without_leaking_internal_details(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('findOrFail')->once()->with('NV404')->andThrow(new NotFoundHttpException);
         });
 
-        $this->get('/admin/nhan-vien/NV404')
+        $this->get('/nhan-vien/NV404')
             ->assertNotFound()
             ->assertDontSee('SQLSTATE');
     }
 
     public function test_invalid_employee_codes_do_not_dispatch_show(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('findOrFail');
         });
 
         foreach (['NV1', 'NV0001', 'nv001'] as $code) {
-            $this->get('/admin/nhan-vien/'.$code)->assertNotFound();
+            $this->get('/nhan-vien/'.$code)->assertNotFound();
         }
-    }
-
-    public function test_employee_module_guard_blocks_show_before_calling_the_service(): void
-    {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
-        config()->set('nhanvien.enabled', false);
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('findOrFail');
-        });
-
-        $this->get('/admin/nhan-vien/NV001')->assertNotFound();
     }
 
     public function test_index_show_link_preserves_only_the_six_whitelisted_query_keys(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $filters = [
             'tu_khoa' => 'Nguyễn An',
             'ma_pb' => 1,
@@ -292,7 +270,7 @@ class NhanVienShowTest extends TestCase
 
         $showUrl = route('backend.nhanvien.show', ['ma_nv' => 'NV001'] + $filters);
 
-        $this->get('/admin/nhan-vien?'.http_build_query($filters + [
+        $this->get('/nhan-vien?'.http_build_query($filters + [
             'redirect' => 'https://evil.example/steal',
         ]))
             ->assertOk()

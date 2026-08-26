@@ -1,5 +1,15 @@
 # Handoff tiếp tục đồ án `quanlynhansu`
 
+> **Cập nhật 2026-08-26:** local `main` đã hòa CRUD Nhân viên, Phòng ban và
+> Chức vụ lên nền `ef4685d`, đồng thời giữ nguyên auth/RBAC, Hợp đồng và Phân
+> quyền của đồng nghiệp. Reset mật khẩu, rollout flag, department scope và
+> target-role guard của nhánh CRUD cũ không còn trong runtime. Các mô tả trái
+> với cập nhật này ở phần lịch sử bên dưới không phải contract hiện hành.
+>
+> **Nguồn DB hiện hành:** `database/sql/tao_bang.sql` và
+> `Database\\Seeders\\LocalDemoSeeder`. `database/sql/du_lieu_mau.sql` là dữ
+> liệu legacy để đối chiếu, không phải seed fresh.
+
 > Snapshot: 2026-08-24 (Asia/Saigon)
 >
 > Delivery target: `main`; lát cắt Chức vụ và refactor Phòng ban được chuẩn bị
@@ -11,9 +21,9 @@
 >
 > Documentation-evidence commit: `7bedcadf8c374b38d2e3451617f288bca6184d5f`.
 
-> **Current DB source-of-truth:** For the employee/auth/RBAC, Phòng ban and Chức vụ modules, build a
-> disposable database from `database/tao_bang.sql` and then
-> `database/du_lieu_mau.sql`. It must contain exactly 15 tables and no required
+> **Current DB source-of-truth:** Build a disposable database from
+> `database/sql/tao_bang.sql`, then run `LocalDemoSeeder` in local/testing. It
+> must contain exactly 15 tables and no required
 > routine/view/trigger. `quan_ly_nhan_su.session.sql` and
 > `database/sql/employee/2026_08_12_001`–`006` are retained as marked legacy
 > history only. The guarded fresh MariaDB harness replays this source pair with
@@ -35,8 +45,8 @@
 1. `AGENTS.md`.
 2. [README tài liệu](README.md).
 3. [PROJECT_STATUS.md](PROJECT_STATUS.md).
-4. [DATABASE.md](DATABASE.md), rồi `database/tao_bang.sql` và
-   `database/du_lieu_mau.sql`; chỉ đọc `quan_ly_nhan_su.session.sql` để đối chiếu legacy.
+4. [DATABASE.md](DATABASE.md), rồi `database/sql/tao_bang.sql` và
+   `database/seeders/LocalDemoSeeder.php`; chỉ đọc dữ liệu SQL khác để đối chiếu legacy.
 5. Route, controller, request, service/repository, model, Blade/JavaScript và test đúng phạm vi.
 6. [EMPLOYEE_MODULE_GUIDE.md](EMPLOYEE_MODULE_GUIDE.md) nếu task thuộc module Nhân viên.
 
@@ -94,7 +104,7 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
 - seed role 2 có đúng `101–105, 201–204, 301–304, 401–404`; migration chỉ bổ
   sung các mapping thiếu và giữ nguyên mapping module khác hiện hữu;
 - route `/admin` yêu cầu auth; target employee flow phải có `ma_vt = 5` trước mutation;
-- cấu hình rollout là `env('NHAN_VIEN_MODULE_ENABLED', true)`. Có thể đặt `false` để fail-closed 404; không dùng cờ này thay cho auth/Gate;
+- rollout flag của module Nhân viên đã được loại bỏ; auth/Gate là ranh giới truy cập hiện hành;
 - fresh SQL pair tạo đúng 15 bảng; existing-DB migration là runbook riêng, còn SQL `001`–`006` chỉ là legacy history.
 - Repository employee/auth/RBAC hiện dùng explicit Query Builder trên fresh
   columns và ID contracts; các test `tests/Integration/MariaDb/*ProcedureTest.php`,

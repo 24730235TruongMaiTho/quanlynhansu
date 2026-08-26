@@ -35,14 +35,14 @@ class EmployeeAuthenticationTest extends TestCase
     {
         $this->actingAs($this->employee())
             ->get('/dang-nhap')
-            ->assertRedirect(route('backend.bangdieukhien.index'));
+            ->assertRedirect(route('backend.tongquan.index'));
     }
 
     public function test_authenticated_user_visiting_root_is_redirected_to_dashboard(): void
     {
         $this->actingAs($this->employee())
             ->get('/')
-            ->assertRedirect(route('backend.bangdieukhien.index'));
+            ->assertRedirect(route('backend.tongquan.index'));
     }
 
     public function test_invalid_password_payload_never_flashes_or_renders_plaintext(): void
@@ -72,7 +72,7 @@ class EmployeeAuthenticationTest extends TestCase
             'mat_khau' => 'secret',
         ]);
 
-        $response->assertRedirect(route('backend.bangdieukhien.index'));
+        $response->assertRedirect(route('backend.tongquan.index'));
         $this->assertTrue(Auth::check());
         $this->assertNotSame($oldSessionId, $this->app['session']->getId());
         $this->assertSame('NV001', Auth::id());
@@ -180,7 +180,7 @@ class EmployeeAuthenticationTest extends TestCase
         );
 
         $this->post('/dang-nhap', ['dinh_danh' => 'NV001', 'mat_khau' => 'secret'])
-            ->assertRedirect(route('backend.bangdieukhien.index'));
+            ->assertRedirect(route('backend.tongquan.index'));
         $this->assertTrue(Auth::check());
     }
 
@@ -228,7 +228,7 @@ class EmployeeAuthenticationTest extends TestCase
             'remember' => '1',
         ]);
 
-        $response->assertRedirect(route('backend.bangdieukhien.index'));
+        $response->assertRedirect(route('backend.tongquan.index'));
         $this->assertNull($response->getCookie('remember_web'));
     }
 

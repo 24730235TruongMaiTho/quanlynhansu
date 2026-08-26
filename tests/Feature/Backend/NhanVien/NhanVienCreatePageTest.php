@@ -5,7 +5,6 @@ namespace Tests\Feature\Backend\NhanVien;
 use App\Contracts\NhanVienServiceContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Controllers\Backend\NhanVienController;
-use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 use Illuminate\Foundation\Vite;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +22,12 @@ class NhanVienCreatePageTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\NhanVienPermission::Tao,
+            \App\Enums\NhanVienPermission::Sua,
+            \App\Enums\NhanVienPermission::Xoa,
+        ]);
 
         $this->app->instance(Vite::class, new class extends Vite
         {
@@ -37,14 +42,13 @@ class NhanVienCreatePageTest extends TestCase
         });
     }
 
-    public function test_enabled_create_renders_accessible_three_step_form_from_service_lookups(): void
+    public function test_authenticated_create_renders_accessible_three_step_form_from_service_lookups(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('lookups')->once()->andReturn($this->completeLookups());
         });
 
-        $response = $this->get('/admin/nhan-vien/create');
+        $response = $this->get('/nhan-vien/create');
 
         $response
             ->assertOk()
@@ -61,9 +65,6 @@ class NhanVienCreatePageTest extends TestCase
             ->assertSee('enctype="multipart/form-data"', false)
             ->assertSee('name="_token"', false)
             ->assertSee('Mã nhân viên được hệ thống tự cấp')
-            ->assertSee('không hiển thị hoặc lưu plaintext')
-            ->assertSee('ma_vt = 5')
-            ->assertSee('quyền phải được cấp ở luồng quản trị riêng')
             ->assertSee('Kỹ thuật')
             ->assertSee('Lập trình viên')
             ->assertSee('Đang làm việc')
@@ -90,7 +91,6 @@ class NhanVienCreatePageTest extends TestCase
 
     public function test_create_lists_each_missing_required_lookup_and_disables_submit(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('lookups')->once()->andReturn([
                 'phong_ban' => [],
@@ -99,7 +99,7 @@ class NhanVienCreatePageTest extends TestCase
             ]);
         });
 
-        $this->get('/admin/nhan-vien/create')
+        $this->get('/nhan-vien/create')
             ->assertOk()
             ->assertViewHas('missingLookups', ['Phòng ban', 'Chức vụ', 'Trạng thái làm việc'])
             ->assertSee('Thiếu dữ liệu danh mục bắt buộc')
@@ -113,7 +113,6 @@ class NhanVienCreatePageTest extends TestCase
 
     public function test_lookup_failure_renders_safe_locked_form_without_internal_details(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('lookups')->once()->andThrow(new NhanVienDomainException(
                 'SQLSTATE[42000]: sp_chuc_vu_danh_sach failed',
@@ -121,7 +120,7 @@ class NhanVienCreatePageTest extends TestCase
             ));
         });
 
-        $this->get('/admin/nhan-vien/create')
+        $this->get('/nhan-vien/create')
             ->assertOk()
             ->assertSee('Không thể tải dữ liệu danh mục lúc này. Vui lòng thử lại sau.')
             ->assertSee('data-submit-employee', false)
@@ -133,7 +132,6 @@ class NhanVienCreatePageTest extends TestCase
 
     public function test_validation_errors_restore_old_input_and_open_the_first_invalid_step(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('lookups')->once()->andReturn($this->completeLookups());
         });
@@ -152,7 +150,7 @@ class NhanVienCreatePageTest extends TestCase
                 'ma_pb' => '1',
             ],
             'errors' => $errors,
-        ])->get('/admin/nhan-vien/create')
+        ])->get('/nhan-vien/create')
             ->assertOk()
             ->assertViewHas('firstErrorStep', 2)
             ->assertSee('data-initial-step="2"', false)
@@ -163,33 +161,26 @@ class NhanVienCreatePageTest extends TestCase
             ->assertSee('Phòng ban không hợp lệ.');
     }
 
-    public function test_create_and_legacy_routes_are_canonical_ordered_and_guarded(): void
+    public function test_create_and_legacy_routes_are_canonical_and_protected(): void
     {
         $createRoute = Route::getRoutes()->getByName('backend.nhanvien.create');
         $showRoute = Route::getRoutes()->getByName('backend.nhanvien.show');
 
         $this->assertInstanceOf(RoutingRoute::class, $createRoute);
-        $this->assertSame('admin/nhan-vien/create', $createRoute->uri());
+        $this->assertSame('nhan-vien/create', $createRoute->uri());
         $this->assertSame(NhanVienController::class.'@create', $createRoute->getActionName());
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $createRoute->gatherMiddleware());
         $this->assertLessThan(
             array_search($showRoute, Route::getRoutes()->getRoutes(), true),
             array_search($createRoute, Route::getRoutes()->getRoutes(), true),
         );
 
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
-        config()->set('nhanvien.enabled', false);
-        $this->get('/admin/nhan-vien/create')->assertNotFound();
-        $this->get('/admin/nhan-vien/them-nhan-vien')->assertNotFound();
-
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Tao]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('lookups');
         });
 
         $this->get('/admin/nhan-vien/them-nhan-vien?from=legacy')
             ->assertStatus(301)
-            ->assertRedirect('/admin/nhan-vien/create?from=legacy');
+            ->assertRedirect('/nhan-vien/create?from=legacy');
     }
 
     private function completeLookups(): array

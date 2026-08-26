@@ -1,6 +1,4 @@
 <?php
-// Middleware kiểm tra module nhân viên đã được bật hay chưa.
-use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 // Request được dùng để giữ lại query string khi chuyển hướng URL cũ.
 use Illuminate\Http\Request;
 // Facade Route dùng để khai báo các endpoint web.
@@ -11,7 +9,6 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 // Controller xử lý trang ngoài và các thao tác đăng nhập.
-use App\Http\Controllers\Frontend\HomeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 // Danh sách quyền dùng cho middleware phân quyền route.
 use App\Enums\NhanVienPermission;
@@ -86,7 +83,6 @@ Route::get('/admin/nhan-vien/danh-sach-nhan-vien', function (Request $request) {
     return redirect()->route('backend.nhanvien.index', $request->query(), 301);
 })->middleware([
     'auth',
-    EnsureNhanVienModuleEnabled::class,
     'can:'.NhanVienPermission::Xem->value,
 ]);
 
@@ -95,52 +91,47 @@ Route::get('/admin/nhan-vien/them-nhan-vien', function (Request $request) {
     return redirect()->route('backend.nhanvien.create', $request->query(), 301);
 })->middleware([
     'auth',
-    EnsureNhanVienModuleEnabled::class,
     'can:'.NhanVienPermission::Tao->value,
 ]);
 
-// Các route quản trị dùng tiền tố tên backend.
-// Có thể bật middleware auth cho toàn bộ nhóm khi hoàn tất cấu hình đăng nhập.
+// Các route quản trị dùng tiền tố tên backend; từng route nghiệp vụ khai báo
+// middleware đăng nhập và quyền tương ứng ngay tại nơi định nghĩa.
 Route::prefix('')->name('backend.')
-// ->middleware('auth')
 ->group(function () {
     // Dashboard tổng quan.
     Route::get('/tong-quan', [TongQuanController::class, 'index'])->name('tongquan.index');
 
-    // Trang ngoài mặc định của ứng dụng.
-    Route::get('/', [HomeController::class, 'index'])->name('frontend.home');
-
     // Danh sách phòng ban, yêu cầu quyền xem.
     Route::get('/phong-ban', [PhongBanController::class, 'index'])
-        ->middleware('can:'.PhongBanPermission::Xem->value)
+        ->middleware(['auth', 'can:'.PhongBanPermission::Xem->value])
         ->name('phongban.index');
 
     // Hiển thị form tạo phòng ban, yêu cầu quyền tạo.
     Route::get('/phong-ban/create', [PhongBanController::class, 'create'])
-        ->middleware('can:'.PhongBanPermission::Tao->value)
+        ->middleware(['auth', 'can:'.PhongBanPermission::Tao->value])
         ->name('phongban.create');
 
     // Lưu phòng ban mới.
     Route::post('/phong-ban', [PhongBanController::class, 'store'])
-        ->middleware('can:'.PhongBanPermission::Tao->value)
+        ->middleware(['auth', 'can:'.PhongBanPermission::Tao->value])
         ->name('phongban.store');
 
     // Hiển thị form chỉnh sửa phòng ban theo mã phòng ban.
     Route::get('/phong-ban/{ma_pb}/edit', [PhongBanController::class, 'edit'])
         ->where('ma_pb', '[1-9][0-9]*')
-        ->middleware('can:'.PhongBanPermission::Sua->value)
+        ->middleware(['auth', 'can:'.PhongBanPermission::Sua->value])
         ->name('phongban.edit');
 
     // Cập nhật phòng ban bằng PUT hoặc PATCH.
     Route::match(['put', 'patch'], '/phong-ban/{ma_pb}', [PhongBanController::class, 'update'])
         ->where('ma_pb', '[1-9][0-9]*')
-        ->middleware('can:'.PhongBanPermission::Sua->value)
+        ->middleware(['auth', 'can:'.PhongBanPermission::Sua->value])
         ->name('phongban.update');
 
     // Xóa phòng ban theo mã phòng ban.
     Route::delete('/phong-ban/{ma_pb}', [PhongBanController::class, 'destroy'])
         ->where('ma_pb', '[1-9][0-9]*')
-        ->middleware('can:'.PhongBanPermission::Xoa->value)
+        ->middleware(['auth', 'can:'.PhongBanPermission::Xoa->value])
         ->name('phongban.destroy');
 
     // Trang và API quản lý vai trò.
@@ -176,98 +167,68 @@ Route::prefix('')->name('backend.')
 
     // Danh sách nhân viên.
     Route::get('/chuc-vu', [ChucVuController::class, 'index'])
-        ->middleware('can:'.ChucVuPermission::Xem->value)
+        ->middleware(['auth', 'can:'.ChucVuPermission::Xem->value])
         ->name('chucvu.index');
 
     Route::get('/chuc-vu/create', [ChucVuController::class, 'create'])
-        ->middleware('can:'.ChucVuPermission::Tao->value)
+        ->middleware(['auth', 'can:'.ChucVuPermission::Tao->value])
         ->name('chucvu.create');
 
     Route::post('/chuc-vu', [ChucVuController::class, 'store'])
-        ->middleware('can:'.ChucVuPermission::Tao->value)
+        ->middleware(['auth', 'can:'.ChucVuPermission::Tao->value])
         ->name('chucvu.store');
 
     Route::get('/chuc-vu/{ma_cv}/edit', [ChucVuController::class, 'edit'])
         ->where('ma_cv', '[1-9][0-9]*')
-        ->middleware('can:'.ChucVuPermission::Sua->value)
+        ->middleware(['auth', 'can:'.ChucVuPermission::Sua->value])
         ->name('chucvu.edit');
 
     Route::match(['put', 'patch'], '/chuc-vu/{ma_cv}', [ChucVuController::class, 'update'])
         ->where('ma_cv', '[1-9][0-9]*')
-        ->middleware('can:'.ChucVuPermission::Sua->value)
+        ->middleware(['auth', 'can:'.ChucVuPermission::Sua->value])
         ->name('chucvu.update');
 
     Route::delete('/chuc-vu/{ma_cv}', [ChucVuController::class, 'destroy'])
         ->where('ma_cv', '[1-9][0-9]*')
-        ->middleware('can:'.ChucVuPermission::Xoa->value)
+        ->middleware(['auth', 'can:'.ChucVuPermission::Xoa->value])
         ->name('chucvu.destroy');
 
     Route::get('/nhan-vien', [NhanVienController::class, 'index'])
-        /*->middleware([
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Xem->value,
-        ])*/
+        ->middleware(['auth', 'can:'.NhanVienPermission::Xem->value])
         ->name('nhanvien.index');
 
     // Hiển thị form thêm nhân viên.
     Route::get('/nhan-vien/create', [NhanVienController::class, 'create'])
-        ->middleware([
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Tao->value,
-        ])
+        ->middleware(['auth', 'can:'.NhanVienPermission::Tao->value])
         ->name('nhanvien.create');
 
     // Lưu nhân viên mới.
     Route::post('/nhan-vien', [NhanVienController::class, 'store'])
-        ->middleware([
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Tao->value,
-        ])
+        ->middleware(['auth', 'can:'.NhanVienPermission::Tao->value])
         ->name('nhanvien.store');
 
     // Hiển thị form chỉnh sửa nhân viên.
     Route::get('/nhan-vien/{ma_nv}/edit', [NhanVienController::class, 'edit'])
         ->where('ma_nv', 'NV[0-9]{3}')
-        ->middleware([
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Sua->value,
-        ])
+        ->middleware(['auth', 'can:'.NhanVienPermission::Sua->value])
         ->name('nhanvien.edit');
 
     // Cập nhật thông tin nhân viên.
     Route::match(['put', 'patch'], '/nhan-vien/{ma_nv}', [NhanVienController::class, 'update'])
         ->where('ma_nv', 'NV[0-9]{3}')
-        ->middleware([
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Sua->value,
-        ])
+        ->middleware(['auth', 'can:'.NhanVienPermission::Sua->value])
         ->name('nhanvien.update');
-
-    // Đặt lại mật khẩu cho nhân viên.
-    Route::patch('/nhan-vien/{ma_nv}/dat-lai-mat-khau', [NhanVienController::class, 'resetPassword'])
-        ->where('ma_nv', 'NV[0-9]{3}')
-        ->middleware([
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::DatLaiMatKhau->value,
-        ])
-        ->name('nhanvien.reset-password');
 
     // Xóa hoặc chuyển trạng thái nhân viên theo nghiệp vụ controller.
     Route::delete('/nhan-vien/{ma_nv}', [NhanVienController::class, 'destroy'])
         ->where('ma_nv', 'NV[0-9]{3}')
-        ->middleware([
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Xoa->value,
-        ])
+        ->middleware(['auth', 'can:'.NhanVienPermission::Xoa->value])
         ->name('nhanvien.destroy');
 
     // Xem chi tiết nhân viên.
     Route::get('/nhan-vien/{ma_nv}', [NhanVienController::class, 'show'])
         ->where('ma_nv', 'NV[0-9]{3}')
-        ->middleware([
-            EnsureNhanVienModuleEnabled::class,
-            'can:'.NhanVienPermission::Xem->value,
-        ])
+        ->middleware(['auth', 'can:'.NhanVienPermission::Xem->value])
         ->name('nhanvien.show');
 
     // Trang quản lý lương hiện trả về view trực tiếp.

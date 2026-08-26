@@ -10,19 +10,19 @@ use App\Http\Requests\ListNhanVienRequest;
 use App\Http\Requests\StoreNhanVienRequest;
 use App\Http\Requests\UpdateNhanVienRequest;
 use App\Support\NhanVienAvatarPath;
-use App\Support\NhanVienTargetGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
-use Illuminate\Auth\Access\AuthorizationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 class NhanVienController extends Controller
 {
-    public function __construct(private NhanVienServiceContract $employees) {}
+    public function __construct(
+        private NhanVienServiceContract $employees,
+    ) {}
 
     public function index(ListNhanVienRequest $request): View
     {
@@ -62,8 +62,10 @@ class NhanVienController extends Controller
 
     public function show(string $ma_nv): View
     {
+        $employee = $this->employees->findOrFail($ma_nv);
+
         return view('backend.nhanvien.show', [
-            'employee' => $this->employees->findOrFail($ma_nv),
+            'employee' => $employee,
         ]);
     }
 
@@ -145,14 +147,12 @@ class NhanVienController extends Controller
             ->with([
                 'success' => 'Đã tạo nhân viên; có thể bổ sung hợp đồng sau.',
                 'created_employee_code' => $maNv,
-                'password_convention' => 'Tài khoản dùng quy ước mật khẩu demo nhom3@{năm tạo}.',
             ]);
     }
 
-    public function edit(string $ma_nv, NhanVienTargetGuard $guard): View
+    public function edit(string $ma_nv): View
     {
         $employee = $this->employees->findOrFail($ma_nv);
-        $guard->assertManageable($employee);
 
         $emptyLookups = [
             'phong_ban' => [],
@@ -228,10 +228,6 @@ class NhanVienController extends Controller
         try {
             $this->employees->update($ma_nv, $request->validated());
         } catch (NhanVienDomainException $exception) {
-            if ($exception->domainCode === 'NV_PRIVILEGED_TARGET') {
-                abort(403);
-            }
-
             return back()
                 ->withInput($request->safe()->except('anh_dai_dien'))
                 ->withErrors([
@@ -250,23 +246,15 @@ class NhanVienController extends Controller
             ->with('success', 'Đã cập nhật hồ sơ nhân viên.');
     }
 
-    public function destroy(string $ma_nv, NhanVienTargetGuard $guard): RedirectResponse
+    public function destroy(string $ma_nv): RedirectResponse
     {
         try {
-            $employee = $this->employees->findOrFail($ma_nv);
-            $guard->assertManageable($employee);
             $action = $this->employees->removeOrTerminate($ma_nv);
-        } catch (AuthorizationException) {
-            abort(403);
         } catch (NotFoundHttpException) {
             abort(404);
         } catch (NhanVienDomainException $exception) {
             if ($exception->domainCode === 'NV_NOT_FOUND') {
                 abort(404);
-            }
-
-            if ($exception->domainCode === 'NV_PRIVILEGED_TARGET') {
-                abort(403);
             }
 
             return back()->withErrors([
@@ -285,36 +273,4 @@ class NhanVienController extends Controller
                 : 'Đã ghi nhận nhân viên nghỉ việc theo lịch sử.');
     }
 
-    public function resetPassword(string $ma_nv, NhanVienTargetGuard $guard): RedirectResponse
-    {
-        try {
-            $employee = $this->employees->findOrFail($ma_nv);
-            $guard->assertManageable($employee);
-            $this->employees->resetPassword($ma_nv);
-        } catch (AuthorizationException) {
-            abort(403);
-        } catch (NotFoundHttpException) {
-            abort(404);
-        } catch (NhanVienDomainException $exception) {
-            if ($exception->domainCode === 'NV_NOT_FOUND') {
-                abort(404);
-            }
-
-            if ($exception->domainCode === 'NV_PRIVILEGED_TARGET') {
-                abort(403);
-            }
-
-            return back()->withErrors([
-                'nhan_vien' => 'Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.',
-            ]);
-        } catch (Throwable) {
-            return back()->withErrors([
-                'nhan_vien' => 'Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.',
-            ]);
-        }
-
-        return redirect()
-            ->route('backend.nhanvien.show', ['ma_nv' => $ma_nv])
-            ->with('success', 'Đã đặt lại mật khẩu theo quy ước nhom3@{năm thao tác}.');
-    }
 }

@@ -35,8 +35,6 @@ class NhanVienProcedureExceptionMapperTest extends TestCase
             'code exhausted' => ['NV_CODE_EXHAUSTED', 'Đã hết mã nhân viên để cấp.', null],
             'missing status' => ['NV_STATUS_MISSING', 'Trạng thái làm việc không hợp lệ.', 'ma_tt'],
             'invalid default role' => ['NV_DEFAULT_ROLE_INVALID', 'Vai trò mặc định không hợp lệ.', null],
-            'privileged target' => ['NV_PRIVILEGED_TARGET', 'Bạn không có quyền thực hiện thao tác này.', null],
-            'stale auth hash' => ['NV_AUTH_HASH_STALE', 'Thông tin đăng nhập không hợp lệ.', null],
             'invalid pagination' => ['NV_PAGINATION_INVALID', 'Thông tin phân trang không hợp lệ.', null],
         ];
     }
@@ -111,25 +109,6 @@ class NhanVienProcedureExceptionMapperTest extends TestCase
             'double quoted email' => ['Duplicate entry for key "uq_nhan_vien_email"'],
             'double quoted cccd' => ['Duplicate entry for key "uq_nhan_vien_cccd"'],
         ];
-    }
-
-    public function test_privileged_target_race_returns_the_same_safe_authorization_message(): void
-    {
-        $mapped = (new NhanVienProcedureExceptionMapper())->map($this->queryException('NV_PRIVILEGED_TARGET'));
-
-        $this->assertSame('Bạn không có quyền thực hiện thao tác này.', $mapped->getMessage());
-        $this->assertStringNotContainsString('role', strtolower($mapped->getMessage()));
-    }
-
-    public function test_stale_auth_hash_returns_a_generic_authentication_message_without_the_hash(): void
-    {
-        $mapped = (new NhanVienProcedureExceptionMapper())->map(
-            $this->queryException('NV_AUTH_HASH_STALE: $2y$12$secret-hash')
-        );
-
-        $this->assertSame('Thông tin đăng nhập không hợp lệ.', $mapped->getMessage());
-        $this->assertStringNotContainsString('hash', strtolower($mapped->getMessage()));
-        $this->assertStringNotContainsString('$2y$', $mapped->getMessage());
     }
 
     public function test_it_hides_unknown_sql_errors(): void

@@ -28,13 +28,11 @@ interface NhanVienRepositoryContract
      */
     public function removeOrTerminate(string $maNv, CarbonImmutable $date): array;
 
-    public function resetPasswordHash(string $maNv, string $hash): void;
-
     public function rehashAuthenticatedPassword(string $maNv, string $currentHash, string $newHash): void;
 
     public function findAccountByIdentifier(string $identifier): ?NhanVien;
 
-    /** @internal Bootstrap-only role assignment; never expose through web flows. */
+    /** @internal Chỉ dùng khi khởi tạo dữ liệu demo trên cơ sở dữ liệu disposable. */
     public function assignRoleForBootstrap(string $maNv, int $maVt): void;
 
     /**

@@ -163,20 +163,6 @@ class NhanVienServiceLifecycleTest extends TestCase
         );
     }
 
-    public function test_reset_password_hashes_year_convention_and_never_returns_plaintext(): void
-    {
-        $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('resetPasswordHash')->once()->withArgs(function (string $maNv, string $hash): bool {
-            return $maNv === 'NV001' && $hash === 'hashed-reset-password';
-        });
-        $hasher = Mockery::mock(Hasher::class);
-        $hasher->shouldReceive('make')->once()->with('nhom3@2026')->andReturn('hashed-reset-password');
-
-        $result = $this->service($repository, $hasher)->resetPassword('NV001');
-
-        $this->assertNull($result);
-    }
-
     private function service(
         MockInterface $repository,
         MockInterface $hasher,

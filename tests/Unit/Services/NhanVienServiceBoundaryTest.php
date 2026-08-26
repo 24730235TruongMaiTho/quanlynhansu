@@ -22,7 +22,9 @@ class NhanVienServiceBoundaryTest extends TestCase
         $serviceTypes = $this->constructorTypes(NhanVienService::class);
         $repositoryTypes = $this->constructorTypes(NhanVienRepository::class);
 
-        $this->assertSame([NhanVienServiceContract::class], $controllerTypes);
+        $this->assertSame([
+            NhanVienServiceContract::class,
+        ], $controllerTypes);
         $this->assertSame([
             DatabaseManager::class,
             NhanVienRepositoryContract::class,

@@ -1,10 +1,11 @@
 # Hướng dẫn module Nhân viên
 
 > Tài liệu authoritative cho người phát triển, reviewer và người chạy demo local.
-> Snapshot: 2026-08-24 (Asia/Saigon).
+> Snapshot: 2026-08-26 (Asia/Saigon).
 
-> **Hợp đồng DB hiện hành:** Dựng fresh bằng `database/tao_bang.sql` rồi
-> `database/du_lieu_mau.sql`; tổng cộng đúng 15 bảng, không cần routine/view/
+> **Hợp đồng DB hiện hành:** Dựng fresh bằng `database/sql/tao_bang.sql`, sau
+> đó chạy `Database\\Seeders\\LocalDemoSeeder` trong local/testing; tổng cộng
+> đúng 15 bảng, không cần routine/view/
 > trigger. `nhan_vien` chứa trực tiếp `dia_chi_cu_the`, `phuong_xa`,
 > `quan_huyen`, `tinh_thanh`, `anh_dai_dien`, `ngay_nghi_viec`; không còn
 > `dia_chi_nhan_vien`. Role dùng `ma_vt` (1..5), status dùng `ma_tt` (1..4),
@@ -15,14 +16,14 @@
 
 ## 1. Đối tượng, trạng thái và thứ tự đọc
 
-Tài liệu này dành cho thành viên nhóm và AI agent tiếp tục module Nhân viên trên Laravel hiện tại. Module đã **verified hẹp** trong main qua merge `aa77419`: list/filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar, xóa hoặc chuyển nghỉ việc, reset mật khẩu, đăng nhập/session và RBAC năm quyền đã có test tự động; browser avatar upload vẫn blocked/unverified. Đây không phải claim production-ready, không phải approval rollout database thật và không claim tương thích MySQL 8. Khi bắt đầu task mới, revalidate HEAD, upstream, route, test và build thay vì tin snapshot commit.
+Tài liệu này dành cho thành viên nhóm và AI agent tiếp tục module Nhân viên trên Laravel hiện tại. Module giữ list/filter/pagination, tạo, chi tiết, sửa hồ sơ/địa chỉ/avatar và xóa hoặc chuyển nghỉ việc. Đăng nhập/session và RBAC được giữ theo kiến trúc của đồng nghiệp; reset mật khẩu, rollout flag và target-role guard do nhánh CRUD cũ cung cấp đã được loại bỏ. Browser avatar upload vẫn chưa kiểm chứng. Đây không phải claim production-ready, không phải approval rollout database thật và không claim tương thích MySQL 8.
 
 Đọc theo thứ tự trước khi sửa:
 
 1. [AGENTS.md](../AGENTS.md) và [README.md](../README.md).
 2. [PROJECT_STATUS.md](PROJECT_STATUS.md) và [CODEX_NEXT_HANDOFF.md](CODEX_NEXT_HANDOFF.md).
-3. [DATABASE.md](DATABASE.md), sau đó cặp fresh SQL `../database/tao_bang.sql`
-   và `../database/du_lieu_mau.sql`; chỉ đọc
+3. [DATABASE.md](DATABASE.md), sau đó `../database/sql/tao_bang.sql` và
+   `../database/seeders/LocalDemoSeeder.php`; chỉ đọc
    [quan_ly_nhan_su.session.sql](../quan_ly_nhan_su.session.sql) khi cần đối chiếu legacy.
 4. [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) và [FRONTEND_GUIDE.md](FRONTEND_GUIDE.md).
 5. Route, Request, controller, service/repository, Blade/JavaScript, SQL và test đúng vertical slice.
@@ -37,7 +38,6 @@ Code, route, test và DB đang kiểm tra live có ưu tiên cao hơn snapshot t
 - Tạo .env từ .env.example, chạy php artisan key:generate, composer install và npm install. Không commit .env.
 - Dùng credential local được phép dùng; không dùng hoặc ghi credential thật vào source, log, fixture hay tài liệu.
 - Giữ APP_TIMEZONE=Asia/Ho_Chi_Minh và DB_TIMEZONE=+07:00 đồng bộ.
-- Đặt NHAN_VIEN_MODULE_ENABLED=true để bật module. Đặt false là rollout kill switch fail-closed (404), không thay cho auth/Gate.
 
 Ví dụ phần DB local:
 
@@ -48,7 +48,6 @@ Ví dụ phần DB local:
     DB_USERNAME=<tai-khoan-local>
     DB_PASSWORD=<mat-khau-local>
     DB_TIMEZONE=+07:00
-    NHAN_VIEN_MODULE_ENABLED=true
     SESSION_DRIVER=file
     CACHE_STORE=file
     QUEUE_CONNECTION=sync
@@ -185,17 +184,17 @@ Năm Gate ability nội bộ được đối chiếu với `ma_quyen`:
 | NV_CREATE | 102 | mở và submit tạo mới |
 | NV_EDIT | 103 | sửa hồ sơ/địa chỉ/avatar |
 | NV_DELETE | 104 | xóa hoặc chuyển nghỉ việc |
-| NV_RESET_PASSWORD | 105 | reset mật khẩu |
+| NV_RESET_PASSWORD | 105 | quyền catalog còn được giữ cho tương thích; nhánh này không cung cấp action reset |
 
-Rollout flag NHAN_VIEN_MODULE_ENABLED phải bật trước; sau đó vẫn bắt buộc auth
-và Gate đúng hành động. Flow web chỉ quản lý target `ma_vt = 5`; target role
-khác bị chặn trước mutation.
+Route và action vẫn bắt buộc auth cùng Gate đúng hành động. CRUD hồ sơ không còn
+giới hạn target theo `ma_vt`; các trường hệ thống như vai trò, hash và ngày nghỉ
+việc vẫn không được nhận từ payload cập nhật hồ sơ.
 
 ## 4. Quyết định database và scripts
 
 | Tình huống | Đường dẫn đúng | Điều kiện/bảo vệ |
 | --- | --- | --- |
-| Database mới, disposable/local trống | `database/tao_bang.sql` → `database/du_lieu_mau.sql` | Đúng 15 bảng; chỉ dùng trên DB rỗng/disposable |
+| Database mới, disposable/local trống | `database/sql/tao_bang.sql` → `Database\\Seeders\\LocalDemoSeeder` | Đúng 15 bảng; chỉ dùng trên DB rỗng/disposable và seeder chỉ chạy local/testing |
 | Database 16 bảng đã tồn tại cần giữ dữ liệu | `database/sql/employee/2026_08_24_001_migrate_to_fifteen_tables.sql` | Backup đầy đủ, preflight/copy-verify-drop, approval; DDL MariaDB implicit commit |
 | Muốn tái hiện browser historical | `tests/Support/employee-acceptance.ps1 -Action Start -StateFile storage/framework/testing/employee-acceptance.json -EnableDisposableMariaDb` | Legacy routine/address-table harness; không dùng thay fresh 15-table gate; luôn Stop đúng StateFile |
 | Bộ 5-row synthetic legacy | `database/sql/employee/invoke-demo.ps1` | Legacy only; không dùng thay fresh 30-row seed |
@@ -228,20 +227,18 @@ Luồng chuẩn là:
       → Controller
       → NhanVienServiceContract/NhanVienService
       → NhanVienRepositoryContract/NhanVienRepository
-      → database/tao_bang.sql + database/du_lieu_mau.sql (fresh), hoặc migration
+      → database/sql/tao_bang.sql + LocalDemoSeeder (fresh), hoặc migration
       → Feature/Unit/MariaDB integration tests
 
 Các điểm vào chính:
 
 - Web routes và middleware: routes/web.php; auth/session ở app/Http/Controllers/Auth/AuthenticatedSessionController.php và app/Auth/NhanVienUserProvider.php.
 - Employee lifecycle: app/Http/Controllers/Backend/NhanVienController.php, app/Http/Requests/ListNhanVienRequest.php, StoreNhanVienRequest.php, UpdateNhanVienRequest.php, app/Services/NhanVienService.php, app/Repositories/NhanVienRepository.php.
-- Permission/rollout/target guard: app/Enums/PermissionAction.php,
+- Permission: app/Enums/PermissionAction.php,
   app/Enums/NhanVienPermission.php, app/Enums/PhongBanPermission.php,
   config/permissions.php, app/Authorization/PermissionRegistry.php,
-  app/Services/PermissionService.php, app/Repositories/PermissionRepository.php,
-  config/nhanvien.php, app/Http/Middleware/EnsureNhanVienModuleEnabled.php và
-  app/Support/NhanVienTargetGuard.php.
-- SQL contract active: `database/tao_bang.sql` + `database/du_lieu_mau.sql`; direct
+  app/Services/PermissionService.php và app/Repositories/PermissionRepository.php.
+- SQL contract active: `database/sql/tao_bang.sql` + `LocalDemoSeeder`; direct
   Query Builder employee/auth/RBAC path is covered by the Unit/Feature suites and
   the new guarded `FreshEmployeeSchemaContractTest`. The older
   `tests/Integration/MariaDb/*ProcedureTest.php`, legacy fixture and native

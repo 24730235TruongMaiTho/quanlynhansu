@@ -4,9 +4,9 @@
 
 @section('content')
     @php
-        $canCreate = Gate::allows(\App\Enums\ChucVuPermission::Tao->value);
-        $canEdit = Gate::allows(\App\Enums\ChucVuPermission::Sua->value);
-        $canDelete = Gate::allows(\App\Enums\ChucVuPermission::Xoa->value);
+        $canCreate = \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChucVuPermission::Tao->value);
+        $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChucVuPermission::Sua->value);
+        $canDelete = \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChucVuPermission::Xoa->value);
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="position-page-title">

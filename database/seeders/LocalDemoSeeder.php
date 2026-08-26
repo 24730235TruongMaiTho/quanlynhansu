@@ -50,11 +50,24 @@ final class LocalDemoSeeder extends Seeder
                 ['ma_vt' => 1],
                 ['ten_vt' => 'Quản trị hệ thống', 'mo_ta' => 'Tài khoản quản trị dùng để kiểm thử local'],
             );
-
-            DB::table('trang_thai_lam_viec')->updateOrInsert(
-                ['ma_tt' => 2],
-                ['ten_tt' => 'Đang làm việc'],
+            // CRUD Nhân viên luôn gán vai trò mặc định mã 5 cho hồ sơ mới.
+            DB::table('vai_tro')->updateOrInsert(
+                ['ma_vt' => 5],
+                ['ten_vt' => 'Nhân viên', 'mo_ta' => 'Vai trò mặc định cho nhân viên mới'],
             );
+
+            // Form tạo và nghiệp vụ kết thúc hồ sơ cần đủ bốn trạng thái chuẩn.
+            foreach ([
+                1 => 'Thử việc',
+                2 => 'Đang làm việc',
+                3 => 'Tạm nghỉ không lương',
+                4 => 'Đã nghỉ việc',
+            ] as $statusId => $statusName) {
+                DB::table('trang_thai_lam_viec')->updateOrInsert(
+                    ['ma_tt' => $statusId],
+                    ['ten_tt' => $statusName],
+                );
+            }
 
             $permissionIds = $this->seedPermissions();
             foreach ($permissionIds as $permissionId) {

@@ -250,15 +250,6 @@ final class NhanVienService implements NhanVienServiceContract
         return $action;
     }
 
-    public function resetPassword(string $maNv): void
-    {
-        $plainPassword = 'nhom3@'.now(config('app.timezone'))->year;
-        $hash = $this->hasher->make($plainPassword);
-        unset($plainPassword);
-
-        $this->repository->resetPasswordHash($maNv, $hash);
-    }
-
     public function lookups(): array
     {
         return $this->repository->lookups();

@@ -28,9 +28,6 @@
         $avatarUrl = filled($employee->anh_dai_dien)
             ? \Illuminate\Support\Facades\Storage::disk('public')->url($employee->anh_dai_dien)
             : null;
-        $canResetPassword = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::DatLaiMatKhau->value);
-        $canDestroy = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Xoa->value);
-        $isManageableTarget = (int) ($employee->ma_vt ?? 0) === \App\Enums\NhanVienRole::Employee->value;
     @endphp
 
     <main class="container container-lg py-4" aria-labelledby="page-title">
@@ -65,14 +62,12 @@
                 </div>
             </div>
             <div class="d-flex flex-wrap gap-2 align-self-start align-self-sm-center">
-                @if ($isManageableTarget)
-                    @can(\App\Enums\NhanVienPermission::Sua->value)
+                @can(\App\Enums\NhanVienPermission::Sua->value)
                     <a class="btn btn-primary" href="{{ $editUrl }}">
                         <i class="bi bi-pencil" aria-hidden="true"></i>
                         Chỉnh sửa
                     </a>
-                    @endcan
-                @endif
+                @endcan
                 <a class="btn btn-outline-secondary" href="{{ $backUrl }}">
                     <i class="bi bi-arrow-left" aria-hidden="true"></i>
                     Quay lại danh sách
@@ -82,46 +77,27 @@
 
         @include('backend.nhanvien.partials.flash')
 
-        @if ($isManageableTarget && ($canResetPassword || $canDestroy))
-            @php
-                $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);
-                $resetDialogId = 'employee-reset-password-' . $dialogKey;
-                $destroyDialogId = 'employee-destroy-' . $dialogKey;
-            @endphp
+        @php
+            $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);
+            $destroyDialogId = 'employee-destroy-' . $dialogKey;
+        @endphp
+        @can(\App\Enums\NhanVienPermission::Xoa->value)
             <div class="employee-action-dialogs d-inline-flex flex-wrap gap-2 mt-2" data-action-dialogs>
-                @can(\App\Enums\NhanVienPermission::DatLaiMatKhau->value)
-                    <button class="btn btn-sm btn-outline-secondary" type="button" data-dialog-open="{{ $resetDialogId }}" aria-controls="{{ $resetDialogId }}">Đặt lại mật khẩu</button>
-                    <dialog class="employee-action-dialog" id="{{ $resetDialogId }}" data-action-dialog aria-labelledby="{{ $resetDialogId }}-title">
-                        <form method="POST" action="{{ route('backend.nhanvien.reset-password', ['ma_nv' => $employee->ma_nv]) }}" data-dialog-form>
-                            @csrf
-                            @method('PATCH')
-                            <h2 class="h5" id="{{ $resetDialogId }}-title">Đặt lại mật khẩu nhân viên</h2>
-                            <p>Mật khẩu sẽ được thay bằng quy ước tĩnh <code>nhom3@{năm thao tác}</code>; mật khẩu thực không hiển thị trên trang.</p>
-                            <div class="d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-outline-secondary" data-dialog-cancel>Hủy</button>
-                                <button type="submit" class="btn btn-primary" data-dialog-submit>Đặt lại mật khẩu</button>
-                            </div>
-                        </form>
-                    </dialog>
-                @endcan
-                @can(\App\Enums\NhanVienPermission::Xoa->value)
-                    <button class="btn btn-sm btn-outline-danger" type="button" data-dialog-open="{{ $destroyDialogId }}" aria-controls="{{ $destroyDialogId }}">Xóa hoặc kết thúc</button>
-                    <dialog class="employee-action-dialog" id="{{ $destroyDialogId }}" data-action-dialog aria-labelledby="{{ $destroyDialogId }}-title">
-                        <form method="POST" action="{{ route('backend.nhanvien.destroy', ['ma_nv' => $employee->ma_nv]) }}" data-dialog-form data-confirm-message="Xác nhận xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.">
-                            @csrf
-                            @method('DELETE')
-                            <h2 class="h5" id="{{ $destroyDialogId }}-title">Xóa hoặc kết thúc hồ sơ</h2>
-                            <p>Xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hệ thống chỉ kết thúc hồ sơ và giữ lại lịch sử liên quan.</p>
-                            <div class="d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-outline-secondary" data-dialog-cancel>Hủy</button>
-                                <button type="submit" class="btn btn-danger" data-dialog-submit>Xác nhận thao tác</button>
-                            </div>
-                        </form>
-                    </dialog>
-                @endcan
+                <button class="btn btn-sm btn-outline-danger" type="button" data-dialog-open="{{ $destroyDialogId }}" aria-controls="{{ $destroyDialogId }}">Xóa hoặc kết thúc</button>
+                <dialog class="employee-action-dialog" id="{{ $destroyDialogId }}" data-action-dialog aria-labelledby="{{ $destroyDialogId }}-title">
+                    <form method="POST" action="{{ route('backend.nhanvien.destroy', ['ma_nv' => $employee->ma_nv]) }}" data-dialog-form data-confirm-message="Xác nhận xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.">
+                        @csrf
+                        @method('DELETE')
+                        <h2 class="h5" id="{{ $destroyDialogId }}-title">Xóa hoặc kết thúc hồ sơ</h2>
+                        <p>Xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hệ thống chỉ kết thúc hồ sơ và giữ lại lịch sử liên quan.</p>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary" data-dialog-cancel>Hủy</button>
+                            <button type="submit" class="btn btn-danger" data-dialog-submit>Xác nhận thao tác</button>
+                        </div>
+                    </form>
+                </dialog>
             </div>
-        @endif
-
+        @endcan
         <div class="row g-3">
             <div class="col-12 col-lg-6">
                 <section class="card shadow-sm h-100" aria-labelledby="personal-title">

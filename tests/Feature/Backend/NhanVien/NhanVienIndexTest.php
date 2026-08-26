@@ -5,10 +5,7 @@ namespace Tests\Feature\Backend\NhanVien;
 use App\Contracts\NhanVienServiceContract;
 use App\Enums\NhanVienRemovalAction;
 use App\Exceptions\NhanVienDomainException;
-use App\Http\Controllers\Backend\ChamCongController;
-use App\Http\Controllers\Backend\NghiPhepController;
 use App\Http\Controllers\Backend\NhanVienController;
-use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 use App\Services\NhanVienService;
 use Illuminate\Foundation\Vite;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -27,6 +24,12 @@ class NhanVienIndexTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\NhanVienPermission::Tao,
+            \App\Enums\NhanVienPermission::Sua,
+            \App\Enums\NhanVienPermission::Xoa,
+        ]);
 
         $this->app->instance(Vite::class, new class extends Vite
         {
@@ -46,41 +49,8 @@ class NhanVienIndexTest extends TestCase
         $this->assertInstanceOf(NhanVienService::class, $this->app->make(NhanVienServiceContract::class));
     }
 
-    public function test_module_is_fail_closed_for_every_employee_web_and_api_route(): void
+    public function test_authenticated_index_normalizes_filters_and_renders_real_employee_data(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
-        config()->set('nhanvien.enabled', false);
-        $this->assertFalse(config('nhanvien.enabled'));
-        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('paginate');
-            $mock->shouldNotReceive('lookups');
-        });
-        $this->mock(ChamCongController::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('getMiddleware')->zeroOrMoreTimes()->andReturn([]);
-            $mock->shouldNotReceive('employees');
-        });
-        $this->mock(NghiPhepController::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('getMiddleware')->zeroOrMoreTimes()->andReturn([]);
-            $mock->shouldNotReceive('employees');
-        });
-
-        $this->get('/admin/nhan-vien')->assertNotFound();
-        $this->get('/admin/nhan-vien/danh-sach-nhan-vien')->assertNotFound();
-        $this->get('/admin/nhan-vien/create')->assertNotFound();
-        $this->get('/admin/nhan-vien/them-nhan-vien')->assertNotFound();
-        $this->getJson('/api/v1/cham-cong/nhan-vien')->assertNotFound();
-        $this->getJson('/api/v1/nghi-phep/nhan-vien')->assertNotFound();
-        $this->postJson('/api/v1/nghi-phep/nhan-vien')->assertMethodNotAllowed();
-        $this->putJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();
-        $this->patchJson('/api/v1/nghi-phep/nhan-vien/NV001')->assertNotFound();
-    }
-
-    public function test_enabled_index_normalizes_filters_and_renders_real_employee_data(): void
-    {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Xem,
-            \App\Enums\NhanVienPermission::Tao,
-        ]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->with([
                 'tu_khoa' => 'NV001',
@@ -93,7 +63,7 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
 
-        $response = $this->get('/admin/nhan-vien?tu_khoa=NV001&ma_pb=&ma_cv=&ma_tt=&page=&so_dong=');
+        $response = $this->get('/nhan-vien?tu_khoa=NV001&ma_pb=&ma_cv=&ma_tt=&page=&so_dong=');
 
         $response
             ->assertOk()
@@ -113,8 +83,8 @@ class NhanVienIndexTest extends TestCase
             ->assertSee('an@example.test')
             ->assertDontSee('mat_khau')
             ->assertDontSee('Thêm mới')
-            ->assertDontSee('Chỉnh sửa')
-            ->assertDontSee('Xóa nhân viên')
+            ->assertSee('Chỉnh sửa')
+            ->assertSee('Xóa hoặc kết thúc')
             ->assertSee('Thao tác')
             ->assertSee('Xem')
             ->assertSee('href="'.route('backend.nhanvien.create').'"', false)
@@ -124,9 +94,28 @@ class NhanVienIndexTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
     }
 
+    public function test_index_shows_edit_and_delete_for_every_employee(): void
+    {
+        $employee = (array) $this->employeePaginator()->items()[0];
+        $employee['ma_vt'] = 1;
+        $employee['ten_vt'] = 'Quản trị Nhân sự';
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator([$employee]));
+            $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
+        });
+
+        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => 'NV001']);
+
+        $this->get('/nhan-vien')
+            ->assertOk()
+            ->assertSee('href="'.e($editUrl).'"', false)
+            ->assertSee('Chỉnh sửa')
+            ->assertSee('Xóa hoặc kết thúc')
+            ->assertDontSee('Đặt lại mật khẩu');
+    }
+
     public function test_index_uses_public_disk_url_for_canonical_relative_avatar_path(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         config()->set('filesystems.disks.public.url', '/storage');
         $employee = $this->employeePaginator()->items()[0];
         $employee->anh_dai_dien = 'nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png';
@@ -135,7 +124,7 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
 
-        $this->get('/admin/nhan-vien')
+        $this->get('/nhan-vien')
             ->assertOk()
             ->assertSee('src="'.Storage::disk('public')->url($employee->anh_dai_dien).'"', false)
             ->assertSee('src="/storage/nhan-vien/avatars/550e8400-e29b-41d4-a716-446655440000.png"', false);
@@ -143,7 +132,6 @@ class NhanVienIndexTest extends TestCase
 
     public function test_index_avatar_payload_cannot_create_an_external_origin_src(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         config()->set('filesystems.disks.public.url', '/storage');
         $employees = collect(['https://evil.example/avatar.png', '//evil.example/avatar.png'])
             ->map(function (string $payload): array {
@@ -157,7 +145,7 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
 
-        $this->get('/admin/nhan-vien')
+        $this->get('/nhan-vien')
             ->assertOk()
             ->assertDontSee('src="https://evil.example/avatar.png"', false)
             ->assertDontSee('src="//evil.example/avatar.png"', false)
@@ -165,9 +153,8 @@ class NhanVienIndexTest extends TestCase
             ->assertSee('src="/storage/evil.example/avatar.png"', false);
     }
 
-    public function test_enabled_index_passes_integer_filters_and_keeps_them_in_pagination_links(): void
+    public function test_authenticated_index_passes_integer_filters_and_keeps_them_in_pagination_links(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $filters = [
             'tu_khoa' => null,
             'ma_pb' => 2,
@@ -183,7 +170,7 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
 
-        $response = $this->get('/admin/nhan-vien?ma_pb=2&ma_cv=3&ma_tt=1&page=2&so_dong=5');
+        $response = $this->get('/nhan-vien?ma_pb=2&ma_cv=3&ma_tt=1&page=2&so_dong=5');
 
         $response->assertOk()
             ->assertSee('ma_pb=2', false)
@@ -198,21 +185,19 @@ class NhanVienIndexTest extends TestCase
 
     public function test_invalid_filters_do_not_call_the_service(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
         });
 
-        $this->from('/admin/nhan-vien')
-            ->get('/admin/nhan-vien?tu_khoa='.str_repeat('x', 101).'&ma_pb=0&ma_cv=x&ma_tt=-1&page=0&so_dong=25')
-            ->assertRedirect('/admin/nhan-vien')
+        $this->from('/nhan-vien')
+            ->get('/nhan-vien?tu_khoa='.str_repeat('x', 101).'&ma_pb=0&ma_cv=x&ma_tt=-1&page=0&so_dong=25')
+            ->assertRedirect('/nhan-vien')
             ->assertSessionHasErrors(['tu_khoa', 'ma_pb', 'ma_cv', 'ma_tt', 'page', 'so_dong']);
     }
 
     public function test_database_empty_and_filter_empty_are_distinct_states(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $service = $this->mock(NhanVienServiceContract::class);
         $service->shouldReceive('paginate')->twice()->andReturn(
             $this->employeePaginator([], 0),
@@ -220,12 +205,12 @@ class NhanVienIndexTest extends TestCase
         );
         $service->shouldReceive('lookups')->twice()->andReturn($this->employeeLookups());
 
-        $this->get('/admin/nhan-vien')
+        $this->get('/nhan-vien')
             ->assertOk()
             ->assertSee('Chưa có nhân viên trong hệ thống')
             ->assertDontSee('Không tìm thấy nhân viên phù hợp');
 
-        $this->get('/admin/nhan-vien?tu_khoa=NV999')
+        $this->get('/nhan-vien?tu_khoa=NV999')
             ->assertOk()
             ->assertSee('Không tìm thấy nhân viên phù hợp')
             ->assertDontSee('Chưa có nhân viên trong hệ thống');
@@ -233,7 +218,6 @@ class NhanVienIndexTest extends TestCase
 
     public function test_empty_current_page_with_existing_results_has_a_truthful_distinct_state(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $service = $this->mock(NhanVienServiceContract::class);
         $service->shouldReceive('paginate')->twice()->andReturn(
             $this->employeePaginator([], 11, 20, 999),
@@ -242,8 +226,8 @@ class NhanVienIndexTest extends TestCase
         $service->shouldReceive('lookups')->twice()->andReturn($this->employeeLookups());
 
         foreach ([
-            '/admin/nhan-vien?page=999',
-            '/admin/nhan-vien?tu_khoa=NV001&page=999',
+            '/nhan-vien?page=999',
+            '/nhan-vien?tu_khoa=NV001&page=999',
         ] as $uri) {
             $this->get($uri)
                 ->assertOk()
@@ -256,7 +240,6 @@ class NhanVienIndexTest extends TestCase
 
     public function test_domain_exception_is_rendered_as_a_safe_error_state(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->andThrow(
                 new NhanVienDomainException(
@@ -267,7 +250,7 @@ class NhanVienIndexTest extends TestCase
             $mock->shouldNotReceive('lookups');
         });
 
-        $this->get('/admin/nhan-vien')
+        $this->get('/nhan-vien')
             ->assertOk()
             ->assertSee('Không thể tải danh sách nhân viên lúc này. Vui lòng thử lại sau.')
             ->assertDontSee('NV_DATABASE_ERROR')
@@ -276,14 +259,13 @@ class NhanVienIndexTest extends TestCase
 
     public function test_flash_success_and_accessible_filter_table_markup_are_present(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator());
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
 
         $this->withSession(['success' => 'Cập nhật nhân viên thành công.'])
-            ->get('/admin/nhan-vien')
+            ->get('/nhan-vien')
             ->assertOk()
             ->assertSee('Cập nhật nhân viên thành công.')
             ->assertSee('<caption', false)
@@ -295,9 +277,8 @@ class NhanVienIndexTest extends TestCase
             ->assertSee('table-responsive', false);
     }
 
-    public function test_legacy_redirect_is_guarded_and_preserves_the_query_string_when_enabled(): void
+    public function test_legacy_redirect_is_protected_and_preserves_the_query_string(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
@@ -305,61 +286,45 @@ class NhanVienIndexTest extends TestCase
 
         $this->get('/admin/nhan-vien/danh-sach-nhan-vien?tu_khoa=NV001&so_dong=50')
             ->assertStatus(301)
-            ->assertRedirect('/admin/nhan-vien?tu_khoa=NV001&so_dong=50');
+            ->assertRedirect('/nhan-vien?tu_khoa=NV001&so_dong=50');
     }
 
-    public function test_route_inventory_contains_the_canonical_index_show_and_guarded_legacy_redirect(): void
+    public function test_route_inventory_contains_the_canonical_index_show_and_protected_legacy_redirect(): void
     {
         $employeeRoutes = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn (RoutingRoute $route): bool => str_starts_with($route->uri(), 'admin/nhan-vien'))
+            ->filter(fn (RoutingRoute $route): bool => str_starts_with($route->uri(), 'nhan-vien'))
             ->values();
 
         $this->assertSame(
             [
-                'admin/nhan-vien/danh-sach-nhan-vien',
-                'admin/nhan-vien/them-nhan-vien',
-                'admin/nhan-vien',
-                'admin/nhan-vien/create',
-                'admin/nhan-vien',
-                'admin/nhan-vien/{ma_nv}/edit',
-                'admin/nhan-vien/{ma_nv}',
-                'admin/nhan-vien/{ma_nv}/dat-lai-mat-khau',
-                'admin/nhan-vien/{ma_nv}',
-                'admin/nhan-vien/{ma_nv}',
+                'nhan-vien',
+                'nhan-vien/create',
+                'nhan-vien',
+                'nhan-vien/{ma_nv}/edit',
+                'nhan-vien/{ma_nv}',
+                'nhan-vien/{ma_nv}',
+                'nhan-vien/{ma_nv}',
             ],
             $employeeRoutes->pluck('uri')->all(),
         );
         $this->assertSame(1, $employeeRoutes->where('action.as', 'backend.nhanvien.index')->count());
-        $this->assertNull($employeeRoutes->firstWhere('uri', 'admin/nhan-vien/danh-sach-nhan-vien')->getName());
+        $this->assertNull($employeeRoutes->firstWhere('uri', 'nhan-vien/danh-sach-nhan-vien'));
         $createRoute = Route::getRoutes()->getByName('backend.nhanvien.create');
         $this->assertInstanceOf(RoutingRoute::class, $createRoute);
-        $this->assertSame('admin/nhan-vien/create', $createRoute->uri());
+        $this->assertSame('nhan-vien/create', $createRoute->uri());
         $this->assertSame(NhanVienController::class.'@create', $createRoute->getActionName());
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $createRoute->gatherMiddleware());
         $storeRoute = Route::getRoutes()->getByName('backend.nhanvien.store');
         $this->assertInstanceOf(RoutingRoute::class, $storeRoute);
         $this->assertSame(['POST'], $storeRoute->methods());
         $this->assertSame(NhanVienController::class.'@store', $storeRoute->getActionName());
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $storeRoute->gatherMiddleware());
         $editRoute = Route::getRoutes()->getByName('backend.nhanvien.edit');
         $this->assertInstanceOf(RoutingRoute::class, $editRoute);
         $this->assertSame(['GET', 'HEAD'], $editRoute->methods());
         $this->assertSame(NhanVienController::class.'@edit', $editRoute->getActionName());
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $editRoute->gatherMiddleware());
         $updateRoute = Route::getRoutes()->getByName('backend.nhanvien.update');
         $this->assertInstanceOf(RoutingRoute::class, $updateRoute);
         $this->assertSame(['PUT', 'PATCH'], $updateRoute->methods());
         $this->assertSame(NhanVienController::class.'@update', $updateRoute->getActionName());
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $updateRoute->gatherMiddleware());
-        $resetRoute = Route::getRoutes()->getByName('backend.nhanvien.reset-password');
-        $this->assertInstanceOf(RoutingRoute::class, $resetRoute);
-        $this->assertSame(['PATCH'], $resetRoute->methods());
-        $this->assertSame(
-            NhanVienController::class.'@resetPassword',
-            $resetRoute->getActionName(),
-        );
-        $this->assertSame('NV[0-9]{3}', $resetRoute->wheres['ma_nv']);
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $resetRoute->gatherMiddleware());
 
         $destroyRoute = Route::getRoutes()->getByName('backend.nhanvien.destroy');
         $this->assertInstanceOf(RoutingRoute::class, $destroyRoute);
@@ -369,67 +334,35 @@ class NhanVienIndexTest extends TestCase
             $destroyRoute->getActionName(),
         );
         $this->assertSame('NV[0-9]{3}', $destroyRoute->wheres['ma_nv']);
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $destroyRoute->gatherMiddleware());
 
         $showRoute = Route::getRoutes()->getByName('backend.nhanvien.show');
         $this->assertInstanceOf(RoutingRoute::class, $showRoute);
-        $this->assertSame('admin/nhan-vien/{ma_nv}', $showRoute->uri());
+        $this->assertSame('nhan-vien/{ma_nv}', $showRoute->uri());
         $this->assertSame(NhanVienController::class.'@show', $showRoute->getActionName());
         $this->assertSame('NV[0-9]{3}', $showRoute->wheres['ma_nv']);
-        $this->assertContains(EnsureNhanVienModuleEnabled::class, $showRoute->gatherMiddleware());
-        $this->assertLessThan(
-            array_search($showRoute, Route::getRoutes()->getRoutes(), true),
-            array_search($resetRoute, Route::getRoutes()->getRoutes(), true),
-        );
         $this->assertLessThan(
             array_search($showRoute, Route::getRoutes()->getRoutes(), true),
             array_search($destroyRoute, Route::getRoutes()->getRoutes(), true),
         );
 
-        $this->assertSame(6, $employeeRoutes->filter(
+        $this->assertSame(4, $employeeRoutes->filter(
             fn (RoutingRoute $route): bool => $route->methods() === ['GET', 'HEAD'],
         )->count());
     }
 
-    public function test_every_scoped_employee_api_route_has_the_rollout_guard(): void
+    public function test_lifecycle_delete_dispatches_through_public_service_contract(): void
     {
-        $expected = [
-            ['api/v1/cham-cong/nhan-vien', ['GET', 'HEAD'], ChamCongController::class.'@employees'],
-            ['api/v1/nghi-phep/nhan-vien', ['GET', 'HEAD'], NghiPhepController::class.'@employees'],
-        ];
-
-        foreach ($expected as [$uri, $methods, $action]) {
-            $route = collect(Route::getRoutes()->getRoutes())->first(
-                fn (RoutingRoute $candidate): bool => $candidate->uri() === $uri
-                    && $candidate->methods() === $methods
-                    && $candidate->getActionName() === $action,
-            );
-
-            $this->assertInstanceOf(RoutingRoute::class, $route, "Missing guarded route [{$action}].");
-            $this->assertContains(EnsureNhanVienModuleEnabled::class, $route->gatherMiddleware());
-        }
-    }
-
-    public function test_lifecycle_delete_dispatches_through_guarded_service_contract(): void
-    {
-        $this->actingAsEmployeeWithPermissions([
-            \App\Enums\NhanVienPermission::Tao,
-            \App\Enums\NhanVienPermission::Xoa,
-        ]);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
             $mock->shouldNotReceive('paginate');
             $mock->shouldNotReceive('lookups');
-            $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn(
-                (object) ['ma_vt' => 5],
-            );
             $mock->shouldReceive('removeOrTerminate')->once()->with('NV001')->andReturn(
                 NhanVienRemovalAction::Deleted,
             );
         });
 
         $this->get('/admin/nhan-vien/them-nhan-vien')->assertStatus(301);
-        $this->get('/admin/nhan-vien/NV001/sua')->assertNotFound();
-        $this->delete('/admin/nhan-vien/NV001')
+        $this->get('/nhan-vien/NV001/sua')->assertNotFound();
+        $this->delete('/nhan-vien/NV001')
             ->assertRedirect(route('backend.nhanvien.index'))
             ->assertSessionHas('success', 'Đã xóa hồ sơ nhân viên.');
     }
