@@ -9,6 +9,7 @@ use App\Http\Controllers\Backend\NhanVienController;
 use App\Http\Middleware\EnsureNhanVienModuleEnabled;
 use Illuminate\Foundation\Vite;
 use Illuminate\Routing\Route as RoutingRoute;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\HtmlString;
 use Mockery;
@@ -93,31 +94,85 @@ class NhanVienUpdateTest extends TestCase
         }
     }
 
-    public function test_privileged_edit_and_valid_or_invalid_update_return_generic_403_before_mutation(): void
+    public function test_privileged_edit_and_update_are_allowed_with_sua_without_exposing_system_fields(): void
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
         $privileged = $this->employee(['ma_vt' => 1, 'email' => 'admin@example.test']);
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($privileged): void {
             $mock->shouldReceive('findOrFail')->once()->with('NV001')->andReturn($privileged);
-            $mock->shouldNotReceive('lookups');
-            $mock->shouldNotReceive('update');
+            $mock->shouldReceive('lookups')->once()->andReturn($this->lookups());
+            $mock->shouldReceive('update')->once()->withArgs(function (string $maNv, array $validated): bool {
+                return $maNv === 'NV001'
+                    && $validated['email'] === 'updated@example.test'
+                    && ! array_key_exists('ma_nv', $validated)
+                    && ! array_key_exists('ma_vt', $validated)
+                    && ! array_key_exists('mat_khau', $validated)
+                    && ! array_key_exists('mat_khau_hash', $validated)
+                    && ! array_key_exists('ngay_nghi_viec', $validated);
+            })->andReturn($privileged);
         });
         $repository = Mockery::mock(NhanVienRepositoryContract::class);
-        $repository->shouldReceive('find')->twice()->with('NV001')->andReturn($privileged);
+        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($privileged);
         $this->app->instance(NhanVienRepositoryContract::class, $repository);
 
         $this->get('/admin/nhan-vien/NV001/edit')
-            ->assertForbidden()
-            ->assertDontSee('QUAN_TRI')
-            ->assertDontSee('admin@example.test');
-        $this->put('/admin/nhan-vien/NV001', $this->validPayload())
-            ->assertForbidden()
-            ->assertDontSee('QUAN_TRI')
-            ->assertDontSee('admin@example.test');
-        $this->put('/admin/nhan-vien/NV001', ['email' => 'invalid'])
-            ->assertForbidden()
-            ->assertDontSee('validation')
-            ->assertDontSee('admin@example.test');
+            ->assertOk()
+            ->assertSee('Cập nhật hồ sơ nhân viên')
+            ->assertSee('admin@example.test');
+        $this->put('/admin/nhan-vien/NV001', $this->validPayload([
+            'email' => ' UPDATED@EXAMPLE.TEST ',
+        ]))
+            ->assertRedirect(route('backend.nhanvien.show', ['ma_nv' => 'NV001']))
+            ->assertSessionHas('success', 'Đã cập nhật hồ sơ nhân viên.');
+    }
+
+    public function test_update_rejects_system_owned_fields_before_dispatching_service(): void
+    {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
+        $target = $this->employee(['ma_vt' => 1]);
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
+        $this->app->instance(NhanVienRepositoryContract::class, $repository);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('update');
+        });
+
+        $this->put('/admin/nhan-vien/NV001', $this->validPayload([
+            'ma_nv' => 'NV999',
+            'ma_vt' => 5,
+            'mat_khau' => 'plaintext',
+            'mat_khau_hash' => 'hash',
+            'ngay_nghi_viec' => '2026-08-24',
+        ]))
+            ->assertSessionHasErrors([
+                'ma_nv', 'ma_vt', 'mat_khau', 'mat_khau_hash', 'ngay_nghi_viec',
+            ]);
+    }
+
+    public function test_department_manager_cannot_move_same_department_target_with_forged_department(): void
+    {
+        $actor = $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Sua,
+        ]);
+        $actor->forceFill([
+            'ma_vt' => \App\Enums\NhanVienRole::DepartmentManager->value,
+            'ma_pb' => 1,
+        ]);
+        DB::table('phong_ban')->insert([
+            'ma_pb' => 2,
+            'ten_pb' => 'Phòng khác',
+        ]);
+
+        $target = $this->employee(['ma_pb' => 1]);
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('find')->once()->with('NV001')->andReturn($target);
+        $this->app->instance(NhanVienRepositoryContract::class, $repository);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('update');
+        });
+
+        $this->put('/admin/nhan-vien/NV001', $this->validPayload(['ma_pb' => 2]))
+            ->assertSessionHasErrors(['ma_pb']);
     }
 
     public function test_missing_update_target_is_safe_404_before_validation_and_mutation(): void
@@ -169,6 +224,28 @@ class NhanVienUpdateTest extends TestCase
         $this->put('/admin/nhan-vien/NV001', $this->validPayload())
             ->assertForbidden()
             ->assertDontSee('NV_PRIVILEGED_TARGET');
+    }
+
+    public function test_race_time_status_transition_error_maps_to_safe_field_error(): void
+    {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Sua]);
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('find')->once()->andReturn($this->employee(['ma_tt' => 2]));
+        $this->app->instance(NhanVienRepositoryContract::class, $repository);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('update')->once()->andThrow(new NhanVienDomainException(
+                'Không thể thay đổi trạng thái đã nghỉ qua thao tác cập nhật hồ sơ.',
+                'NV_STATUS_TRANSITION_FORBIDDEN',
+                'ma_tt',
+            ));
+        });
+
+        $this->from('/admin/nhan-vien/NV001/edit')
+            ->put('/admin/nhan-vien/NV001', $this->validPayload(['ma_tt' => 2]))
+            ->assertRedirect('/admin/nhan-vien/NV001/edit')
+            ->assertSessionHasErrors(['ma_tt'])
+            ->assertDontSee('NV_STATUS_TRANSITION_FORBIDDEN')
+            ->assertDontSee('SQLSTATE');
     }
 
     public function test_domain_field_error_preserves_only_safe_old_input_and_generic_error_leaks_nothing(): void

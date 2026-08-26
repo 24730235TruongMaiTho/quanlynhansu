@@ -21,63 +21,35 @@
                     <span class="nav-title">Tổng quan</span>
                 </a>
             </li>
-            @php($sidebarUser = auth()->user())
-            @if ($sidebarUser instanceof \App\Models\NhanVien
-                && config('nhanvien.enabled') === true
-                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'NhanVien'))
-                <!-- Nhân sự -->
-                <li class="nav-item">
-                    <a href="#" class="nav-link" data-toggle="submenu">
-                        <i class="bi bi-people-fill"></i>
-                        <span class="nav-title">Quản lý nhân viên</span>
-                        <i class="bi bi-chevron-down menu-arrow rotated"></i>
-                    </a>
-                    <ul class="sub-menu">
-                        <li class="nav-item">
-                            <a href="{{ route('backend.nhanvien.index') }}" class="nav-link">
-                                <i class="bi bi-person-lines-fill"></i>
-                                <span class="nav-title">Danh sách nhân viên</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-            @endif
-            @if ($sidebarUser instanceof \App\Models\NhanVien
-                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'PhongBan'))
-                <li class="nav-item">
-                    <a href="#" class="nav-link" data-toggle="submenu">
-                        <i class="bi bi-building-fill" aria-hidden="true"></i>
-                        <span class="nav-title">Quản lý phòng ban</span>
-                        <i class="bi bi-chevron-down menu-arrow rotated"></i>
-                    </a>
-                    <ul class="sub-menu">
-                        <li class="nav-item">
-                            <a href="{{ route('backend.phongban.index') }}" class="nav-link">
-                                <i class="bi bi-list-ul"></i>
-                                <span class="nav-title">Danh sách phòng ban</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-            @endif
-            @if ($sidebarUser instanceof \App\Models\NhanVien
-                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'ChucVu'))
-                <li class="nav-item">
-                    <a href="{{ route('backend.chucvu.index') }}" class="nav-link">
-                        <i class="bi bi-person-badge" aria-hidden="true"></i>
-                        <span class="nav-title">Chức vụ</span>
-                    </a>
-                </li>
-            @endif
-            <!-- Chấm công -->
+            <!-- Nhân sự -->
             <li class="nav-item">
                 <a href="#" class="nav-link" data-toggle="submenu">
-                    <i class="bi bi-building-fill"></i>
+                    <i class="bi bi-people-fill"></i>
+                    <span class="nav-title">Quản lý nhân viên</span>
+                    <i class="bi bi-chevron-down menu-arrow rotated"></i>
+                </a>
+                <ul class="sub-menu">
+                    <li class="nav-item">
+                        <a href="{{ route('backend.nhanvien.index') }}" class="nav-link">
+                            <i class="bi bi-person-lines-fill"></i>
+                            <span class="nav-title">Danh sách nhân viên</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-toggle="submenu">
+                    <i class="bi bi-building-fill" aria-hidden="true"></i>
                     <span class="nav-title">Quản lý phòng ban</span>
                     <i class="bi bi-chevron-down menu-arrow rotated"></i>
                 </a>
                 <ul class="sub-menu">
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-list-ul"></i><span class="nav-title">Danh sách phòng ban</span></a></li>
+                    <li class="nav-item">
+                        <a href="{{ route('backend.phongban.index') }}" class="nav-link">
+                            <i class="bi bi-list-ul"></i>
+                            <span class="nav-title">Danh sách phòng ban</span>
+                        </a>
+                    </li>
                 </ul>
             </li>
             <!-- Quản lý chức vụ -->
@@ -88,7 +60,7 @@
                     <i class="bi bi-chevron-down menu-arrow rotated"></i>
                 </a>
                 <ul class="sub-menu">
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-person-badge"></i><span class="nav-title">Danh sách chức vụ</span></a></li>
+                    <li class="nav-item"><a href="{{ route('backend.chucvu.index') }}" class="nav-link"><i class="bi bi-person-badge"></i><span class="nav-title">Danh sách chức vụ</span></a></li>
                 </ul>
             </li>
             <!-- Quản lý hợp đồng -->
@@ -99,8 +71,8 @@
                     <i class="bi bi-chevron-down menu-arrow rotated"></i>
                 </a>
                 <ul class="sub-menu">
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-file-earmark-text"></i><span class="nav-title">Danh sách hợp đồng</span></a></li>
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-files"></i><span class="nav-title">Danh sách loại hợp đồng</span></a></li>
+                    <li class="nav-item"><a href="{{ route('backend.hopdong.index') }}" class="nav-link"><i class="bi bi-file-earmark-text"></i><span class="nav-title">Danh sách hợp đồng</span></a></li>
+                    <li class="nav-item"><a href="{{ route('backend.loaihopdong.index') }}" class="nav-link"><i class="bi bi-files"></i><span class="nav-title">Danh sách loại hợp đồng</span></a></li>
                 </ul>
             </li>
             <!-- Quản lý chấm công -->
@@ -135,7 +107,7 @@
                 </a>
                 <ul class="sub-menu">
                     <li class="nav-item"><a href="{{ route('backend.luong.index') }}" class="nav-link"><i class="bi bi-cash-coin"></i><span class="nav-title">Danh sách lương</span></a></li>
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-graph-up-arrow"></i><span class="nav-title">Danh sách hệ số lương</span></a></li>
+                    <li class="nav-item"><a href="" class="nav-link"><i class="bi bi-graph-up-arrow"></i><span class="nav-title">Danh sách hệ số lương</span></a></li>
                 </ul>
             </li>
             <!-- Vai trò và phân quyền -->
@@ -147,7 +119,7 @@
                 </a>
                 <ul class="sub-menu">
                     <li class="nav-item"><a href="{{ route('backend.vaitro.index') }}" class="nav-link"><i class="bi bi-person-gear"></i><span class="nav-title">Danh sách vai trò</span></a></li>
-                    <li class="nav-item"><a href="#" class="nav-link"><i class="bi bi-key-fill"></i><span class="nav-title">Phân quyền</span></a></li>
+                    <li class="nav-item"><a href="" class="nav-link"><i class="bi bi-key-fill"></i><span class="nav-title">Phân quyền</span></a></li>
                 </ul>
             </li>
         </ul>

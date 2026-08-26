@@ -4,6 +4,7 @@ namespace Tests\Integration\MariaDb;
 
 use App\Enums\NhanVienRemovalAction;
 use App\Exceptions\ChucVuDomainException;
+use App\Exceptions\NhanVienDomainException;
 use App\Exceptions\PhongBanDomainException;
 use App\Repositories\ChucVuRepository;
 use App\Repositories\NhanVienRepository;
@@ -141,6 +142,126 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertSame('avatars/maria031.jpg', $repository->replaceAvatarPath('NV031', 'avatars/maria031-new.jpg'));
         self::assertSame('avatars/maria031-new.jpg', DB::table('nhan_vien')->where('ma_nv', 'NV031')->value('anh_dai_dien'));
         self::assertNotNull($repository->find('NV031'));
+    }
+
+    public function test_fresh_repository_preserves_department_identity_and_filters_rows_by_department(): void
+    {
+        $this->runFreshPair();
+        $repository = app(NhanVienRepository::class);
+
+        $departmentThree = $repository->paginate([
+            'ma_pb' => 3,
+            'page' => 1,
+            'so_dong' => 100,
+        ]);
+        $departmentFour = $repository->paginate([
+            'ma_pb' => 4,
+            'page' => 1,
+            'so_dong' => 100,
+        ]);
+
+        self::assertContains('NV004', $departmentThree->getCollection()->pluck('ma_nv')->all());
+        self::assertContains('NV005', $departmentFour->getCollection()->pluck('ma_nv')->all());
+        self::assertNotEmpty($departmentThree->items());
+        self::assertNotEmpty($departmentFour->items());
+        self::assertTrue($departmentThree->getCollection()->every(
+            static fn (object $row): bool => (int) $row->ma_pb === 3,
+        ));
+        self::assertTrue($departmentFour->getCollection()->every(
+            static fn (object $row): bool => (int) $row->ma_pb === 4,
+        ));
+
+        $account = $repository->findAccountByIdentifier('NV004');
+        self::assertNotNull($account);
+        self::assertSame(3, (int) $account->ma_pb);
+        self::assertArrayNotHasKey('mat_khau', $account->toArray());
+    }
+
+    public function test_repository_updates_privileged_profile_address_and_avatar_without_system_field_mutation(): void
+    {
+        $this->runFreshPair();
+        $repository = app(NhanVienRepository::class);
+        $before = DB::table('nhan_vien')->where('ma_nv', 'NV001')->first([
+            'ma_vt', 'mat_khau', 'ngay_nghi_viec',
+        ]);
+        self::assertNotNull($before);
+
+        $repository->update('NV001', [
+            'ho_ten' => 'Nguyễn Văn An cập nhật',
+            'email' => 'an.updated@company.com',
+            'ma_vt' => 5,
+            'mat_khau' => 'plaintext-must-be-ignored',
+            'ngay_nghi_viec' => '2026-08-24',
+        ]);
+        $repository->upsertAddress('NV001', [
+            'dia_chi_cu_the' => 'Số 01 mới',
+            'phuong_xa' => 'Phường Bến Nghé',
+            'quan_huyen' => 'Quận 1',
+            'tinh_thanh' => 'TP Hồ Chí Minh',
+            'ma_vt' => 5,
+        ]);
+        $repository->replaceAvatarPath('NV001', 'avatars/nv001-updated.jpg');
+
+        $after = DB::table('nhan_vien')->where('ma_nv', 'NV001')->first([
+            'ho_ten', 'email', 'ma_vt', 'mat_khau', 'ngay_nghi_viec',
+            'dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh', 'anh_dai_dien',
+        ]);
+        self::assertNotNull($after);
+        self::assertSame('Nguyễn Văn An cập nhật', $after->ho_ten);
+        self::assertSame('an.updated@company.com', $after->email);
+        self::assertSame((int) $before->ma_vt, (int) $after->ma_vt);
+        self::assertSame($before->mat_khau, $after->mat_khau);
+        self::assertSame($before->ngay_nghi_viec, $after->ngay_nghi_viec);
+        self::assertSame('Số 01 mới', $after->dia_chi_cu_the);
+        self::assertSame('avatars/nv001-updated.jpg', $after->anh_dai_dien);
+    }
+
+    public function test_repository_rejects_active_to_terminated_transition_after_locking_current_status(): void
+    {
+        $this->runFreshPair();
+        $repository = app(NhanVienRepository::class);
+
+        try {
+            $repository->update('NV001', [
+                'ho_ten' => 'Không được ghi',
+                'ma_tt' => 4,
+            ]);
+            self::fail('Expected active-to-terminated profile update to be rejected.');
+        } catch (NhanVienDomainException $exception) {
+            self::assertSame('NV_STATUS_TRANSITION_FORBIDDEN', $exception->domainCode);
+            self::assertSame('ma_tt', $exception->field);
+        }
+
+        self::assertSame('Nguyễn Văn An', DB::table('nhan_vien')->where('ma_nv', 'NV001')->value('ho_ten'));
+        self::assertSame(2, (int) DB::table('nhan_vien')->where('ma_nv', 'NV001')->value('ma_tt'));
+        self::assertNull(DB::table('nhan_vien')->where('ma_nv', 'NV001')->value('ngay_nghi_viec'));
+    }
+
+    public function test_repository_rejects_terminated_to_active_transition_after_locking_current_status(): void
+    {
+        $this->runFreshPair();
+        $repository = app(NhanVienRepository::class);
+        DB::table('nhan_vien')->where('ma_nv', 'NV002')->update([
+            'ma_tt' => 4,
+            'ngay_nghi_viec' => '2026-08-24',
+        ]);
+
+        try {
+            $repository->update('NV002', [
+                'ho_ten' => 'Không được ghi',
+                'ma_tt' => 2,
+            ]);
+            self::fail('Expected terminated-to-active profile update to be rejected.');
+        } catch (NhanVienDomainException $exception) {
+            self::assertSame('NV_STATUS_TRANSITION_FORBIDDEN', $exception->domainCode);
+            self::assertSame('ma_tt', $exception->field);
+        }
+
+        $row = DB::table('nhan_vien')->where('ma_nv', 'NV002')->first(['ho_ten', 'ma_tt', 'ngay_nghi_viec']);
+        self::assertNotNull($row);
+        self::assertSame('Trần Thị Bích', $row->ho_ten);
+        self::assertSame(4, (int) $row->ma_tt);
+        self::assertSame('2026-08-24', $row->ngay_nghi_viec);
     }
 
     public function test_repository_terminates_with_dependency_and_hard_deletes_without_one(): void

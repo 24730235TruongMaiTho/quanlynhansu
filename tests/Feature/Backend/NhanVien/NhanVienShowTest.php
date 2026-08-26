@@ -152,9 +152,12 @@ class NhanVienShowTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), '/build/nhanvien.js'));
     }
 
-    public function test_show_hides_the_edit_action_for_a_privileged_employee(): void
+    public function test_show_renders_edit_action_for_a_privileged_employee_with_edit_permission(): void
     {
-        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\NhanVienPermission::Sua,
+        ]);
         $employee = $this->employee();
         $employee->ma_vt = 1;
         $employee->ten_vt = 'Quản trị viên';
@@ -167,8 +170,10 @@ class NhanVienShowTest extends TestCase
 
         $this->get('/admin/nhan-vien/NV001')
             ->assertOk()
-            ->assertDontSee('Chỉnh sửa')
-            ->assertDontSee('href="'.e($editUrl).'"', false);
+            ->assertSee('Chỉnh sửa')
+            ->assertSee('href="'.e($editUrl).'"', false)
+            ->assertDontSee('Xóa hoặc kết thúc')
+            ->assertDontSee('Đặt lại mật khẩu');
     }
 
     public function test_show_renders_initials_when_the_employee_has_no_avatar(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Contracts\NhanVienServiceContract;
+use App\Support\NhanVienDepartmentScope;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,9 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class ChamCongController extends Controller
 {
-    public function __construct(private NhanVienServiceContract $nhanVienService)
-    {
-    }
+    public function __construct(
+        private NhanVienServiceContract $nhanVienService,
+        private NhanVienDepartmentScope $departmentScope,
+    ) {}
 
     /**
      * =========================================================
@@ -83,8 +85,15 @@ class ChamCongController extends Controller
                 'so_dong' => (int) ($validated['per_page'] ?? 15),
             ];
 
+            $actor = $request->user();
+            $filters = $this->departmentScope->constrainFilters($filters, $actor);
+
             $paginator = $this->nhanVienService->paginateForAttendance($filters);
-            $paginator->withPath($request->url())->appends($request->query());
+            $query = $request->query();
+            if (array_key_exists('ma_pb', $query) || $this->departmentScope->isDepartmentManager($actor)) {
+                $query['ma_pb'] = $filters['ma_pb'];
+            }
+            $paginator->withPath($request->url())->appends($query);
 
             return response()->json([
                 'success' => true,

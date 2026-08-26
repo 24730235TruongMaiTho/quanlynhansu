@@ -188,8 +188,22 @@ Năm Gate ability nội bộ được đối chiếu với `ma_quyen`:
 | NV_RESET_PASSWORD | 105 | reset mật khẩu |
 
 Rollout flag NHAN_VIEN_MODULE_ENABLED phải bật trước; sau đó vẫn bắt buộc auth
-và Gate đúng hành động. Flow web chỉ quản lý target `ma_vt = 5`; target role
-khác bị chặn trước mutation.
+và Gate đúng hành động. `NV_EDIT` cho phép sửa hồ sơ, địa chỉ và avatar của mọi
+target, không phụ thuộc `ma_vt`; request/repository chỉ nhận các cột được
+whitelist và giữ nguyên mã nhân viên, role, hash mật khẩu và ngày nghỉ. Xóa,
+chuyển nghỉ việc và reset mật khẩu vẫn yêu cầu target `ma_vt = 5`.
+
+Trưởng phòng (`ma_vt = 4`) bị giới hạn server-side trong phòng ban của chính
+mình (`ma_pb` lấy từ auth projection); query phòng ban khác không bypass được,
+target ngoài phòng trả 404 generic, payload sửa đổi `ma_pb` trả validation error,
+và actor thiếu `ma_pb` fail closed. Các role còn lại giữ hành vi lọc toàn bộ
+phòng ban. Seed hiện tại chỉ cấp role4 quyền `NV_VIEW`; test-only grants dùng
+quyền edit/destructive để chứng minh scope khi permission được cấp sau này.
+
+Scope được kiểm tra trước các mutation; repository transaction hiện chưa nhận
+expected `ma_pb` để khóa TOCTOU xuyên suốt delete/reset/update. Vì vậy concurrent
+đổi phòng ban giữa pre-check và mutation vẫn là residual security risk cần gate
+riêng trước rollout production.
 
 ## 4. Quyết định database và scripts
 
@@ -209,7 +223,7 @@ Fresh pair đã được kiểm tra tĩnh và replay thật trên guarded dispos
 đúng 15 bảng, 30 employee, counter 30, direct address/avatar/date columns,
 bcrypt login seed `NV001`; role/RBAC explicit theo catalog; repository CRUD/address/avatar/lifecycle,
 migration 16→15, allowlisted cleanup và parallel direct-repository counter pass
-trong `5 tests, 161 assertions`. Đây không phải bằng chứng live production;
+trong `11 tests, 344 assertions`. Đây không phải bằng chứng live production;
 browser avatar vẫn là gate riêng.
 
 ### Legacy history
@@ -282,10 +296,11 @@ Mỗi page dữ liệu phải duy trì loading, empty, success, validation error
     git diff --check
     git status --short
 
-Evidence hiện tại của slice này: route inventory 52; full Laravel
-`265 pass, 2086 assertions`; schema contract static `4 pass, 93 assertions`;
+Evidence hiện tại của slice này: route inventory 58; full Laravel
+`318 pass, 2389 assertions`; schema contract static `4 pass, 93 assertions`;
 attendance/leave compatibility và employee/auth scoped tests đều pass; guarded
-MariaDB fresh contract `5 tests, 161 assertions` pass, gồm parallel counter.
+MariaDB fresh contract `11 tests, 344 assertions` pass, gồm profile-edit/status-race/department projection,
+Chức vụ/Phòng ban direct CRUD/count và parallel counter.
 Browser avatar chưa chạy.
 
 MariaDB fresh-contract integration phải dùng wrapper guarded và switch bắt buộc,

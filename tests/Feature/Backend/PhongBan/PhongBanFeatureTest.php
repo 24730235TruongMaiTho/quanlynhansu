@@ -146,6 +146,26 @@ class PhongBanFeatureTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), 'name="_method" value="DELETE"'));
     }
 
+    public function test_list_filters_departments_by_name_and_resets_out_of_range_page(): void
+    {
+        $this->actingAsPhongBanEmployee([PhongBanPermission::Xem]);
+        $rows = [
+            (object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật', 'so_nhan_vien' => 0],
+            (object) ['ma_pb' => 2, 'ten_pb' => 'Nhân sự', 'so_nhan_vien' => 0],
+        ];
+        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock) use ($rows): void {
+            $mock->shouldReceive('all')->once()->andReturn($rows);
+        });
+
+        $this->get('/admin/phong-ban?ten_pb=%20nh%C3%A2n%20&per_page=5&page=9')
+            ->assertOk()
+            ->assertSee('Nhân sự')
+            ->assertDontSee('Kỹ thuật')
+            ->assertSee('value="nhân"', false)
+            ->assertSee('Xóa bộ lọc tìm kiếm', false)
+            ->assertSee('aria-current="page">1', false);
+    }
+
     public function test_empty_state_is_safe(): void
     {
         $this->actingAsPhongBanEmployee([PhongBanPermission::Xem]);

@@ -28,6 +28,7 @@
         $avatarUrl = filled($employee->anh_dai_dien)
             ? \Illuminate\Support\Facades\Storage::disk('public')->url($employee->anh_dai_dien)
             : null;
+        $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Sua->value);
         $canResetPassword = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::DatLaiMatKhau->value);
         $canDestroy = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Xoa->value);
         $isManageableTarget = (int) ($employee->ma_vt ?? 0) === \App\Enums\NhanVienRole::Employee->value;
@@ -65,7 +66,7 @@
                 </div>
             </div>
             <div class="d-flex flex-wrap gap-2 align-self-start align-self-sm-center">
-                @if ($isManageableTarget)
+                @if ($canEdit)
                     @can(\App\Enums\NhanVienPermission::Sua->value)
                     <a class="btn btn-primary" href="{{ $editUrl }}">
                         <i class="bi bi-pencil" aria-hidden="true"></i>

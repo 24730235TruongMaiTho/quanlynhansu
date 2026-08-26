@@ -197,21 +197,37 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     public function update(string $maNv, array $profile): void
     {
         $this->databaseOperation(function () use ($maNv, $profile): void {
-            $this->connection()->table('nhan_vien')
-                ->where('ma_nv', $maNv)
-                ->where('ma_vt', NhanVienRole::Employee->value)
-                ->update($this->profileRow($profile));
+            $this->transactionIfNeeded(function () use ($maNv, $profile): void {
+                $target = $this->connection()->table('nhan_vien')
+                    ->where('ma_nv', $maNv)
+                    ->lockForUpdate()
+                    ->first(['ma_nv', 'ma_tt']);
 
-            $targetRole = $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->value('ma_vt');
-            if ($targetRole === null) {
-                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
-            }
-            if ((int) $targetRole !== NhanVienRole::Employee->value) {
-                throw new NhanVienDomainException(
-                    'Không thể cập nhật tài khoản đặc quyền.',
-                    'NV_PRIVILEGED_TARGET',
-                );
-            }
+                if ($target === null) {
+                    throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+                }
+
+                $profileRow = $this->profileRow($profile);
+                $requestedStatus = $profileRow['ma_tt'] ?? null;
+                $currentStatus = (int) $target->ma_tt;
+                if ($requestedStatus !== null
+                    && (($currentStatus === NhanVienStatus::Terminated->value
+                        && (int) $requestedStatus !== NhanVienStatus::Terminated->value)
+                        || ($currentStatus !== NhanVienStatus::Terminated->value
+                            && (int) $requestedStatus === NhanVienStatus::Terminated->value))) {
+                    throw new NhanVienDomainException(
+                        'Không thể thay đổi trạng thái đã nghỉ qua thao tác cập nhật hồ sơ.',
+                        'NV_STATUS_TRANSITION_FORBIDDEN',
+                        'ma_tt',
+                    );
+                }
+
+                if ($profileRow !== []) {
+                    $this->connection()->table('nhan_vien')
+                        ->where('ma_nv', $maNv)
+                        ->update($profileRow);
+                }
+            });
         });
     }
 
@@ -220,19 +236,13 @@ final class NhanVienRepository implements NhanVienRepositoryContract
         return $this->databaseOperation(function () use ($maNv, $newPath): ?string {
             return $this->transactionIfNeeded(function () use ($maNv, $newPath): ?string {
                 $row = $this->connection()->table('nhan_vien')
-                    ->select(['anh_dai_dien', 'ma_vt'])
+                    ->select(['anh_dai_dien'])
                     ->where('ma_nv', $maNv)
                     ->lockForUpdate()
                     ->first();
 
                 if ($row === null) {
                     throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
-                }
-                if ((int) $row->ma_vt !== NhanVienRole::Employee->value) {
-                    throw new NhanVienDomainException(
-                        'Không thể cập nhật tài khoản đặc quyền.',
-                        'NV_PRIVILEGED_TARGET',
-                    );
                 }
 
                 $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->update([
@@ -247,21 +257,23 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     public function upsertAddress(string $maNv, array $address): void
     {
         $this->databaseOperation(function () use ($maNv, $address): void {
-            $addressRow = array_intersect_key($address, array_flip(self::ADDRESS_COLUMNS));
-            if ($addressRow !== []) {
-                $this->connection()->table('nhan_vien')
+            $this->transactionIfNeeded(function () use ($maNv, $address): void {
+                $target = $this->connection()->table('nhan_vien')
                     ->where('ma_nv', $maNv)
-                    ->where('ma_vt', NhanVienRole::Employee->value)
-                    ->update($addressRow);
-            }
+                    ->lockForUpdate()
+                    ->first(['ma_nv']);
 
-            $targetRole = $this->connection()->table('nhan_vien')->where('ma_nv', $maNv)->value('ma_vt');
-            if ($targetRole === null) {
-                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
-            }
-            if ((int) $targetRole !== NhanVienRole::Employee->value) {
-                throw new NhanVienDomainException('Không thể cập nhật tài khoản đặc quyền.', 'NV_PRIVILEGED_TARGET');
-            }
+                if ($target === null) {
+                    throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+                }
+
+                $addressRow = array_intersect_key($address, array_flip(self::ADDRESS_COLUMNS));
+                if ($addressRow !== []) {
+                    $this->connection()->table('nhan_vien')
+                        ->where('ma_nv', $maNv)
+                        ->update($addressRow);
+                }
+            });
         });
     }
 
@@ -348,7 +360,7 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     {
         return $this->databaseOperation(function () use ($identifier): ?NhanVien {
             $row = $this->connection()->table('nhan_vien as nv')
-                ->select(['nv.ma_nv', 'nv.ho_ten', 'nv.email', 'nv.mat_khau', 'nv.ma_vt', 'nv.ma_tt'])
+                ->select(['nv.ma_nv', 'nv.ho_ten', 'nv.email', 'nv.mat_khau', 'nv.ma_vt', 'nv.ma_tt', 'nv.ma_pb'])
                 ->where(function (Builder $query) use ($identifier): void {
                     $query->where('nv.ma_nv', $identifier)
                         ->orWhereRaw('LOWER(TRIM(nv.email)) = ?', [strtolower(trim($identifier))]);

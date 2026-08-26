@@ -17,8 +17,9 @@
 > routine/view/trigger. `quan_ly_nhan_su.session.sql` and
 > `database/sql/employee/2026_08_12_001`–`006` are retained as marked legacy
 > history only. The guarded fresh MariaDB harness replays this source pair with
-> no routine/view/trigger and passed `7 tests, 231 assertions` on a disposable
-> schema in this turn and covers direct Chức vụ/Phòng ban CRUD/count behavior. No
+> no routine/view/trigger and employee status-race/department-scope checks passed `11 tests, 344
+> assertions` on a disposable schema in this turn and covers direct Chức vụ/Phòng
+> ban CRUD/count behavior. No
 > live DB was mutated;
 > browser avatar remains a separate gate.
 >
@@ -55,7 +56,7 @@ contract; lookup legacy của Chấm công nằm ngoài phạm vi task.
 
 Evidence đã chạy: HTTP/controller/view và real SQLite repository/mapper pass
 (scoped Department `19 tests/157 assertions`); guarded MariaDB fresh suite pass
-`7 tests/231 assertions` trên disposable schema, gồm direct CRUD/count/duplicate/
+`11 tests/344 assertions` trên disposable schema, gồm employee profile-edit/status-race/department projection và direct CRUD/count/duplicate/
 missing/in-use/delete và postcheck 0 routine. Không claim live mutation,
 production/MySQL 8 hoặc browser acceptance.
 
@@ -93,7 +94,14 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
   hữu; không mở rộng permission/business/UI của hai module này;
 - seed role 2 có đúng `101–105, 201–204, 301–304, 401–404`; migration chỉ bổ
   sung các mapping thiếu và giữ nguyên mapping module khác hiện hữu;
-- route `/admin` yêu cầu auth; target employee flow phải có `ma_vt = 5` trước mutation;
+- route `/admin` yêu cầu auth; `NV_EDIT` cho phép sửa hồ sơ/địa chỉ/avatar của mọi
+  target, còn xóa/chuyển nghỉ việc và reset mật khẩu vẫn yêu cầu `ma_vt = 5`;
+- `ma_vt = 4` chỉ được xem/thao tác trên target cùng `ma_pb`; index override
+  bộ lọc server-side, target khác phòng trả 404 generic, update đổi `ma_pb` trả
+  validation error, actor thiếu `ma_pb` fail closed. Mutation hiện chưa khóa
+  expected `ma_pb` xuyên suốt transaction; concurrent department move là residual.
+- Seed role4 hiện chỉ có `NV_VIEW`; test-only grants kiểm tra behavior nếu quyền
+  edit/destructive được cấp về sau.
 - cấu hình rollout là `env('NHAN_VIEN_MODULE_ENABLED', true)`. Có thể đặt `false` để fail-closed 404; không dùng cờ này thay cho auth/Gate;
 - fresh SQL pair tạo đúng 15 bảng; existing-DB migration là runbook riêng, còn SQL `001`–`006` chỉ là legacy history.
 - Repository employee/auth/RBAC hiện dùng explicit Query Builder trên fresh
@@ -104,21 +112,21 @@ Historical Tasks 13–20 đã đưa module tới mức **verified hẹp trên fe
 ## Bằng chứng mới nhất
 
 - Full guarded MariaDB wrapper historical: `165 tests, 3367 assertions, 1 platform skip, exit 0`; rerun sau tích hợp timeout khoảng 184 giây, process/schema/state/marker cleanup sạch, không claim current pass.
-- Current full Laravel trên branch này: `287 pass, 2273 assertions`; schema contract static:
+- Current full Laravel trên branch này: `317 pass, 2384 assertions`; schema contract static:
   `4 pass, 93 assertions`; employee/auth and attendance/leave compatibility
-  suites pass. Fresh MariaDB contract hiện pass `7 tests, 231 assertions` trên
-  disposable schema, gồm CRUD Chức vụ/Phòng ban, migration/cleanup và parallel counter;
+  suites pass. Fresh MariaDB contract hiện pass `11 tests, 344 assertions` trên
+  disposable schema, gồm employee profile-edit/status-race, CRUD Chức vụ/Phòng ban, migration/cleanup và parallel counter;
   không claim live production hoặc MySQL 8.
 - Historical frontend snapshot: `15/15`; Vite 7.3.6 build pass với 16 modules.
 - Historical pre-refactor full snapshot: `237 pass, 1820 assertions`; current
   full result is recorded above and must be used for this handoff.
-- Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `52` và `git diff --check` pass trong các gate tương ứng.
+- Composer validate/install dry-run pass; `composer audit --locked` không còn advisory sau sáu compatible lock updates. PHP lint, PowerShell parser, route inventory `58` và `git diff --check` pass trong các gate tương ứng.
 - Task 19 process-identity/atomic-state regressions đều nằm trong full wrapper sạch; skip duy nhất là Windows từ chối tạo disposable state symlink.
 - Independent review của checkpoint trước đã được supersede bởi vòng authorization/guard này; kiểm tra mới phải dựa trên HEAD hiện tại.
 
 `phpunit.xml` dùng SQLite in-memory; `phpunit.mariadb.xml` chạy fresh 15-table
 contract, migration/cleanup, direct counter worker và Chức vụ/Phòng ban
-repository; pass `7 tests, 231 assertions` trên disposable schema. Không claim live production
+repository; pass `11 tests, 344 assertions` trên disposable schema. Không claim live production
 hoặc MySQL 8; browser avatar vẫn riêng.
 
 ## Browser acceptance Task 20

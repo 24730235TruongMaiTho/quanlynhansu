@@ -8,6 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreChucVuRequest;
 use App\Http\Requests\UpdateChucVuRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Throwable;
 
@@ -15,18 +18,40 @@ final class ChucVuController extends Controller
 {
     public function __construct(private ChucVuServiceContract $positions) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $positionError = null;
-        $positions = [];
+        $positions = new LengthAwarePaginator([], 0, 10, 1);
+        $search = trim((string) $request->query('ten_cv', ''));
+        $pageSize = $this->pageSize($request->query('per_page'));
 
         try {
-            $positions = $this->positions->all();
+            $allPositions = $this->positions->all();
+            if ($search !== '') {
+                $allPositions = array_values(array_filter(
+                    $allPositions,
+                    static fn (object $position): bool => mb_stripos($position->ten_cv, $search) !== false,
+                ));
+            }
+
+            $totalPositions = count($allPositions);
+            $lastPage = max(1, (int) ceil($totalPositions / $pageSize));
+            $currentPage = min(max(1, $request->integer('page', 1)), $lastPage);
+            $positions = new LengthAwarePaginator(
+                array_slice($allPositions, ($currentPage - 1) * $pageSize, $pageSize),
+                $totalPositions,
+                $pageSize,
+                $currentPage,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ],
+            );
         } catch (Throwable) {
             $positionError = 'Không thể tải danh sách chức vụ lúc này. Vui lòng thử lại sau.';
         }
 
-        return view('backend.chucvu.index', compact('positions', 'positionError'));
+        return view('backend.chucvu.index', compact('positions', 'positionError', 'search', 'pageSize'));
     }
 
     public function create(): View
@@ -34,7 +59,7 @@ final class ChucVuController extends Controller
         return view('backend.chucvu.create');
     }
 
-    public function store(StoreChucVuRequest $request): RedirectResponse
+    public function store(StoreChucVuRequest $request): RedirectResponse|JsonResponse
     {
         try {
             $this->positions->create(
@@ -42,13 +67,30 @@ final class ChucVuController extends Controller
                 (string) $request->validated('he_so_phu_cap'),
             );
         } catch (ChucVuDomainException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $exception->getMessage(),
+                    'errors' => [$exception->field ?? 'chuc_vu' => [$exception->getMessage()]],
+                ], 422);
+            }
+
             return back()->withInput()->withErrors([
                 $exception->field ?? 'chuc_vu' => $exception->getMessage(),
             ]);
         } catch (Throwable) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Không thể tạo chức vụ lúc này. Vui lòng thử lại sau.',
+                ], 500);
+            }
+
             return back()->withInput()->withErrors([
                 'chuc_vu' => 'Không thể tạo chức vụ lúc này. Vui lòng thử lại sau.',
             ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Đã thêm chức vụ.'], 201);
         }
 
         return redirect()->route('backend.chucvu.index')->with('success', 'Đã thêm chức vụ.');
@@ -128,5 +170,12 @@ final class ChucVuController extends Controller
         }
 
         return $id;
+    }
+
+    private function pageSize(mixed $value): int
+    {
+        $pageSize = filter_var($value, FILTER_VALIDATE_INT);
+
+        return in_array($pageSize, [5, 10, 20], true) ? $pageSize : 10;
     }
 }
