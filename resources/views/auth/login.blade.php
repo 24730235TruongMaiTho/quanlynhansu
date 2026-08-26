@@ -545,7 +545,7 @@
     </div>
 
     <!-- Bootstrap 5 JS Bundle -->
-    <script 
+    <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
     </script>
     <script>
@@ -561,7 +561,7 @@
                 togglePassword.addEventListener('click', function() {
                     const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                     passwordInput.setAttribute('type', type);
-                    
+
                     // Đổi icon
                     if (type === 'text') {
                         toggleIcon.classList.remove('bi-eye');
@@ -578,7 +578,7 @@
             // ===== LOADING KHI SUBMIT =====
             const loginForm = document.querySelector('[data-login-form]');
             const loginBtn = document.querySelector('[data-login-submit]');
-            
+
             if (loginForm && loginBtn) {
                 loginForm.addEventListener('submit', function() {
                     loginBtn.disabled = true;

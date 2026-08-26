@@ -320,19 +320,19 @@ Route::middleware(['web', 'auth'])
     ->group(function () {
         Route::get('overview', [DashboardController::class, 'overview'])
             ->name('api.v1.dashboard.overview');
-        
+
         Route::get('education-stats', [DashboardController::class, 'educationStats'])
             ->name('api.v1.dashboard.education-stats');
-        
+
         Route::get('department-stats', [DashboardController::class, 'departmentStats'])
             ->name('api.v1.dashboard.department-stats');
-        
+
         Route::get('expiring-contracts', [DashboardController::class, 'expiringContracts'])
             ->name('api.v1.dashboard.expiring-contracts');
-        
+
         Route::get('attendance-report', [DashboardController::class, 'attendanceReport'])
             ->name('api.v1.dashboard.attendance-report');
-        
+
         Route::get('salary-report', [DashboardController::class, 'salaryReport'])
             ->name('api.v1.dashboard.salary-report');
     });

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Controller xử lý các API cho Dashboard
- * 
+ *
  * @package App\Http\Controllers\Backend
  */
 class DashboardController extends Controller
@@ -22,7 +22,7 @@ class DashboardController extends Controller
 
     /**
      * Constructor
-     * 
+     *
      * @param DashboardService $dashboardService
      */
     public function __construct(DashboardService $dashboardService)
@@ -32,14 +32,14 @@ class DashboardController extends Controller
 
     /**
      * API: Lấy dữ liệu tổng quan cho Dashboard
-     * 
+     *
      * @return JsonResponse
      */
     public function overview(): JsonResponse
     {
         try {
             $data = $this->dashboardService->getOverview();
-            
+
             // Thêm thông tin tổng hợp nhanh
             $data['tong_nhan_vien'] = $this->dashboardService->getTotalEmployees();
             $data['tong_phong_ban'] = $this->dashboardService->getTotalDepartments();
@@ -52,11 +52,11 @@ class DashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('[DashboardController] Lỗi lấy dữ liệu overview: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể lấy dữ liệu dashboard',
-                'error' => config('app.debug') ? $e->getMessage() : 'Vui lòng thử lại sau',
+                'error' => 'Vui lòng thử lại sau',
                 'timestamp' => now()->toIso8601String()
             ], 500);
         }
@@ -64,14 +64,14 @@ class DashboardController extends Controller
 
     /**
      * API: Lấy thống kê nhân viên theo học vấn
-     * 
+     *
      * @return JsonResponse
      */
     public function educationStats(): JsonResponse
     {
         try {
             $data = $this->dashboardService->getEmployeeCountByEducation();
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $data,
@@ -79,25 +79,25 @@ class DashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('[DashboardController] Lỗi lấy thống kê học vấn: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể lấy thống kê học vấn',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => null
             ], 500);
         }
     }
 
     /**
      * API: Lấy thống kê nhân viên theo phòng ban
-     * 
+     *
      * @return JsonResponse
      */
     public function departmentStats(): JsonResponse
     {
         try {
             $data = $this->dashboardService->getEmployeeCountByDepartment();
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $data,
@@ -105,27 +105,27 @@ class DashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('[DashboardController] Lỗi lấy thống kê phòng ban: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể lấy thống kê phòng ban',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => null
             ], 500);
         }
     }
 
     /**
      * API: Lấy danh sách hợp đồng sắp hết hạn
-     * 
+     *
      * @param Request $request
      * @return JsonResponse
      */
     public function expiringContracts(Request $request): JsonResponse
     {
         try {
-            $days = (int) $request->input('days', 30);
+            $days = max(0, min((int) $request->input('days', 30), 365));
             $data = $this->dashboardService->getExpiringContracts($days);
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $data,
@@ -137,18 +137,18 @@ class DashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('[DashboardController] Lỗi lấy danh sách hợp đồng: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể lấy danh sách hợp đồng sắp hết hạn',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => null
             ], 500);
         }
     }
 
     /**
      * API: Lấy báo cáo chấm công
-     * 
+     *
      * @param Request $request
      * @return JsonResponse
      */
@@ -156,7 +156,7 @@ class DashboardController extends Controller
     {
         try {
             $data = $this->dashboardService->getAttendanceReport();
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $data,
@@ -164,18 +164,18 @@ class DashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('[DashboardController] Lỗi lấy báo cáo chấm công: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể lấy báo cáo chấm công',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => null
             ], 500);
         }
     }
 
     /**
      * API: Lấy báo cáo lương
-     * 
+     *
      * @param Request $request
      * @return JsonResponse
      */
@@ -183,7 +183,7 @@ class DashboardController extends Controller
     {
         try {
             $data = $this->dashboardService->getSalaryReport();
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $data,
@@ -191,11 +191,11 @@ class DashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('[DashboardController] Lỗi lấy báo cáo lương: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể lấy báo cáo lương',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => null
             ], 500);
         }
     }

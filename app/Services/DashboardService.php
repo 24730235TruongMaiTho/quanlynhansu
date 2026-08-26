@@ -2,19 +2,21 @@
 
 namespace App\Services;
 
+use App\Enums\NhanVienStatus;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Service xử lý dữ liệu cho Dashboard tổng quan
- * 
+ *
  * @package App\Services
  */
 class DashboardService
 {
     /**
      * Lấy tất cả dữ liệu cho Dashboard
-     * 
+     *
      * @return array
      */
     public function getOverview(): array
@@ -30,7 +32,7 @@ class DashboardService
 
     /**
      * Thống kê số lượng nhân viên theo học vấn (dùng cho biểu đồ tròn)
-     * 
+     *
      * @return array
      */
     public function getEmployeeCountByEducation(): array
@@ -39,6 +41,7 @@ class DashboardService
             $result = DB::table('nhan_vien')
                 ->select('hoc_van', DB::raw('COUNT(*) as total'))
                 ->whereNotNull('hoc_van')
+                ->whereNotIn('ma_tt', NhanVienStatus::terminalValues())
                 ->groupBy('hoc_van')
                 ->orderBy('total', 'DESC')
                 ->get()
@@ -58,7 +61,7 @@ class DashboardService
 
     /**
      * Thống kê số lượng nhân viên theo phòng ban (dùng cho biểu đồ cột)
-     * 
+     *
      * @return array
      */
     public function getEmployeeCountByDepartment(): array
@@ -67,6 +70,7 @@ class DashboardService
             $result = DB::table('nhan_vien as nv')
                 ->join('phong_ban as pb', 'nv.ma_pb', '=', 'pb.ma_pb')
                 ->select('pb.ma_pb', 'pb.ten_pb', DB::raw('COUNT(nv.ma_nv) as total'))
+                ->whereNotIn('nv.ma_tt', NhanVienStatus::terminalValues())
                 ->groupBy('pb.ma_pb', 'pb.ten_pb')
                 ->orderBy('total', 'DESC')
                 ->get()
@@ -85,15 +89,17 @@ class DashboardService
 
     /**
      * Danh sách hợp đồng sắp hết hạn trong vòng X ngày tới
-     * 
+     *
      * @param int $days Số ngày cần kiểm tra (mặc định 30)
      * @return array
      */
     public function getExpiringContracts(int $days = 30): array
     {
         try {
-            $today = now()->toDateString();
-            $expiryDate = now()->addDays($days)->toDateString();
+            $days = max(0, min($days, 365));
+            $today = now()->startOfDay();
+            $todayDate = $today->toDateString();
+            $expiryDate = $today->copy()->addDays($days)->toDateString();
 
             $result = DB::table('hop_dong as hd')
                 ->join('nhan_vien as nv', 'hd.ma_nv', '=', 'nv.ma_nv')
@@ -101,18 +107,23 @@ class DashboardService
                 ->select([
                     'nv.ho_ten',
                     'nv.ma_nv',
-                    'lhd.ten_loai_hop_dong',
-                    'hd.ngay_bat_dau',
-                    'hd.ngay_ket_thuc',
-                    DB::raw('DATEDIFF(hd.ngay_ket_thuc, CURDATE()) as so_ngay_con_lai')
+                    'lhd.ten_lhd as ten_loai_hop_dong',
+                    'hd.ngay_ky as ngay_bat_dau',
+                    'hd.ngay_het_han as ngay_ket_thuc',
                 ])
-                ->where('hd.ngay_ket_thuc', '>=', $today)
-                ->where('hd.ngay_ket_thuc', '<=', $expiryDate)
-                ->where('nv.ma_tt', '<>', 4) // Không lấy nhân viên đã nghỉ
-                ->orderBy('so_ngay_con_lai', 'ASC')
+                ->whereBetween('hd.ngay_het_han', [$todayDate, $expiryDate])
+                ->whereNotIn('nv.ma_tt', NhanVienStatus::terminalValues())
+                ->orderBy('hd.ngay_het_han', 'ASC')
                 ->limit(10)
                 ->get()
-                ->toArray();
+                ->map(function (object $contract) use ($today): object {
+                    $contract->so_ngay_con_lai = $today->diffInDays(
+                        Carbon::parse((string) $contract->ngay_ket_thuc)->startOfDay()
+                    );
+
+                    return $contract;
+                })
+                ->all();
 
             if (empty($result)) {
                 return [];
@@ -127,7 +138,7 @@ class DashboardService
 
     /**
      * Báo cáo chấm công cho tháng hiện tại
-     * 
+     *
      * @return array
      */
     public function getAttendanceReport(): array
@@ -140,6 +151,7 @@ class DashboardService
                 ->join('nhan_vien as nv', 'cc.ma_nv', '=', 'nv.ma_nv')
                 ->whereMonth('cc.ngay_lam', $month)
                 ->whereYear('cc.ngay_lam', $year)
+                ->whereNotIn('nv.ma_tt', NhanVienStatus::terminalValues())
                 ->select([
                     DB::raw('COUNT(DISTINCT cc.ma_nv) as tong_nhan_vien'),
                     DB::raw('COUNT(cc.ma_cc) as tong_ca_cham_cong'),
@@ -173,9 +185,9 @@ class DashboardService
     }
 
     /**
-     * Báo cáo lương cho tháng hiện tại
-     * Sử dụng Query Builder vì không có procedure sp_luong_tim_kiem_phan_trang
-     * 
+     * Tổng hợp các khoản điều chỉnh lương đã ghi nhận cho tháng hiện tại.
+     * Bảng luong không có cột lương net; chỉ tổng hợp thưởng, phạt, bảo hiểm và thuế.
+     *
      * @return array
      */
     public function getSalaryReport(): array
@@ -183,31 +195,15 @@ class DashboardService
         try {
             $month = (int) now()->month;
             $year = (int) now()->year;
-            $kyLuong = sprintf('%d-%02d', $year, $month);
-
-            // Kiểm tra xem bảng luong có dữ liệu không
-            $checkData = DB::table('luong')
-                ->where('ky_luong', $kyLuong)
-                ->exists();
-
-            if (!$checkData) {
-                return [
-                    'thang' => $month,
-                    'nam' => $year,
-                    'so_nguoi' => 0,
-                    'tong_luong' => 0,
-                    'luong_trung_binh' => 0,
-                    'error' => 'Chưa có dữ liệu lương cho tháng ' . $month . '/' . $year
-                ];
-            }
-
             $data = DB::table('luong as l')
                 ->join('nhan_vien as nv', 'l.ma_nv', '=', 'nv.ma_nv')
-                ->where('l.ky_luong', $kyLuong)
+                ->whereYear('l.ky_luong', $year)
+                ->whereMonth('l.ky_luong', $month)
+                ->whereNotIn('nv.ma_tt', NhanVienStatus::terminalValues())
                 ->select([
-                    DB::raw('COUNT(l.ma_luong) as so_nguoi'),
-                    DB::raw('SUM(l.luong_net) as tong_luong'),
-                    DB::raw('ROUND(AVG(l.luong_net), 0) as luong_trung_binh')
+                    DB::raw('COUNT(DISTINCT l.ma_nv) as so_nguoi'),
+                    DB::raw('COALESCE(SUM(COALESCE(l.thuong, 0) - COALESCE(l.phat, 0) - COALESCE(l.bao_hiem, 0) - COALESCE(l.thue, 0)), 0) as tong_dieu_chinh'),
+                    DB::raw('COALESCE(AVG(COALESCE(l.thuong, 0) - COALESCE(l.phat, 0) - COALESCE(l.bao_hiem, 0) - COALESCE(l.thue, 0)), 0) as dieu_chinh_trung_binh')
                 ])
                 ->first();
 
@@ -216,9 +212,9 @@ class DashboardService
                     'thang' => $month,
                     'nam' => $year,
                     'so_nguoi' => 0,
-                    'tong_luong' => 0,
-                    'luong_trung_binh' => 0,
-                    'error' => 'Chưa có dữ liệu lương cho tháng ' . $month . '/' . $year
+                    'tong_dieu_chinh' => 0,
+                    'dieu_chinh_trung_binh' => 0,
+                    'error' => 'Chưa có dữ liệu khoản điều chỉnh lương cho tháng ' . $month . '/' . $year
                 ];
             }
 
@@ -226,8 +222,8 @@ class DashboardService
                 'thang' => $month,
                 'nam' => $year,
                 'so_nguoi' => (int) $data->so_nguoi,
-                'tong_luong' => (float) $data->tong_luong,
-                'luong_trung_binh' => (float) $data->luong_trung_binh,
+                'tong_dieu_chinh' => (float) $data->tong_dieu_chinh,
+                'dieu_chinh_trung_binh' => (float) $data->dieu_chinh_trung_binh,
             ];
 
         } catch (\Exception $e) {
@@ -236,16 +232,16 @@ class DashboardService
                 'thang' => (int) now()->month,
                 'nam' => (int) now()->year,
                 'so_nguoi' => 0,
-                'tong_luong' => 0,
-                'luong_trung_binh' => 0,
-                'error' => 'Không thể lấy dữ liệu lương: ' . $e->getMessage()
+                'tong_dieu_chinh' => 0,
+                'dieu_chinh_trung_binh' => 0,
+                'error' => 'Không thể lấy dữ liệu khoản điều chỉnh lương lúc này.'
             ];
         }
     }
 
     /**
      * Lấy danh sách phòng ban cho filter
-     * 
+     *
      * @return array
      */
     public function getDepartments(): array
@@ -264,7 +260,7 @@ class DashboardService
 
     /**
      * Lấy danh sách chức vụ cho filter
-     * 
+     *
      * @return array
      */
     public function getPositions(): array
@@ -283,14 +279,14 @@ class DashboardService
 
     /**
      * Lấy tổng số nhân viên
-     * 
+     *
      * @return int
      */
     public function getTotalEmployees(): int
     {
         try {
             return (int) DB::table('nhan_vien')
-                ->where('ma_tt', '<>', 4) // Không tính nhân viên đã nghỉ
+                ->whereNotIn('ma_tt', NhanVienStatus::terminalValues())
                 ->count();
         } catch (\Exception $e) {
             Log::error('[DashboardService] Lỗi lấy tổng số nhân viên: ' . $e->getMessage());
@@ -300,7 +296,7 @@ class DashboardService
 
     /**
      * Lấy tổng số phòng ban
-     * 
+     *
      * @return int
      */
     public function getTotalDepartments(): int

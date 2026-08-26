@@ -5,7 +5,7 @@
 <div class="content-area">
     <div class="page-header">
         <div class="left">
-            <div>   
+            <div>
                 <h1>
                     <i class="bi bi-house-fill text-danger me-2"></i>
                     Tổng quan
@@ -99,7 +99,7 @@
                                 </div>
                             </div>
                             <div class="flex-grow-1 ms-3">
-                                <h6 class="text-muted mb-1">Tổng lương tháng này</h6>
+                                <h6 class="text-muted mb-1">Tổng khoản điều chỉnh tháng này</h6>
                                 <h2 class="mb-0 fw-bold" id="totalSalary">0</h2>
                                 <small class="text-muted" id="salaryMonth">đang cập nhật...</small>
                             </div>
@@ -234,7 +234,7 @@
                     <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
                             <i class="bi bi-wallet2 text-success me-2"></i>
-                            Báo cáo lương
+                            Báo cáo khoản điều chỉnh lương
                             <small class="text-muted fw-light" id="salaryReportMonth">- Tháng hiện tại</small>
                         </h5>
                     </div>
@@ -249,20 +249,20 @@
                                 </div>
                                 <div class="col-12 col-md-4">
                                     <div class="p-4 bg-success bg-opacity-10 rounded-3 text-center">
-                                        <h6 class="text-muted mb-2">Tổng lương</h6>
+                                        <h6 class="text-muted mb-2">Tổng điều chỉnh</h6>
                                         <h2 class="mb-0 fw-bold text-success" id="salTotal">0 VND</h2>
                                     </div>
                                 </div>
                                 <div class="col-12 col-md-4">
                                     <div class="p-4 bg-warning bg-opacity-10 rounded-3 text-center">
-                                        <h6 class="text-muted mb-2">Lương trung bình</h6>
+                                        <h6 class="text-muted mb-2">Điều chỉnh trung bình</h6>
                                         <h2 class="mb-0 fw-bold text-warning" id="salAvg">0 VND</h2>
                                     </div>
                                 </div>
                             </div>
                             <div id="salaryError" class="alert alert-warning mt-3" style="display: none;">
                                 <i class="bi bi-exclamation-triangle me-2"></i>
-                                <span id="salaryErrorMessage">Chưa có dữ liệu lương cho tháng này</span>
+                                <span id="salaryErrorMessage">Chưa có dữ liệu khoản điều chỉnh lương cho tháng này</span>
                             </div>
                         </div>
                     </div>
@@ -382,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchDashboardData() {
         const loading = document.getElementById('dashboardLoading');
         const content = document.getElementById('dashboardContent');
-        
+
         // Hiển thị loading
         loading.style.display = 'block';
         content.style.display = 'none';
@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const result = await response.json();
-            
+
             if (!result.success) {
                 throw new Error(result.message || 'Lỗi không xác định');
             }
@@ -431,29 +431,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const contracts = data.hop_dong_sap_het_han || [];
         document.getElementById('expiringContracts').textContent = contracts.length;
-        
+
         // --- 3b. Lương ---
         const salaryData = data.bao_cao_luong || {};
         const salaryMonth = salaryData.thang && salaryData.nam ? `Tháng ${salaryData.thang}/${salaryData.nam}` : 'Chưa có dữ liệu';
         document.getElementById('salaryMonth').textContent = salaryMonth;
-        
+
         // Format tiền tệ
         const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
-        const totalSalary = salaryData.tong_luong || 0;
-        document.getElementById('totalSalary').textContent = totalSalary > 0 ? formatter.format(totalSalary) : '0';
-        
+        const totalSalary = salaryData.tong_dieu_chinh || 0;
+        document.getElementById('totalSalary').textContent = totalSalary !== 0 ? formatter.format(totalSalary) : '0';
+
         // --- 3c. Biểu đồ học vấn ---
         renderEducationChart(data.nhan_vien_theo_hoc_van || []);
-        
+
         // --- 3d. Biểu đồ phòng ban ---
         renderDepartmentChart(data.nhan_vien_theo_phong_ban || []);
-        
+
         // --- 3e. Bảng hợp đồng ---
         renderContractsTable(data.hop_dong_sap_het_han || []);
-        
+
         // --- 3f. Báo cáo chấm công ---
         renderAttendanceReport(data.bao_cao_cham_cong || {});
-        
+
         // --- 3g. Báo cáo lương ---
         renderSalaryReport(data.bao_cao_luong || {});
     }
@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderEducationChart(data) {
         const ctx = document.getElementById('educationChart').getContext('2d');
         const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
-        
+
         if (educationChart) {
             educationChart.destroy();
             educationChart = null;
@@ -540,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderDepartmentChart(data) {
         const ctx = document.getElementById('departmentChart').getContext('2d');
         const colors = ['#4BC0C0', '#36A2EB', '#FFCE56', '#FF6384', '#9966FF', '#FF9F40', '#C9CBCF', '#8B5CF6'];
-        
+
         if (departmentChart) {
             departmentChart.destroy();
             departmentChart = null;
@@ -626,9 +626,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // ============================================
     // 6. BẢNG HỢP ĐỒNG SẮP HẾT HẠN
     // ============================================
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[character]));
+    }
+
     function renderContractsTable(contracts) {
         const tbody = document.getElementById('contractsTableBody');
-        
+
         if (!contracts || contracts.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -642,10 +652,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let html = '';
         contracts.forEach((contract, index) => {
-            const daysLeft = contract.so_ngay_con_lai || 0;
+            const daysLeft = Number.parseInt(contract.so_ngay_con_lai, 10) || 0;
             let badgeClass = 'bg-success';
             let badgeText = `${daysLeft} ngày`;
-            
+
             if (daysLeft <= 0) {
                 badgeClass = 'bg-danger';
                 badgeText = '⚠️ Đã hết hạn';
@@ -660,11 +670,11 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `
                 <tr>
                     <td class="ps-3">${index + 1}</td>
-                    <td><strong>${contract.ho_ten || 'Chưa cập nhật'}</strong></td>
-                    <td>${contract.ten_loai_hop_dong || 'Chưa xác định'}</td>
-                    <td>${contract.ngay_bat_dau || '-'}</td>
-                    <td>${contract.ngay_ket_thuc || '-'}</td>
-                    <td><span class="badge ${badgeClass} px-3 py-2">${badgeText}</span></td>
+                    <td><strong>${escapeHtml(contract.ho_ten || 'Chưa cập nhật')}</strong></td>
+                    <td>${escapeHtml(contract.ten_loai_hop_dong || 'Chưa xác định')}</td>
+                    <td>${escapeHtml(contract.ngay_bat_dau || '-')}</td>
+                    <td>${escapeHtml(contract.ngay_ket_thuc || '-')}</td>
+                    <td><span class="badge ${badgeClass} px-3 py-2">${escapeHtml(badgeText)}</span></td>
                 </tr>
             `;
         });
@@ -679,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const month = data.thang || new Date().getMonth() + 1;
         const year = data.nam || new Date().getFullYear();
         document.getElementById('attendanceMonth').textContent = `- Tháng ${month}/${year}`;
-        
+
         document.getElementById('attTotalEmployees').textContent = data.tong_nhan_vien || 0;
         document.getElementById('attTotalShifts').textContent = data.tong_ca_cham_cong || 0;
         document.getElementById('attLate').textContent = data.so_lan_vao_muon || 0;
@@ -694,20 +704,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const month = data.thang || new Date().getMonth() + 1;
         const year = data.nam || new Date().getFullYear();
         document.getElementById('salaryReportMonth').textContent = `- Tháng ${month}/${year}`;
-        
+
         const formatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
-        
+
         const employees = data.so_nguoi || 0;
         document.getElementById('salEmployees').textContent = employees;
-        
+
         if (employees > 0) {
-            document.getElementById('salTotal').textContent = formatter.format(data.tong_luong || 0);
-            document.getElementById('salAvg').textContent = formatter.format(data.luong_trung_binh || 0);
+            document.getElementById('salTotal').textContent = formatter.format(data.tong_dieu_chinh || 0);
+            document.getElementById('salAvg').textContent = formatter.format(data.dieu_chinh_trung_binh || 0);
             document.getElementById('salaryError').style.display = 'none';
         } else {
             document.getElementById('salTotal').textContent = '0 VND';
             document.getElementById('salAvg').textContent = '0 VND';
-            const errorMsg = data.error || 'Chưa có dữ liệu lương cho tháng này';
+            const errorMsg = data.error || 'Chưa có dữ liệu khoản điều chỉnh lương cho tháng này';
             document.getElementById('salaryErrorMessage').textContent = errorMsg;
             document.getElementById('salaryError').style.display = 'block';
         }
@@ -721,7 +731,7 @@ document.addEventListener('DOMContentLoaded', function() {
         content.innerHTML = `
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                <strong>Lỗi!</strong> ${message}
+                <strong>Lỗi!</strong> ${escapeHtml(message)}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             <div class="text-center py-5">
@@ -751,16 +761,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // ============================================
     // Lấy dữ liệu lần đầu
     fetchDashboardData();
-    
+
     // Thiết lập tự động refresh
     setupAutoRefresh();
-    
+
     // Nút làm mới
     document.getElementById('refreshDashboard').addEventListener('click', function() {
         const originalText = this.innerHTML;
         this.disabled = true;
         this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Đang tải...';
-        
+
         fetchDashboardData().finally(() => {
             this.disabled = false;
             this.innerHTML = originalText;
