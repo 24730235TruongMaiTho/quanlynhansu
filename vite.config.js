@@ -16,6 +16,8 @@ export default defineConfig({
                 'resources/js/frontend/luong/luongCreateUpdate.js',
                 'resources/js/frontend/luong/luongHeSo.js',
                 'resources/js/frontend/luong/luongHeSoCreateUpdate.js',
+                'resources/js/frontend/nghiphep/create.js',
+                'resources/js/frontend/nghiphep/duyet-nghi-phep.js'
             ],
             refresh: true,
         }),

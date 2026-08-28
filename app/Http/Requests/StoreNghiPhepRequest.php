@@ -25,7 +25,7 @@ class StoreNghiPhepRequest extends FormRequest
             'tu_ngay' => 'required|date',
             'den_ngay' => 'required|date|after_or_equal:tu_ngay',
             'ma_lp' => 'required|integer',
-            'ly_do' => 'nullable|string|max:255',
+            'ly_do' => 'required|string|max:255',
             'trang_thai_duyet' => 'nullable|integer|in:0,1,2',
         ];
     }
