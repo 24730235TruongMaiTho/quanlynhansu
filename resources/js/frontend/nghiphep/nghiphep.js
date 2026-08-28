@@ -6,13 +6,233 @@ import {
 } from './employee-response.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    const AUTH_ME_API_URL = '/api/v1/auth/me';
+
     const NGHI_PHEP_API_URL = '/api/v1/nghi-phep';
     const NHAN_VIEN_API_URL = '/api/v1/nghi-phep/nhan-vien';
     const PHONG_BAN_API_URL = '/api/v1/nghi-phep/phong-ban';
     const CHUC_VU_API_URL = '/api/v1/nghi-phep/chuc-vu';
     const LOAI_PHEP_API_URL = '/api/v1/nghi-phep/loai-phep';
 
+    const PERMISSION_CODES = Object.freeze({
+        READ: 'NghiPhep.Read',
+        INSERT: 'NghiPhep.Insert',
+        UPDATE: 'NghiPhep.Update',
+        DELETE: 'NghiPhep.Delete',
+    });
+
+    const permissionState = {
+        initialized: false,
+        user: null,
+        permissions: new Set(),
+    };
+
+    function can(permission) {
+        return permissionState.permissions.has(permission);
+    }
+
+    function canAny(...permissions) {
+        return permissions.some(
+            (permission) => can(permission)
+        );
+    }
+
+    function normalizeAuthResult(result) {
+        const data = result?.data || {};
+
+        if (
+            data.user ||
+            Array.isArray(data.permissions)
+        ) {
+            return {
+                user: data.user || null,
+                permissions: Array.isArray(data.permissions)
+                    ? data.permissions
+                    : [],
+            };
+        }
+
+        return {
+            user: {
+                ma_nv: data.ma_nv ?? null,
+                ho_ten: data.ho_ten ?? null,
+                email: data.email ?? null,
+                ma_vt: data.ma_vt ?? null,
+                vai_tro: data.vai_tro ?? null,
+            },
+
+            permissions: Array.isArray(data.quyen)
+                ? data.quyen
+                    .map(
+                        (item) =>
+                            item?.ky_hieu_quyen
+                    )
+                    .filter(
+                        (item) =>
+                            typeof item === 'string'
+                    )
+                : [],
+        };
+    }
+
+    async function loadAuthContext() {
+        const response = await fetch(
+            AUTH_ME_API_URL,
+            {
+                method: 'GET',
+
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+
+                credentials: 'same-origin',
+            }
+        );
+
+        const contentType =
+            response.headers.get('content-type') || '';
+
+        if (
+            !contentType.includes('application/json')
+        ) {
+            const body = await response.text();
+
+            console.error(
+                'Auth API trả HTML/text:',
+                body
+            );
+
+            throw new Error(
+                `API xác thực không trả JSON. HTTP ${response.status}`
+            );
+        }
+
+        const result = await response.json();
+
+        if (
+            !response.ok ||
+            result.success === false
+        ) {
+            throw new Error(
+                result.message ||
+                'Không thể xác thực người dùng.'
+            );
+        }
+
+        const normalized =
+            normalizeAuthResult(result);
+
+        permissionState.user =
+            normalized.user;
+
+        permissionState.permissions =
+            new Set(
+                normalized.permissions
+            );
+
+        permissionState.initialized =
+            true;
+
+        return normalized;
+    }
+
+    function applyPermissionVisibility(
+        root = document
+    ) {
+        root
+            .querySelectorAll(
+                '[data-leave-permission]'
+            )
+            .forEach((element) => {
+                const required = String(
+                    element.dataset.leavePermission || ''
+                )
+                    .split(',')
+                    .map(
+                        (item) => item.trim()
+                    )
+                    .filter(Boolean);
+
+                const allowed =
+                    required.length === 0 ||
+                    required.some(
+                        (permission) =>
+                            can(permission)
+                    );
+
+                element.hidden = !allowed;
+
+                element.classList.toggle(
+                    'd-none',
+                    !allowed
+                );
+            });
+    }
+
+    function notifyDenied(
+        action = 'thực hiện thao tác này'
+    ) {
+        const message =
+            `Bạn không có quyền ${action}.`;
+
+        const toast =
+            document.querySelector('.leave-toast');
+
+        if (toast) {
+            toast.textContent = message;
+            toast.classList.add('show');
+
+            window.setTimeout(
+                () => {
+                    toast.classList.remove('show');
+                },
+                2500
+            );
+
+            return;
+        }
+
+        window.alert(message);
+    }
+
+    function guard(permission, action) {
+        if (can(permission)) {
+            return true;
+        }
+
+        notifyDenied(action);
+        return false;
+    }
+
+    function csrfToken() {
+        return document
+            .querySelector(
+                'meta[name="csrf-token"]'
+            )
+            ?.getAttribute('content') || null;
+    }
+
+
     const elements = {
+        authLoading:
+            document.getElementById('leave-auth-loading'),
+
+        accessDenied:
+            document.getElementById('leave-access-denied'),
+
+        accessDeniedMessage:
+            document.getElementById('leave-access-denied-message'),
+
+        readOnlyBadge:
+            document.getElementById('leave-readonly-badge'),
+
+        noReadNotice:
+            document.getElementById('leave-no-read-notice'),
+
+        calendarButton:
+            document.getElementById('calendar-btn'),
+
         search: document.getElementById('search-field'),
         department: document.getElementById('department-filter'),
         position: document.getElementById('position-filter'),
@@ -83,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         employeeAbortController: null,
         leaveAbortController: null,
 
-        modalMode: 'create',
+        modalMode: 'edit',
     };
 
     let searchTimeout = null;
@@ -120,30 +340,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function requestJson(url, options = {}) {
-        const response = await fetch(url, {
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                ...(options.headers || {}),
-            },
-            ...options,
-        });
+        const method =
+            String(
+                options.method || 'GET'
+            ).toUpperCase();
 
-        const contentType = response.headers.get('content-type') || '';
+        const token =
+            csrfToken();
 
-        if (!contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('API trả về HTML/text:', text);
-            throw new Error(`API không trả về JSON. HTTP ${response.status}`);
+        const headers = {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(options.headers || {}),
+        };
+
+        if (
+            token &&
+            !['GET', 'HEAD'].includes(method)
+        ) {
+            headers['X-CSRF-TOKEN'] =
+                token;
         }
 
-        const result = await response.json();
+        const response = await fetch(
+            url,
+            {
+                ...options,
+                method,
+                headers,
+                credentials: 'same-origin',
+            }
+        );
 
-        if (!response.ok || result.success === false) {
-            const validationMessage = result.errors
-                ? Object.values(result.errors).flat().join(' ')
-                : null;
+        const contentType =
+            response.headers.get('content-type') || '';
+
+        if (
+            !contentType.includes('application/json')
+        ) {
+            const text =
+                await response.text();
+
+            console.error(
+                'API trả về HTML/text:',
+                text
+            );
+
+            throw new Error(
+                `API không trả về JSON. HTTP ${response.status}`
+            );
+        }
+
+        const result =
+            await response.json();
+
+        if (
+            !response.ok ||
+            result.success === false
+        ) {
+            const validationMessage =
+                result.errors
+                    ? Object.values(result.errors)
+                        .flat()
+                        .join(' ')
+                    : null;
+
+            if (response.status === 401) {
+                throw new Error(
+                    'Phiên đăng nhập đã hết hạn.'
+                );
+            }
+
+            if (response.status === 403) {
+                throw new Error(
+                    'Bạn không có quyền thực hiện thao tác này.'
+                );
+            }
+
+            if (response.status === 419) {
+                throw new Error(
+                    'CSRF token đã hết hạn. Vui lòng tải lại trang.'
+                );
+            }
 
             throw new Error(
                 validationMessage ||
@@ -187,26 +466,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadLookups() {
-        await Promise.all([
-            loadSimpleSelect(
-                PHONG_BAN_API_URL,
-                elements.department,
-                'ma_pb',
-                'ten_pb'
-            ),
-            loadSimpleSelect(
-                CHUC_VU_API_URL,
-                elements.position,
-                'ma_cv',
-                'ten_cv'
-            ),
-            loadSimpleSelect(
-                LOAI_PHEP_API_URL,
-                elements.leaveType,
-                'ma_lp',
-                'ten_lp'
-            ),
-        ]);
+        const requests = [];
+
+        if (
+            can(PERMISSION_CODES.READ)
+        ) {
+            requests.push(
+                loadSimpleSelect(
+                    PHONG_BAN_API_URL,
+                    elements.department,
+                    'ma_pb',
+                    'ten_pb'
+                ),
+                loadSimpleSelect(
+                    CHUC_VU_API_URL,
+                    elements.position,
+                    'ma_cv',
+                    'ten_cv'
+                )
+            );
+        }
+
+        if (
+            canAny(
+                PERMISSION_CODES.INSERT,
+                PERMISSION_CODES.UPDATE
+            )
+        ) {
+            requests.push(
+                loadSimpleSelect(
+                    LOAI_PHEP_API_URL,
+                    elements.leaveType,
+                    'ma_lp',
+                    'ten_lp'
+                )
+            );
+        }
+
+        await Promise.all(requests);
     }
 
     /**
@@ -279,6 +576,12 @@ document.addEventListener('DOMContentLoaded', () => {
      * - gọi lại API
      */
     function applyEmployeeFilters() {
+        if (
+            !can(PERMISSION_CODES.READ)
+        ) {
+            return;
+        }
+
         syncEmployeeFiltersFromUI();
 
         state.employeePage = 1;
@@ -540,6 +843,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadEmployees(page = 1) {
+        if (
+            !can(PERMISSION_CODES.READ)
+        ) {
+            return;
+        }
+
         state.employeePage =
             Math.max(Number(page) || 1, 1);
 
@@ -579,6 +888,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         'X-Requested-With':
                             'XMLHttpRequest',
                     },
+                    credentials:
+                        'same-origin',
                     signal:
                     state
                         .employeeAbortController
@@ -760,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.leaveDescription.textContent =
             `Dữ liệu nghỉ phép của ${employee.ho_ten} (${employee.ma_nv}).`;
 
-        elements.createButton.disabled = false;
+        elements.createButton.disabled = !can(PERMISSION_CODES.INSERT);
         elements.editButton.disabled = true;
         elements.deleteButton.disabled = true;
         elements.approveButton.disabled = true;
@@ -780,14 +1091,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function leaveStatusLabel(status) {
         if (status === 0) {
-            return '<span class="badge rounded-pill text-bg-warning">Chờ duyệt</span>';
+            return `
+                <span
+                    class="badge rounded-pill text-bg-warning leave-status-badge"
+                    title="Đơn nghỉ phép đang chờ phê duyệt."
+                >
+                    Chờ duyệt
+                </span>
+            `;
         }
 
         if (status === 1) {
-            return '<span class="badge rounded-pill text-bg-success">Đã duyệt</span>';
+            return `
+                <span
+                    class="badge rounded-pill text-bg-success leave-status-badge"
+                    title="Đơn nghỉ phép đã được phê duyệt."
+                >
+                    Đã duyệt
+                </span>
+            `;
         }
 
-        return '<span class="badge rounded-pill text-bg-danger">Từ chối</span>';
+        return `
+            <span
+                class="badge rounded-pill text-bg-danger leave-status-badge"
+                title="Đơn nghỉ phép đã bị từ chối."
+            >
+                Từ chối
+            </span>
+        `;
     }
 
     function filterLeavesForActiveTab(rows) {
@@ -827,6 +1159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.editButton.disabled = true;
         elements.deleteButton.disabled = true;
         elements.approveButton.disabled = true;
+        syncApproveButtonVisibility();
 
         if (!rows.length) {
             elements.leaveTbody.innerHTML = `
@@ -858,6 +1191,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             type="radio"
                             name="selected-leave"
                             value="${escapeHtml(leave.ma_np)}"
+                            ${canAny(
+                PERMISSION_CODES.UPDATE,
+                PERMISSION_CODES.DELETE
+            ) ? '' : 'disabled'}
                         >
                     </td>
                     <td class="fw-semibold">${escapeHtml(leave.ma_np)}</td>
@@ -865,7 +1202,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${formatDate(leave.tu_ngay)}</td>
                     <td>${formatDate(leave.den_ngay)}</td>
                     <td>${escapeHtml(leave.ten_lp)}</td>
-                    <td>${escapeHtml(leave.ly_do || '—')}</td>
+                    <td class="leave-reason-cell">
+                        <span
+                            class="leave-reason-text"
+                            title="${escapeHtml(leave.ly_do || 'Không có lý do')}"
+                        >
+                            ${escapeHtml(leave.ly_do || '—')}
+                        </span>
+                    </td>
                     <td>${leaveStatusLabel(leave.trang_thai_duyet)}</td>
                 </tr>
             `)
@@ -876,7 +1220,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadLeaves() {
-        if (!state.selectedEmployee?.ma_nv) return;
+        if (
+            !can(PERMISSION_CODES.READ) ||
+            !state.selectedEmployee?.ma_nv
+        ) {
+            return;
+        }
 
         state.leaveAbortController?.abort();
         state.leaveAbortController = new AbortController();
@@ -906,6 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
+                credentials: 'same-origin',
                 signal: state.leaveAbortController.signal,
             });
 
@@ -948,17 +1298,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function selectLeave(leaveId) {
-        state.selectedLeaveId = String(leaveId);
+        if (
+            !canAny(
+                PERMISSION_CODES.UPDATE,
+                PERMISSION_CODES.DELETE
+            )
+        ) {
+            return;
+        }
 
-        const leave = state.leaveRows.find(
-            (item) => String(item.ma_np) === state.selectedLeaveId
-        );
+        state.selectedLeaveId =
+            String(leaveId);
+
+        const leave =
+            state.leaveRows.find(
+                (item) =>
+                    String(item.ma_np) ===
+                    state.selectedLeaveId
+            );
 
         elements.leaveTbody
             .querySelectorAll('[data-leave-row]')
             .forEach((row) => {
                 const selected =
-                    row.dataset.id === state.selectedLeaveId;
+                    row.dataset.id ===
+                    state.selectedLeaveId;
 
                 row.classList.toggle(
                     'table-primary',
@@ -968,13 +1332,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 const radio =
                     row.querySelector('.leave-radio');
 
-                if (radio) radio.checked = selected;
+                if (radio) {
+                    radio.checked =
+                        selected;
+                }
             });
 
-        elements.editButton.disabled = !leave;
-        elements.deleteButton.disabled = !leave;
-        elements.approveButton.disabled =
-            !leave || leave.trang_thai_duyet !== 0;
+        if (elements.editButton) {
+            elements.editButton.disabled =
+                !leave ||
+                !can(PERMISSION_CODES.UPDATE);
+        }
+
+        if (elements.deleteButton) {
+            elements.deleteButton.disabled =
+                !leave ||
+                !can(PERMISSION_CODES.DELETE);
+        }
+
+        if (elements.approveButton) {
+            const canApprove =
+                state.activeTab === 'pending' &&
+                !!leave &&
+                leave.trang_thai_duyet === 0 &&
+                can(PERMISSION_CODES.UPDATE);
+
+            elements.approveButton.disabled =
+                !canApprove;
+
+            syncApproveButtonVisibility();
+        }
+    }
+
+    function syncApproveButtonVisibility() {
+        if (!elements.approveButton) {
+            return;
+        }
+
+        const shouldShow =
+            can(PERMISSION_CODES.UPDATE) &&
+            state.activeTab === 'pending';
+
+        elements.approveButton.hidden =
+            !shouldShow;
+
+        elements.approveButton.classList.toggle(
+            'd-none',
+            !shouldShow
+        );
+
+        if (!shouldShow) {
+            elements.approveButton.disabled =
+                true;
+        }
     }
 
     function switchTab(tab) {
@@ -1001,6 +1411,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tab === 'history' ? 'true' : 'false'
         );
 
+        syncApproveButtonVisibility();
         renderLeaves();
     }
 
@@ -1031,25 +1442,16 @@ document.addEventListener('DOMContentLoaded', () => {
         clearModalMessage();
     }
 
-    function openCreateModal() {
-        if (!state.selectedEmployee) return;
-
-        state.modalMode = 'create';
-        resetModal();
-
-        elements.modalTitle.textContent =
-            'Thêm nghỉ phép';
-
-        elements.modalDescription.textContent =
-            `Tạo đơn nghỉ phép cho ${state.selectedEmployee.ho_ten} (${state.selectedEmployee.ma_nv}).`;
-
-        elements.modalSubmit.textContent =
-            'Thêm nghỉ phép';
-
-        elements.modal.showModal();
-    }
-
     function openEditModal() {
+        if (
+            !guard(
+                PERMISSION_CODES.UPDATE,
+                'sửa nghỉ phép'
+            )
+        ) {
+            return;
+        }
+
         const leave = state.leaveRows.find(
             (item) =>
                 String(item.ma_np) ===
@@ -1126,6 +1528,15 @@ document.addEventListener('DOMContentLoaded', () => {
     async function submitLeaveForm(event) {
         event.preventDefault();
 
+        if (
+            !guard(
+                PERMISSION_CODES.UPDATE,
+                'sửa nghỉ phép'
+            )
+        ) {
+            return;
+        }
+
         const payload = buildLeavePayload();
         const validationMessage =
             validateLeavePayload(payload);
@@ -1135,23 +1546,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const isEdit =
-            state.modalMode === 'edit';
-
         const leaveId =
             elements.leaveId.value;
 
+        if (!leaveId) {
+            showModalMessage(
+                'Không xác định được mã nghỉ phép cần sửa.'
+            );
+            return;
+        }
+
         elements.modalSubmit.disabled = true;
         elements.modalSubmit.textContent =
-            isEdit ? 'Đang lưu...' : 'Đang thêm...';
+            'Đang lưu...';
 
         try {
             await requestJson(
-                isEdit
-                    ? `${NGHI_PHEP_API_URL}/${encodeURIComponent(leaveId)}`
-                    : NGHI_PHEP_API_URL,
+                `${NGHI_PHEP_API_URL}/${encodeURIComponent(leaveId)}`,
                 {
-                    method: isEdit ? 'PUT' : 'POST',
+                    method: 'PUT',
                     body: JSON.stringify(payload),
                 }
             );
@@ -1164,12 +1577,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             elements.modalSubmit.disabled = false;
             elements.modalSubmit.textContent =
-                isEdit ? 'Lưu thay đổi' : 'Thêm nghỉ phép';
+                'Lưu thay đổi';
         }
     }
 
     async function deleteSelectedLeave() {
-        if (!state.selectedLeaveId) return;
+        if (
+            !guard(
+                PERMISSION_CODES.DELETE,
+                'xóa nghỉ phép'
+            )
+        ) {
+            return;
+        }
+
+        if (!state.selectedLeaveId) {
+            return;
+        }
 
         if (
             !window.confirm(
@@ -1195,6 +1619,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function approveSelectedLeave() {
+        if (
+            !guard(
+                PERMISSION_CODES.UPDATE,
+                'duyệt nghỉ phép'
+            )
+        ) {
+            return;
+        }
+
         if (
             !state.selectedLeaveId ||
             !state.selectedEmployee
@@ -1225,6 +1658,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearEmployeeFilters() {
+        if (
+            !can(PERMISSION_CODES.READ)
+        ) {
+            return;
+        }
+
         clearTimeout(searchTimeout);
 
         if (elements.search) {
@@ -1378,9 +1817,51 @@ document.addEventListener('DOMContentLoaded', () => {
         () => switchTab('history')
     );
 
+    elements.calendarButton?.addEventListener(
+        'click',
+        () => {
+            if (
+                !guard(
+                    PERMISSION_CODES.READ,
+                    'xem lịch nghỉ'
+                )
+            ) {
+                return;
+            }
+
+            document.dispatchEvent(
+                new CustomEvent(
+                    'leave:calendar',
+                    {
+                        detail: {
+                            employee:
+                            state.selectedEmployee,
+                        },
+                    }
+                )
+            );
+        }
+    );
+
     elements.createButton?.addEventListener(
         'click',
-        openCreateModal
+        () => {
+            if (
+                !guard(
+                    PERMISSION_CODES.INSERT,
+                    'thêm nghỉ phép'
+                )
+            ) {
+                return;
+            }
+
+            const target =
+                elements.createButton.dataset.createUrl ||
+                '/user/nghi-phep/create';
+
+            window.location.href =
+                target;
+        }
     );
 
     elements.editButton?.addEventListener(
@@ -1423,14 +1904,81 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     async function initialize() {
-        await loadLookups();
+        try {
+            await loadAuthContext();
 
-        /*
-         * Khởi tạo filter state trước request đầu tiên.
-         */
-        syncEmployeeFiltersFromUI();
+            if (elements.authLoading) {
+                elements.authLoading.hidden =
+                    true;
+            }
 
-        await loadEmployees(1);
+            const hasAccess =
+                canAny(
+                    PERMISSION_CODES.READ,
+                    PERMISSION_CODES.INSERT,
+                    PERMISSION_CODES.UPDATE,
+                    PERMISSION_CODES.DELETE
+                );
+
+            if (!hasAccess) {
+                if (elements.accessDenied) {
+                    elements.accessDenied.hidden =
+                        false;
+                }
+
+                return;
+            }
+
+            applyPermissionVisibility();
+            syncApproveButtonVisibility();
+
+            const readOnly =
+                can(PERMISSION_CODES.READ) &&
+                !can(PERMISSION_CODES.INSERT) &&
+                !can(PERMISSION_CODES.UPDATE) &&
+                !can(PERMISSION_CODES.DELETE);
+
+            if (elements.readOnlyBadge) {
+                elements.readOnlyBadge.hidden =
+                    !readOnly;
+            }
+
+            if (elements.noReadNotice) {
+                elements.noReadNotice.hidden =
+                    can(PERMISSION_CODES.READ);
+            }
+
+            await loadLookups();
+
+            if (
+                !can(PERMISSION_CODES.READ)
+            ) {
+                return;
+            }
+
+            syncEmployeeFiltersFromUI();
+            await loadEmployees(1);
+        } catch (error) {
+            console.error(
+                'Initialize leave module failed:',
+                error
+            );
+
+            if (elements.authLoading) {
+                elements.authLoading.hidden =
+                    true;
+            }
+
+            if (elements.accessDenied) {
+                elements.accessDenied.hidden =
+                    false;
+            }
+
+            if (elements.accessDeniedMessage) {
+                elements.accessDeniedMessage.textContent =
+                    error.message;
+            }
+        }
     }
 
     initialize();

@@ -20,8 +20,6 @@ class NghiPhep extends Model
     ];
 
     protected $casts = [
-        'tu_ngay' => 'date',
-        'den_ngay' => 'date',
         'trang_thai_duyet' => 'integer',
     ];
 

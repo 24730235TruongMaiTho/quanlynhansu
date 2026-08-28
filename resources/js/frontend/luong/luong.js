@@ -1,1256 +1,1571 @@
-import '../../../css/luong/salary-bootstrap.css'
-document.addEventListener('DOMContentLoaded', () => {
-    const LUONG_API_URL = '/api/v1/luong';
-    const PHONG_BAN_API_URL = '/api/v1/luong/phong-ban';
-    const CHUC_VU_API_URL = '/api/v1/luong/chuc-vu';
+import '../../../css/luong/salary-bootstrap.css';
 
+import {
+    PERMISSION_CODES,
+    COEFFICIENT_PERMISSION_CODES,
+    initializeSalaryPermissionUI,
+    can,
+    guard,
+} from './luongPermissions.js';
 
-    const elements = {
-        tbody: document.getElementById('salary-tbody'),
-        search: document.getElementById('search-field'),
-        department: document.getElementById('department-filter'),
-        position: document.getElementById('position-filter'),
-        month: document.getElementById('salary-month-select'),
-        year: document.getElementById('salary-year-input'),
+document.addEventListener(
+    'DOMContentLoaded',
+    async () => {
+        const LUONG_API_URL =
+            '/api/v1/luong';
 
-        clearFilterButton: document.getElementById('clear-filter-btn'),
+        const PHONG_BAN_API_URL =
+            '/api/v1/luong/phong-ban';
 
-        perPage: document.getElementById('salary-per-page'),
-        refresh: document.getElementById('salary-refresh'),
+        const CHUC_VU_API_URL =
+            '/api/v1/luong/chuc-vu';
 
-        tableTitle: document.getElementById('table-title'),
-        tableUpdated: document.getElementById('table-updated'),
-        tableStat: document.getElementById('table-stat'),
-        reconcileButton: document.getElementById('reconcile-btn'),
+        const LUONG_EXPORT_API_URL =
+            '/api/v1/luong/export';
 
-        pageInfo: document.getElementById('page-info'),
-        pagination: document.getElementById('pagination'),
-    };
+        const elements = {
+            tbody:
+                document.getElementById(
+                    'salary-tbody'
+                ),
 
-    if (!elements.tbody) {
-        console.warn('Không tìm thấy #salary-tbody');
+            search:
+                document.getElementById(
+                    'search-field'
+                ),
 
-        return;
-    }
+            department:
+                document.getElementById(
+                    'department-filter'
+                ),
 
-    const state = {
-        page: 1,
-        perPage: Number(elements.perPage?.value || 15),
-        abortController: null,
-        filters: {
-            ma_nv: null,
-            ky_luong: null,
-            ma_pb: null,
-            ma_cv: null,
-        },
+            position:
+                document.getElementById(
+                    'position-filter'
+                ),
 
-    };
+            month:
+                document.getElementById(
+                    'salary-month-select'
+                ),
 
-    const defaultFilters = {
-        month: elements.month?.value || String(new Date().getMonth()),
-        year: elements.year?.value || String(new Date().getFullYear()),
-    };
+            year:
+                document.getElementById(
+                    'salary-year-input'
+                ),
 
-    let searchTimeout = null;
+            clearFilterButton:
+                document.getElementById(
+                    'clear-filter-btn'
+                ),
 
-    /**
-     * Chuyển giá trị về số an toàn.
-     */
-    function toNumber(value) {
-        const number = Number(value);
+            perPage:
+                document.getElementById(
+                    'salary-per-page'
+                ),
 
-        return Number.isFinite(number) ? number : 0;
-    }
+            tableTitle:
+                document.getElementById(
+                    'table-title'
+                ),
 
-    function loadSalaryPeriods() {
-        const monthSelect = document.getElementById('salary-month-select');
-        const yearInput = document.getElementById('salary-year-input');
+            tableUpdated:
+                document.getElementById(
+                    'table-updated'
+                ),
 
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth() + 1;
-        const currentYear = currentDate.getFullYear();
+            tableStat:
+                document.getElementById(
+                    'table-stat'
+                ),
 
-        // Đổ 12 tháng
-        if (monthSelect) {
-            monthSelect.innerHTML = '';
+            reconcileButton:
+                document.getElementById(
+                    'reconcile-btn'
+                ),
 
-            for (let month = 1; month <= 12; month++) {
-                const option = document.createElement('option');
+            pageInfo:
+                document.getElementById(
+                    'page-info'
+                ),
 
-                option.value = String(month).padStart(2, '0');
-                option.textContent = month;
-                option.selected = month === currentMonth;
+            pagination:
+                document.getElementById(
+                    'pagination'
+                ),
 
-                monthSelect.appendChild(option);
-            }
-        }
-
-        // Đổ danh sách năm: 2 năm trước đến 1 năm sau
-        if (yearInput) {
-            yearInput.innerHTML = '';
-            console.log("currentYear: ", currentYear);
-            yearInput.innerHTML = String(currentYear);
-            yearInput.value = String(currentYear);
-        }
-    }
-
-    function formatSalaryPeriod(value) {
-        if (!value) {
-            return '—';
-        }
-
-        // Hỗ trợ cả "2026-07-01" và chuỗi datetime dài hơn.
-        const match = String(value).match(/^(\d{4})-(\d{2})-\d{2}/);
-
-        if (!match) {
-            return String(value);
-        }
-
-        const year = match[1];
-        const month = match[2];
-
-        return `${month}/${year}`;
-    }
-
-    /**
-     * Format tiền Việt Nam.
-     */
-    function formatMoney(value) {
-        if (
-            value === null ||
-            value === undefined ||
-            value === ''
-        ) {
-            return '—';
-        }
-
-        return `${toNumber(value).toLocaleString('vi-VN')} ₫`;
-    }
-
-    /**
-     * Format số ngày công.
-     */
-    function formatWorkday(value) {
-        return toNumber(value).toLocaleString('vi-VN', {
-            minimumFractionDigits: 1,
-            maximumFractionDigits: 1,
-        });
-    }
-
-    /**
-     * Escape nội dung trước khi đưa vào innerHTML.
-     */
-    function escapeHtml(value) {
-        return String(value ?? '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#039;');
-    }
-
-    /**
-     * Lấy chữ cái đầu của họ tên để làm avatar.
-     */
-    function getInitials(fullName) {
-        const words = String(fullName || '')
-            .trim()
-            .split(/\s+/)
-            .filter(Boolean);
-
-        if (words.length === 0) {
-            return 'NV';
-        }
-
-        if (words.length === 1) {
-            return words[0].substring(0, 2).toUpperCase();
-        }
-
-        return (
-            words[words.length - 2][0] +
-            words[words.length - 1][0]
-        ).toUpperCase();
-    }
-
-    function getSelectedSalaryPeriod() {
-        const month = elements.month?.value;
-        const year = elements.year?.value;
-
-        if (!month || !year) {
-            return null;
-        }
-
-        const normalizedMonth = String(month).padStart(2, '0');
-
-        return `${year}-${normalizedMonth}-01`;
-    }
-
-    function syncFiltersFromUI() {
-        state.filters.ma_nv =
-            elements.search?.value.trim() || null;
-
-        state.filters.ky_luong =
-            getSelectedSalaryPeriod();
-
-        state.filters.ma_pb =
-            elements.department?.value || null;
-
-        state.filters.ma_cv =
-            elements.position?.value || null;
-    }
-
-    /**
-     * Lấy các filter hiện tại.
-     */
-    function getFilters(page = state.page) {
-        return {
-            ...state.filters,
-            page,
-            per_page: state.perPage,
+            exportButton:
+                document.getElementById('export-btn'),
         };
-    }
 
-    /**
-     * Tạo URL API kèm query parameters.
-     */
-    function buildUrl(page) {
-        const url = new URL(LUONG_API_URL, window.location.origin);
-        const filters = getFilters(page);
+        const state = {
+            page: 1,
 
-        console.log("buildUrl filters:", filters);
+            perPage:
+                Number(
+                    elements.perPage?.value ||
+                    15
+                ),
 
-        Object.entries(filters).forEach(([key, value]) => {
-            if (
-                value !== null &&
-                value !== undefined &&
-                value !== ''
-            ) {
-                url.searchParams.set(key, value);
+            abortController: null,
+
+            filters: {
+                ma_nv: null,
+                ky_luong: null,
+                ma_pb: null,
+                ma_cv: null,
+            },
+        };
+
+        let searchTimeout = null;
+
+        function toNumber(value) {
+            const number =
+                Number(value);
+
+            return Number.isFinite(number)
+                ? number
+                : 0;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function getInitials(fullName) {
+            const words =
+                String(fullName || '')
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean);
+
+            if (words.length === 0) {
+                return 'NV';
             }
-        });
 
-        return url.toString();
-    }
+            if (words.length === 1) {
+                return words[0]
+                    .substring(0, 2)
+                    .toUpperCase();
+            }
 
-    function renderLoading() {
-        elements.tbody.innerHTML = `
-        <tr>
-            <td colspan="15" class="table-message">
-                Đang tải dữ liệu bảng lương...
-            </td>
-        </tr>
-    `;
-
-        if (elements.tableUpdated) {
-            elements.tableUpdated.textContent = 'Đang cập nhật dữ liệu...';
+            return (
+                words[words.length - 2][0] +
+                words[words.length - 1][0]
+            ).toUpperCase();
         }
 
-        if (elements.tableStat) {
-            elements.tableStat.textContent = 'Đang tải...';
+        function formatMoney(value) {
+            if (
+                value === null ||
+                value === undefined ||
+                value === ''
+            ) {
+                return '—';
+            }
+
+            return `${toNumber(value)
+                .toLocaleString('vi-VN')} ₫`;
         }
 
-        if (elements.reconcileButton) {
-            elements.reconcileButton.disabled = true;
-        }
-    }
+        function formatSalaryPeriod(value) {
+            if (!value) {
+                return '—';
+            }
 
-    function renderEmpty() {
-        elements.tbody.innerHTML = `
-            <tr>
-                <td colspan="10" style="text-align:center; padding:40px">
-                    Không tìm thấy dữ liệu bảng lương phù hợp.
-                </td>
-            </tr>
-        `;
-    }
+            const match =
+                String(value).match(
+                    /^(\d{4})-(\d{2})-\d{2}/
+                );
 
-    function renderError(message) {
-        elements.tbody.innerHTML = `
-            <tr>
-                <td colspan="10" style="text-align:center; padding:40px">
-                    <strong>Không thể tải dữ liệu.</strong>
-                    <div class="sub">
-                        ${escapeHtml(message)}
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
+            if (!match) {
+                return String(value);
+            }
 
-    /**
-     * Render danh sách bảng lương.
-     */
-    function renderRows(rows) {
-        if (!Array.isArray(rows) || rows.length === 0) {
-            renderEmpty();
-            return;
+            return `${match[2]}/${match[1]}`;
         }
 
-        elements.tbody.innerHTML = rows
-            .map((salary) => {
-                const employeeName =
-                    salary.ho_ten || 'Chưa cập nhật';
+        function formatDateTime(date) {
+            const time =
+                date.toLocaleTimeString(
+                    'vi-VN',
+                    {
+                        hour:
+                            '2-digit',
 
-                const employeeCode =
-                    salary.ma_nv || 'N/A';
+                        minute:
+                            '2-digit',
 
-                const departmentName =
-                    salary.ten_pb || 'Chưa có phòng ban';
+                        hour12:
+                            false,
+                    }
+                );
 
-                const positionName =
-                    salary.ten_cv || 'Chưa có chức vụ';
+            const day =
+                date.toLocaleDateString(
+                    'vi-VN'
+                );
 
-                /*
-                 * Không nên dựa vào thuc_nhan > 0 để xác định
-                 * đã có bảng lương hay chưa.
-                 *
-                 * Một bảng lương có thể thực nhận bằng 0
-                 * nhưng vẫn là bản ghi hợp lệ.
-                 */
-                const hasChamCong =
-                    salary.so_ngay_cham_cong !== null && salary.so_ngay_cham_cong > 0
+            return `${time}, ${day}`;
+        }
 
-                const hasSalary = salary.thuc_nhan > 0;
-
-                const statusHtml = hasSalary
-                    ? `
-                    <span class="label label-success">
-                        Đã hoàn tất
-                    </span>
-                ` : `
-                    <span class="label label-attention">
-                        ${salary.thong_bao_tinh_luong}
-                    </span>
-                `;
-
-                /*
-                 * phu_cap hiện là hệ số:
-                 * 0.5 → 50%
-                 * 0.3 → 30%
-                 */
-                const allowanceRate =
-                    salary.phu_cap === null ||
-                    salary.phu_cap === undefined
-                        ? '—'
-                        : `${toNumber(salary.phu_cap * 100)
-                            .toLocaleString('vi-VN', {
-                                maximumFractionDigits: 2,
-                            })}%`;
-
-                const workdays = toNumber(
-                    salary.so_ngay_cham_cong
-                ).toLocaleString('vi-VN', {
-                    minimumFractionDigits: 1,
-                    maximumFractionDigits: 1,
-                });
-
-                const lateCount = toNumber(
-                    salary.so_lan_vao_muon
-                ).toLocaleString('vi-VN');
-
-                const earlyLeaveCount = toNumber(
-                    salary.so_lan_ve_som
-                ).toLocaleString('vi-VN');
-
-                return `
-                <tr
-                    data-salary-id="${escapeHtml(
-                    salary.ma_luong || ''
-                )}"
-                >
-
-                    <td>
-                        <div class="employee">
-                            <div class="avatar">
-                                ${escapeHtml(
-                    getInitials(employeeName)
-                )}
-                            </div>
-
-                            <div>
-                                <div class="employee-name">
-                                    ${escapeHtml(employeeName)}
-                                </div>
-
-                                <div class="meta">
-                                    ${escapeHtml(employeeCode)}
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <td>
-                        <div>
-                            ${escapeHtml(departmentName)}
-                        </div>
-
-                        <div class="sub">
-                            ${escapeHtml(positionName)}
-                        </div>
-                    </td>
-
-                    <td class="numeric">
-                        ${formatSalaryPeriod(salary.ky_luong)}
-                    </td>
-
-                    <td class="numeric">
-                        ${formatMoney(salary.thuong)}
-                    </td>
-
-                    <td class="numeric">
-                        ${formatMoney(salary.phat)}
-                    </td>
-
-                    <td class="numeric">
-                        ${formatMoney(salary.bao_hiem)}
-                    </td>
-
-                    <td class="numeric">
-                        ${formatMoney(salary.thue)}
-                    </td>
-
-                    <td class="numeric">
-                        ${allowanceRate}
-                    </td>
-
-                    <td class="numeric">
-                        <strong>
-                            ${formatMoney(salary.thuc_nhan)}
-                        </strong>
-                    </td>
-
-                    <td class="numeric">
-                        ${workdays}
-                    </td>
-
-                    <td class="numeric">
-                        ${lateCount}
-                    </td>
-
-                    <td class="numeric">
-                        ${earlyLeaveCount}
-                    </td>
-
-                    <td>
-                        ${statusHtml}
-                    </td>
-
-                    <td>
-                        <div class="row-actions">
-                            <button
-                                class="btn salary-action-btn"
-                                type="button"
-                                data-salary-action="view"
-                                data-id="${escapeHtml(salary.ma_luong || '')}"
-                                title="Xem chi tiết"
-                                aria-label="Xem chi tiết lương của ${escapeHtml(employeeName)}"
-                            >
-                                Xem
-                            </button>
-
-                            <button
-                                class="btn salary-action-btn"
-                                type="button"
-                                data-salary-action="edit"
-                                data-id="${escapeHtml(salary.ma_luong || '')}"
-                                title="Chỉnh sửa"
-                                aria-label="Chỉnh sửa lương của ${escapeHtml(employeeName)}"
-                            >
-                                Sửa
-                            </button>
-
-                            <button
-                                class="btn btn-danger salary-action-btn"
-                                type="button"
-                                data-salary-action="delete"
-                                data-id="${escapeHtml(salary.ma_luong || '')}"
-                                data-employee-name="${escapeHtml(employeeName)}"
-                                title="Xóa"
-                                aria-label="Xóa lương của ${escapeHtml(employeeName)}"
-                            >
-                                Xóa
-                            </button>
-                            <button
-                                class="btn btn-outline-primary salary-action-btn"
-                                type="button"
-                                data-salary-action="coefficient"
-                                data-employee-code="${escapeHtml(employeeCode)}"
-                                data-employee-name="${escapeHtml(employeeName)}"
-                                aria-label="Xem hệ số lương của ${escapeHtml(employeeName)}"
-                            >
-                                Hệ số
-                            </button>
-                        </div>
-                </td>
-                </tr>
+        function iconEye() {
+            return `
+                <svg viewBox="0 0 16 16" fill="none"
+                     stroke="currentColor" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1.5 8s2.2-4 6.5-4 6.5 4 6.5 4-2.2 4-6.5 4S1.5 8 1.5 8Z"/>
+                    <circle cx="8" cy="8" r="1.8"/>
+                </svg>
             `;
-            })
-            .join('');
-    }
-
-    /**
-     * Tạo danh sách số trang cần hiển thị.
-     */
-    function getPageItems(currentPage, lastPage) {
-        if (lastPage <= 7) {
-            return Array.from(
-                { length: lastPage },
-                (_, index) => index + 1
-            );
         }
 
-        const pages = new Set([
-            1,
-            lastPage,
-            currentPage - 1,
-            currentPage,
-            currentPage + 1,
-        ]);
+        function iconEdit() {
+            return `
+                <svg viewBox="0 0 16 16" fill="none"
+                     stroke="currentColor" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.8 2.2 13.8 5.2"/>
+                    <path d="M3 13l1-3.5 7.5-7.5 3 3L7 12.5 3 13Z"/>
+                </svg>
+            `;
+        }
 
-        const validPages = Array.from(pages)
-            .filter((page) => page >= 1 && page <= lastPage)
-            .sort((a, b) => a - b);
+        function iconDelete() {
+            return `
+                <svg viewBox="0 0 16 16" fill="none"
+                     stroke="currentColor" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 4.5h10"/>
+                    <path d="M6 2.5h4"/>
+                    <path d="M5 4.5l.5 9h5l.5-9"/>
+                    <path d="M7 7v4M9 7v4"/>
+                </svg>
+            `;
+        }
 
-        const items = [];
+        function iconCoefficient() {
+            return `
+                <svg viewBox="0 0 16 16" fill="none"
+                     stroke="currentColor" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 4h10"/>
+                    <path d="M3 8h10"/>
+                    <path d="M3 12h10"/>
+                    <circle cx="6" cy="4" r="1.2" fill="currentColor" stroke="none"/>
+                    <circle cx="10" cy="8" r="1.2" fill="currentColor" stroke="none"/>
+                    <circle cx="7.5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+                </svg>
+            `;
+        }
 
-        validPages.forEach((page, index) => {
-            const previousPage = validPages[index - 1];
+        function iconCreate() {
+            return `
+                <svg viewBox="0 0 16 16" fill="none"
+                     stroke="currentColor" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3v10M3 8h10"/>
+                </svg>
+            `;
+        }
 
+        function loadSalaryPeriods() {
             if (
-                previousPage !== undefined &&
-                page - previousPage > 1
+                !elements.month ||
+                !elements.year
             ) {
-                items.push('ellipsis');
-            }
-
-            items.push(page);
-        });
-
-        return items;
-    }
-
-    /**
-     * Render phân trang.
-     */
-    function renderPagination(meta) {
-        if (!elements.pagination) {
-            return;
-        }
-
-        const currentPage = Number(meta.current_page || 1);
-        const lastPage = Number(meta.last_page || 1);
-
-        if (lastPage <= 1) {
-            elements.pagination.innerHTML = '';
-
-            return;
-        }
-
-        const pageItems = getPageItems(currentPage, lastPage);
-
-        const previousButton = `
-            <button
-                type="button"
-                data-page="${currentPage - 1}"
-                ${currentPage <= 1 ? 'disabled' : ''}
-                aria-label="Trang trước"
-            >
-                ‹
-            </button>
-        `;
-
-        const nextButton = `
-            <button
-                type="button"
-                data-page="${currentPage + 1}"
-                ${currentPage >= lastPage ? 'disabled' : ''}
-                aria-label="Trang sau"
-            >
-                ›
-            </button>
-        `;
-
-        const pageButtons = pageItems
-            .map((item) => {
-                if (item === 'ellipsis') {
-                    return `
-                        <span
-                            class="pagination-ellipsis"
-                            aria-hidden="true"
-                        >
-                            …
-                        </span>
-                    `;
-                }
-
-                return `
-                    <button
-                        type="button"
-                        data-page="${item}"
-                        ${
-                    item === currentPage
-                        ? 'aria-current="page"'
-                        : ''
-                }
-                    >
-                        ${item}
-                    </button>
-                `;
-            })
-            .join('');
-
-        elements.pagination.innerHTML =
-            previousButton +
-            pageButtons +
-            nextButton;
-    }
-
-    /**
-     * Render thông tin: đang hiển thị bao nhiêu bản ghi.
-     */
-    function renderPaginationInfo(meta) {
-        if (!elements.pageInfo) {
-            return;
-        }
-
-        console.log("renderPaginationInfo meta:", meta);
-        const total = Number(meta.total || 0);
-        const from = meta.from ?? 0;
-        const to = meta.to ?? 0;
-
-        elements.pageInfo.textContent =
-            total > 0
-                ? `Hiển thị ${from}–${to} trên ${total} nhân viên`
-                : 'Không có dữ liệu';
-    }
-
-    function formatDateTime(date) {
-        if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-            return '—';
-        }
-
-        const time = date.toLocaleTimeString('vi-VN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-        });
-
-        const day = date.toLocaleDateString('vi-VN', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-        });
-
-        return `${time}, ${day}`;
-    }
-
-    function updateTableHeader(rows, paginator = {}, summary = null) {
-        /*
-         * Ưu tiên kỳ lương đang lưu trong filter global.
-         * Nếu chưa có thì ghép tháng + năm từ giao diện.
-         */
-        const selectedPeriod =
-            state.filters.ky_luong ||
-            getSelectedSalaryPeriod();
-
-        /*
-         * Nếu không lấy được từ filter thì dùng kỳ lương
-         * của bản ghi đầu tiên làm fallback.
-         */
-        const rowPeriod =
-            Array.isArray(rows) && rows.length > 0
-                ? rows[0].ky_luong
-                : null;
-
-        const period = selectedPeriod || rowPeriod;
-
-        /*
-         * Cập nhật tiêu đề bảng.
-         */
-        if (elements.tableTitle) {
-            elements.tableTitle.textContent = period
-                ? `Chi tiết kỳ lương tháng ${formatSalaryPeriod(period)}`
-                : 'Chi tiết bảng lương';
-        }
-
-        /*
-         * Cập nhật thời điểm tải dữ liệu thành công.
-         */
-        if (elements.tableUpdated) {
-            elements.tableUpdated.textContent =
-                `Dữ liệu cập nhật lần cuối lúc ${formatDateTime(
-                    new Date()
-                )}.`;
-        }
-
-        if (!elements.tableStat) {
-            return;
-        }
-
-        /*
-         * Nếu backend trả summary thì ưu tiên dùng summary.
-         */
-        if (
-            summary &&
-            summary.completed !== undefined &&
-            summary.total !== undefined
-        ) {
-            elements.tableStat.textContent =
-                `${toNumber(summary.completed)}/${toNumber(
-                    summary.total
-                )} hoàn tất`;
-
-            return;
-        }
-
-        /*
-         * Nếu backend chưa trả summary,
-         * tính số hoàn tất trong trang hiện tại.
-         *
-         * Điều kiện này đồng bộ với renderRows():
-         * có dữ liệu chấm công lớn hơn 0 thì hoàn tất.
-         */
-        const completedOnPage = Array.isArray(rows)
-            ? rows.filter((salary) => {
-                return toNumber(
-                    salary.so_ngay_cham_cong
-                ) > 0;
-            }).length
-            : 0;
-
-        const currentPageCount = Array.isArray(rows)
-            ? rows.length
-            : 0;
-
-        const total = toNumber(paginator.total);
-
-        if (total > 0) {
-            elements.tableStat.textContent =
-                `${completedOnPage}/${currentPageCount} hoàn tất trên trang · ${total} bản ghi`;
-        } else {
-            elements.tableStat.textContent =
-                `${completedOnPage}/${currentPageCount} hoàn tất trên trang`;
-        }
-    }
-
-    /**
-     * Gọi API lấy bảng lương.
-     */
-    async function loadSalaryData(page = 1) {
-        state.page = page;
-
-        if (state.abortController) {
-            state.abortController.abort();
-        }
-
-        state.abortController = new AbortController();
-
-        renderLoading();
-
-        try {
-            const response = await fetch(buildUrl(page), {
-                method: 'GET',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                signal: state.abortController.signal,
-            });
-
-            const contentType =
-                response.headers.get('content-type') || '';
-
-            if (!contentType.includes('application/json')) {
-                const responseText = await response.text();
-
-                console.error(
-                    'API trả về dữ liệu không phải JSON:',
-                    responseText
-                );
-
-                throw new Error(
-                    `API không trả về JSON. HTTP ${response.status}`
-                );
-            }
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    result.message ||
-                    `Request thất bại với HTTP ${response.status}`
-                );
-            }
-
-            if (!result.success) {
-                throw new Error(
-                    result.message || 'Không thể tải bảng lương.'
-                );
-            }
-
-            /*
-             * Response từ LengthAwarePaginator:
-             *
-             * result.data = {
-             *   current_page,
-             *   data: [],
-             *   last_page,
-             *   total,
-             *   ...
-             * }
-             */
-
-            const paginator = result.data;
-
-            const rows = Array.isArray(paginator?.data)
-                ? paginator.data
-                : Array.isArray(paginator)
-                    ? paginator
-                    : [];
-
-            const isPaginated =
-                paginator !== null &&
-                typeof paginator === 'object' &&
-                !Array.isArray(paginator) &&
-                Array.isArray(paginator.data);
-
-            renderRows(rows);
-
-            const paginationMeta = Array.isArray(paginator)
-                ? {}
-                : paginator;
-
-            /*
-             * Hỗ trợ một trong hai cấu trúc:
-             *
-             * result.summary
-             *
-             * hoặc:
-             *
-             * result.data.summary
-             */
-            const summary =
-                result.summary ??
-                paginationMeta.summary ??
-                null;
-
-            updateTableHeader(
-                rows,
-                paginationMeta,
-                summary
-            );
-
-            console.log("isPaginated:", isPaginated);
-            if (isPaginated) {
-                renderPagination(paginator);
-                renderPaginationInfo(paginator);
-            }
-
-            if (elements.reconcileButton) {
-                elements.reconcileButton.disabled = false;
-            }
-        } catch (error) {
-            if (error.name === 'AbortError') {
                 return;
             }
 
-            console.error('Error loading salary data:', error);
+            const now =
+                new Date();
 
-            renderError(error.message);
+            const currentMonth =
+                now.getMonth() + 1;
 
-            if (elements.tableUpdated) {
-                elements.tableUpdated.textContent =
-                    'Không thể cập nhật dữ liệu bảng lương.';
+            const currentYear =
+                now.getFullYear();
+
+            elements.month.innerHTML =
+                '';
+
+            for (
+                let month = 1;
+                month <= 12;
+                month++
+            ) {
+                const option =
+                    document.createElement(
+                        'option'
+                    );
+
+                option.value =
+                    String(month)
+                        .padStart(2, '0');
+
+                option.textContent =
+                    `Tháng ${month}`;
+
+                option.selected =
+                    month ===
+                    currentMonth;
+
+                elements.month
+                    .appendChild(
+                        option
+                    );
             }
 
-            if (elements.tableStat) {
-                elements.tableStat.textContent = 'Có lỗi xảy ra';
+            elements.year.value =
+                String(
+                    currentYear
+                );
+        }
+
+        function getSelectedSalaryPeriod() {
+            const month =
+                Number(
+                    elements.month?.value
+                );
+
+            const year =
+                Number(
+                    elements.year?.value
+                );
+
+            if (
+                !Number.isInteger(month) ||
+                month < 1 ||
+                month > 12
+            ) {
+                return null;
             }
 
-            if (elements.reconcileButton) {
-                elements.reconcileButton.disabled = false;
+            if (
+                !Number.isInteger(year) ||
+                year < 2000 ||
+                year > 2100
+            ) {
+                return null;
             }
 
-            if (elements.pagination) {
-                elements.pagination.innerHTML = '';
-            }
-
-            if (elements.pageInfo) {
-                elements.pageInfo.textContent = '';
-            }
-        }
-    }
-
-    function applyFilters() {
-        syncFiltersFromUI();
-
-        state.page = 1;
-
-        loadSalaryData(1);
-    }
-
-    function clearFilters() {
-        clearTimeout(searchTimeout);
-
-        if (elements.search) {
-            elements.search.value = '';
+            return `${year}-${String(month)
+                .padStart(2, '0')}-01`;
         }
 
-        if (elements.department) {
-            elements.department.value = '';
-        }
+        function syncFiltersFromUI() {
+            state.filters = {
+                ma_nv:
+                    elements.search
+                        ?.value
+                        .trim() ||
+                    null,
 
-        if (elements.position) {
-            elements.position.value = '';
-        }
+                ky_luong:
+                    getSelectedSalaryPeriod(),
 
-        if (elements.month) {
-            elements.month.value = defaultFilters.month;
-        }
+                ma_pb:
+                    elements.department
+                        ?.value ||
+                    null,
 
-        if (elements.year) {
-            elements.year.value = defaultFilters.year;
-        }
-
-        state.perPage =
-            Number(elements.perPage?.value || 15);
-
-        syncFiltersFromUI();
-
-        state.page = 1;
-
-        loadSalaryData(1);
-    }
-
-    /**
-     * Tìm kiếm có debounce để tránh gọi API liên tục.
-     */
-    elements.search?.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-
-        searchTimeout = setTimeout(() => {
-            applyFilters();
-        }, 350);
-    });
-
-    elements.search?.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter') {
-            return;
-        }
-
-        event.preventDefault();
-        clearTimeout(searchTimeout);
-
-        applyFilters();
-    });
-
-    [
-        elements.department,
-        elements.position,
-        elements.month,
-        elements.year,
-    ].forEach((element) => {
-        element?.addEventListener('change', () => {
-            applyFilters();
-        });
-    });
-
-    elements.clearFilterButton?.addEventListener(
-        'click',
-        clearFilters
-    );
-
-    /**
-     * Thay đổi số lượng bản ghi mỗi trang.
-     */
-    elements.perPage?.addEventListener('change', () => {
-        state.perPage = Math.max(
-            1,
-            Number(elements.perPage.value || 15)
-        );
-
-        loadSalaryData(1);
-    });
-
-    /**
-     * Event delegation cho phân trang.
-     */
-    elements.pagination?.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-page]');
-
-        if (!button || button.disabled) {
-            return;
-        }
-
-        const page = Number(button.dataset.page);
-
-        if (!Number.isInteger(page) || page < 1) {
-            return;
-        }
-
-        loadSalaryData(page);
-
-        document.querySelector('.table-card')?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-        });
-    });
-
-    /**
-     * Nút tải lại.
-     */
-    elements.refresh?.addEventListener('click', () => {
-        loadSalaryData(state.page);
-    });
-
-    window.salaryFilterManager = {
-        getFilters() {
-            return {
-                ...state.filters,
-                page: state.page,
-                per_page: state.perPage,
+                ma_cv:
+                    elements.position
+                        ?.value ||
+                    null,
             };
-        },
-        apply: applyFilters,
-        clear: clearFilters,
-        reload() {
-            loadSalaryData(state.page);
-        },
-    };
-
-    function extractApiData(result) {
-        if (Array.isArray(result)) {
-            return result;
         }
 
-        if (Array.isArray(result?.data)) {
-            return result.data;
+        function buildUrl(
+            page = state.page
+        ) {
+            const url =
+                new URL(
+                    LUONG_API_URL,
+                    window.location.origin
+                );
+
+            const params = {
+                ...state.filters,
+                page,
+                per_page:
+                state.perPage,
+            };
+
+            Object.entries(
+                params
+            ).forEach(
+                ([key, value]) => {
+                    if (
+                        value !== null &&
+                        value !== undefined &&
+                        value !== ''
+                    ) {
+                        url.searchParams.set(
+                            key,
+                            String(value)
+                        );
+                    }
+                }
+            );
+
+            return url.toString();
         }
 
-        if (Array.isArray(result?.data?.data)) {
-            return result.data.data;
+        function renderLoading() {
+            if (!elements.tbody) {
+                return;
+            }
+
+            elements.tbody.innerHTML = `
+                <tr>
+                    <td colspan="14"
+                        class="text-center text-secondary py-5">
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        Đang tải dữ liệu bảng lương...
+                    </td>
+                </tr>
+            `;
         }
 
-        return [];
-    }
+        function renderEmpty() {
+            if (!elements.tbody) {
+                return;
+            }
 
-    async function fetchOptions(url) {
-        if (!url) {
+            elements.tbody.innerHTML = `
+                <tr>
+                    <td colspan="14"
+                        class="text-center text-secondary py-5">
+                        Không tìm thấy dữ liệu bảng lương phù hợp.
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderError(
+            message
+        ) {
+            if (!elements.tbody) {
+                return;
+            }
+
+            elements.tbody.innerHTML = `
+                <tr>
+                    <td colspan="14"
+                        class="text-center py-5">
+                        <div class="text-danger fw-semibold">
+                            Không thể tải dữ liệu.
+                        </div>
+
+                        <div class="small text-secondary mt-1">
+                            ${escapeHtml(message)}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function buildSalaryActions(
+            salary,
+            employeeName,
+            employeeCode
+        ) {
+            const actions = [];
+
+            const salaryId =
+                salary.ma_luong ?? '';
+
+            const hasSalary =
+                String(salaryId) !== '';
+
+            if (
+                can(PERMISSION_CODES.READ) &&
+                hasSalary
+            ) {
+                actions.push(`
+                    <button
+                        class="btn salary-icon-action"
+                        type="button"
+                        data-salary-action="view"
+                        data-id="${escapeHtml(salaryId)}"
+                        title="Xem chi tiết"
+                        aria-label="Xem chi tiết lương của ${escapeHtml(employeeName)}"
+                    >
+                        ${iconEye()}
+                    </button>
+                `);
+            }
+
+            if (
+                can(
+                    COEFFICIENT_PERMISSION_CODES.READ
+                )
+            ) {
+                actions.push(`
+                    <button
+                        class="btn salary-icon-action"
+                        type="button"
+                        data-salary-action="coefficient"
+                        data-employee-code="${escapeHtml(employeeCode)}"
+                        data-employee-name="${escapeHtml(employeeName)}"
+                        title="Hệ số lương"
+                        aria-label="Xem hệ số lương của ${escapeHtml(employeeName)}"
+                    >
+                        ${iconCoefficient()}
+                    </button>
+                `);
+            }
+
+            if (
+                can(PERMISSION_CODES.UPDATE) &&
+                hasSalary
+            ) {
+                actions.push(`
+                    <button
+                        class="btn salary-icon-action"
+                        type="button"
+                        data-salary-action="edit"
+                        data-id="${escapeHtml(salaryId)}"
+                        title="Chỉnh sửa"
+                        aria-label="Chỉnh sửa lương của ${escapeHtml(employeeName)}"
+                    >
+                        ${iconEdit()}
+                    </button>
+                `);
+            }
+
+            if (
+                can(PERMISSION_CODES.DELETE) &&
+                hasSalary
+            ) {
+                actions.push(`
+                    <button
+                        class="btn salary-icon-action"
+                        type="button"
+                        data-salary-action="delete"
+                        data-id="${escapeHtml(salaryId)}"
+                        data-employee-name="${escapeHtml(employeeName)}"
+                        title="Xóa"
+                        aria-label="Xóa lương của ${escapeHtml(employeeName)}"
+                    >
+                        ${iconDelete()}
+                    </button>
+                `);
+            }
+
+            if (
+                can(PERMISSION_CODES.INSERT) &&
+                !hasSalary
+            ) {
+                actions.push(`
+                    <button
+                        class="btn salary-icon-action"
+                        type="button"
+                        data-salary-action="create-for-employee"
+                        data-employee-code="${escapeHtml(employeeCode)}"
+                        data-employee-name="${escapeHtml(employeeName)}"
+                        title="Tạo thông tin lương"
+                        aria-label="Tạo thông tin lương cho ${escapeHtml(employeeName)}"
+                    >
+                        ${iconCreate()}
+                    </button>
+                `);
+            }
+
+            return `
+                <div class="salary-row-actions">
+                    ${actions.join('')}
+                </div>
+            `;
+        }
+
+        function renderRows(
+            rows
+        ) {
+            if (
+                !Array.isArray(rows) ||
+                rows.length === 0
+            ) {
+                renderEmpty();
+                return;
+            }
+
+            elements.tbody.innerHTML =
+                rows.map(
+                    (salary) => {
+                        const employeeName =
+                            salary.ho_ten ||
+                            'Chưa cập nhật';
+
+                        const employeeCode =
+                            salary.ma_nv ||
+                            'N/A';
+
+                        const departmentName =
+                            salary.ten_pb ||
+                            'Chưa có phòng ban';
+
+                        const positionName =
+                            salary.ten_cv ||
+                            'Chưa có chức vụ';
+
+                        const allowanceRate =
+                            salary.phu_cap ===
+                            null ||
+                            salary.phu_cap ===
+                            undefined
+                                ? '—'
+                                : `${toNumber(
+                                    salary.phu_cap *
+                                    100
+                                ).toLocaleString(
+                                    'vi-VN'
+                                )}%`;
+
+                        const workdays =
+                            toNumber(
+                                salary
+                                    .so_ngay_cham_cong
+                            ).toLocaleString(
+                                'vi-VN',
+                                {
+                                    minimumFractionDigits:
+                                        1,
+
+                                    maximumFractionDigits:
+                                        1,
+                                }
+                            );
+
+                        const statusText =
+                            salary.thong_bao_tinh_luong ||
+                            'Cần kiểm tra dữ liệu';
+
+                        const ready =
+                            salary.trang_thai_tinh_luong === 'READY';
+
+                        const statusHtml = ready
+                            ? `
+                                <span
+                                    class="badge rounded-pill text-bg-success"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="Đã hoàn tất tính lương"
+                                >
+                                    Đã hoàn tất
+                                </span>
+                            `
+                                                    : `
+                                <span
+                                    class="badge rounded-pill text-bg-warning salary-status-badge"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="${escapeHtml(statusText)}"
+                                >
+                                    ${escapeHtml(statusText)}
+                                </span>
+                            `;
+                        return `
+                            <tr data-salary-id="${escapeHtml(
+                            salary.ma_luong ||
+                            ''
+                        )}">
+                                <td>
+                                    <div class="employee">
+                                        <div class="avatar">
+                                            ${escapeHtml(
+                            getInitials(
+                                employeeName
+                            )
+                        )}
+                                        </div>
+
+                                        <div>
+                                            <div class="employee-name">
+                                                ${escapeHtml(
+                            employeeName
+                        )}
+                                            </div>
+
+                                            <div class="meta">
+                                                ${escapeHtml(
+                            employeeCode
+                        )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div>
+                                        ${escapeHtml(
+                            departmentName
+                        )}
+                                    </div>
+                                    <div class="sub">
+                                        ${escapeHtml(
+                            positionName
+                        )}
+                                    </div>
+                                </td>
+
+                                <td class="text-end">
+                                    ${formatSalaryPeriod(
+                            salary.ky_luong
+                        )}
+                                </td>
+
+                                <td class="text-end">
+                                    ${formatMoney(
+                            salary.thuong
+                        )}
+                                </td>
+
+                                <td class="text-end">
+                                    ${formatMoney(
+                            salary.phat
+                        )}
+                                </td>
+
+                                <td class="text-end">
+                                    ${formatMoney(
+                            salary.bao_hiem
+                        )}
+                                </td>
+
+                                <td class="text-end">
+                                    ${formatMoney(
+                            salary.thue
+                        )}
+                                </td>
+
+                                <td class="text-end">
+                                    ${allowanceRate}
+                                </td>
+
+                                <td class="text-end">
+                                    <strong>
+                                        ${formatMoney(
+                            salary.thuc_nhan
+                        )}
+                                    </strong>
+                                </td>
+
+                                <td class="text-end">
+                                    ${workdays}
+                                </td>
+
+                                <td class="text-end">
+                                    ${toNumber(
+                            salary
+                                .so_lan_vao_muon
+                        )}
+                                </td>
+
+                                <td class="text-end">
+                                    ${toNumber(
+                            salary
+                                .so_lan_ve_som
+                        )}
+                                </td>
+
+                                <td>
+                                    ${statusHtml}
+                                </td>
+
+                                <td class="text-end">
+                                    ${buildSalaryActions(
+                            salary,
+                            employeeName,
+                            employeeCode
+                        )}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                ).join('');
+            initializeSalaryTooltips();
+        }
+
+        function initializeSalaryTooltips() {
+            if (
+                typeof bootstrap === 'undefined' ||
+                !bootstrap.Tooltip
+            ) {
+                return;
+            }
+
+            document
+                .querySelectorAll(
+                    '#salary-tbody [data-bs-toggle="tooltip"]'
+                )
+                .forEach((element) => {
+                    bootstrap.Tooltip.getOrCreateInstance(
+                        element,
+                        {
+                            placement: 'top',
+                            container: 'body',
+                        }
+                    );
+                });
+        }
+
+        function renderPagination(
+            meta
+        ) {
+            if (!elements.pagination) {
+                return;
+            }
+
+            elements.pagination.innerHTML =
+                '';
+
+            const current =
+                Number(
+                    meta.current_page ||
+                    1
+                );
+
+            const last =
+                Number(
+                    meta.last_page ||
+                    1
+                );
+
+            if (last <= 1) {
+                return;
+            }
+
+            const group =
+                document.createElement(
+                    'div'
+                );
+
+            group.className =
+                'btn-group btn-group-sm';
+
+            function append(
+                label,
+                page,
+                disabled,
+                active = false
+            ) {
+                const button =
+                    document.createElement(
+                        'button'
+                    );
+
+                button.type =
+                    'button';
+
+                button.className =
+                    active
+                        ? 'btn btn-primary'
+                        : 'btn btn-outline-secondary';
+
+                button.textContent =
+                    label;
+
+                button.dataset.page =
+                    String(page);
+
+                button.disabled =
+                    disabled;
+
+                group.appendChild(
+                    button
+                );
+            }
+
+            append(
+                '‹',
+                current - 1,
+                current <= 1
+            );
+
+            for (
+                let page = 1;
+                page <= last;
+                page++
+            ) {
+                if (
+                    last > 7 &&
+                    page !== 1 &&
+                    page !== last &&
+                    Math.abs(
+                        page -
+                        current
+                    ) > 1
+                ) {
+                    continue;
+                }
+
+                append(
+                    String(page),
+                    page,
+                    false,
+                    page === current
+                );
+            }
+
+            append(
+                '›',
+                current + 1,
+                current >= last
+            );
+
+            elements.pagination
+                .appendChild(
+                    group
+                );
+        }
+
+        function renderPaginationInfo(
+            meta
+        ) {
+            if (!elements.pageInfo) {
+                return;
+            }
+
+            const total =
+                Number(
+                    meta.total ||
+                    0
+                );
+
+            elements.pageInfo.textContent =
+                total > 0
+                    ? `Hiển thị ${meta.from ?? 0}–${meta.to ?? 0} trên ${total} nhân viên`
+                    : 'Không có dữ liệu';
+        }
+
+        async function fetchOptions(
+            url
+        ) {
+            const response =
+                await fetch(
+                    url,
+                    {
+                        headers: {
+                            Accept:
+                                'application/json',
+
+                            'X-Requested-With':
+                                'XMLHttpRequest',
+                        },
+
+                        credentials:
+                            'same-origin',
+                    }
+                );
+
+            const result =
+                await response.json();
+
+            if (
+                !response.ok ||
+                result.success ===
+                false
+            ) {
+                throw new Error(
+                    result.message ||
+                    'Không thể tải dữ liệu.'
+                );
+            }
+
+            if (
+                Array.isArray(
+                    result.data
+                )
+            ) {
+                return result.data;
+            }
+
+            if (
+                Array.isArray(
+                    result?.data?.data
+                )
+            ) {
+                return result.data.data;
+            }
+
             return [];
         }
 
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-        });
+        async function loadFilterOptions() {
+            if (
+                !can(
+                    PERMISSION_CODES.READ
+                )
+            ) {
+                return;
+            }
 
-        const contentType =
-            response.headers.get('content-type') || '';
+            const [
+                departments,
+                positions,
+            ] =
+                await Promise.all([
+                    fetchOptions(
+                        PHONG_BAN_API_URL
+                    ),
 
-        if (!contentType.includes('application/json')) {
-            const responseText = await response.text();
+                    fetchOptions(
+                        CHUC_VU_API_URL
+                    ),
+                ]);
 
-            console.error(
-                'API không trả về JSON:',
-                responseText
-            );
+            if (
+                elements.department
+            ) {
+                elements.department.innerHTML =
+                    '<option value="">-- Tất cả phòng ban --</option>';
 
-            throw new Error(
-                `API không trả về JSON. HTTP ${response.status}`
-            );
+                departments.forEach(
+                    (item) => {
+                        const option =
+                            document.createElement(
+                                'option'
+                            );
+
+                        option.value =
+                            item.ma_pb;
+
+                        option.textContent =
+                            item.ten_pb;
+
+                        elements.department
+                            .appendChild(
+                                option
+                            );
+                    }
+                );
+            }
+
+            if (
+                elements.position
+            ) {
+                elements.position.innerHTML =
+                    '<option value="">-- Tất cả chức vụ --</option>';
+
+                positions.forEach(
+                    (item) => {
+                        const option =
+                            document.createElement(
+                                'option'
+                            );
+
+                        option.value =
+                            item.ma_cv;
+
+                        option.textContent =
+                            item.ten_cv;
+
+                        elements.position
+                            .appendChild(
+                                option
+                            );
+                    }
+                );
+            }
         }
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(
-                result.message ||
-                `Không thể tải dữ liệu. HTTP ${response.status}`
-            );
-        }
-
-        if (
-            result.success !== undefined &&
-            result.success === false
+        async function loadSalaryData(
+            page = 1
         ) {
-            throw new Error(
-                result.message || 'Không thể tải dữ liệu.'
-            );
-        }
+            if (
+                !can(
+                    PERMISSION_CODES.READ
+                ) ||
+                !elements.tbody
+            ) {
+                return;
+            }
 
-        return extractApiData(result);
-    }
+            state.page =
+                page;
 
-    // Fetch phong ban, chuc vu options
+            state.abortController
+                ?.abort();
 
-    async function loadAllPhongBan() {
-        const departmentSelect =
-            document.getElementById('department-filter');
+            state.abortController =
+                new AbortController();
 
-        if (!departmentSelect) {
-            console.warn(
-                'Không tìm thấy #department-filter'
-            );
+            renderLoading();
 
-            return;
-        }
+            try {
+                const response =
+                    await fetch(
+                        buildUrl(
+                            page
+                        ),
+                        {
+                            headers: {
+                                Accept:
+                                    'application/json',
 
-        /*
-         * Giữ lại option "Tất cả phòng ban".
-         */
-        departmentSelect.innerHTML = `
-        <option value="">
-            -- Tất cả phòng ban --
-        </option>
-    `;
+                                'X-Requested-With':
+                                    'XMLHttpRequest',
+                            },
 
-        /*
-         * URL chưa cấu hình thì chỉ giữ option mặc định.
-         */
-        if (!PHONG_BAN_API_URL) {
-            return;
-        }
+                            credentials:
+                                'same-origin',
 
-        departmentSelect.disabled = true;
+                            signal:
+                            state
+                                .abortController
+                                .signal,
+                        }
+                    );
 
-        try {
-            const phongBans = await fetchOptions(
-                PHONG_BAN_API_URL
-            );
+                const result =
+                    await response
+                        .json();
 
-            const fragment =
-                document.createDocumentFragment();
-
-            phongBans.forEach((phongBan) => {
                 if (
-                    phongBan.ma_pb === null ||
-                    phongBan.ma_pb === undefined
+                    !response.ok ||
+                    result.success ===
+                    false
+                ) {
+                    throw new Error(
+                        result.message ||
+                        'Không thể tải bảng lương.'
+                    );
+                }
+
+                const paginator =
+                    result.data;
+
+                const rows =
+                    Array.isArray(
+                        paginator?.data
+                    )
+                        ? paginator.data
+                        : [];
+
+                renderRows(
+                    rows
+                );
+
+                if (elements.tableTitle) {
+                    const period =
+                        state.filters.ky_luong ||
+                        rows?.[0]?.ky_luong ||
+                        null;
+
+                    elements.tableTitle.textContent =
+                        period
+                            ? `Chi tiết kỳ lương tháng ${formatSalaryPeriod(period)}`
+                            : 'Chi tiết kỳ lương';
+                }
+
+                renderPagination(
+                    paginator
+                );
+
+                renderPaginationInfo(
+                    paginator
+                );
+
+                if (
+                    elements.tableUpdated
+                ) {
+                    elements.tableUpdated.textContent =
+                        `Dữ liệu cập nhật lần cuối lúc ${formatDateTime(
+                            new Date()
+                        )}.`;
+                }
+
+                if (
+                    elements.tableStat
+                ) {
+                    elements.tableStat.textContent =
+                        `${rows.length}/${paginator.total ?? rows.length} bản ghi trên trang`;
+                }
+            } catch (error) {
+                if (
+                    error.name ===
+                    'AbortError'
                 ) {
                     return;
                 }
 
-                const option =
-                    document.createElement('option');
+                console.error(
+                    error
+                );
 
-                // Giá trị dùng để gửi filter
-                option.value = String(phongBan.ma_pb);
-
-                // Nội dung hiển thị
-                option.textContent =
-                    phongBan.ten_pb ||
-                    `Phòng ban ${phongBan.ma_pb}`;
-
-                fragment.appendChild(option);
-            });
-
-            departmentSelect.appendChild(fragment);
-        } catch (error) {
-            console.error(
-                'Error loading departments:',
-                error
-            );
-        } finally {
-            departmentSelect.disabled = false;
-        }
-    }
-
-    async function loadAllChucVu() {
-        const positionSelect =
-            document.getElementById('position-filter');
-
-        if (!positionSelect) {
-            console.warn(
-                'Không tìm thấy #position-filter'
-            );
-
-            return;
+                renderError(
+                    error.message
+                );
+            }
         }
 
-        /*
-         * Giữ lại option mặc định.
-         */
-        positionSelect.innerHTML = `
-        <option value="">
-            -- Tất cả chức vụ --
-        </option>
-    `;
+        function applyFilters() {
+            syncFiltersFromUI();
 
-        /*
-         * URL chưa cấu hình thì không gọi API.
-         */
-        if (!CHUC_VU_API_URL) {
-            return;
+            if (
+                can(
+                    PERMISSION_CODES.READ
+                )
+            ) {
+                loadSalaryData(
+                    1
+                );
+            }
         }
 
-        positionSelect.disabled = true;
+        elements.search
+            ?.addEventListener(
+                'input',
+                () => {
+                    clearTimeout(
+                        searchTimeout
+                    );
 
-        try {
-            const chucVus = await fetchOptions(
-                CHUC_VU_API_URL
+                    searchTimeout =
+                        setTimeout(
+                            applyFilters,
+                            350
+                        );
+                }
             );
 
-            const fragment =
-                document.createDocumentFragment();
+        [
+            elements.department,
+            elements.position,
+            elements.month,
+            elements.year,
+        ].forEach(
+            (element) => {
+                element
+                    ?.addEventListener(
+                        'change',
+                        applyFilters
+                    );
+            }
+        );
 
-            chucVus.forEach((chucVu) => {
-                if (
-                    chucVu.ma_cv === null ||
-                    chucVu.ma_cv === undefined
-                ) {
-                    return;
+        elements.clearFilterButton
+            ?.addEventListener(
+                'click',
+                () => {
+                    if (
+                        elements.search
+                    ) {
+                        elements.search.value =
+                            '';
+                    }
+
+                    if (
+                        elements.department
+                    ) {
+                        elements.department.value =
+                            '';
+                    }
+
+                    if (
+                        elements.position
+                    ) {
+                        elements.position.value =
+                            '';
+                    }
+
+                    loadSalaryPeriods();
+                    applyFilters();
+                }
+            );
+
+        elements.perPage
+            ?.addEventListener(
+                'change',
+                () => {
+                    state.perPage =
+                        Number(
+                            elements
+                                .perPage
+                                .value ||
+                            15
+                        );
+
+                    loadSalaryData(
+                        1
+                    );
+                }
+            );
+
+        elements.pagination
+            ?.addEventListener(
+                'click',
+                (event) => {
+                    const button =
+                        event.target.closest(
+                            '[data-page]'
+                        );
+
+                    if (
+                        !button ||
+                        button.disabled
+                    ) {
+                        return;
+                    }
+
+                    loadSalaryData(
+                        Number(
+                            button.dataset
+                                .page
+                        )
+                    );
+                }
+            );
+
+        elements.exportButton
+            ?.addEventListener(
+                'click',
+                exportSalaryReport
+            );
+
+        async function exportSalaryReport() {
+            if (
+                !guard(
+                    PERMISSION_CODES.READ,
+                    'xuất báo cáo lương'
+                )
+            ) {
+                return;
+            }
+
+            const month =
+                Number(
+                    elements.month?.value
+                );
+
+            const year =
+                Number(
+                    elements.year?.value
+                );
+
+            const kyLuong =
+                `${year}-${String(month).padStart(2, '0')}-01`;
+
+            const url = new URL(
+                '/api/v1/luong/export',
+                window.location.origin
+            );
+
+            url.searchParams.set(
+                'ky_luong',
+                kyLuong
+            );
+
+            const keyword =
+                elements.search?.value
+                    .trim();
+
+            if (keyword) {
+                url.searchParams.set(
+                    'tu_khoa',
+                    keyword
+                );
+            }
+
+            if (elements.department?.value) {
+                url.searchParams.set(
+                    'ma_pb',
+                    elements.department.value
+                );
+            }
+
+            if (elements.position?.value) {
+                url.searchParams.set(
+                    'ma_cv',
+                    elements.position.value
+                );
+            }
+
+            const oldText =
+                elements.exportButton.textContent;
+
+            elements.exportButton.disabled = true;
+            elements.exportButton.textContent =
+                'Đang xuất...';
+
+            try {
+                const response = await fetch(
+                    url.toString(),
+                    {
+                        method: 'GET',
+
+                        headers: {
+                            Accept:
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+                            'X-Requested-With':
+                                'XMLHttpRequest',
+                        },
+
+                        credentials:
+                            'same-origin',
+                    }
+                );
+
+                if (!response.ok) {
+                    const contentType =
+                        response.headers.get(
+                            'content-type'
+                        ) || '';
+
+                    let message =
+                        `Không thể xuất báo cáo. HTTP ${response.status}`;
+
+                    if (
+                        contentType.includes(
+                            'application/json'
+                        )
+                    ) {
+                        const result =
+                            await response.json();
+
+                        message =
+                            result.message ||
+                            message;
+                    }
+
+                    throw new Error(
+                        message
+                    );
                 }
 
-                const option =
-                    document.createElement('option');
+                /*
+                 * Backend trả file Excel.
+                 */
+                const blob =
+                    await response.blob();
 
-                // Giá trị dùng để gửi filter
-                option.value = String(chucVu.ma_cv);
+                /*
+                 * Tạo URL tạm cho file.
+                 */
+                const objectUrl =
+                    URL.createObjectURL(
+                        blob
+                    );
 
-                // Nội dung hiển thị
-                option.textContent =
-                    chucVu.ten_cv ||
-                    `Chức vụ ${chucVu.ma_cv}`;
+                /*
+                 * Tạo thẻ <a> tạm.
+                 */
+                const anchor =
+                    document.createElement(
+                        'a'
+                    );
 
-                fragment.appendChild(option);
-            });
+                anchor.href =
+                    objectUrl;
 
-            positionSelect.appendChild(fragment);
-        } catch (error) {
-            console.error(
-                'Error loading positions:',
-                error
-            );
-        } finally {
-            positionSelect.disabled = false;
+                anchor.download =
+                    `BaoCaoLuong_${String(month).padStart(2, '0')}_${year}.xlsx`;
+
+                /*
+                 * Không cần hiển thị thẻ a.
+                 */
+                anchor.style.display =
+                    'none';
+
+                /*
+                 * Add vào DOM.
+                 */
+                document.body.appendChild(
+                    anchor
+                );
+
+                /*
+                 * Trigger download.
+                 */
+                anchor.click();
+
+                /*
+                 * Xóa thẻ <a> sau khi click.
+                 */
+                anchor.remove();
+
+                /*
+                 * Giải phóng URL blob.
+                 */
+                setTimeout(() => {
+                    URL.revokeObjectURL(
+                        objectUrl
+                    );
+                }, 1000);
+
+            } catch (error) {
+                console.error(
+                    'Export salary failed:',
+                    error
+                );
+
+                window.alert(
+                    error.message
+                );
+
+            } finally {
+                elements.exportButton.disabled =
+                    false;
+
+                elements.exportButton.textContent =
+                    oldText;
+            }
         }
-    }
 
-    async function loadFilterOptions() {
-        await Promise.all([
-            loadAllPhongBan(),
-            loadAllChucVu(),
-        ]);
-    }
+        document.addEventListener(
+            'salary:data-changed',
+            () => {
+                loadSalaryData(
+                    state.page
+                );
+            }
+        );
 
-    async function initializeSalaryPage() {
+        window.salaryFilterManager = {
+            getFilters() {
+                return {
+                    ...state.filters,
+                    page:
+                    state.page,
+                    per_page:
+                    state.perPage,
+                };
+            },
+
+            reload() {
+                loadSalaryData(
+                    state.page
+                );
+            },
+        };
+
         loadSalaryPeriods();
 
-        await loadFilterOptions();
+        const hasAccess =
+            await initializeSalaryPermissionUI();
+
+        if (!hasAccess) {
+            return;
+        }
 
         syncFiltersFromUI();
 
-        await loadSalaryData(1);
-    }
-
-    document.addEventListener(
-        'salary:data-changed',
-        () => {
-            loadSalaryData(state.page);
+        if (
+            can(
+                PERMISSION_CODES.READ
+            )
+        ) {
+            await loadFilterOptions();
+            syncFiltersFromUI();
+            await loadSalaryData(1);
         }
-    );
-
-    initializeSalaryPage();
-});
+    }
+);

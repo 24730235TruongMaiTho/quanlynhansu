@@ -6,7 +6,9 @@ use App\Contracts\NhanVienServiceContract;
 use App\Http\Requests\StoreNghiPhepRequest;
 use App\Http\Requests\UpdateNghiPhepRequest;
 use App\Services\NghiPhepService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 
@@ -113,6 +115,137 @@ class NghiPhepController extends Controller
         }
     }
 
+    public function employeesV2(
+        Request $request
+    ): JsonResponse {
+        $page = max(
+            (int) $request->query(
+                'page',
+                1
+            ),
+            1
+        );
+
+        $perPage = min(
+            max(
+                (int) $request->query(
+                    'per_page',
+                    15
+                ),
+                1
+            ),
+            100
+        );
+
+        $tuKhoa =
+            $request->query(
+                'tu_khoa'
+            );
+
+        $maPb =
+            $request->query(
+                'ma_pb'
+            );
+
+        $maCv =
+            $request->query(
+                'ma_cv'
+            );
+
+        $tuKhoa =
+            $tuKhoa === ''
+                ? null
+                : $tuKhoa;
+
+        $maPb =
+            is_numeric($maPb)
+                ? (int) $maPb
+                : null;
+
+        $maCv =
+            is_numeric($maCv)
+                ? (int) $maCv
+                : null;
+
+        try {
+            $paginator =
+                $this->service
+                    ->getEmployeesPaginated(
+                        $tuKhoa,
+                        $maPb,
+                        $maCv,
+                        $page,
+                        $perPage
+                    );
+
+            return response()->json([
+                'success' => true,
+                'data' => $paginator,
+            ]);
+
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    $exception->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function approvalList(
+        Request $request
+    ) {
+        $validated =
+            $request->validate([
+                'tu_khoa' =>
+                    'nullable|string|max:100',
+
+                'ma_lp' =>
+                    'nullable|integer',
+
+                'tu_ngay' =>
+                    'nullable|date_format:Y-m-d',
+
+                'den_ngay' => [
+                    'nullable',
+                    'date_format:Y-m-d',
+                    'after_or_equal:tu_ngay',
+                ],
+
+                'tab' =>
+                    'nullable|in:pending,processed,all',
+
+                'page' =>
+                    'nullable|integer|min:1',
+
+                'per_page' =>
+                    'nullable|integer|min:1|max:100',
+            ]);
+
+        /*
+         * QUAN TRỌNG:
+         * Không lấy ma_pb từ FE.
+         *
+         * Trưởng phòng chỉ được xem
+         * phòng ban của chính mình.
+         */
+        $validated['ma_pb'] =
+            auth()->user()->ma_pb;
+
+        $data =
+            $this->service
+                ->getApprovalList(
+                    $validated
+                );
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
     public function phongBan()
     {
         try {

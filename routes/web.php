@@ -220,4 +220,12 @@ Route::prefix('admin')->name('backend.')->middleware('auth')->group(function () 
         return view('backend.nghiphep.index');
     })->name('backend.nghiphep.index');
 
+    Route::get('/duyet-nghi-phep', function () {
+        return view('backend.nghiphep.duyet-nghi-phep');
+    })->name('backend.nghiphep.duyet-nghi-phep');
+
+    Route::get('/tao-nghi-phep', function () {
+        return view('backend.nghiphep.create');
+    })->name('backend.nghiphep.create');
+
 });

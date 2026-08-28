@@ -348,7 +348,7 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     {
         return $this->databaseOperation(function () use ($identifier): ?NhanVien {
             $row = $this->connection()->table('nhan_vien as nv')
-                ->select(['nv.ma_nv', 'nv.ho_ten', 'nv.email', 'nv.mat_khau', 'nv.ma_vt', 'nv.ma_tt'])
+                ->select(['nv.ma_nv', 'nv.ho_ten', 'nv.email', 'nv.mat_khau', 'nv.ma_vt', 'nv.ma_tt', 'nv.ma_pb'])
                 ->where(function (Builder $query) use ($identifier): void {
                     $query->where('nv.ma_nv', $identifier)
                         ->orWhereRaw('LOWER(TRIM(nv.email)) = ?', [strtolower(trim($identifier))]);

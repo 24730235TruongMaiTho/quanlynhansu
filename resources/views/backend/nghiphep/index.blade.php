@@ -10,21 +10,78 @@
                     <span>/</span>
                     <span>Nghỉ phép</span>
                 </div>
-                <h1 class="h3 fw-semibold mb-1" id="page-title">Nghỉ phép</h1>
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                    <h1 class="h3 fw-semibold mb-0" id="page-title">Nghỉ phép</h1>
+                    <span class="badge rounded-pill text-bg-light border fw-normal"
+                          id="leave-readonly-badge"
+                          hidden>
+                        Chế độ chỉ xem
+                    </span>
+                </div>
                 <p class="text-secondary mb-0">Quản lý nhân viên, đơn nghỉ phép và quy trình phê duyệt.</p>
             </div>
 
             <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-outline-secondary btn-sm" id="calendar-btn" type="button">
+                <button
+                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    id="calendar-btn"
+                    type="button"
+                    data-leave-permission="NghiPhep.Read"
+                    hidden
+                >
+                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16"
+                         fill="none" stroke="currentColor" stroke-width="1.5"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2.5" y="3.5" width="11" height="10" rx="1.5"></rect>
+                        <path d="M5 2v3M11 2v3M2.5 6.5h11"></path>
+                    </svg>
                     Lịch nghỉ
                 </button>
-                <button class="btn btn-success btn-sm" id="create-btn" type="button" disabled>
-                    + Thêm nghỉ phép
+
+                <button
+                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
+                    id="create-btn"
+                    type="button"
+                    data-create-url="{{ url('/user/nghi-phep/create') }}"
+                    data-leave-permission="NghiPhep.Insert"
+                    hidden
+                >
+                    <span aria-hidden="true">+</span>
+                    Thêm nghỉ phép
                 </button>
             </div>
         </section>
 
-        <section class="card shadow-sm mb-3 filter-card" aria-label="Bộ lọc nhân viên">
+        <section class="alert alert-light border shadow-sm mb-3"
+                 id="leave-auth-loading">
+            <div class="d-flex align-items-center gap-2">
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span>Đang kiểm tra tài khoản và quyền truy cập...</span>
+            </div>
+        </section>
+
+        <section class="alert alert-danger border shadow-sm mb-3"
+                 id="leave-access-denied"
+                 hidden>
+            <div class="fw-semibold mb-1">Không có quyền truy cập Nghỉ phép</div>
+            <div class="small" id="leave-access-denied-message">
+                Tài khoản hiện tại chưa được cấp quyền phù hợp.
+            </div>
+        </section>
+
+        <section class="alert alert-info border shadow-sm mb-3"
+                 id="leave-no-read-notice"
+                 hidden>
+            <div class="fw-semibold mb-1">Danh sách nghỉ phép đang được ẩn</div>
+            <div class="small">
+                Tài khoản chưa có quyền <code>NghiPhep.Read</code>.
+            </div>
+        </section>
+
+        <section class="card shadow-sm mb-3 filter-card"
+                 aria-label="Bộ lọc nhân viên"
+                 data-leave-permission="NghiPhep.Read"
+                 hidden>
             <div class="card-body py-3">
                 <div class="row g-2 align-items-center">
                     <div class="col-12 col-lg-4">
@@ -71,7 +128,10 @@
             </div>
         </section>
 
-        <section class="card shadow-sm overflow-hidden mb-3" aria-labelledby="employee-table-title">
+        <section class="card shadow-sm overflow-hidden mb-3"
+                 aria-labelledby="employee-table-title"
+                 data-leave-permission="NghiPhep.Read"
+                 hidden>
             <div class="card-header bg-white d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 py-3">
                 <div>
                     <h2 class="h6 fw-semibold mb-1" id="employee-table-title">Danh sách nhân viên</h2>
@@ -115,7 +175,10 @@
             </div>
         </section>
 
-        <section class="card shadow-sm overflow-hidden table-card" aria-labelledby="leave-table-title">
+        <section class="card shadow-sm overflow-hidden table-card"
+                 aria-labelledby="leave-table-title"
+                 data-leave-permission="NghiPhep.Read"
+                 hidden>
             <div class="card-header bg-white py-3">
                 <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3">
                     <div>
@@ -126,14 +189,57 @@
                     </div>
 
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                        <button class="btn btn-outline-secondary btn-sm" id="edit-leave-btn" type="button" disabled>
-                            Sửa nghỉ phép
+                        <button
+                            class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                            id="edit-leave-btn"
+                            type="button"
+                            disabled
+                            data-leave-permission="NghiPhep.Update"
+                            hidden
+                        >
+                            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"
+                                 fill="none" stroke="currentColor" stroke-width="1.5"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10.8 2.2 13.8 5.2"></path>
+                                <path d="M3 13l1-3.5 7.5-7.5 3 3L7 12.5 3 13Z"></path>
+                            </svg>
+                            Sửa
                         </button>
-                        <button class="btn btn-outline-danger btn-sm" id="delete-leave-btn" type="button" disabled>
-                            Xóa nghỉ phép
+
+                        <button
+                            class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-2"
+                            id="delete-leave-btn"
+                            type="button"
+                            disabled
+                            data-leave-permission="NghiPhep.Delete"
+                            hidden
+                        >
+                            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"
+                                 fill="none" stroke="currentColor" stroke-width="1.5"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 4.5h10"></path>
+                                <path d="M6 2.5h4"></path>
+                                <path d="M5 4.5l.5 9h5l.5-9"></path>
+                                <path d="M7 7v4M9 7v4"></path>
+                            </svg>
+                            Xóa
                         </button>
-                        <button class="btn btn-success btn-sm" id="approve-leave-btn" type="button" disabled>
-                            Duyệt nghỉ phép
+
+                        <button
+                            class="btn btn-success btn-sm d-inline-flex align-items-center gap-2"
+                            id="approve-leave-btn"
+                            type="button"
+                            disabled
+                            data-leave-permission="NghiPhep.Update"
+                            data-pending-only="true"
+                            hidden
+                        >
+                            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"
+                                 fill="none" stroke="currentColor" stroke-width="1.6"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m3 8 3 3 7-7"></path>
+                            </svg>
+                            Duyệt
                         </button>
                     </div>
                 </div>
@@ -206,11 +312,11 @@
             <div class="d-flex align-items-start justify-content-between gap-3 px-4 pt-4 pb-3 border-bottom">
                 <div>
                     <h2 class="h5 fw-semibold mb-1" id="leave-modal-title">
-                        Thêm nghỉ phép
+                        Sửa nghỉ phép
                     </h2>
 
                     <p class="small text-secondary mb-0" id="leave-modal-description">
-                        Tạo đơn nghỉ phép cho nhân viên đang chọn.
+                        Cập nhật thông tin đơn nghỉ phép đã chọn.
                     </p>
                 </div>
 
@@ -356,17 +462,144 @@
                 </button>
 
                 <button
-                    class="btn btn-success btn-sm"
+                    class="btn btn-primary btn-sm"
                     id="leave-modal-submit"
                     type="submit"
                 >
-                    Lưu thông tin
+                    Lưu thay đổi
                 </button>
             </div>
         </form>
     </dialog>
 
-    <div class="toast" role="status" aria-live="polite"></div>
+    <div class="toast leave-toast" role="status" aria-live="polite"></div>
+    <style>
+        .leave-page .card {
+            border-color: #d8dee4;
+            border-radius: 10px;
+        }
+
+        .leave-page .card-header,
+        .leave-page .card-footer {
+            border-color: #eaeef2;
+        }
+
+        .leave-page .filter-card .form-control,
+        .leave-page .filter-card .form-select,
+        .leave-page .filter-card .input-group-text {
+            min-height: 34px;
+        }
+
+        .leave-page .table {
+            font-size: .8125rem;
+        }
+
+        .leave-page .table thead th {
+            color: #57606a;
+            font-size: .75rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .leave-page .table > :not(caption) > * > * {
+            padding: 10px;
+            border-bottom-color: #eaeef2;
+            vertical-align: middle;
+        }
+
+        .leave-page [data-employee-row],
+        .leave-page [data-leave-row] {
+            cursor: pointer;
+        }
+
+        .leave-page .table-primary > * {
+            --bs-table-bg-state: rgba(9,105,218,.08);
+        }
+
+        .leave-page #selected-employee-badge {
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .leave-page .leave-reason-cell {
+            max-width: 280px;
+        }
+
+        .leave-page .leave-reason-text,
+        .leave-page .leave-status-badge {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: help;
+        }
+
+        .leave-page .leave-status-badge {
+            display: inline-block;
+            max-width: 130px;
+        }
+
+        .leave-page #leave-tabs .nav-link {
+            color: #57606a;
+            font-size: .8125rem;
+            font-weight: 600;
+        }
+
+        .leave-page #leave-tabs .nav-link.active {
+            color: #0969da;
+        }
+
+        .leave-dialog {
+            position: fixed !important;
+            inset: 0 !important;
+            width: min(620px, calc(100vw - 32px)) !important;
+            max-width: 620px !important;
+            max-height: calc(100vh - 40px) !important;
+            margin: auto !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 12px !important;
+            background: #fff;
+            overflow: auto;
+            box-shadow:
+                0 24px 48px rgba(31,35,40,.18),
+                0 0 0 1px rgba(31,35,40,.08);
+        }
+
+        .leave-dialog::backdrop {
+            background: rgba(31,35,40,.42);
+            backdrop-filter: blur(1px);
+        }
+
+        .leave-modal-form {
+            margin: 0;
+        }
+
+        .leave-toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 1200;
+            width: auto;
+            max-width: min(420px, calc(100vw - 40px));
+            padding: 10px 14px;
+            border: 1px solid #d0d7de;
+            border-radius: 8px;
+            background: #24292f;
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(140,149,159,.2);
+        }
+
+        @media (max-width: 575.98px) {
+            .leave-dialog {
+                width: calc(100vw - 24px) !important;
+                max-height: calc(100vh - 24px) !important;
+            }
+        }
+    </style>
+
 @endsection
 
 @push('scripts')

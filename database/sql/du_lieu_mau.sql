@@ -105,7 +105,11 @@ INSERT INTO quyen (ma_quyen, ky_hieu_quyen, ten_quyen, module) VALUES
 (35, N'Luong.Update', N'Sửa', N'Luong'),
 (36, N'Luong.Delete', N'Xóa', N'Luong'),
 (37, N'HeThong.Config', N'Cấu hình', N'HeThong');
-ALTER TABLE quyen AUTO_INCREMENT = 38;
+(38, N'HeSoLuong.Read', N'Đọc', N'HeSoLuong'),
+(39, N'HeSoLuong.Insert', N'Thêm', N'HeSoLuong'),
+(40, N'HeSoLuong.Update', N'Sửa', N'HeSoLuong'),
+(41, N'HeSoLuong.Delete', N'Xóa', N'HeSoLuong')
+ALTER TABLE quyen AUTO_INCREMENT = 42;
 
 -- ==================== 7. VaiTroQuyen ====================
 INSERT INTO vai_tro_quyen (ma_vt, ma_quyen) VALUES
