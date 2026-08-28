@@ -17,6 +17,7 @@ class NhanVienTest extends TestCase
             'email' => 'an@example.test',
             'mat_khau' => 'hash',
             'ma_vt' => 1,
+            'ma_pb' => 2,
             'ma_tt' => 2,
         ]);
 
@@ -28,6 +29,7 @@ class NhanVienTest extends TestCase
         $this->assertSame('Nguyễn An', $employee->ho_ten);
         $this->assertSame('an@example.test', $employee->email);
         $this->assertSame(1, $employee->ma_vt);
+        $this->assertSame(2, $employee->ma_pb);
         $this->assertSame(2, $employee->ma_tt);
         $this->assertSame('mat_khau', $employee->getAuthPasswordName());
         $this->assertSame('hash', $employee->getAuthPassword());

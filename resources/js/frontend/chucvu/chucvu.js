@@ -1,3 +1,6 @@
+import { bindRowActionSelects } from '../shared/row-action-select.js';
+import { initializeListFilters } from '../shared/list-filter.js';
+
 function disableSubmit(form) {
     const submit = form?.querySelector('[data-submit]');
 
@@ -15,6 +18,9 @@ function disableSubmit(form) {
 }
 
 if (typeof document !== 'undefined') {
+    initializeListFilters(document, '[data-position-filter]');
+    bindRowActionSelects();
+
     document.querySelectorAll('[data-chuc-vu-form]').forEach((form) => {
         form.addEventListener('submit', () => disableSubmit(form));
     });

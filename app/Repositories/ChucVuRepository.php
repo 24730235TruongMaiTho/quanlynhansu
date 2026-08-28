@@ -9,6 +9,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 final class ChucVuRepository implements ChucVuRepositoryContract
 {
@@ -24,6 +25,25 @@ final class ChucVuRepository implements ChucVuRepositoryContract
                 fn (object $row): object => $this->explicitRow($row),
             )->all(),
         );
+    }
+
+    public function paginate(array $filters): LengthAwarePaginator
+    {
+        return $this->databaseOperation(function () use ($filters): LengthAwarePaginator {
+            $filters += ['ten_cv' => null, 'page' => 1, 'so_dong' => 20];
+            $query = $this->positionQuery();
+
+            if (filled($filters['ten_cv'])) {
+                $query->where('cv.ten_cv', 'like', '%'.trim((string) $filters['ten_cv']).'%');
+            }
+
+            return $query->paginate(
+                (int) $filters['so_dong'],
+                $query->columns ?? ['*'],
+                'page',
+                (int) $filters['page'],
+            );
+        });
     }
 
     public function find(int $maCv): ?object

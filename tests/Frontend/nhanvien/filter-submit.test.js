@@ -105,6 +105,7 @@ test('employee page entrypoint wires filter discovery and remains idempotent', (
         '[data-employee-filter]': 1,
         '[data-action-dialog]': 1,
         '[data-dialog-open]': 1,
+        '[data-row-action-select]': 1,
     });
 
     const first = {};

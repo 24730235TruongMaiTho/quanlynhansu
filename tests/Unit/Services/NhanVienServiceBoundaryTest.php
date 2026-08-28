@@ -7,6 +7,7 @@ use App\Contracts\NhanVienServiceContract;
 use App\Http\Controllers\Backend\NhanVienController;
 use App\Repositories\NhanVienRepository;
 use App\Services\NhanVienService;
+use App\Support\NhanVienScope;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Filesystem\FilesystemManager;
@@ -24,6 +25,7 @@ class NhanVienServiceBoundaryTest extends TestCase
 
         $this->assertSame([
             NhanVienServiceContract::class,
+            NhanVienScope::class,
         ], $controllerTypes);
         $this->assertSame([
             DatabaseManager::class,

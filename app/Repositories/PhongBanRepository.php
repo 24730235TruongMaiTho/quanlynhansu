@@ -9,6 +9,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 final class PhongBanRepository implements PhongBanRepositoryContract
 {
@@ -24,6 +25,25 @@ final class PhongBanRepository implements PhongBanRepositoryContract
                 fn (object $row): object => $this->explicitRow($row),
             )->all(),
         );
+    }
+
+    public function paginate(array $filters): LengthAwarePaginator
+    {
+        return $this->databaseOperation(function () use ($filters): LengthAwarePaginator {
+            $filters += ['ten_pb' => null, 'page' => 1, 'so_dong' => 20];
+            $query = $this->departmentQuery();
+
+            if (filled($filters['ten_pb'])) {
+                $query->where('pb.ten_pb', 'like', '%'.trim((string) $filters['ten_pb']).'%');
+            }
+
+            return $query->paginate(
+                (int) $filters['so_dong'],
+                $query->columns ?? ['*'],
+                'page',
+                (int) $filters['page'],
+            );
+        });
     }
 
     public function find(int $maPb): ?object

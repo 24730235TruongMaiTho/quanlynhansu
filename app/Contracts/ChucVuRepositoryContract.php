@@ -2,10 +2,14 @@
 
 namespace App\Contracts;
 
+use Illuminate\Pagination\LengthAwarePaginator;
+
 interface ChucVuRepositoryContract
 {
     /** @return list<object> */
     public function all(): array;
+
+    public function paginate(array $filters): LengthAwarePaginator;
 
     public function find(int $maCv): ?object;
 

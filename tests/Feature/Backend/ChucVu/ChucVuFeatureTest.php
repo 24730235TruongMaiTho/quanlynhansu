@@ -5,6 +5,7 @@ namespace Tests\Feature\Backend\ChucVu;
 use App\Contracts\ChucVuServiceContract;
 use Illuminate\Foundation\Vite;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Route;
@@ -67,7 +68,7 @@ class ChucVuFeatureTest extends TestCase
             (object) ['ma_cv' => 2, 'ten_cv' => 'Nhân viên', 'he_so_phu_cap' => '1.00', 'so_nhan_vien' => 0],
         ];
         $this->mock(ChucVuServiceContract::class, function (MockInterface $mock) use ($rows): void {
-            $mock->shouldReceive('all')->once()->andReturn($rows);
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator($rows, count($rows), 20, 1, ['pageName' => 'page']));
         });
 
         $this->get('/chuc-vu')->assertOk()
@@ -84,7 +85,7 @@ class ChucVuFeatureTest extends TestCase
     {
         $rows = [(object) ['ma_cv' => 1, 'ten_cv' => 'Giám đốc', 'he_so_phu_cap' => '2.00', 'so_nhan_vien' => 1]];
         $this->mock(ChucVuServiceContract::class, function (MockInterface $mock) use ($rows): void {
-            $mock->shouldReceive('all')->once()->andReturn($rows);
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator($rows, count($rows), 20, 1, ['pageName' => 'page']));
         });
 
         $this->get('/chuc-vu')->assertOk()
@@ -92,6 +93,34 @@ class ChucVuFeatureTest extends TestCase
             ->assertSee('Sửa', false)
             ->assertSee('disabled', false)
             ->assertSee('Không thể xóa chức vụ đang có nhân viên', false);
+    }
+
+    public function test_authenticated_list_filters_paginates_and_exposes_only_authorized_row_actions(): void
+    {
+        $rows = [
+            (object) ['ma_cv' => 6, 'ten_cv' => 'Trưởng khoa', 'he_so_phu_cap' => '2.50', 'so_nhan_vien' => 0],
+        ];
+        $this->mock(ChucVuServiceContract::class, function (MockInterface $mock) use ($rows): void {
+            $mock->shouldReceive('paginate')->once()->with([
+                'ten_cv' => 'Trưởng',
+                'page' => 2,
+                'so_dong' => 5,
+            ])->andReturn(new LengthAwarePaginator($rows, 11, 5, 2, ['pageName' => 'page']));
+        });
+
+        $response = $this->get('/chuc-vu?ten_cv=Tr%C6%B0%E1%BB%9Fng&page=2&so_dong=5');
+
+        $response->assertOk()
+            ->assertSee('Danh sách chức vụ')
+            ->assertSee('name="ten_cv"', false)
+            ->assertSee('option value="5" selected', false)
+            ->assertSee('Hiển thị 6-6 / 11 chức vụ')
+            ->assertSee('data-row-action-select', false)
+            ->assertSee('Sửa')
+            ->assertSee('Xóa')
+            ->assertSee('«')
+            ->assertSee('Trang cuối')
+            ->assertSee('data-confirm-message=', false);
     }
 
     public function test_store_update_and_delete_normalize_input_and_flash_success(): void

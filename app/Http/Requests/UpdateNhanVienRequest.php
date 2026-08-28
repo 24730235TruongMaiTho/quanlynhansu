@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Contracts\NhanVienRepositoryContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Enums\NhanVienStatus;
+use App\Support\NhanVienScope;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\Rules\Unique;
@@ -16,6 +17,12 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
 
     public function authorize(): bool
     {
+        $scope = $this->container->make(NhanVienScope::class);
+        $actor = $this->user();
+        if ($scope->isDepartmentManager($actor) && $scope->departmentId($actor) === null) {
+            abort(404);
+        }
+
         $employees = $this->container->make(NhanVienRepositoryContract::class);
         $maNv = $this->routeEmployeeCode();
 
@@ -30,6 +37,9 @@ class UpdateNhanVienRequest extends StoreNhanVienRequest
         }
 
         abort_if($employee === null, 404);
+        if ($actor instanceof \App\Models\NhanVien) {
+            abort_unless($scope->canAccess($actor, $employee), 404);
+        }
         $this->targetEmployee = $employee;
 
         return true;

@@ -6,8 +6,10 @@ use App\Contracts\ChucVuServiceContract;
 use App\Exceptions\ChucVuDomainException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreChucVuRequest;
+use App\Http\Requests\ListChucVuRequest;
 use App\Http\Requests\UpdateChucVuRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Throwable;
 
@@ -15,18 +17,23 @@ final class ChucVuController extends Controller
 {
     public function __construct(private ChucVuServiceContract $positions) {}
 
-    public function index(): View
+    public function index(ListChucVuRequest $request): View
     {
+        $filters = $request->filters();
         $positionError = null;
-        $positions = [];
+        $positions = $this->emptyPaginator($filters);
 
         try {
-            $positions = $this->positions->all();
+            $positions = $this->positions->paginate($filters);
         } catch (Throwable) {
             $positionError = 'Không thể tải danh sách chức vụ lúc này. Vui lòng thử lại sau.';
         }
 
-        return view('backend.chucvu.index', compact('positions', 'positionError'));
+        $positions
+            ->withPath(route('backend.chucvu.index'))
+            ->appends($filters);
+
+        return view('backend.chucvu.index', compact('positions', 'positionError', 'filters'));
     }
 
     public function create(): View
@@ -128,5 +135,17 @@ final class ChucVuController extends Controller
         }
 
         return $id;
+    }
+
+    /** @param array{ten_cv: ?string, page: int, so_dong: int} $filters */
+    private function emptyPaginator(array $filters): LengthAwarePaginator
+    {
+        return new LengthAwarePaginator(
+            collect(),
+            0,
+            $filters['so_dong'],
+            $filters['page'],
+            ['pageName' => 'page'],
+        );
     }
 }

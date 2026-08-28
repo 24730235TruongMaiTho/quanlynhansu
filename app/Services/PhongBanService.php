@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\PhongBanRepositoryContract;
 use App\Contracts\PhongBanServiceContract;
 use App\Exceptions\PhongBanDomainException;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 final class PhongBanService implements PhongBanServiceContract
 {
@@ -13,6 +14,11 @@ final class PhongBanService implements PhongBanServiceContract
     public function all(): array
     {
         return $this->repository->all();
+    }
+
+    public function paginate(array $filters): LengthAwarePaginator
+    {
+        return $this->repository->paginate($filters);
     }
 
     public function findOrFail(int $maPb): object

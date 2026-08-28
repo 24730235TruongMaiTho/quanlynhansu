@@ -12,7 +12,7 @@ Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu
   `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql` và
   `database/sql/quyen_vai_tro.sql`; các file SQL ở thư mục gốc và
   `quan_ly_nhan_su.session.sql` là lịch sử đã đánh dấu, không phải nguồn active.
-- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; module Nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`. Trên các feature branch, Phòng ban và Chức vụ phải bám đúng catalog quyền `PhongBan.*`/`ChucVu.*` và fresh 15-table contract; xem handoff/guide để biết giới hạn browser.
+- Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; module Nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`. Trong task hiện tại, code ownership chỉ gồm Nhân viên, Phòng ban và Chức vụ; các issue Dashboard, Lương, Chấm công, Nghỉ phép, Hợp đồng, Vai trò/Phân quyền/RBAC và API của đồng nghiệp chỉ ghi chú, không tự sửa nếu user chưa giao rõ. Phòng ban và Chức vụ phải bám đúng catalog quyền `PhongBan.*`/`ChucVu.*` và fresh 15-table contract; xem handoff/guide để biết giới hạn browser.
 - Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
 ## Thứ tự đọc
@@ -30,7 +30,7 @@ Khi HEAD thay đổi, chạy lại Git status, route, test và build trước kh
 
 ## Bản đồ code
 
-- `routes/web.php`: web route dưới `/admin`.
+- `routes/web.php`: route web canonical chủ yếu ở root (`/nhan-vien`, `/phong-ban`, `/chuc-vu`); chỉ còn hai alias legacy dưới `admin/nhan-vien/...`.
 - `routes/api.php`: JSON API v1 cho lương, chấm công và nghỉ phép.
 - `app/Http/Controllers/Backend`: controller web/API.
 - `app/Http/Requests`: validation requests.
@@ -81,6 +81,14 @@ Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa đ�
   `nhan_vien`, trả shape `ma_pb`, `ten_pb`, `so_nhan_vien`, transaction/row lock
   và mã lỗi `PB_*`; các `sp_phong_ban_*` trong dump/script/test cũ chỉ là
   historical, không phải caller active của repository.
+- Các lỗi đã audit ngoài ownership chỉ ghi chú: Dashboard còn ranh giới
+  auth/permission riêng; `LuongRepository@all` gọi
+  `sp_luong_tim_kiem_phan_trang` thiếu; Chấm công lookup/update gọi
+  `sp_phong_ban_danh_sach`/`sp_cham_cong_cap_nhat` thiếu; Nghỉ phép approve gọi
+  `sp_nghi_phep_duyet_phep` thiếu; model/validation còn legacy drift; Hợp đồng
+  và quản trị RBAC mới chỉ verified hẹp hoặc thiếu mutation/browser evidence.
+  Không coi các procedure này có trong active/live và không sửa chúng trong task
+  Nhân viên/Phòng ban/Chức vụ.
 - `sp_phong_ban_chi_tiet` và `sp_luong_tim_kiem_phan_trang` không thuộc active
   repository contract; không tự tạo routine bằng phỏng đoán. Chấm công chi tiết
   hiện dùng Query Builder trên cột canonical và không gọi
@@ -124,15 +132,15 @@ git diff --check
 git status --short
 ```
 
-Evidence historical trên main ngày 2026-08-21 vẫn được giữ trong docs nhưng
-không thay cho gate fresh 15 bảng. Base historical fresh MariaDB contract là
-`5 tests, 161 assertions` trên disposable schema, gồm migration 16→15 và hai
-worker counter trực tiếp; branch Chức vụ hiện tại đã mở rộng và pass `7 tests,
-231 assertions` trên disposable schema, gồm CRUD Chức vụ/Phòng ban. Fresh
-harness hiện tại đã thêm CRUD Phòng ban vào gate này.
-`phpunit.xml` mặc định dùng SQLite
-in-memory nên full suite vẫn không tự chứng minh MariaDB DDL; chạy
-`phpunit.mariadb.xml` để lặp lại gate fresh. Nếu HEAD/baseline đổi, cập nhật
+Bằng chứng phiên 2026-08-27: full Laravel `288 tests, 2222 assertions`,
+frontend `18` tests, Vite `19 modules transformed`, route inventory `79`,
+Composer validate, PHP lint file sửa và `git diff --check` đều pass. Guarded
+MariaDB trên schema disposable pass: exit `0`, PHPUnit `12 tests, 422 assertions`,
+thời gian `10.110s`. Đây không phải bằng chứng cho database live,
+browser hoặc production.
+`phpunit.xml` mặc định dùng SQLite in-memory nên full suite vẫn không tự chứng
+minh MariaDB DDL; chạy wrapper disposable hoặc `phpunit.mariadb.xml` theo đúng
+guard khi có môi trường phù hợp. Nếu HEAD/baseline đổi, cập nhật
 `docs/PROJECT_STATUS.md`; không che lỗi cũ bằng cách xóa assertion.
 
 ## Giao tiếp

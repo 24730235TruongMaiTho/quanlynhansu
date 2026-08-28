@@ -11,14 +11,14 @@
         $hasEmptyCurrentPage = ! $employeeError
             && $employees->total() > 0
             && $employees->count() === 0;
-        $listQuery = request()->only([
+        $listQuery = array_filter(request()->only([
             'tu_khoa',
             'ma_pb',
             'ma_cv',
             'ma_tt',
             'page',
             'so_dong',
-        ]);
+        ]), static fn (mixed $value): bool => $value !== null && $value !== '');
         $canCreate = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Tao->value);
         $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Sua->value);
         $canDestroy = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Xoa->value);
@@ -165,9 +165,7 @@
             <div class="card-header bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
                 <div>
                     <h2 class="h6 fw-semibold mb-1" id="employee-table-title">Kết quả tra cứu</h2>
-                    <p class="small text-secondary mb-0">
-                        Có {{ number_format($employees->total(), 0, ',', '.') }} nhân viên phù hợp.
-                    </p>
+                    @include('backend.partials.pagination-summary', ['paginator' => $employees, 'summaryLabel' => 'nhân viên'])
                 </div>
             </div>
 
@@ -218,39 +216,43 @@
                                         <span class="badge text-bg-light border fw-normal">{{ $employee->ten_tt }}</span>
                                     </td>
                                     <td>
-                                        <a
-                                            class="btn btn-sm btn-outline-primary"
-                                            href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}"
-                                            aria-label="Xem hồ sơ {{ $employee->ho_ten }}"
-                                        >
-                                            Xem
-                                        </a>
                                         @php
                                             $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);
                                             $destroyDialogId = 'employee-destroy-' . $dialogKey;
                                         @endphp
-                                        <div class="employee-action-dialogs d-inline-flex flex-wrap gap-2 mt-2" data-action-dialogs>
+                                        <label class="visually-hidden" for="employee-action-{{ $dialogKey }}">Thao tác với {{ $employee->ho_ten }}</label>
+                                        <select class="form-select form-select-sm" id="employee-action-{{ $dialogKey }}" data-row-action-select>
+                                            <option value="">Chọn thao tác</option>
+                                            <option value="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" data-action="navigate">Xem</option>
                                             @if ($canEdit)
-                                                <a class="btn btn-sm btn-outline-primary" href="{{ route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery) }}">
-                                                    Chỉnh sửa
-                                                </a>
+                                                <option value="{{ route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" data-action="navigate">Chỉnh sửa</option>
                                             @endif
-                                            @if ($canDestroy)
-                                                <button class="btn btn-sm btn-outline-danger" type="button" data-dialog-open="{{ $destroyDialogId }}" aria-controls="{{ $destroyDialogId }}">Xóa hoặc kết thúc</button>
+                                            @if ($canDestroy && (string) auth()->id() !== (string) $employee->ma_nv)
+                                                <option value="dialog" data-action="dialog" data-dialog-id="{{ $destroyDialogId }}">Xóa hoặc kết thúc</option>
+                                            @endif
+                                        </select>
+                                        <noscript>
+                                            <a href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}">Xem</a>
+                                            @if ($canEdit)
+                                                <a href="{{ route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery) }}">Chỉnh sửa</a>
+                                            @endif
+                                        </noscript>
+                                        @if ($canDestroy && (string) auth()->id() !== (string) $employee->ma_nv)
+                                            <div class="employee-action-dialogs" data-action-dialogs>
                                                 <dialog class="employee-action-dialog" id="{{ $destroyDialogId }}" data-action-dialog aria-labelledby="{{ $destroyDialogId }}-title">
                                                     <form method="POST" action="{{ route('backend.nhanvien.destroy', ['ma_nv' => $employee->ma_nv]) }}" data-dialog-form data-confirm-message="Xác nhận xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.">
                                                         @csrf
                                                         @method('DELETE')
                                                         <h2 class="h5" id="{{ $destroyDialogId }}-title">Xóa hoặc kết thúc hồ sơ</h2>
-                                                        <p>Xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hệ thống chỉ kết thúc hồ sơ và giữ lại lịch sử liên quan.</p>
+                                                        <p>Xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.</p>
                                                         <div class="d-flex justify-content-end gap-2">
                                                             <button type="button" class="btn btn-outline-secondary" data-dialog-cancel>Hủy</button>
                                                             <button type="submit" class="btn btn-danger" data-dialog-submit>Xác nhận thao tác</button>
                                                         </div>
                                                     </form>
                                                 </dialog>
-                                            @endif
-                                        </div>
+                                            </div>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -287,7 +289,7 @@
 
             @if ($employees->hasPages())
                 <div class="card-footer bg-white d-flex justify-content-center py-3">
-                    {{ $employees->links('pagination::bootstrap-5') }}
+                    @include('backend.partials.pagination', ['paginator' => $employees, 'label' => 'nhân viên'])
                 </div>
             @endif
         </section>

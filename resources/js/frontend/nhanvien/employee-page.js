@@ -1,6 +1,7 @@
 import { initializeActionDialogs } from './confirm-actions.js';
 import { initializeEmployeeFilters } from './filter-submit.js';
 import { initializeEmployeeWizards } from './wizard.js';
+import { bindRowActionSelects } from '../shared/row-action-select.js';
 
 const initializedPages = new WeakSet();
 
@@ -20,4 +21,5 @@ export function initializeEmployeePage(
     initializeEmployeeWizards(root);
     initializeEmployeeFilters(root);
     initializeActionDialogs(root, browser);
+    bindRowActionSelects(root, browser);
 }

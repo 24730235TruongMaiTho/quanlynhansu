@@ -33,7 +33,7 @@
         <header class="d-flex flex-column flex-sm-row align-items-sm-start justify-content-between gap-3 mb-4">
             <div>
                 <h1 class="h3 fw-semibold mb-1" id="page-title">Cập nhật hồ sơ nhân viên</h1>
-                <p class="text-secondary mb-0">Chỉnh sửa hồ sơ và địa chỉ; mã, vai trò và mật khẩu được hệ thống giữ nguyên.</p>
+                <p class="text-secondary mb-0" id="edit-form-help">Chỉnh sửa hồ sơ và địa chỉ; mã, vai trò và mật khẩu được hệ thống giữ nguyên.</p>
             </div>
             <a class="btn btn-outline-secondary" href="{{ $backUrl }}">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
@@ -47,6 +47,7 @@
             $destroyDialogId = 'employee-destroy-' . $dialogKey;
         @endphp
         @can(\App\Enums\NhanVienPermission::Xoa->value)
+            @if ((string) auth()->id() !== (string) $employee->ma_nv)
             <div class="employee-action-dialogs d-inline-flex flex-wrap gap-2 mt-2" data-action-dialogs>
                 <button class="btn btn-sm btn-outline-danger" type="button" data-dialog-open="{{ $destroyDialogId }}" aria-controls="{{ $destroyDialogId }}">Xóa hoặc kết thúc</button>
                 <dialog class="employee-action-dialog" id="{{ $destroyDialogId }}" data-action-dialog aria-labelledby="{{ $destroyDialogId }}-title">
@@ -62,6 +63,7 @@
                     </form>
                 </dialog>
             </div>
+            @endif
         @endcan
         @if ($lookupError)
             <div class="alert alert-danger" role="alert">
@@ -108,6 +110,7 @@
                 action="{{ route('backend.nhanvien.update', ['ma_nv' => $employee->ma_nv]) }}"
                 enctype="multipart/form-data"
                 aria-busy="false"
+                aria-describedby="edit-form-help"
                 data-employee-wizard
                 data-initial-step="{{ $firstErrorStep }}"
             >

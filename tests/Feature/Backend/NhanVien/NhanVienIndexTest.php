@@ -183,6 +183,25 @@ class NhanVienIndexTest extends TestCase
         $this->assertStringContainsString('ma_tt=1', $employees->url(3));
     }
 
+    public function test_index_has_consistent_summary_and_permission_guarded_action_select(): void
+    {
+        $employee = (array) $this->employeePaginator()->items()[0];
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator([$employee], 11, 5, 2));
+            $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
+        });
+
+        $this->get('/nhan-vien?page=2&so_dong=5')
+            ->assertOk()
+            ->assertSee('Hiển thị 6-6 / 11 nhân viên')
+            ->assertSee('option value="5" selected', false)
+            ->assertSee('data-row-action-select', false)
+            ->assertSee('Xem')
+            ->assertSee('Chỉnh sửa')
+            ->assertSee('Xóa hoặc kết thúc')
+            ->assertSee('Trang cuối');
+    }
+
     public function test_invalid_filters_do_not_call_the_service(): void
     {
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {

@@ -69,7 +69,7 @@ class PhongBanFeatureTest extends TestCase
             (object) ['ma_pb' => 2, 'ten_pb' => 'Nhân sự', 'so_nhan_vien' => 0],
         ];
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock) use ($rows): void {
-            $mock->shouldReceive('all')->once()->andReturn($rows);
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator($rows, count($rows), 20, 1, ['pageName' => 'page']));
             $mock->shouldNotReceive('create');
             $mock->shouldNotReceive('update');
             $mock->shouldNotReceive('delete');
@@ -93,7 +93,7 @@ class PhongBanFeatureTest extends TestCase
             (object) ['ma_pb' => 2, 'ten_pb' => 'Nhân sự', 'so_nhan_vien' => 0],
         ];
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock) use ($rows): void {
-            $mock->shouldReceive('all')->once()->andReturn($rows);
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator($rows, count($rows), 20, 1, ['pageName' => 'page']));
         });
 
         $response = $this->get('/phong-ban');
@@ -106,10 +106,38 @@ class PhongBanFeatureTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), 'name="_method" value="DELETE"'));
     }
 
+    public function test_authenticated_list_filters_paginates_and_keeps_delete_confirmation_safe(): void
+    {
+        $rows = [
+            (object) ['ma_pb' => 6, 'ten_pb' => 'Phòng Kế hoạch', 'so_nhan_vien' => 0],
+        ];
+        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock) use ($rows): void {
+            $mock->shouldReceive('paginate')->once()->with([
+                'ten_pb' => 'Kế hoạch',
+                'page' => 2,
+                'so_dong' => 5,
+            ])->andReturn(new LengthAwarePaginator($rows, 11, 5, 2, ['pageName' => 'page']));
+        });
+
+        $response = $this->get('/phong-ban?ten_pb=K%E1%BA%BF%20ho%E1%BA%A1ch&page=2&so_dong=5');
+
+        $response->assertOk()
+            ->assertSee('Danh sách phòng ban')
+            ->assertSee('name="ten_pb"', false)
+            ->assertSee('option value="5" selected', false)
+            ->assertSee('Hiển thị 6-6 / 11 phòng ban')
+            ->assertSee('data-row-action-select', false)
+            ->assertSee('Sửa')
+            ->assertSee('Xóa')
+            ->assertSee('«')
+            ->assertSee('Trang cuối')
+            ->assertSee('data-confirm-message=', false);
+    }
+
     public function test_empty_state_is_safe(): void
     {
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('all')->once()->andReturn([]);
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator([], 0, 20, 1, ['pageName' => 'page']));
         });
         $this->get('/phong-ban')->assertOk()->assertSee('Chưa có phòng ban nào');
     }
@@ -117,7 +145,7 @@ class PhongBanFeatureTest extends TestCase
     public function test_service_error_state_is_safe(): void
     {
         $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('all')->once()->andThrow(new \RuntimeException('SQLSTATE private details'));
+            $mock->shouldReceive('paginate')->once()->andThrow(new \RuntimeException('SQLSTATE private details'));
         });
         $this->get('/phong-ban')->assertOk()
             ->assertSee('Không thể tải danh sách phòng ban lúc này.')

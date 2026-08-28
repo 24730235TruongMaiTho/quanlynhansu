@@ -18,16 +18,19 @@ trait InteractsWithEmployeeModule
      *
      * @param array<int, string|PermissionDefinitionContract> $symbols
      */
-    protected function actingAsEmployeeWithPermissions(array $symbols): NhanVien
+    protected function actingAsEmployeeWithPermissions(array $symbols, array $actorOverrides = []): NhanVien
     {
-        $employee = NhanVien::fromAuthRow((object) [
-            'ma_nv' => '00001',
+        // Giữ actor mặc định khác employee fixture để các test action không
+        // vô tình kiểm tra self-delete; test self-delete truyền override rõ ràng.
+        $employee = NhanVien::fromAuthRow((object) array_replace([
+            'ma_nv' => '00999',
             'ho_ten' => 'Nguyễn An',
             'email' => 'an@example.test',
             'mat_khau' => 'test-hash',
             'ma_vt' => 1,
             'ma_tt' => 1,
-        ]);
+            'ma_pb' => null,
+        ], $actorOverrides));
         $allowedSymbols = array_values(array_filter(array_map(
             static fn (mixed $symbol): ?string => $symbol instanceof PermissionDefinitionContract
                 ? $symbol->symbol()

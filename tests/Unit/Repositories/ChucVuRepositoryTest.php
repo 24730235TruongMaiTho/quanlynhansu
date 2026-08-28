@@ -64,6 +64,21 @@ class ChucVuRepositoryTest extends TestCase
         $this->assertNull($this->repository->find(999));
     }
 
+    public function test_paginate_filters_by_name_and_preserves_explicit_shape(): void
+    {
+        $this->insertPosition('Trưởng phòng', '1.5');
+        $this->insertPosition('Phó phòng', '1');
+        $this->insertPosition('Kế toán', '0.5');
+
+        $page = $this->repository->paginate(['ten_cv' => 'phòng', 'page' => 1, 'so_dong' => 1]);
+
+        $this->assertSame(2, $page->total());
+        $this->assertCount(1, $page->items());
+        $this->assertSame('Trưởng phòng', $page->items()[0]->ten_cv);
+        $this->assertSame(['ma_cv', 'ten_cv', 'he_so_phu_cap', 'so_nhan_vien'], array_keys(get_object_vars($page->items()[0])));
+        $this->assertSame(2, $page->lastPage());
+    }
+
     public function test_create_and_update_trim_names_and_normalize_decimal_rate(): void
     {
         $this->repository->create('  Kế toán  ', '1.5');

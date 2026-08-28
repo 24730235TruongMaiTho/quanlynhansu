@@ -10,6 +10,7 @@ use App\Http\Requests\ListNhanVienRequest;
 use App\Http\Requests\StoreNhanVienRequest;
 use App\Http\Requests\UpdateNhanVienRequest;
 use App\Support\NhanVienAvatarPath;
+use App\Support\NhanVienScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
@@ -22,17 +23,16 @@ class NhanVienController extends Controller
 {
     public function __construct(
         private NhanVienServiceContract $employees,
+        private NhanVienScope $scope,
     ) {}
 
     public function index(ListNhanVienRequest $request): View
     {
         $filters = $request->filters();
+        $scopedFilters = $this->scope->filtersFor(auth()->user(), $filters);
         $employeeError = null;
 
-        try {
-            $employees = $this->employees->paginate($filters);
-            $lookups = $this->employees->lookups();
-        } catch (NhanVienDomainException) {
+        if ($scopedFilters === null) {
             $employees = new LengthAwarePaginator(
                 collect(),
                 0,
@@ -40,29 +40,40 @@ class NhanVienController extends Controller
                 $filters['page'],
                 ['pageName' => 'page'],
             );
-            $lookups = [
-                'phong_ban' => [],
-                'chuc_vu' => [],
-                'trang_thai' => [],
-            ];
-            $employeeError = 'Không thể tải danh sách nhân viên lúc này. Vui lòng thử lại sau.';
+            $lookups = $this->emptyLookups();
+            $employeeError = 'Không thể xác định phạm vi phòng ban. Vui lòng liên hệ quản trị viên.';
+        } else {
+            try {
+                $employees = $this->employees->paginate($scopedFilters);
+                $lookups = $this->scope->lookupsFor(auth()->user(), $this->employees->lookups());
+            } catch (NhanVienDomainException) {
+                $employees = new LengthAwarePaginator(
+                    collect(),
+                    0,
+                    $filters['so_dong'],
+                    $filters['page'],
+                    ['pageName' => 'page'],
+                );
+                $lookups = $this->emptyLookups();
+                $employeeError = 'Không thể tải danh sách nhân viên lúc này. Vui lòng thử lại sau.';
+            }
         }
 
         $employees
             ->withPath(route('backend.nhanvien.index'))
-            ->appends($filters);
+            ->appends($scopedFilters ?? $filters);
 
         return view('backend.nhanvien.index', [
             'employees' => $employees,
             'lookups' => $lookups,
-            'filters' => $filters,
+            'filters' => $scopedFilters ?? $filters,
             'employeeError' => $employeeError,
         ]);
     }
 
     public function show(string $ma_nv): View
     {
-        $employee = $this->employees->findOrFail($ma_nv);
+        $employee = $this->findForCurrentActor($ma_nv);
 
         return view('backend.nhanvien.show', [
             'employee' => $employee,
@@ -152,7 +163,7 @@ class NhanVienController extends Controller
 
     public function edit(string $ma_nv): View
     {
-        $employee = $this->employees->findOrFail($ma_nv);
+        $employee = $this->findForCurrentActor($ma_nv);
 
         $emptyLookups = [
             'phong_ban' => [],
@@ -248,6 +259,16 @@ class NhanVienController extends Controller
 
     public function destroy(string $ma_nv): RedirectResponse
     {
+        if ((string) auth()->id() === $ma_nv) {
+            return back()->withErrors([
+                'nhan_vien' => 'Không thể tự xóa tài khoản đang đăng nhập.',
+            ]);
+        }
+
+        if ($this->scope->isDepartmentManager(auth()->user())) {
+            $this->findForCurrentActor($ma_nv);
+        }
+
         try {
             $action = $this->employees->removeOrTerminate($ma_nv);
         } catch (NotFoundHttpException) {
@@ -271,6 +292,31 @@ class NhanVienController extends Controller
             ->with('success', $action === NhanVienRemovalAction::Deleted
                 ? 'Đã xóa hồ sơ nhân viên.'
                 : 'Đã ghi nhận nhân viên nghỉ việc theo lịch sử.');
+    }
+
+    private function findForCurrentActor(string $maNv): object
+    {
+        if (
+            $this->scope->isDepartmentManager(auth()->user())
+            && $this->scope->departmentId(auth()->user()) === null
+        ) {
+            abort(404);
+        }
+
+        $employee = $this->employees->findOrFail($maNv);
+        abort_unless($this->scope->canAccess(auth()->user(), $employee), 404);
+
+        return $employee;
+    }
+
+    /** @return array{phong_ban: array, chuc_vu: array, trang_thai: array} */
+    private function emptyLookups(): array
+    {
+        return [
+            'phong_ban' => [],
+            'chuc_vu' => [],
+            'trang_thai' => [],
+        ];
     }
 
 }

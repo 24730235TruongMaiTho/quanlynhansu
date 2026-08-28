@@ -64,7 +64,7 @@
                 <li class="nav-item">
                     <a href="{{ route('backend.chucvu.index') }}" class="nav-link">
                         <i class="bi bi-person-badge" aria-hidden="true"></i>
-                        <span class="nav-title">Chức vụ</span>
+                        <span class="nav-title">Quản lý chức vụ</span>
                     </a>
                 </li>
             @endif

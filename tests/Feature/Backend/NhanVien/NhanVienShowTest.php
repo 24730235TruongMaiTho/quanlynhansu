@@ -182,6 +182,37 @@ class NhanVienShowTest extends TestCase
             ->assertDontSee('<img', false);
     }
 
+    public function test_show_groups_account_and_allowance_data_and_uses_a_larger_avatar(): void
+    {
+        $employee = $this->employee();
+        $employee->ngay_nghi_viec = '2026-08-01';
+        $employee->he_so_phu_cap = '1.25';
+
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($employee);
+        });
+
+        $this->get('/nhan-vien/00001')
+            ->assertOk()
+            ->assertSee('Thông tin cá nhân')
+            ->assertSee('Phụ cấp chức vụ')
+            ->assertSee('Tài khoản')
+            ->assertSee('Họ tên')
+            ->assertSee('Ngày nghỉ việc')
+            ->assertSee('01/08/2026')
+            ->assertSee('Hệ số phụ cấp chức vụ')
+            ->assertSee('1.25')
+            ->assertDontSee('Nơi sinh')
+            ->assertDontSee('Hệ số lương hiện tại')
+            ->assertDontSee('Loại hợp đồng')
+            ->assertDontSee('Chế độ lương & phụ cấp')
+            ->assertDontSee('Chưa có trong hợp đồng dữ liệu')
+            ->assertDontSee('Chưa có trong phạm vi module Nhân viên')
+            ->assertSee('width="112"', false)
+            ->assertSee('height="112"', false)
+            ->assertDontSee('secret-hash-value');
+    }
+
     public function test_show_never_renders_an_external_avatar_origin(): void
     {
         $employees = collect([

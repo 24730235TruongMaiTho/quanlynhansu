@@ -13,7 +13,7 @@ Giữ mọi thay đổi bám code hiện tại, phù hợp đồ án nhóm và c
 2. Đọc `docs/CODEX_NEXT_HANDOFF.md` nếu file tồn tại.
 3. Đọc `docs/PROJECT_STATUS.md` và tài liệu chuyên đề liên quan.
 4. Đọc route, controller, request, service/repository, model, view/JavaScript và test liên quan trực tiếp tới task.
-5. Đọc `quan_ly_nhan_su.session.sql` và `docs/DATABASE.md` trước mọi thay đổi phụ thuộc database hoặc stored procedure.
+5. Đọc `database/sql/tao_bang.sql`, sau đó `database/sql/du_lieu_mau.sql` và `database/sql/quyen_vai_tro.sql` cùng `docs/DATABASE.md` trước mọi thay đổi phụ thuộc database hoặc stored procedure. `quan_ly_nhan_su.session.sql` chỉ dùng để đối chiếu lịch sử.
 6. Đọc instruction phù hợp trong `.codex/instructions/` khi task liên quan backend, UI, database hoặc Git.
 
 Ưu tiên code hiện tại khi README mâu thuẫn. Nêu rõ giả định nếu chưa thể xác minh bằng code hoặc database local.
@@ -31,13 +31,14 @@ Giữ mọi thay đổi bám code hiện tại, phù hợp đồ án nhóm và c
 ## Ràng buộc dự án
 
 - Dùng namespace `App\\...`, route name `backend.<module>.<action>` và Blade path chữ thường.
-- Xem `quan_ly_nhan_su.session.sql` là nguồn schema nghiệp vụ hiện tại; migrations vẫn chủ yếu là Laravel mặc định.
+- Nguồn schema nghiệp vụ fresh hiện tại là `database/sql/tao_bang.sql` → `database/sql/du_lieu_mau.sql` → `database/sql/quyen_vai_tro.sql`; `quan_ly_nhan_su.session.sql` chỉ là lịch sử để đối chiếu. Migrations vẫn chủ yếu là Laravel mặc định.
 - Không import SQL dump vào database có dữ liệu vì dump có lệnh xóa database.
-- Không giả định login đã tồn tại. Nguồn tài khoản `users` và `nhan_vien` chưa được thống nhất.
+- Auth/RBAC hiện đã có trên nguồn tài khoản `nhan_vien` của hợp đồng fresh; không suy rộng từ route `200` thành nghiệp vụ hoàn chỉnh.
 - Không commit `.env`, secrets, `vendor`, `node_modules` hoặc `public/build`.
 - Không đánh dấu module hoàn thành chỉ vì có tên trong README.
 - Main và local branch `frontend` đang phân kỳ; không tự fetch/merge/rebase/cherry-pick/push hoặc tạo worktree/upstream.
 - Với UI, phân biệt layout runtime `backend.layouts.app` trên main và shell mục tiêu `backend.layout.app` trong ADR-001; không coi shell branch frontend là đã merge.
+- Hợp đồng SQL fresh hiện hành gồm 15 bảng từ ba file active nêu trên. Auth/RBAC đã có trên contract này và không được mô tả là chưa thiết lập; vẫn phải kiểm tra Gate, scope và permission catalog thực tế trước khi sửa.
 
 ## Kiểm tra tối thiểu
 

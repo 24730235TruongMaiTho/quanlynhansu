@@ -4,6 +4,7 @@
 @endphp
 
 @can(\App\Enums\NhanVienPermission::Xoa->value)
+@if ((string) auth()->id() !== (string) $employee->ma_nv)
 <div class="employee-action-dialogs d-inline-flex flex-wrap gap-2 mt-2" data-action-dialogs>
     <button
         class="btn btn-sm btn-outline-danger"
@@ -35,4 +36,5 @@
         </form>
     </dialog>
 </div>
+@endif
 @endcan

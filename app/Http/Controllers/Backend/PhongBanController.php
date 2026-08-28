@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Backend;
 use App\Contracts\PhongBanServiceContract;
 use App\Exceptions\PhongBanDomainException;
 use App\Http\Requests\StorePhongBanRequest;
+use App\Http\Requests\ListPhongBanRequest;
 use App\Http\Requests\UpdatePhongBanRequest;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Throwable;
 
@@ -14,18 +16,23 @@ class PhongBanController extends Controller
 {
     public function __construct(private PhongBanServiceContract $departments) {}
 
-    public function index(): View
+    public function index(ListPhongBanRequest $request): View
     {
+        $filters = $request->filters();
         $departmentError = null;
-        $departments = [];
+        $departments = $this->emptyPaginator($filters);
 
         try {
-            $departments = $this->departments->all();
+            $departments = $this->departments->paginate($filters);
         } catch (Throwable) {
             $departmentError = 'Không thể tải danh sách phòng ban lúc này. Vui lòng thử lại sau.';
         }
 
-        return view('backend.phongban.index', compact('departments', 'departmentError'));
+        $departments
+            ->withPath(route('backend.phongban.index'))
+            ->appends($filters);
+
+        return view('backend.phongban.index', compact('departments', 'departmentError', 'filters'));
     }
 
     public function create(): View
@@ -124,5 +131,17 @@ class PhongBanController extends Controller
         }
 
         return $id;
+    }
+
+    /** @param array{ten_pb: ?string, page: int, so_dong: int} $filters */
+    private function emptyPaginator(array $filters): LengthAwarePaginator
+    {
+        return new LengthAwarePaginator(
+            collect(),
+            0,
+            $filters['so_dong'],
+            $filters['page'],
+            ['pageName' => 'page'],
+        );
     }
 }
