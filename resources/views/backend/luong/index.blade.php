@@ -235,22 +235,6 @@
                             Đang chuẩn bị dữ liệu...
                         </p>
                     </div>
-
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span class="small text-secondary" id="table-stat">
-                        Đang tải...
-                    </span>
-
-                        <button
-                            class="btn btn-outline-secondary btn-sm"
-                            id="reconcile-btn"
-                            type="button"
-                            data-salary-permission="Luong.Update"
-                            hidden
-                        >
-                            Đối soát
-                        </button>
-                    </div>
                 </div>
 
                 <div class="table-responsive">
