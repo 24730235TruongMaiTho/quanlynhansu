@@ -252,4 +252,12 @@ Route::prefix('')->name('backend.')
         return view('backend.nghiphep.index');
     })->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value])->name('nghiphep.index');
 
+    Route::get('/duyet-nghi-phep', function () {
+        return view('backend.nghiphep.duyet-nghi-phep');
+    })->name('backend.nghiphep.duyet-nghi-phep');
+
+    Route::get('/tao-nghi-phep', function () {
+        return view('backend.nghiphep.create');
+    })->name('backend.nghiphep.create');
+
 });

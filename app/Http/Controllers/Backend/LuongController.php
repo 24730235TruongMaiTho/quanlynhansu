@@ -72,4 +72,60 @@ class LuongController extends Controller
 
         return response()->json($result);
     }
+
+    public function export(Request $request)
+    {
+        $validated = $request->validate([
+            'ky_luong' => [
+                'required',
+                'string',
+            ],
+
+            'tu_khoa' => [
+                'nullable',
+                'string',
+            ],
+
+            'ma_pb' => [
+                'nullable',
+                'integer',
+            ],
+
+            'ma_cv' => [
+                'nullable',
+                'integer',
+            ],
+        ]);
+
+        $result = $this->service->exportByKyLuong(
+            $validated['ky_luong'],
+            [
+                'tu_khoa' =>
+                    $validated['tu_khoa']
+                    ?? null,
+
+                'ma_pb' =>
+                    $validated['ma_pb']
+                    ?? null,
+
+                'ma_cv' =>
+                    $validated['ma_cv']
+                    ?? null,
+            ]
+        );
+
+        if (! $result['success']) {
+            return response()->json(
+                $result,
+                400
+            );
+        }
+
+        return response()
+            ->download(
+                $result['data']['file_path'],
+                $result['data']['filename']
+            )
+            ->deleteFileAfterSend(true);
+    }
 }

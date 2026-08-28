@@ -3,16 +3,23 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Contracts\NhanVienServiceContract;
+use App\Services\ChamCongService;
+use App\Services\ChamCongExportService;
+use App\Services\ChamCongImportService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ChamCongController extends Controller
 {
-    public function __construct(private NhanVienServiceContract $nhanVienService)
+    public function __construct(
+        private NhanVienServiceContract $nhanVienService,
+        private ChamCongService $chamCongService
+    )
     {
     }
 
@@ -32,8 +39,9 @@ class ChamCongController extends Controller
      * page
      * per_page
      */
-    public function employees(Request $request): JsonResponse
-    {
+    public function employees(
+        Request $request
+    ): JsonResponse {
         try {
             $validated = $request->validate([
                 'tu_khoa' => [
@@ -83,27 +91,26 @@ class ChamCongController extends Controller
                 'so_dong' => (int) ($validated['per_page'] ?? 15),
             ];
 
-            $paginator = $this->nhanVienService->paginateForAttendance($filters);
+            $paginator = $this->chamCongService->paginateEmployeeAttendance($filters);
             $paginator->withPath($request->url())->appends($request->query());
 
             return response()->json([
                 'success' => true,
                 'data' => $paginator,
             ]);
-        } catch (QueryException $exception) {
-            report($exception);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Không thể tải danh sách nhân viên.',
-            ], 500);
-        } catch (ValidationException $exception) {
-            throw $exception;
+        } catch (QueryException $exception) {
+
+            return $this->queryError(
+                $exception,
+                'Không thể tải danh sách nhân viên.'
+            );
+
         } catch (\Throwable $exception) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Không thể tải danh sách nhân viên.',
+                'message' => $exception->getMessage(),
             ], 500);
         }
     }
@@ -302,7 +309,7 @@ class ChamCongController extends Controller
 
             return $this->queryError(
                 $exception,
-                'Không thể tải danh sách phòng ban.'
+                'Không thể tải danh sách phòng ban. '.$exception->getMessage()
             );
         }
     }
@@ -433,34 +440,200 @@ class ChamCongController extends Controller
     }
 
     /**
-     * '' -> NULL
+     * =========================================================
+     * XUẤT BẢNG CHẤM CÔNG SANG EXCEL
+     * =========================================================
+     *
+     * GET /api/v1/cham-cong/export
+     *
+     * ?thang=8&nam=2026&format=xlsx
      */
-    private function nullIfEmpty(
-        mixed $value
-    ): mixed {
+    public function export(Request $request, ChamCongExportService $exportService)
+    {
+        try {
+            $validated = $request->validate([
+                'thang' => ['required', 'integer', 'between:1,12'],
+                'nam' => ['required', 'integer', 'between:2000,2100'],
+                'format' => ['nullable', 'in:xlsx,csv'],
+            ]);
+
+            $month = (int) $validated['thang'];
+            $year = (int) $validated['nam'];
+            $format = $validated['format'] ?? 'xlsx';
+
+            // Export file
+            $filePath = $format === 'csv'
+                ? $exportService->exportToCSV($month, $year)
+                : $exportService->exportToExcel($month, $year);
+
+            $filename = "cham_cong_{$month}_{$year}." . $format;
+
+            return response()->download(
+                $filePath,
+                $filename,
+                [
+                    'Content-Type' => $format === 'csv'
+                        ? 'text/csv; charset=utf-8'
+                        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ]
+            );
+
+        } catch (QueryException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể xuất dữ liệu chấm công.',
+            ], 422);
+
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi xuất file.',
+            ], 500);
+        }
+    }
+
+    /**
+     * =========================================================
+     * NHẬP BẢNG CHẤM CÔNG TỪ FILE
+     * =========================================================
+     *
+     * POST /api/v1/cham-cong/import
+     *
+     * Body: multipart/form-data
+     * - file: CSV/Excel file
+     *
+     * Định dạng CSV:
+     * ma_nv,ngay_lam,so_gio_lam,vao_muon,ve_som
+     * NV001,2026-08-01,8,0,0
+     */
+    public function import(Request $request, ChamCongImportService $importService): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'file' => ['required', 'file', 'mimes:csv,xlsx,xls'],
+            ]);
+
+            $file = $validated['file'];
+            $result = $importService->import($file);
+
+            $statusCode = $result['success'] ? 200 : 422;
+
+            return response()->json([
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'data' => $result['data'],
+                'errors' => $result['errors'],
+            ], $statusCode);
+
+        } catch (ValidationException $exception) {
+            throw $exception;
+
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi nhập file: ' . $exception->getMessage(),
+                'data' => [],
+                'errors' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * =========================================================
+     * XUẤT FILE TEMPLATE NHẬP BẢNG CHẤM CÔNG
+     * =========================================================
+     *
+     * GET /api/v1/cham-cong/import-template
+     *
+     * Query parameters:
+     * - format: xlsx|csv
+     *
+     * Ví dụ:
+     * GET /api/v1/cham-cong/import-template?format=xlsx
+     *
+     * Template:
+     * ma_nv,ngay_lam,so_gio_lam,vao_muon,ve_som
+     *
+     * NV001,2026-08-01,8,0,0
+     */
+    public function exportImportTemplate(
+        Request $request,
+        ChamCongImportService $importService
+    ): BinaryFileResponse | JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'format' => [
+                    'nullable',
+                    'in:xlsx,csv',
+                ],
+            ]);
+
+            $format =
+                $validated['format']
+                ?? 'xlsx';
+
+            $filePath =
+                $importService->exportTemplate(
+                    $format
+                );
+
+            $filename =
+                "mau_import_cham_cong.{$format}";
+
+            return response()
+                ->download(
+                    $filePath,
+                    $filename,
+                    [
+                        'Content-Type' =>
+                            $format === 'csv'
+                                ? 'text/csv; charset=utf-8'
+                                : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    ]
+                )
+                ->deleteFileAfterSend(true);
+
+        } catch (ValidationException $exception) {
+            throw $exception;
+
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Lỗi khi tạo file template: '
+                    . $exception->getMessage(),
+                'data' => [],
+                'errors' => [],
+            ], 500);
+        }
+    }
+
+    // ...existing code...
+    private function nullIfEmpty(mixed $value): mixed
+    {
         if ($value === null) {
             return null;
         }
 
-        if (
-            is_string($value) &&
-            trim($value) === ''
-        ) {
+        if (is_string($value) && trim($value) === '') {
             return null;
         }
 
-        return is_string($value)
-            ? trim($value)
-            : $value;
+        return is_string($value) ? trim($value) : $value;
     }
 
     /**
      * Trả message SIGNAL của MariaDB/MySQL.
      */
-    private function queryError(
-        QueryException $exception,
-        string $fallback
-    ): JsonResponse {
+    private function queryError(QueryException $exception, string $fallback): JsonResponse
+    {
         report($exception);
 
         return response()->json([
