@@ -13,6 +13,7 @@ export default defineConfig({
                 'resources/js/frontend/phongban/phongban.js',
                 'resources/js/frontend/vaitro/vaitro.js',
                 'resources/js/frontend/chucvu/chucvu.js',
+                'resources/js/frontend/hopdong/hopdong.js',
                 'resources/js/frontend/luong/luongCreateUpdate.js',
                 'resources/js/frontend/luong/luongHeSo.js',
                 'resources/js/frontend/luong/luongHeSoCreateUpdate.js',
