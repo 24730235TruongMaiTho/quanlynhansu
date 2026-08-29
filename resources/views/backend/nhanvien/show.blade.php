@@ -64,7 +64,7 @@
             </div>
             <div class="d-flex flex-wrap gap-2 align-self-start align-self-sm-center">
                 @can(\App\Enums\NhanVienPermission::Sua->value)
-                    <a class="btn btn-primary" href="{{ $editUrl }}">
+                    <a class="btn btn-primary" href="{{ $editUrl }}" data-employee-edit-trigger>
                         <i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa
                     </a>
                 @endcan
@@ -189,6 +189,10 @@
                 </section>
             </div>
         </div>
+
+        @can(\App\Enums\NhanVienPermission::Sua->value)
+            @include('backend.nhanvien.partials.edit-modal')
+        @endcan
     </main>
 @endsection
 

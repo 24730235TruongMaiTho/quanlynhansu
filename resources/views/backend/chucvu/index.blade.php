@@ -8,7 +8,11 @@
         $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChucVuPermission::Sua->value);
         $canDelete = \Illuminate\Support\Facades\Gate::allows(\App\Enums\ChucVuPermission::Xoa->value);
         $hasFilters = filled($filters['ten_cv']);
-        $listQuery = array_filter($filters, static fn (mixed $value): bool => $value !== null && $value !== '');
+        $listQuery = array_filter([
+            'ten_cv' => $filters['ten_cv'],
+            'page' => $filters['page'] > 1 ? $filters['page'] : null,
+            'so_dong' => $filters['so_dong'] !== 20 ? $filters['so_dong'] : null,
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="position-page-title">
@@ -119,7 +123,8 @@
                                             <select class="form-select form-select-sm" id="position-action-{{ $position->ma_cv }}" data-row-action-select>
                                                 <option value="">Chọn thao tác</option>
                                                 @if ($canEdit)
-                                                    <option value="{{ route('backend.chucvu.edit', $position->ma_cv) }}" data-action="navigate">Sửa</option>
+                                                    @php($editUrl = route('backend.chucvu.edit', ['ma_cv' => $position->ma_cv] + $listQuery))
+                                                    <option value="{{ $editUrl }}" data-action="modal" data-modal-url="{{ $editUrl }}">Sửa</option>
                                                 @endif
                                                 @if ($canDelete && ! $hasEmployees)
                                                     <option value="delete" data-action="delete" data-form-id="{{ $deleteId }}" data-confirm-message="Bạn có chắc muốn xóa chức vụ này?">Xóa</option>
@@ -127,6 +132,11 @@
                                                     <option value="" disabled title="Không thể xóa chức vụ đang có nhân viên">Xóa (đang có nhân viên)</option>
                                                 @endif
                                             </select>
+                                            @if ($canEdit)
+                                                <noscript>
+                                                    <a class="btn btn-sm btn-outline-primary mt-2" href="{{ $editUrl }}">Sửa</a>
+                                                </noscript>
+                                            @endif
                                             @if ($canDelete && ! $hasEmployees)
                                                 <form id="{{ $deleteId }}" method="POST" action="{{ route('backend.chucvu.destroy', $position->ma_cv) }}" class="d-none" onsubmit="return confirm('Bạn có chắc muốn xóa chức vụ này?')">
                                                     @csrf
@@ -165,6 +175,13 @@
                 </div>
             @endif
         </section>
+
+        @if ($canEdit)
+            @include('backend.partials.simple-edit-modal', [
+                'modalId' => 'chuc-vu-edit-modal',
+                'title' => 'Chỉnh sửa chức vụ',
+            ])
+        @endif
     </main>
 @endsection
 

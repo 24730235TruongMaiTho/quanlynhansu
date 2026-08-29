@@ -64,6 +64,8 @@ function initializeWizard(form) {
         target?.focus({ preventScroll: true });
     };
 
+    form.showEmployeeWizardStep = showStep;
+
     const firstInvalidInStep = (step) => [...step.querySelectorAll('input, select, textarea')]
         .find((field) => !field.checkValidity());
 
@@ -128,18 +130,21 @@ function initializeWizard(form) {
         });
     }, true);
 
-    form.addEventListener('submit', (event) => {
-        if (submitting) {
-            event.preventDefault();
-            return;
-        }
+    // Modal có controller riêng để giữ trạng thái submit qua các response lỗi.
+    if (!form.closest('[data-employee-edit-modal]')) {
+        form.addEventListener('submit', (event) => {
+            if (submitting) {
+                event.preventDefault();
+                return;
+            }
 
-        submitting = true;
-        form.setAttribute('aria-busy', 'true');
-        submitButton.disabled = true;
-        submitButton.setAttribute('aria-disabled', 'true');
-        submitButton.textContent = submitButton.dataset.submittingText || 'Đang lưu…';
-    });
+            submitting = true;
+            form.setAttribute('aria-busy', 'true');
+            submitButton.disabled = true;
+            submitButton.setAttribute('aria-disabled', 'true');
+            submitButton.textContent = submitButton.dataset.submittingText || 'Đang lưu…';
+        });
+    }
 
     showStep(currentStep, form.querySelector('[data-error-focus]'));
 }

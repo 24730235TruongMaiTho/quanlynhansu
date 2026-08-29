@@ -1,5 +1,6 @@
 import { bindRowActionSelects } from '../shared/row-action-select.js';
 import { initializeListFilters } from '../shared/list-filter.js';
+import { initializeSimpleEditModal } from '../shared/edit-modal.js';
 
 function disableSubmit(form) {
     const submit = form.querySelector('[data-submit]');
@@ -19,7 +20,13 @@ function disableSubmit(form) {
 
 if (typeof document !== 'undefined') {
     initializeListFilters(document, '[data-department-filter]');
-    bindRowActionSelects();
+    const editModal = initializeSimpleEditModal(document, window);
+    bindRowActionSelects(document, window, window.location, {
+        modal: (option, select) => editModal?.open(
+            select,
+            option.dataset.modalUrl || option.value,
+        ),
+    });
 
     document.querySelectorAll('[data-phong-ban-form]').forEach((form) => {
         form.addEventListener('submit', () => disableSubmit(form));

@@ -62,6 +62,14 @@ Các view chính: `resources/views/backend/nhanvien/index.blade.php`, `create.bl
 
 UI phải giữ loading, empty, success, validation/server error, disabled/submitting, confirm action, semantic label/focus/contrast và responsive table. Automated test/build không thay thế browser; browser avatar file chooser vẫn chưa được kiểm chứng.
 
+### Modal chỉnh sửa từ danh sách
+
+Khi actor có Gate `NhanVien.Update`, action `Chỉnh sửa` trong `/nhan-vien` mở native dialog và tải form bằng request GET on-demand tới route edit hiện hữu. Form dùng partial chung với trang `/nhan-vien/{ma_nv}/edit`; trang đầy đủ vẫn là fallback cho no-JavaScript hoặc liên kết trực tiếp. Không render sẵn một form đầy đủ cho từng dòng và không tạo route/API mới.
+
+Submit modal dùng `FormData` tới route PUT/PATCH hiện hữu, giữ CSRF, scope và Gate của backend. Response JSON thành công chỉ chứa `success` và thông báo an toàn; lỗi validation trả HTTP 422 theo field hoặc form-level khi khóa lỗi không map được; lỗi domain/không xác định không trả mã nội bộ, SQLSTATE, hash hoặc redirect. Thành công đóng modal rồi reload đúng URL danh sách hiện tại để giữ filter/trang. Loading, retry/fallback, Escape/cancel, khôi phục focus, disabled khi submit, khóa đóng khi request đang chờ và lỗi mạng/server được xử lý trong `resources/js/frontend/nhanvien/edit-modal.js`.
+
+Modal chỉ được khởi tạo khi action được render theo quyền. Shared row-action select nhận callback `modal` generic; hành vi Xem, Xóa và các module Chức vụ/Phòng ban không đổi. Re-initialize wizard được thực hiện sau mỗi lần inject form; browser acceptance thực tế vẫn chưa được kiểm chứng.
+
 ## Kiểm tra
 
 ```powershell
@@ -92,3 +100,11 @@ Task Nhân viên không sửa Dashboard, Lương, Chấm công, Nghỉ phép, H�
 - Model/validation/API/exception legacy của module ngoài ownership còn drift; Hợp đồng/RBAC quản trị mới chỉ verified hẹp hoặc thiếu mutation/browser evidence.
 
 Chỉ xử lý các mục trên khi có task giao rõ và có owner/contract riêng.
+
+### Modal từ trang xem và bố cục bước kiểm tra
+
+Trang hồ sơ Nhân viên cũng dùng trigger có href edit thật để mở lại shell modal khi có Gate NhanVien.Update; khi không có JavaScript, liên kết tiếp tục mở trang edit đầy đủ. Không render thêm shell nếu actor không có quyền, và không tạo duplicate form/ID trên cùng trang.
+
+Ở bước 3, mỗi cặp nhãn/giá trị nằm trong employee-review-row với một border chung; CSS chuyển các row thành một cột trên màn hình hẹp để đường phân cách không bị lệch. Đây là thay đổi trình bày, không mở rộng schema hoặc dữ liệu Nhân viên.
+
+Phòng ban và Chức vụ có controller modal chung tại resources/js/frontend/shared/edit-modal.js; form partial riêng được dùng lại giữa modal và trang edit đầy đủ. Các modal này chỉ giữ dữ liệu và Gate của module tương ứng, không mở rộng scope Nhân viên/Trưởng phòng.

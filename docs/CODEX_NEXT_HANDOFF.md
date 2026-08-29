@@ -68,8 +68,22 @@ pwsh -NoProfile -File tests/Support/invoke-employee-mariadb-tests.ps1 -EnableDis
 
 Không claim MySQL 8, production rollout, browser acceptance hoặc DB live mutation nếu chưa có bằng chứng và approval riêng.
 
+## Handoff modal sửa Nhân viên 2026-08-29
+
+`/nhan-vien` hiện render một native dialog duy nhất khi actor có `NhanVien.Update`; mỗi action `Chỉnh sửa` giữ href edit thật làm progressive fallback và chỉ tải partial form khi mở. GET edit partial vẫn qua Gate và `NhanVienScope`; trang edit đầy đủ không đổi contract. Submit modal gửi `FormData` tới PUT/PATCH hiện hữu, hỗ trợ avatar, khóa nút khi đang gửi, khóa nút đóng/cancel/Escape để không nhận response lệch modal, hiển thị lỗi 422 theo field hoặc form-level khi khóa lỗi không map được, lỗi mạng/server an toàn, khôi phục focus khi đóng và reload đúng URL list hiện tại sau JSON success. Shared `row-action-select` chỉ thêm callback `modal`, nên Xem/Xóa và CV/PB giữ nguyên.
+
+RED/GREEN: feature modal/update ban đầu fail vì thiếu shell/partial/JSON; các hồi quy listener submit, khóa đóng/cancel/Escape và form-level 422 cũng đã RED trước khi sửa, sau triển khai targeted Nhân viên `32 tests, 309 assertions` pass và Node modal/shared/list `16 tests` pass. Relevant Nhân viên/auth/service/unit suite pass `177 tests, 1518 assertions`; full Laravel hiện `290 passed, 11 failed, 2252 assertions` do các failure baseline ngoài ownership ở ContentFour/Chấm công/Nghỉ phép. Full frontend `31 passed, 1 failed` do đúng baseline Nghỉ phép `expected —, actual -`; build pass `25 modules transformed`, route inventory pass `89 routes`, Composer/PHP lint/diff hygiene pass. Browser chưa chạy; không sửa lỗi ngoài ownership.
+
 ## Handoff feedback UI 2026-08-28
 
 Đã triển khai feedback thuộc ownership trong `docs/FEEDBACK_ACTION_PLAN.md`: Be Vietnam Pro, nhãn sidebar, pagination/filter/action select cho Chức vụ/Phòng ban/Nhân viên, grouped employee detail với avatar lớn và form edit accessible. CV/PB dùng Query Builder `paginate()` nhưng giữ `all()`; delete action chỉ submit sau confirm và Gate/guard hiện hữu. Không sửa Dashboard, Lương, Chấm công, Nghỉ phép, Hợp đồng, RBAC hoặc schema.
 
 Verification cuối phiên: focused module/regression `53 tests, 481 assertions` và repository pagination `14 tests, 64 assertions` pass; full Laravel `294 tests, 2287 assertions` pass; frontend `21/21` pass; Vite `21 modules transformed`; route inventory `79`, Composer, PHP lint và `git diff --check` pass. MariaDB disposable: `phpunit.mariadb.xml`, PHPUnit `11.5.56`, PHP `8.5.0`, `12/12 tests`, `422 assertions`, `10.797s`, exit `0`; đây không phải database live. Browser acceptance, font/network thật và production chưa được kiểm chứng.
+
+## Handoff modal Phòng ban/Chức vụ và liên kết edit Nhân viên 2026-08-29
+
+Phòng ban và Chức vụ dùng native dialog chung, chỉ tải partial form khi chọn Sửa; href edit thật vẫn là progressive fallback. Controller nhận header modal để trả partial, còn direct GET trả trang đầy đủ; update JSON success/422/lỗi server chỉ dùng thông báo an toàn. Gate canonical, CSRF, FormRequest, Query Builder, transaction/row lock và delete/view/filter behavior không đổi. row-action-select chỉ gọi callback modal, không điều hướng khi mở modal.
+
+Trang xem Nhân viên thêm trigger có href thật và dùng lại shell data-employee-edit-modal hiện có khi actor có Gate cập nhật; no-JavaScript/direct-link vẫn dùng edit page. Step 3 form bọc từng cặp dữ liệu trong employee-review-row để border liên tục và responsive theo một cột ở màn hình hẹp.
+
+TDD/verification: RED feature 8 failure và Node 2 failure trước implementation; GREEN targeted PB/CV/Nhân viên 51 tests, 487 assertions, targeted Node core 25 tests pass. Full Laravel hiện 298 passed, 11 failed, 2321 assertions do baseline ngoài ownership; frontend 36 passed, 1 failed do tests/Frontend/nghiphep/employee-response.test.js expected —, actual -. Vite build 26 modules transformed; route inventory 89 routes; Composer, PHP lint controller và git diff --check pass. Browser chưa kiểm chứng, MariaDB không chạy vì data layer không đổi; không claim database live/production.

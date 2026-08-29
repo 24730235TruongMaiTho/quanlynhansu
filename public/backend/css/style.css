@@ -1000,3 +1000,66 @@ body {
                 display: none;
             }
         }
+
+        /* Dialog dùng chung cho các form chỉnh sửa tải on-demand trên danh sách. */
+        .backend-edit-dialog {
+            position: fixed;
+            inset: 50% auto auto 50%;
+            margin: 0;
+            transform: translate(-50%, -50%);
+            width: min(42rem, calc(100vw - 2rem));
+            max-width: none;
+            max-height: calc(100vh - 2rem);
+            padding: 0;
+            border: 0;
+            border-radius: 0.5rem;
+            color: var(--bs-body-color);
+            background: var(--bs-body-bg);
+            box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.2);
+        }
+
+        .backend-edit-dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .backend-edit-dialog-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+
+        .backend-edit-dialog-status {
+            padding: 1rem 1.25rem 0;
+        }
+
+        .backend-edit-dialog > [data-edit-modal-content] {
+            max-height: calc(100vh - 10rem);
+            overflow-y: auto;
+            padding: 0 1.25rem 1.25rem;
+        }
+
+        .backend-edit-modal-page form {
+            padding-top: 0;
+        }
+
+        @media (max-width: 575.98px) {
+            .backend-edit-dialog {
+                width: calc(100vw - 1rem);
+                max-height: calc(100vh - 1rem);
+            }
+
+            .backend-edit-dialog-header,
+            .backend-edit-dialog-status {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .backend-edit-dialog > [data-edit-modal-content] {
+                max-height: calc(100vh - 9rem);
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+        }

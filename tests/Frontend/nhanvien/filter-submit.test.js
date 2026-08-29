@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { initializeEmployeeFilter } from '../../../resources/js/frontend/nhanvien/filter-submit.js';
-import { initializeEmployeePage } from '../../../resources/js/frontend/nhanvien/employee-page.js';
+import { bindEmployeeEditTriggers, initializeEmployeePage } from '../../../resources/js/frontend/nhanvien/employee-page.js';
 
 class FakeElement {
     constructor(attributes = {}) {
@@ -135,4 +135,27 @@ test('direct filter initialization is idempotent for the same form', () => {
     const first = {};
     form.dispatch('submit', first);
     assert.equal(first.prevented, undefined);
+});
+
+test('employee detail edit link opens the existing modal while retaining its fallback URL', () => {
+    const trigger = new FakeElement({ href: '/nhan-vien/NV001/edit' });
+    const root = {
+        querySelectorAll(selector) {
+            assert.equal(selector, '[data-employee-edit-trigger]');
+            return [trigger];
+        },
+    };
+    const opened = [];
+    const modal = {
+        open(opener, url) {
+            opened.push({ opener, url });
+        },
+    };
+
+    bindEmployeeEditTriggers(root, modal);
+    const event = {};
+    trigger.dispatch('click', event);
+
+    assert.equal(event.prevented, true);
+    assert.deepEqual(opened, [{ opener: trigger, url: '/nhan-vien/NV001/edit' }]);
 });

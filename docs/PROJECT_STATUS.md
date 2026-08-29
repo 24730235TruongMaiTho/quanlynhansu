@@ -64,7 +64,21 @@ Automated tests không thay thế browser. Avatar file chooser/replacement, prod
 - Model/validation/API/exception của các module legacy còn drift so với schema; phải audit riêng theo module.
 - Hợp đồng mới chỉ là scaffold; Vai trò/Phân quyền/RBAC có catalog và procedure nền tảng nhưng UI quản trị, mutation và browser evidence chưa đầy đủ.
 
+## Modal chỉnh sửa Nhân viên 2026-08-29
+
+Trên HEAD `c361b7b`, danh sách Nhân viên có modal native tải form edit on-demand qua route GET hiện hữu khi có `NhanVien.Update`. Form dùng partial chung với trang edit đầy đủ; no-JavaScript/direct-link vẫn dùng `/nhan-vien/{ma_nv}/edit`. Submit dùng `FormData` tới PUT/PATCH hiện hữu, trả JSON success/422 field hoặc form-level errors/lỗi an toàn và reload URL danh sách hiện tại sau thành công. Trong lúc submit, modal khóa đóng/cancel/Escape và không nhận action mở nhân viên khác; sau lỗi vẫn mở lại được. Scope Trưởng phòng, Gate, CSRF, avatar và wizard hiện hữu được giữ nguyên; không thêm schema/API.
+
+Feature modal và frontend controller đã có kiểm thử RED trước implementation rồi GREEN targeted: các hồi quy submit retry, khóa đóng/cancel/Escape, form-level 422 và partial lookup warning đều RED trước sửa; modal/update và index \`32 tests, 309 assertions\` pass; relevant Nhân viên/auth/service/unit \`177 tests, 1518 assertions\` pass; modal/shared/list Node \`16 tests\` pass. Full Laravel hiện \`290 passed, 11 failed, 2252 assertions\` do baseline ngoài ownership ở ContentFour/Chấm công/Nghỉ phép. `npm run test:frontend` hiện \`31 passed, 1 failed\` do đúng lỗi nền tại `tests/Frontend/nghiphep/employee-response.test.js` (\`expected —, actual -\`), không sửa. Build pass \`25 modules transformed\`, route inventory pass \`89 routes\`, Composer/PHP lint/diff hygiene pass. Browser runtime chưa chạy trong phiên; MariaDB không chạy vì không đổi data layer.
+
 ## Quy tắc thay đổi
+
+## Modal chỉnh sửa Phòng ban/Chức vụ và Nhân viên 2026-08-29
+
+Danh sách Phòng ban và Chức vụ hiện mở native dialog tải partial form on-demand khi actor có Gate cập nhật; mỗi action vẫn giữ URL edit thật làm fallback. GET edit, PUT/PATCH update, FormRequest, CSRF, Query Builder, transaction/row lock, Gate và delete behavior hiện hữu được giữ nguyên. JSON success/422 và lỗi server có shape an toàn, modal khóa submit/đóng khi request đang chờ, khôi phục focus và reload đúng URL danh sách sau thành công. Trang xem Nhân viên dùng lại shell modal hiện có; nếu không có JavaScript, href edit đầy đủ vẫn hoạt động.
+
+Step 3 form Nhân viên đã nhóm từng cặp dt/dd trong một row có đường phân cách liên tục; ở màn hình hẹp row chuyển một cột. Đây chỉ là thay đổi markup/CSS, không đổi dữ liệu hay contract.
+
+RED/GREEN phiên này: RED feature 8 failure và responsive/shared Node 2 failure trước implementation; sau sửa targeted PB/CV/Nhân viên 51 tests, 487 assertions pass; targeted Node core 25 tests pass. Full Laravel 298 passed, 11 failed, 2321 assertions; 11 failure là baseline ngoài ownership ở ContentFour/Chấm công/Nghỉ phép. npm run test:frontend 36 passed, 1 failed, lỗi nền duy nhất tại tests/Frontend/nghiphep/employee-response.test.js (expected —, actual -), không sửa. Build pass 26 modules transformed; route inventory 89 routes; Composer, PHP lint controller và git diff --check pass. Browser chưa chạy và MariaDB disposable không lặp vì không đổi data layer; không claim browser, database live hoặc production.
 
 Một module chỉ được gọi Done khi route, validation, data contract, UI states, auth/authorization, feature/integration tests, build và browser acceptance phù hợp đều có bằng chứng. Không xóa assertion hoặc đổi tài liệu để che blocker. Chỉ mutation trên database test/disposable; không chạy canonical SQL destructive trên database cần giữ dữ liệu.
 

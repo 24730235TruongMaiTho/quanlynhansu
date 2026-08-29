@@ -131,7 +131,84 @@ class PhongBanFeatureTest extends TestCase
             ->assertSee('Xóa')
             ->assertSee('«')
             ->assertSee('Trang cuối')
-            ->assertSee('data-confirm-message=', false);
+            ->assertSee('data-confirm-message=', false)
+            ->assertSee('<noscript>', false)
+            ->assertSee('data-action="modal"', false);
+    }
+
+    public function test_list_edit_action_is_an_on_demand_modal_with_a_real_fallback_url(): void
+    {
+        $department = (object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật', 'so_nhan_vien' => 0];
+        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock) use ($department): void {
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator([$department], 1, 20, 1, ['pageName' => 'page']));
+        });
+
+        $editUrl = route('backend.phongban.edit', 1);
+        $this->get('/phong-ban')
+            ->assertOk()
+            ->assertSee('data-simple-edit-modal', false)
+            ->assertSee('data-action="modal"', false)
+            ->assertSee('data-modal-url="'.e($editUrl).'"', false)
+            ->assertSee('value="'.$editUrl.'"', false);
+    }
+
+    public function test_modal_edit_returns_a_partial_and_ajax_update_returns_safe_json(): void
+    {
+        $department = (object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật', 'so_nhan_vien' => 0];
+        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock) use ($department): void {
+            $mock->shouldReceive('findOrFail')->once()->with(1)->andReturn($department);
+            $mock->shouldReceive('update')->once()->with(1, 'Nhân sự')->andReturnNull();
+        });
+
+        $this->get('/phong-ban/1/edit', ['X-Edit-Modal' => '1', 'X-Requested-With' => 'XMLHttpRequest'])
+            ->assertOk()
+            ->assertViewIs('backend.phongban.partials.edit-modal-content')
+            ->assertSee('data-simple-edit-form', false)
+            ->assertDontSee('<html', false);
+
+        $this->putJson('/phong-ban/1', ['ten_pb' => 'Nhân sự'])
+            ->assertOk()
+            ->assertJson(['success' => true, 'message' => 'Đã cập nhật phòng ban.'])
+            ->assertJsonMissingPath('redirect');
+    }
+
+    public function test_modal_update_domain_error_is_a_safe_form_level_422(): void
+    {
+        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('update')->once()->andThrow(new PhongBanDomainException(
+                'Tên phòng ban đã tồn tại.', 'PB_NAME_DUPLICATE', 'ten_pb',
+            ));
+        });
+
+        $this->putJson('/phong-ban/1', ['ten_pb' => 'Trùng'])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.ten_pb.0', 'Tên phòng ban đã tồn tại.')
+            ->assertJsonMissingPath('domain_code')
+            ->assertDontSee('PB_NAME_DUPLICATE');
+    }
+
+    public function test_full_edit_keeps_filtered_list_context_and_no_script_fallback_is_real(): void
+    {
+        $department = (object) ['ma_pb' => 1, 'ten_pb' => 'Kỹ thuật', 'so_nhan_vien' => 0];
+        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock) use ($department): void {
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator([$department], 1, 5, 2, ['pageName' => 'page']));
+            $mock->shouldReceive('findOrFail')->once()->with(1)->andReturn($department);
+        });
+
+        $this->get('/phong-ban?ten_pb=K%E1%BB%B9%20thu%E1%BA%ADt&page=2&so_dong=5')
+            ->assertOk()
+            ->assertSee('data-action="modal"', false)
+            ->assertSee('<noscript>', false);
+
+        $backUrl = route('backend.phongban.index', [
+            'ten_pb' => 'Kỹ thuật',
+            'page' => 2,
+            'so_dong' => 5,
+        ]);
+        $this->get('/phong-ban/1/edit?ten_pb=K%E1%BB%B9%20thu%E1%BA%ADt&page=2&so_dong=5')
+            ->assertOk()
+            ->assertSee('href="'.e($backUrl).'"', false)
+            ->assertSee('value="Kỹ thuật"', false);
     }
 
     public function test_empty_state_is_safe(): void

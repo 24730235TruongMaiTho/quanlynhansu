@@ -7,7 +7,9 @@ use App\Http\Requests\StorePhongBanRequest;
 use App\Http\Requests\ListPhongBanRequest;
 use App\Http\Requests\UpdatePhongBanRequest;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Throwable;
@@ -57,7 +59,7 @@ class PhongBanController extends Controller
         return redirect()->route('backend.phongban.index')->with('success', 'Đã thêm phòng ban.');
     }
 
-    public function edit(string $ma_pb): View
+    public function edit(Request $request, string $ma_pb): View
     {
         $departmentId = $this->departmentId($ma_pb);
 
@@ -73,10 +75,14 @@ class PhongBanController extends Controller
             abort(503);
         }
 
+        if ($request->header('X-Edit-Modal') === '1' || $request->ajax()) {
+            return view('backend.phongban.partials.edit-modal-content', compact('department'));
+        }
+
         return view('backend.phongban.edit', compact('department'));
     }
 
-    public function update(UpdatePhongBanRequest $request, string $ma_pb): RedirectResponse
+    public function update(UpdatePhongBanRequest $request, string $ma_pb): JsonResponse|RedirectResponse
     {
         $departmentId = $this->departmentId($ma_pb);
 
@@ -84,15 +90,45 @@ class PhongBanController extends Controller
             $this->departments->update($departmentId, $request->validated('ten_pb'));
         } catch (PhongBanDomainException $exception) {
             if ($exception->domainCode === 'PB_NOT_FOUND') {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Không tìm thấy phòng ban.',
+                        'errors' => ['phong_ban' => ['Không tìm thấy phòng ban.']],
+                    ], 404);
+                }
+
                 abort(404);
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                    'errors' => [$exception->field ?? 'phong_ban' => [$exception->getMessage()]],
+                ], 422);
             }
 
             return back()->withInput()->withErrors([
                 $exception->field ?? 'phong_ban' => $exception->getMessage(),
             ]);
         } catch (Throwable) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể cập nhật phòng ban lúc này. Vui lòng thử lại sau.',
+                ], 500);
+            }
+
             return back()->withInput()->withErrors([
                 'phong_ban' => 'Không thể cập nhật phòng ban lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã cập nhật phòng ban.',
             ]);
         }
 

@@ -30,3 +30,22 @@ test('row action select confirms before submitting a destructive form', () => {
     assert.equal(submitted, 1);
     assert.equal(select.selectedIndex, 0);
 });
+
+test('row action select delegates modal actions without navigating', () => {
+    const select = { selectedIndex: 1 };
+    const option = {
+        value: '/nhan-vien/00001/edit',
+        dataset: { action: 'modal', modalUrl: '/nhan-vien/00001/edit' },
+    };
+    let opened = null;
+
+    handleRowAction(select, option, {}, { href: '' }, null, {
+        modal: (trigger, source) => {
+            opened = { trigger, source };
+        },
+    });
+
+    assert.equal(opened.trigger, option);
+    assert.equal(opened.source, select);
+    assert.equal(select.selectedIndex, 0);
+});

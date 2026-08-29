@@ -11,6 +11,8 @@ use App\Http\Requests\StoreNhanVienRequest;
 use App\Http\Requests\UpdateNhanVienRequest;
 use App\Support\NhanVienAvatarPath;
 use App\Support\NhanVienScope;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
@@ -161,7 +163,7 @@ class NhanVienController extends Controller
             ]);
     }
 
-    public function edit(string $ma_nv): View
+    public function edit(Request $request, string $ma_nv): View
     {
         $employee = $this->findForCurrentActor($ma_nv);
 
@@ -223,7 +225,7 @@ class NhanVienController extends Controller
             // Legacy or malformed paths are never rendered as an image source.
         }
 
-        return view('backend.nhanvien.edit', [
+        $viewData = [
             'employee' => $employee,
             'lookups' => $lookups,
             'lookupError' => $lookupError,
@@ -231,25 +233,55 @@ class NhanVienController extends Controller
             'firstErrorField' => $firstErrorField,
             'firstErrorStep' => $firstErrorStep,
             'avatarUrl' => $avatarUrl,
-        ]);
+        ];
+
+        if ($request->header('X-Employee-Edit-Modal') === '1' || $request->ajax()) {
+            return view('backend.nhanvien.partials.edit-modal-content', $viewData);
+        }
+
+        return view('backend.nhanvien.edit', $viewData);
     }
 
-    public function update(UpdateNhanVienRequest $request, string $ma_nv): RedirectResponse
+    public function update(UpdateNhanVienRequest $request, string $ma_nv): JsonResponse|RedirectResponse
     {
         try {
             $this->employees->update($ma_nv, $request->validated());
         } catch (NhanVienDomainException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                    'errors' => [
+                        $exception->field ?? 'nhan_vien' => [$exception->getMessage()],
+                    ],
+                ], 422);
+            }
+
             return back()
                 ->withInput($request->safe()->except('anh_dai_dien'))
                 ->withErrors([
                     $exception->field ?? 'nhan_vien' => $exception->getMessage(),
                 ]);
         } catch (Throwable) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể cập nhật nhân viên lúc này. Vui lòng thử lại sau.',
+                ], 500);
+            }
+
             return back()
                 ->withInput($request->safe()->except('anh_dai_dien'))
                 ->withErrors([
                     'nhan_vien' => 'Không thể cập nhật nhân viên lúc này. Vui lòng thử lại sau.',
                 ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã cập nhật hồ sơ nhân viên.',
+            ]);
         }
 
         return redirect()

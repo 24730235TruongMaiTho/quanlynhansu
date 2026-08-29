@@ -162,6 +162,8 @@ class NhanVienShowTest extends TestCase
             ->assertOk()
             ->assertSee('Chỉnh sửa')
             ->assertSee('href="'.e($editUrl).'"', false)
+            ->assertSee('data-employee-edit-trigger', false)
+            ->assertSee('data-employee-edit-modal', false)
             ->assertSee('Xóa hoặc kết thúc')
             ->assertDontSee('Đặt lại mật khẩu');
     }

@@ -106,6 +106,126 @@ class NhanVienUpdateTest extends TestCase
             ->assertSessionHas('success', 'Đã cập nhật hồ sơ nhân viên.');
     }
 
+    public function test_modal_edit_request_returns_partial_without_layout(): void
+    {
+        $target = $this->employee();
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($target);
+            $mock->shouldReceive('lookups')->once()->andReturn($this->lookups());
+        });
+
+        $this->get('/nhan-vien/00001/edit', [
+            'X-Employee-Edit-Modal' => '1',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+            ->assertOk()
+            ->assertViewIs('backend.nhanvien.partials.edit-modal-content')
+            ->assertSee('data-employee-wizard', false)
+            ->assertSee('data-submit-employee', false)
+            ->assertDontSee('<html', false)
+            ->assertDontSee('/build/nhanvien.js', false);
+    }
+
+    public function test_modal_edit_partial_explains_missing_lookups_and_keeps_submit_locked(): void
+    {
+        $target = $this->employee();
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($target);
+            $mock->shouldReceive('lookups')->once()->andReturn([
+                'phong_ban' => [],
+                'chuc_vu' => [],
+                'trang_thai' => [],
+            ]);
+        });
+
+        $this->get('/nhan-vien/00001/edit', [
+            'X-Employee-Edit-Modal' => '1',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+            ->assertOk()
+            ->assertViewIs('backend.nhanvien.partials.edit-modal-content')
+            ->assertSee('Thiếu dữ liệu danh mục bắt buộc')
+            ->assertSee('Chưa thể cập nhật nhân viên cho tới khi có đủ:')
+            ->assertSee('Phòng ban')
+            ->assertSee('Chức vụ')
+            ->assertSee('disabled', false);
+    }
+
+    public function test_ajax_update_returns_safe_json_success_without_redirect_or_hash(): void
+    {
+        $target = $this->employee();
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('find')->once()->with('00001')->andReturn($target);
+        $this->app->instance(NhanVienRepositoryContract::class, $repository);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('update')->once()->withArgs(fn (string $maNv, array $validated): bool => $maNv === '00001'
+                && $validated['email'] === 'updated@example.test'
+                && ! array_key_exists('mat_khau', $validated)
+            )->andReturn($this->employee(['email' => 'updated@example.test']));
+        });
+
+        $this->putJson('/nhan-vien/00001', $this->validPayload([
+            'email' => ' UPDATED@EXAMPLE.TEST ',
+        ]))
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Đã cập nhật hồ sơ nhân viên.',
+            ])
+            ->assertJsonMissingPath('redirect')
+            ->assertJsonMissingPath('mat_khau')
+            ->assertJsonMissingPath('password');
+    }
+
+    public function test_ajax_validation_failure_returns_field_errors_without_calling_service(): void
+    {
+        $target = $this->employee();
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('find')->once()->with('00001')->andReturn($target);
+        $this->app->instance(NhanVienRepositoryContract::class, $repository);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('update');
+        });
+
+        $this->putJson('/nhan-vien/00001', $this->validPayload(['email' => 'not-an-email']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email')
+            ->assertJsonMissingPath('mat_khau');
+    }
+
+    public function test_ajax_domain_and_unknown_errors_are_safe_json(): void
+    {
+        $target = $this->employee();
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('find')->twice()->with('00001')->andReturn($target);
+        $this->app->instance(NhanVienRepositoryContract::class, $repository);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('update')->once()->andThrow(new NhanVienDomainException(
+                'Email đã được sử dụng.',
+                'NV_EMAIL_DUPLICATE',
+                'email',
+            ));
+            $mock->shouldReceive('update')->once()->andThrow(new RuntimeException(
+                'SQLSTATE private avatar path',
+            ));
+        });
+
+        $this->putJson('/nhan-vien/00001', $this->validPayload())
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Email đã được sử dụng.')
+            ->assertJsonPath('errors.email.0', 'Email đã được sử dụng.')
+            ->assertJsonMissingPath('domain_code')
+            ->assertDontSee('NV_EMAIL_DUPLICATE');
+
+        $this->putJson('/nhan-vien/00001', $this->validPayload())
+            ->assertStatus(500)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Không thể cập nhật nhân viên lúc này. Vui lòng thử lại sau.',
+            ])
+            ->assertDontSee('SQLSTATE');
+    }
+
     public function test_update_rejects_system_owned_fields_before_dispatching_service(): void
     {
         $target = $this->employee(['ma_vt' => 1]);
@@ -246,6 +366,7 @@ class NhanVienUpdateTest extends TestCase
             ->assertDontSee('name="mat_khau"', false)
             ->assertDontSee('name="mat_khau_hash"', false)
             ->assertDontSee('name="ngay_nghi_viec"', false)
+            ->assertSee('employee-review-row', false)
             ->assertDontSee('Đã nghỉ việc')
             ->assertDontSee('evil.example')
             ->assertSee('/build/nhanvien.js', false);

@@ -120,7 +120,84 @@ class ChucVuFeatureTest extends TestCase
             ->assertSee('Xóa')
             ->assertSee('«')
             ->assertSee('Trang cuối')
-            ->assertSee('data-confirm-message=', false);
+            ->assertSee('data-confirm-message=', false)
+            ->assertSee('<noscript>', false)
+            ->assertSee('data-action="modal"', false);
+    }
+
+    public function test_list_edit_action_is_an_on_demand_modal_with_a_real_fallback_url(): void
+    {
+        $position = (object) ['ma_cv' => 1, 'ten_cv' => 'Giám đốc', 'he_so_phu_cap' => '2.00', 'so_nhan_vien' => 0];
+        $this->mock(ChucVuServiceContract::class, function (MockInterface $mock) use ($position): void {
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator([$position], 1, 20, 1, ['pageName' => 'page']));
+        });
+
+        $editUrl = route('backend.chucvu.edit', 1);
+        $this->get('/chuc-vu')
+            ->assertOk()
+            ->assertSee('data-simple-edit-modal', false)
+            ->assertSee('data-action="modal"', false)
+            ->assertSee('data-modal-url="'.e($editUrl).'"', false)
+            ->assertSee('value="'.$editUrl.'"', false);
+    }
+
+    public function test_modal_edit_returns_a_partial_and_ajax_update_returns_safe_json(): void
+    {
+        $position = (object) ['ma_cv' => 1, 'ten_cv' => 'Giám đốc', 'he_so_phu_cap' => '2.00', 'so_nhan_vien' => 0];
+        $this->mock(ChucVuServiceContract::class, function (MockInterface $mock) use ($position): void {
+            $mock->shouldReceive('findOrFail')->once()->with(1)->andReturn($position);
+            $mock->shouldReceive('update')->once()->with(1, 'Trưởng phòng', '1.25')->andReturnNull();
+        });
+
+        $this->get('/chuc-vu/1/edit', ['X-Edit-Modal' => '1', 'X-Requested-With' => 'XMLHttpRequest'])
+            ->assertOk()
+            ->assertViewIs('backend.chucvu.partials.edit-modal-content')
+            ->assertSee('data-simple-edit-form', false)
+            ->assertDontSee('<html', false);
+
+        $this->putJson('/chuc-vu/1', ['ten_cv' => 'Trưởng phòng', 'he_so_phu_cap' => '1.25'])
+            ->assertOk()
+            ->assertJson(['success' => true, 'message' => 'Đã cập nhật chức vụ.'])
+            ->assertJsonMissingPath('redirect');
+    }
+
+    public function test_modal_update_domain_error_is_a_safe_form_level_422(): void
+    {
+        $this->mock(ChucVuServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('update')->once()->andThrow(new \App\Exceptions\ChucVuDomainException(
+                'Tên chức vụ đã tồn tại.', 'CV_NAME_DUPLICATE', 'ten_cv',
+            ));
+        });
+
+        $this->putJson('/chuc-vu/1', ['ten_cv' => 'Trùng', 'he_so_phu_cap' => '1.25'])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.ten_cv.0', 'Tên chức vụ đã tồn tại.')
+            ->assertJsonMissingPath('domain_code')
+            ->assertDontSee('CV_NAME_DUPLICATE');
+    }
+
+    public function test_full_edit_keeps_filtered_list_context_and_no_script_fallback_is_real(): void
+    {
+        $position = (object) ['ma_cv' => 1, 'ten_cv' => 'Giám đốc', 'he_so_phu_cap' => '2.00', 'so_nhan_vien' => 0];
+        $this->mock(ChucVuServiceContract::class, function (MockInterface $mock) use ($position): void {
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator([$position], 1, 5, 2, ['pageName' => 'page']));
+            $mock->shouldReceive('findOrFail')->once()->with(1)->andReturn($position);
+        });
+
+        $this->get('/chuc-vu?ten_cv=Gi%C3%A1m%20%C4%91%E1%BB%91c&page=2&so_dong=5')
+            ->assertOk()
+            ->assertSee('data-action="modal"', false)
+            ->assertSee('<noscript>', false);
+
+        $backUrl = route('backend.chucvu.index', [
+            'ten_cv' => 'Giám đốc',
+            'page' => 2,
+            'so_dong' => 5,
+        ]);
+        $this->get('/chuc-vu/1/edit?ten_cv=Gi%C3%A1m%20%C4%91%E1%BB%91c&page=2&so_dong=5')
+            ->assertOk()
+            ->assertSee('href="'.e($backUrl).'"', false)
+            ->assertSee('value="Giám đốc"', false);
     }
 
     public function test_store_update_and_delete_normalize_input_and_flash_success(): void

@@ -219,13 +219,14 @@
                                         @php
                                             $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);
                                             $destroyDialogId = 'employee-destroy-' . $dialogKey;
+                                            $editUrl = route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery);
                                         @endphp
                                         <label class="visually-hidden" for="employee-action-{{ $dialogKey }}">Thao tác với {{ $employee->ho_ten }}</label>
                                         <select class="form-select form-select-sm" id="employee-action-{{ $dialogKey }}" data-row-action-select>
                                             <option value="">Chọn thao tác</option>
                                             <option value="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" data-action="navigate">Xem</option>
                                             @if ($canEdit)
-                                                <option value="{{ route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" data-action="navigate">Chỉnh sửa</option>
+                                                <option value="{{ $editUrl }}" data-action="modal" data-modal-url="{{ $editUrl }}">Chỉnh sửa</option>
                                             @endif
                                             @if ($canDestroy && (string) auth()->id() !== (string) $employee->ma_nv)
                                                 <option value="dialog" data-action="dialog" data-dialog-id="{{ $destroyDialogId }}">Xóa hoặc kết thúc</option>
@@ -234,7 +235,7 @@
                                         <noscript>
                                             <a href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}">Xem</a>
                                             @if ($canEdit)
-                                                <a href="{{ route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery) }}">Chỉnh sửa</a>
+                                                <a href="{{ $editUrl }}">Chỉnh sửa</a>
                                             @endif
                                         </noscript>
                                         @if ($canDestroy && (string) auth()->id() !== (string) $employee->ma_nv)
@@ -293,6 +294,10 @@
                 </div>
             @endif
         </section>
+
+        @if ($canEdit)
+            @include('backend.nhanvien.partials.edit-modal')
+        @endif
     </main>
 @endsection
 

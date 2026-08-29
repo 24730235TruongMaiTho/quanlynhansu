@@ -5,7 +5,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "test:frontend": "node --test tests/Frontend/nghiphep/employee-response.test.js tests/Frontend/nhanvien/wizard-state.test.js tests/Frontend/nhanvien/confirm-actions.test.js tests/Frontend/nhanvien/filter-submit.test.js tests/Frontend/nhanvien/responsive-layout.test.js tests/Frontend/shared/list-filter.test.js tests/Frontend/shared/row-action-select.test.js tests/Frontend/phongban/phongban.test.js tests/Frontend/chucvu/chucvu.test.js tests/Frontend/vaitro/vaitro.test.js"
+        "test:frontend": "node --test tests/Frontend/nghiphep/employee-response.test.js tests/Frontend/nhanvien/edit-modal.test.js tests/Frontend/nhanvien/wizard-state.test.js tests/Frontend/nhanvien/confirm-actions.test.js tests/Frontend/nhanvien/filter-submit.test.js tests/Frontend/nhanvien/responsive-layout.test.js tests/Frontend/shared/edit-modal.test.js tests/Frontend/shared/list-filter.test.js tests/Frontend/shared/row-action-select.test.js tests/Frontend/phongban/phongban.test.js tests/Frontend/chucvu/chucvu.test.js tests/Frontend/vaitro/vaitro.test.js"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

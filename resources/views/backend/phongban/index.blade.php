@@ -8,6 +8,11 @@
         $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhongBanPermission::Sua->value);
         $canDelete = \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhongBanPermission::Xoa->value);
         $hasFilters = filled($filters['ten_pb']);
+        $listQuery = array_filter([
+            'ten_pb' => $filters['ten_pb'],
+            'page' => $filters['page'] > 1 ? $filters['page'] : null,
+            'so_dong' => $filters['so_dong'] !== 20 ? $filters['so_dong'] : null,
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="department-page-title">
@@ -118,7 +123,8 @@
                                             <select class="form-select form-select-sm" id="department-action-{{ $department->ma_pb }}" data-row-action-select>
                                                 <option value="">Chọn thao tác</option>
                                                 @if ($canEdit)
-                                                    <option value="{{ route('backend.phongban.edit', $department->ma_pb) }}" data-action="navigate">Sửa</option>
+                                                    @php($editUrl = route('backend.phongban.edit', ['ma_pb' => $department->ma_pb] + $listQuery))
+                                                    <option value="{{ $editUrl }}" data-action="modal" data-modal-url="{{ $editUrl }}">Sửa</option>
                                                 @endif
                                                 @if ($canDelete && ! $hasEmployees)
                                                     <option value="delete" data-action="delete" data-form-id="{{ $deleteId }}" data-confirm-message="Bạn có chắc muốn xóa phòng ban này?">Xóa</option>
@@ -126,6 +132,11 @@
                                                     <option value="" disabled title="Không thể xóa phòng ban đang có nhân viên">Xóa (đang có nhân viên)</option>
                                                 @endif
                                             </select>
+                                            @if ($canEdit)
+                                                <noscript>
+                                                    <a class="btn btn-sm btn-outline-primary mt-2" href="{{ $editUrl }}">Sửa</a>
+                                                </noscript>
+                                            @endif
                                             @if ($canDelete && ! $hasEmployees)
                                                 <form id="{{ $deleteId }}" method="POST" action="{{ route('backend.phongban.destroy', $department->ma_pb) }}" class="d-none" onsubmit="return confirm('Bạn có chắc muốn xóa phòng ban này?')">
                                                     @csrf
@@ -164,6 +175,13 @@
                 </div>
             @endif
         </section>
+
+        @if ($canEdit)
+            @include('backend.partials.simple-edit-modal', [
+                'modalId' => 'phong-ban-edit-modal',
+                'title' => 'Chỉnh sửa phòng ban',
+            ])
+        @endif
     </main>
 @endsection
 
