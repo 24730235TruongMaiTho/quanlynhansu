@@ -4,24 +4,38 @@
 --
 -- Creates/replaces:
 --   PROCEDURE sp_nhan_vien_danh_sach_phan_trang
+--   PROCEDURE sp_nghi_phep_danh_sach_phan_trang
 --
--- NOTE:
--- The procedure name is generic, but this file places it under NghiPhep
--- because the current NghiPhepService uses it for employee lookup/paging.
+-- SAFETY:
+-- - Explicitly selects database `quan_ly_nhan_su`.
+-- - Run only against the intended database after backup.
+-- - Routine DDL implicitly commits in MariaDB/MySQL.
 -- ============================================================================
+
+USE `quan_ly_nhan_su`;
 
 
 -- ============================================================================
 -- 0. READ-ONLY PREFLIGHT
 -- ============================================================================
+
+-- Required view / tables
 SELECT
     TABLE_NAME,
     TABLE_TYPE
 FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE()
-  AND TABLE_NAME = 'vw_danh_sach_nhan_vien_chi_tiet';
+  AND TABLE_NAME IN (
+                     'vw_danh_sach_nhan_vien_chi_tiet',
+                     'nghi_phep',
+                     'nhan_vien',
+                     'loai_phep',
+                     'chuc_vu'
+    )
+ORDER BY TABLE_NAME;
 
 
+-- Required columns of employee detail view
 SELECT
     COLUMN_NAME,
     DATA_TYPE
@@ -29,25 +43,29 @@ FROM information_schema.COLUMNS
 WHERE TABLE_SCHEMA = DATABASE()
   AND TABLE_NAME = 'vw_danh_sach_nhan_vien_chi_tiet'
   AND COLUMN_NAME IN (
-      'ma_nv',
-      'ho_ten',
-      'ma_pb',
-      'ten_pb',
-      'ma_cv',
-      'ten_cv'
-  )
+                      'ma_nv',
+                      'ho_ten',
+                      'ma_pb',
+                      'ten_pb',
+                      'ma_cv',
+                      'ten_cv'
+    )
 ORDER BY ORDINAL_POSITION;
 
 
 -- ============================================================================
 -- 0b. SEMANTIC PREFLIGHT
 -- ============================================================================
+
+DROP TEMPORARY TABLE IF EXISTS _nghi_phep_migration_preflight;
+
 CREATE TEMPORARY TABLE _nghi_phep_migration_preflight (
     check_name VARCHAR(96) NOT NULL PRIMARY KEY,
     check_ok TINYINT NOT NULL CHECK (check_ok = 1)
 ) ENGINE = InnoDB;
 
 
+-- Employee-detail view must exist
 INSERT INTO _nghi_phep_migration_preflight (
     check_name,
     check_ok
@@ -67,6 +85,7 @@ SELECT
     );
 
 
+-- Required columns of the employee-detail view must exist
 INSERT INTO _nghi_phep_migration_preflight (
     check_name,
     check_ok
@@ -80,14 +99,39 @@ SELECT
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = 'vw_danh_sach_nhan_vien_chi_tiet'
               AND COLUMN_NAME IN (
-                  'ma_nv',
-                  'ho_ten',
-                  'ma_pb',
-                  'ten_pb',
-                  'ma_cv',
-                  'ten_cv'
-              )
+                                  'ma_nv',
+                                  'ho_ten',
+                                  'ma_pb',
+                                  'ten_pb',
+                                  'ma_cv',
+                                  'ten_cv'
+                )
         ) = 6,
+        1,
+        0
+    );
+
+
+-- Required tables for leave approval paging must exist
+INSERT INTO _nghi_phep_migration_preflight (
+    check_name,
+    check_ok
+)
+SELECT
+    'leave_approval_dependencies',
+    IF(
+        (
+            SELECT COUNT(*)
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_TYPE = 'BASE TABLE'
+              AND TABLE_NAME IN (
+                                 'nghi_phep',
+                                 'nhan_vien',
+                                 'loai_phep',
+                                 'chuc_vu'
+                )
+        ) = 4,
         1,
         0
     );
@@ -101,8 +145,13 @@ ORDER BY check_name;
 -- ============================================================================
 -- 1. MIGRATION
 -- ============================================================================
+
 DELIMITER $$
 
+
+-- ----------------------------------------------------------------------------
+-- 1.1 PROCEDURE: sp_nhan_vien_danh_sach_phan_trang
+-- ----------------------------------------------------------------------------
 
 DROP PROCEDURE IF EXISTS sp_nhan_vien_danh_sach_phan_trang$$
 
@@ -117,91 +166,84 @@ BEGIN
     DECLARE v_page INT DEFAULT 1;
     DECLARE v_per_page INT DEFAULT 15;
     DECLARE v_offset INT DEFAULT 0;
+    DECLARE v_tu_khoa VARCHAR(255);
 
-    SET v_page =
-        IFNULL(
-            p_page,
-            1
-        );
-
-    SET v_per_page =
-        IFNULL(
-            p_per_page,
-            15
-        );
+    SET v_page = IFNULL(p_page, 1);
+    SET v_per_page = IFNULL(p_per_page, 15);
+    SET v_tu_khoa = NULLIF(TRIM(p_tu_khoa), '');
 
     IF v_page < 1 THEN
         SET v_page = 1;
-    END IF;
+END IF;
 
     IF v_per_page < 1 THEN
         SET v_per_page = 15;
-    END IF;
+END IF;
 
     IF v_per_page > 100 THEN
         SET v_per_page = 100;
-    END IF;
+END IF;
 
     SET v_offset =
         (v_page - 1) * v_per_page;
 
-    SET p_tu_khoa =
-        NULLIF(
-            TRIM(p_tu_khoa),
-            ''
-        );
+SELECT
+    nv.*,
+    COUNT(*) OVER() AS total_count
 
-    SELECT
-        nv.*,
-        COUNT(*) OVER() AS total_count
+FROM vw_danh_sach_nhan_vien_chi_tiet nv
 
-    FROM vw_danh_sach_nhan_vien_chi_tiet nv
-
-    WHERE
-        (
-            p_ma_pb IS NULL
+WHERE
+    (
+        p_ma_pb IS NULL
             OR nv.ma_pb = p_ma_pb
         )
-        AND (
-            p_ma_cv IS NULL
-            OR nv.ma_cv = p_ma_cv
-        )
-        AND (
-            p_tu_khoa IS NULL
+  AND (
+    p_ma_cv IS NULL
+        OR nv.ma_cv = p_ma_cv
+    )
+  AND (
+    v_tu_khoa IS NULL
 
-            OR nv.ma_nv LIKE CONCAT(
-                '%',
-                p_tu_khoa,
-                '%'
-            )
+        OR nv.ma_nv LIKE CONCAT(
+        '%',
+        v_tu_khoa,
+        '%'
+                         )
 
-            OR nv.ho_ten LIKE CONCAT(
-                '%',
-                p_tu_khoa,
-                '%'
-            )
+        OR nv.ho_ten LIKE CONCAT(
+        '%',
+        v_tu_khoa,
+        '%'
+                          )
 
-            OR nv.ten_pb LIKE CONCAT(
-                '%',
-                p_tu_khoa,
-                '%'
-            )
+        OR nv.ten_pb LIKE CONCAT(
+        '%',
+        v_tu_khoa,
+        '%'
+                          )
 
-            OR nv.ten_cv LIKE CONCAT(
-                '%',
-                p_tu_khoa,
-                '%'
-            )
-        )
+        OR nv.ten_cv LIKE CONCAT(
+        '%',
+        v_tu_khoa,
+        '%'
+                          )
+    )
 
-    ORDER BY
-        nv.ma_nv ASC
+ORDER BY
+    nv.ma_nv ASC
 
     LIMIT v_per_page
-    OFFSET v_offset;
+OFFSET v_offset;
 END$$
 
+
+-- ----------------------------------------------------------------------------
+-- 1.2 PROCEDURE: sp_nghi_phep_danh_sach_phan_trang
+-- ----------------------------------------------------------------------------
+
 DROP PROCEDURE IF EXISTS sp_nghi_phep_danh_sach_phan_trang$$
+
 CREATE PROCEDURE sp_nghi_phep_danh_sach_phan_trang(
     IN p_tu_khoa VARCHAR(100),
     IN p_ma_pb INT,
@@ -213,34 +255,62 @@ CREATE PROCEDURE sp_nghi_phep_danh_sach_phan_trang(
     IN p_per_page INT
 )
 BEGIN
+    DECLARE v_page INT DEFAULT 1;
+    DECLARE v_per_page INT DEFAULT 10;
     DECLARE v_offset INT DEFAULT 0;
     DECLARE v_total INT DEFAULT 0;
 
-    IF p_page IS NULL OR p_page < 1 THEN
-        SET p_page = 1;
+    DECLARE v_tu_khoa VARCHAR(100);
+    DECLARE v_tab VARCHAR(20);
+
+    SET v_page = IFNULL(p_page, 1);
+    SET v_per_page = IFNULL(p_per_page, 10);
+
+    SET v_tu_khoa =
+        NULLIF(
+            TRIM(p_tu_khoa),
+            ''
+        );
+
+    SET v_tab =
+        NULLIF(
+            TRIM(p_tab),
+            ''
+        );
+
+    IF v_page < 1 THEN
+        SET v_page = 1;
 END IF;
 
-    IF p_per_page IS NULL OR p_per_page < 1 THEN
-        SET p_per_page = 10;
+    IF v_per_page < 1 THEN
+        SET v_per_page = 10;
+END IF;
+
+    IF v_per_page > 100 THEN
+        SET v_per_page = 100;
+END IF;
+
+    IF v_tab IS NULL THEN
+        SET v_tab = 'pending';
 END IF;
 
     SET v_offset =
-        (p_page - 1) * p_per_page;
+        (v_page - 1) * v_per_page;
 
-    /* ============================
-       COUNT
-    ============================ */
 
-SELECT COUNT(*)
-INTO v_total
+    -- ========================================================================
+    -- COUNT
+    -- ========================================================================
 
-FROM nghi_phep np
+SELECT
+    COUNT(*)
+INTO
+    v_total
+FROM
+    nghi_phep np
 
-         INNER JOIN nhan_vien nv
-                    ON nv.ma_nv = np.ma_nv
-
-         LEFT JOIN loai_phep lp
-                   ON lp.ma_lp = np.ma_lp
+        INNER JOIN nhan_vien nv
+                   ON nv.ma_nv = np.ma_nv
 
 WHERE
     (
@@ -254,22 +324,24 @@ WHERE
     )
 
   AND (
-    p_tu_khoa IS NULL
-        OR TRIM(p_tu_khoa) = ''
+    v_tu_khoa IS NULL
 
         OR nv.ma_nv LIKE CONCAT(
         '%',
-        TRIM(p_tu_khoa),
+        v_tu_khoa,
         '%'
                          )
 
         OR nv.ho_ten LIKE CONCAT(
         '%',
-        TRIM(p_tu_khoa),
+        v_tu_khoa,
         '%'
                           )
     )
 
+  -- Interval overlap:
+  -- leave.den_ngay >= filter.from
+  -- leave.tu_ngay <= filter.to
   AND (
     p_tu_ngay IS NULL
         OR np.den_ngay >= p_tu_ngay
@@ -281,23 +353,23 @@ WHERE
     )
 
   AND (
-    p_tab IS NULL
-        OR p_tab = 'all'
+    v_tab = 'all'
 
         OR (
-        p_tab = 'pending'
+        v_tab = 'pending'
             AND np.trang_thai_duyet = 0
         )
 
         OR (
-        p_tab = 'processed'
+        v_tab = 'processed'
             AND np.trang_thai_duyet IN (1, 2)
         )
     );
 
-/* ============================
-   DATA
-============================ */
+
+-- ========================================================================
+-- DATA
+-- ========================================================================
 
 SELECT
     np.ma_np,
@@ -334,16 +406,17 @@ SELECT
 
     v_total AS total_count
 
-FROM nghi_phep np
+FROM
+    nghi_phep np
 
-         INNER JOIN nhan_vien nv
-                    ON nv.ma_nv = np.ma_nv
+        INNER JOIN nhan_vien nv
+                   ON nv.ma_nv = np.ma_nv
 
-         LEFT JOIN loai_phep lp
-                   ON lp.ma_lp = np.ma_lp
+        LEFT JOIN loai_phep lp
+                  ON lp.ma_lp = np.ma_lp
 
-         LEFT JOIN chuc_vu cv
-                   ON cv.ma_cv = nv.ma_cv
+        LEFT JOIN chuc_vu cv
+                  ON cv.ma_cv = nv.ma_cv
 
 WHERE
     (
@@ -357,18 +430,17 @@ WHERE
     )
 
   AND (
-    p_tu_khoa IS NULL
-        OR TRIM(p_tu_khoa) = ''
+    v_tu_khoa IS NULL
 
         OR nv.ma_nv LIKE CONCAT(
         '%',
-        TRIM(p_tu_khoa),
+        v_tu_khoa,
         '%'
                          )
 
         OR nv.ho_ten LIKE CONCAT(
         '%',
-        TRIM(p_tu_khoa),
+        v_tu_khoa,
         '%'
                           )
     )
@@ -384,16 +456,15 @@ WHERE
     )
 
   AND (
-    p_tab IS NULL
-        OR p_tab = 'all'
+    v_tab = 'all'
 
         OR (
-        p_tab = 'pending'
+        v_tab = 'pending'
             AND np.trang_thai_duyet = 0
         )
 
         OR (
-        p_tab = 'processed'
+        v_tab = 'processed'
             AND np.trang_thai_duyet IN (1, 2)
         )
     )
@@ -401,9 +472,10 @@ WHERE
 ORDER BY
     np.ma_np DESC
 
-    LIMIT p_per_page
+    LIMIT v_per_page
 OFFSET v_offset;
 END$$
+
 
 DELIMITER ;
 
@@ -411,6 +483,7 @@ DELIMITER ;
 -- ============================================================================
 -- 2. FINAL POSTCHECK
 -- ============================================================================
+
 SELECT
     ROUTINE_NAME,
     ROUTINE_TYPE,
@@ -418,7 +491,11 @@ SELECT
 FROM information_schema.ROUTINES
 WHERE ROUTINE_SCHEMA = DATABASE()
   AND ROUTINE_TYPE = 'PROCEDURE'
-  AND ROUTINE_NAME = 'sp_nhan_vien_danh_sach_phan_trang';
+  AND ROUTINE_NAME IN (
+                       'sp_nhan_vien_danh_sach_phan_trang',
+                       'sp_nghi_phep_danh_sach_phan_trang'
+    )
+ORDER BY ROUTINE_NAME;
 
 
 INSERT INTO _nghi_phep_migration_preflight (
@@ -426,15 +503,18 @@ INSERT INTO _nghi_phep_migration_preflight (
     check_ok
 )
 SELECT
-    'target_procedure',
+    'target_procedures',
     IF(
         (
             SELECT COUNT(*)
             FROM information_schema.ROUTINES
             WHERE ROUTINE_SCHEMA = DATABASE()
               AND ROUTINE_TYPE = 'PROCEDURE'
-              AND ROUTINE_NAME = 'sp_nhan_vien_danh_sach_phan_trang'
-        ) = 1,
+              AND ROUTINE_NAME IN (
+                                   'sp_nhan_vien_danh_sach_phan_trang',
+                                   'sp_nghi_phep_danh_sach_phan_trang'
+                )
+        ) = 2,
         1,
         0
     );
@@ -445,4 +525,4 @@ FROM _nghi_phep_migration_preflight
 ORDER BY check_name;
 
 
-DROP TEMPORARY TABLE _nghi_phep_migration_preflight;
+DROP TEMPORARY TABLE IF EXISTS _nghi_phep_migration_preflight;
