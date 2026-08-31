@@ -2,9 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
 
     const CHAM_CONG_API_URL = '/api/v1/cham-cong';
+    const CHAM_CONG_BATCH_API_URL = '/api/v1/cham-cong/batch';
     const CHAM_CONG_EXPORT_API_URL = '/api/v1/cham-cong/export';
     const CHAM_CONG_IMPORT_API_URL = '/api/v1/cham-cong/import';
-    const CHAM_CONG_IMPORT_TEMPLATE_API_URL = '/api/v1/cham-cong/template';
+    const CHAM_CONG_IMPORT_TEMPLATE_API_URL = '/api/v1/cham-cong/import-template';
     const NHAN_VIEN_API_URL = '/api/v1/cham-cong/nhan-vien';
     const PHONG_BAN_API_URL = '/api/v1/cham-cong/phong-ban';
 
@@ -316,6 +317,13 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedAttendanceId: null,
         selectedAttendanceRow: null,
 
+        /*
+         * Toàn bộ 28/29/30/31 ngày của kỳ đang chọn.
+         * Ngày chưa tồn tại DB có ma_cc = null và so_gio_lam = -1.
+         */
+        attendanceRows: [],
+        attendanceDirtyDates: new Set(),
+
         employeeAbortController: null,
         attendanceAbortController: null,
 
@@ -414,15 +422,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function requestJson(url, options = {}) {
+        const method = String(
+            options.method || 'GET'
+        ).toUpperCase();
+
+        const headers = {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(options.headers || {}),
+        };
+
+        const csrfToken = getCsrfToken();
+
+        if (
+            csrfToken &&
+            !['GET', 'HEAD'].includes(method)
+        ) {
+            headers['X-CSRF-TOKEN'] = csrfToken;
+        }
+
         const response = await fetch(url, {
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                ...(options.headers || {}),
-            },
-            credentials: 'same-origin',
             ...options,
+            method,
+            headers,
+            credentials: 'same-origin',
         });
 
         const contentType = response.headers.get('content-type') || '';
@@ -439,6 +463,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const validation = result.errors
                 ? Object.values(result.errors).flat().join(' ')
                 : null;
+
+            if (response.status === 419) {
+                throw new Error(
+                    'CSRF token đã hết hạn. Vui lòng tải lại trang.'
+                );
+            }
 
             throw new Error(
                 validation ||
@@ -517,13 +547,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function attendanceUrl(page = state.attendancePage) {
+    function attendanceUrl() {
+        /*
+         * Một tháng tối đa 31 record nên lấy toàn bộ record thật
+         * rồi merge với full calendar ở frontend.
+         */
         return buildUrl(CHAM_CONG_API_URL, {
             ma_nv: state.selectedEmployee?.ma_nv,
             thang: state.filters.thang,
             nam: state.filters.nam,
-            page,
-            per_page: state.attendancePerPage,
+            page: 1,
+            per_page: 100,
         });
     }
 
@@ -816,20 +850,223 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function normalizeAttendance(item) {
-        const hours = Number(item.so_gio_lam ?? 0);
+        const rawHours =
+            item.so_gio_lam ??
+            item.hours ??
+            0;
+
+        const hours = Number(rawHours);
 
         return {
-            ma_cc: item.ma_cc ?? item.id ?? item.ma_cham_cong ?? '',
-            ma_nv: item.ma_nv ?? state.selectedEmployee?.ma_nv ?? '',
-            ngay_lam: item.ngay_lam ?? item.ngay ?? '',
-            so_gio_lam: hours,
-            vao_muon: Number(item.vao_muon ?? 0),
-            ve_som: Number(item.ve_som ?? 0),
-            ngay_cong: Number(item.ngay_cong ?? item.so_ngay_cong ?? workday(hours)),
+            ma_cc:
+                item.ma_cc ??
+                item.id ??
+                item.ma_cham_cong ??
+                null,
+
+            ma_nv:
+                item.ma_nv ??
+                state.selectedEmployee?.ma_nv ??
+                '',
+
+            ngay_lam:
+                String(
+                    item.ngay_lam ??
+                    item.ngay ??
+                    ''
+                ).slice(0, 10),
+
+            so_gio_lam:
+                Number.isFinite(hours)
+                    ? hours
+                    : 0,
+
+            vao_muon:
+                Number(item.vao_muon ?? 0),
+
+            ve_som:
+                Number(item.ve_som ?? 0),
+
+            ngay_cong:
+                Number(
+                    item.ngay_cong ??
+                    item.so_ngay_cong ??
+                    workday(hours)
+                ),
+
+            _persisted: true,
+            _dirty: false,
         };
     }
 
+    function periodDates() {
+        const month =
+            Number(state.filters.thang);
+
+        const year =
+            Number(state.filters.nam);
+
+        if (
+            !Number.isInteger(month) ||
+            month < 1 ||
+            month > 12 ||
+            !Number.isInteger(year)
+        ) {
+            return [];
+        }
+
+        const totalDays =
+            new Date(
+                year,
+                month,
+                0
+            ).getDate();
+
+        return Array.from(
+            { length: totalDays },
+            (_, index) => {
+                const day = index + 1;
+
+                return (
+                    `${year}-` +
+                    `${String(month).padStart(2, '0')}-` +
+                    `${String(day).padStart(2, '0')}`
+                );
+            }
+        );
+    }
+
+    function buildFullMonthAttendance(existingRows) {
+        const existingByDate =
+            new Map();
+
+        existingRows
+            .map(normalizeAttendance)
+            .forEach((item) => {
+                if (item.ngay_lam) {
+                    existingByDate.set(
+                        item.ngay_lam,
+                        item
+                    );
+                }
+            });
+
+        return periodDates().map((date) => {
+            const existing =
+                existingByDate.get(date);
+
+            if (existing) {
+                return existing;
+            }
+
+            return {
+                ma_cc: null,
+                ma_nv:
+                    state.selectedEmployee?.ma_nv ??
+                    '',
+                ngay_lam: date,
+
+                /*
+                 * -1 = chưa có dữ liệu chấm công.
+                 * Không insert DB cho tới khi user đổi giá trị.
+                 */
+                so_gio_lam: -1,
+                vao_muon: 0,
+                ve_som: 0,
+                ngay_cong: 0,
+
+                _persisted: false,
+                _dirty: false,
+            };
+        });
+    }
+
+    function localAttendancePaginator() {
+        const total =
+            state.attendanceRows.length;
+
+        const perPage =
+            Math.max(
+                Number(state.attendancePerPage) || 15,
+                1
+            );
+
+        const lastPage =
+            Math.max(
+                Math.ceil(total / perPage),
+                1
+            );
+
+        state.attendancePage =
+            Math.min(
+                Math.max(
+                    Number(state.attendancePage) || 1,
+                    1
+                ),
+                lastPage
+            );
+
+        const fromIndex =
+            (state.attendancePage - 1) *
+            perPage;
+
+        const toIndex =
+            Math.min(
+                fromIndex + perPage,
+                total
+            );
+
+        return {
+            current_page:
+            state.attendancePage,
+            last_page:
+            lastPage,
+            per_page:
+            perPage,
+            total,
+            from:
+                total > 0
+                    ? fromIndex + 1
+                    : 0,
+            to:
+            toIndex,
+            data:
+                state.attendanceRows.slice(
+                    fromIndex,
+                    toIndex
+                ),
+        };
+    }
+
+    function findAttendanceByDate(date) {
+        return state.attendanceRows.find(
+            (item) =>
+                item.ngay_lam === date
+        ) || null;
+    }
+
+    function syncAttendanceUpdateButton() {
+        if (!elements.updateButton) {
+            return;
+        }
+
+        elements.updateButton.disabled =
+            !can(PERMISSION_CODES.UPDATE) ||
+            state.attendanceDirtyDates.size === 0;
+    }
+
     function statusBadge(item) {
+        if (item.so_gio_lam < 0) {
+            return `
+                <span
+                    class="badge rounded-pill text-bg-light border attendance-status-badge"
+                    title="Ngày này chưa có dữ liệu chấm công trong hệ thống."
+                >
+                    Chưa chấm
+                </span>
+            `;
+        }
+
         if (item.so_gio_lam >= 8) {
             return `
                 <span
@@ -867,53 +1104,145 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.attendanceTbody.innerHTML = `
                 <tr>
                     <td colspan="10" class="text-center text-secondary py-5">
-                        Nhân viên này chưa có dữ liệu chấm công trong kỳ.
+                        Không có ngày nào trong kỳ chấm công đã chọn.
                     </td>
                 </tr>
             `;
             return;
         }
 
-        elements.attendanceTbody.innerHTML = rows.map((raw) => {
-            const item = normalizeAttendance(raw);
+        elements.attendanceTbody.innerHTML = rows.map((item) => {
+            const generated =
+                !item._persisted;
+
+            const dirty =
+                state.attendanceDirtyDates.has(
+                    item.ngay_lam
+                );
+
+            const selected =
+                state.selectedAttendanceRow?.dataset?.date ===
+                item.ngay_lam;
 
             return `
-                <tr data-attendance-row data-id="${escapeHtml(item.ma_cc)}">
+                <tr
+                    data-attendance-row
+                    data-id="${escapeHtml(item.ma_cc ?? '')}"
+                    data-date="${escapeHtml(item.ngay_lam)}"
+                    class="${
+                selected
+                    ? 'table-primary '
+                    : ''
+            }${
+                generated
+                    ? 'attendance-generated-row '
+                    : ''
+            }${
+                dirty
+                    ? 'attendance-dirty-row'
+                    : ''
+            }"
+                >
                     <td>
-                        <input class="form-check-input attendance-radio"
-                               type="radio"
-                               name="selected-attendance"
-                               ${canAny(
-                PERMISSION_CODES.UPDATE,
-                PERMISSION_CODES.DELETE
-            ) ? '' : 'disabled'}>
+                        <input
+                            class="form-check-input attendance-radio"
+                            type="radio"
+                            name="selected-attendance"
+                            ${
+                canAny(
+                    PERMISSION_CODES.UPDATE,
+                    PERMISSION_CODES.DELETE
+                )
+                    ? ''
+                    : 'disabled'
+            }
+                            ${selected ? 'checked' : ''}
+                        >
                     </td>
-                    <td class="fw-semibold">${escapeHtml(item.ma_cc)}</td>
+
+                    <td class="fw-semibold">
+                        ${
+                item.ma_cc
+                    ? escapeHtml(item.ma_cc)
+                    : `
+                                    <span class="attendance-record-label">
+                                        Chưa lưu
+                                    </span>
+                                `
+            }
+
+                        ${
+                dirty
+                    ? `
+                                    <span class="badge text-bg-warning attendance-row-dirty-badge ms-1">
+                                        Đã sửa
+                                    </span>
+                                `
+                    : ''
+            }
+                    </td>
+
                     <td>${escapeHtml(item.ma_nv)}</td>
                     <td>${formatDate(item.ngay_lam)}</td>
                     <td>${weekday(item.ngay_lam)}</td>
+
                     <td class="text-end">
-                        <input class="form-control form-control-sm text-end attendance-edit-input"
-                               type="number" min="0" max="24" step="1"
-                               data-field="so_gio_lam"
-                               value="${escapeHtml(item.so_gio_lam)}"
-                               disabled>
+                        <input
+                            class="form-control form-control-sm text-end attendance-edit-input"
+                            type="number"
+                            min="-1"
+                            max="24"
+                            step="1"
+                            data-field="so_gio_lam"
+                            data-date="${escapeHtml(item.ngay_lam)}"
+                            data-empty="${item.so_gio_lam < 0 ? 'true' : 'false'}"
+                            value="${escapeHtml(item.so_gio_lam)}"
+                            ${
+                can(PERMISSION_CODES.UPDATE)
+                    ? ''
+                    : 'disabled'
+            }
+                        >
                     </td>
+
                     <td class="text-center">
-                        <input class="form-check-input"
-                               type="checkbox"
-                               data-field="vao_muon"
-                               ${item.vao_muon ? 'checked' : ''}
-                               disabled>
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            data-field="vao_muon"
+                            data-date="${escapeHtml(item.ngay_lam)}"
+                            ${item.vao_muon ? 'checked' : ''}
+                            ${
+                can(PERMISSION_CODES.UPDATE)
+                    ? ''
+                    : 'disabled'
+            }
+                        >
                     </td>
+
                     <td class="text-center">
-                        <input class="form-check-input"
-                               type="checkbox"
-                               data-field="ve_som"
-                               ${item.ve_som ? 'checked' : ''}
-                               disabled>
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            data-field="ve_som"
+                            data-date="${escapeHtml(item.ngay_lam)}"
+                            ${item.ve_som ? 'checked' : ''}
+                            ${
+                can(PERMISSION_CODES.UPDATE)
+                    ? ''
+                    : 'disabled'
+            }
+                        >
                     </td>
-                    <td class="text-end fw-semibold">${number(item.ngay_cong)}</td>
+
+                    <td class="text-end fw-semibold">
+                        ${number(
+                item.so_gio_lam < 0
+                    ? 0
+                    : workday(item.so_gio_lam)
+            )}
+                    </td>
+
                     <td>${statusBadge(item)}</td>
                 </tr>
             `;
@@ -921,50 +1250,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSummary(result, rows) {
-        const summary =
-            result?.summary ??
-            result?.meta?.summary ??
-            result?.data?.summary ??
-            null;
-
-        if (summary) {
-            elements.totalHours.textContent =
-                number(summary.tong_gio_lam ?? summary.total_hours ?? 0);
-
-            elements.lateCount.textContent =
-                number(summary.so_lan_vao_muon ?? summary.late_count ?? 0, 0);
-
-            elements.earlyCount.textContent =
-                number(summary.so_lan_ve_som ?? summary.early_count ?? 0, 0);
-
-            elements.avgDays.textContent =
-                number(summary.so_ngay_cham_cong ?? summary.workdays ?? 0);
-
-            return;
-        }
-
-        const normalized = rows.map(normalizeAttendance);
+        const enteredRows =
+            rows.filter(
+                (item) =>
+                    Number(item.so_gio_lam) >= 0
+            );
 
         elements.totalHours.textContent = number(
-            normalized.reduce((sum, x) => sum + x.so_gio_lam, 0)
+            enteredRows.reduce(
+                (sum, item) =>
+                    sum +
+                    Number(item.so_gio_lam || 0),
+                0
+            )
         );
 
         elements.lateCount.textContent = number(
-            normalized.filter((x) => x.vao_muon).length,
+            enteredRows.filter(
+                (item) =>
+                    Number(item.vao_muon) === 1
+            ).length,
             0
         );
 
         elements.earlyCount.textContent = number(
-            normalized.filter((x) => x.ve_som).length,
+            enteredRows.filter(
+                (item) =>
+                    Number(item.ve_som) === 1
+            ).length,
             0
         );
 
         elements.avgDays.textContent = number(
-            normalized.reduce((sum, x) => sum + x.ngay_cong, 0)
+            enteredRows.reduce(
+                (sum, item) =>
+                    sum +
+                    workday(item.so_gio_lam),
+                0
+            )
         );
     }
 
-    async function loadAttendance(page = 1) {
+    async function loadAttendance(
+        page = 1,
+        {
+            reloadFromServer = true,
+        } = {}
+    ) {
         if (
             !can(PERMISSION_CODES.READ) ||
             !state.selectedEmployee?.ma_nv
@@ -972,13 +1304,46 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        state.attendancePage = Math.max(Number(page) || 1, 1);
-        state.selectedAttendanceId = null;
-        state.selectedAttendanceRow = null;
-        elements.updateButton.disabled = true;
+        state.attendancePage =
+            Math.max(
+                Number(page) || 1,
+                1
+            );
+
+        clearSelectedAttendance();
+
+        if (!reloadFromServer) {
+            const local =
+                localAttendancePaginator();
+
+            renderAttendanceRows(
+                local.data
+            );
+
+            updateSummary(
+                null,
+                state.attendanceRows
+            );
+
+            renderPageInfo(
+                elements.attendancePageInfo,
+                local,
+                'ngày'
+            );
+
+            renderPagination(
+                elements.attendancePagination,
+                local,
+                'attendance'
+            );
+
+            syncAttendanceUpdateButton();
+            return;
+        }
 
         state.attendanceAbortController?.abort();
-        state.attendanceAbortController = new AbortController();
+        state.attendanceAbortController =
+            new AbortController();
 
         elements.attendanceTbody.innerHTML = `
             <tr>
@@ -990,54 +1355,94 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         try {
-            const response = await fetch(attendanceUrl(), {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                signal: state.attendanceAbortController.signal,
-            });
-
-            const contentType = response.headers.get('content-type') || '';
-
-            if (!contentType.includes('application/json')) {
-                throw new Error(`API chấm công không trả JSON. HTTP ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (!response.ok || result.success === false) {
-                throw new Error(result.message || 'Không tải được bảng chấm công.');
-            }
-
-            const rows = extractRows(result);
-            const paginator = paginatorOf(result);
-
-            renderAttendanceRows(rows);
-            updateSummary(result, rows);
-
-            if (paginator) {
-                state.attendancePage = Number(paginator.current_page || 1);
-                state.attendancePerPage =
-                    Number(paginator.per_page || state.attendancePerPage);
-
-                if (elements.attendancePerPage) {
-                    elements.attendancePerPage.value =
-                        String(state.attendancePerPage);
+            const response = await fetch(
+                attendanceUrl(),
+                {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    signal:
+                    state.attendanceAbortController.signal,
                 }
+            );
 
-                renderPageInfo(elements.attendancePageInfo, paginator, 'bản ghi');
-                renderPagination(elements.attendancePagination, paginator, 'attendance');
-            } else {
-                elements.attendancePageInfo.textContent =
-                    `Hiển thị ${rows.length} trên ${rows.length} bản ghi`;
+            const contentType =
+                response.headers.get(
+                    'content-type'
+                ) || '';
 
-                elements.attendancePagination.innerHTML = '';
+            if (
+                !contentType.includes(
+                    'application/json'
+                )
+            ) {
+                throw new Error(
+                    `API chấm công không trả JSON. HTTP ${response.status}`
+                );
             }
+
+            const result =
+                await response.json();
+
+            if (
+                !response.ok ||
+                result.success === false
+            ) {
+                throw new Error(
+                    result.message ||
+                    'Không tải được bảng chấm công.'
+                );
+            }
+
+            const existingRows =
+                extractRows(result);
+
+            /*
+             * Dựng full 28/29/30/31 ngày và merge record DB.
+             */
+            state.attendanceRows =
+                buildFullMonthAttendance(
+                    existingRows
+                );
+
+            state.attendanceDirtyDates.clear();
+
+            const local =
+                localAttendancePaginator();
+
+            renderAttendanceRows(
+                local.data
+            );
+
+            updateSummary(
+                result,
+                state.attendanceRows
+            );
+
+            renderPageInfo(
+                elements.attendancePageInfo,
+                local,
+                'ngày'
+            );
+
+            renderPagination(
+                elements.attendancePagination,
+                local,
+                'attendance'
+            );
+
+            syncAttendanceUpdateButton();
         } catch (error) {
-            if (error.name === 'AbortError') return;
+            if (error.name === 'AbortError') {
+                return;
+            }
 
             console.error(error);
+
+            state.attendanceRows = [];
+            state.attendanceDirtyDates.clear();
 
             elements.attendanceTbody.innerHTML = `
                 <tr>
@@ -1047,8 +1452,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
 
-            elements.attendancePageInfo.textContent = 'Hiển thị 0 trên 0 bản ghi';
-            elements.attendancePagination.innerHTML = '';
+            elements.attendancePageInfo.textContent =
+                'Hiển thị 0 trên 0 ngày';
+
+            elements.attendancePagination.innerHTML =
+                '';
+
+            syncAttendanceUpdateButton();
         }
     }
 
@@ -1056,13 +1466,11 @@ document.addEventListener('DOMContentLoaded', () => {
         state.selectedAttendanceId = null;
         state.selectedAttendanceRow = null;
 
-        if (elements.updateButton) {
-            elements.updateButton.disabled = true;
-        }
-
         if (elements.deleteButton) {
             elements.deleteButton.disabled = true;
         }
+
+        syncAttendanceUpdateButton();
     }
 
     function selectAttendance(row) {
@@ -1075,14 +1483,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const date =
+            row.dataset.date;
+
+        const item =
+            findAttendanceByDate(date);
+
         state.selectedAttendanceId =
-            row.dataset.id;
+            item?.ma_cc
+                ? String(item.ma_cc)
+                : null;
 
         state.selectedAttendanceRow =
             row;
 
         elements.attendanceTbody
-            .querySelectorAll('[data-attendance-row]')
+            .querySelectorAll(
+                '[data-attendance-row]'
+            )
             .forEach((currentRow) => {
                 const selected =
                     currentRow === row;
@@ -1100,26 +1518,76 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (radio) {
                     radio.checked = selected;
                 }
-
-                currentRow
-                    .querySelectorAll('[data-field]')
-                    .forEach((control) => {
-                        control.disabled = !(
-                            selected &&
-                            can(PERMISSION_CODES.UPDATE)
-                        );
-                    });
             });
-
-        if (elements.updateButton) {
-            elements.updateButton.disabled =
-                !can(PERMISSION_CODES.UPDATE);
-        }
 
         if (elements.deleteButton) {
             elements.deleteButton.disabled =
-                !can(PERMISSION_CODES.DELETE);
+                !(
+                    can(PERMISSION_CODES.DELETE) &&
+                    item?._persisted &&
+                    item?.ma_cc
+                );
         }
+
+        syncAttendanceUpdateButton();
+    }
+
+    function markAttendanceDirty(
+        date,
+        field,
+        value
+    ) {
+        const item =
+            findAttendanceByDate(date);
+
+        if (!item) {
+            return;
+        }
+
+        if (field === 'so_gio_lam') {
+            const hours =
+                Number(value);
+
+            if (!Number.isFinite(hours)) {
+                return;
+            }
+
+            item.so_gio_lam = hours;
+            item.ngay_cong =
+                hours >= 0
+                    ? workday(hours)
+                    : 0;
+        }
+
+        if (field === 'vao_muon') {
+            item.vao_muon =
+                value ? 1 : 0;
+        }
+
+        if (field === 've_som') {
+            item.ve_som =
+                value ? 1 : 0;
+        }
+
+        item._dirty = true;
+
+        state.attendanceDirtyDates.add(
+            date
+        );
+
+        const local =
+            localAttendancePaginator();
+
+        renderAttendanceRows(
+            local.data
+        );
+
+        updateSummary(
+            null,
+            state.attendanceRows
+        );
+
+        syncAttendanceUpdateButton();
     }
 
     async function updateSelectedAttendance() {
@@ -1132,48 +1600,192 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const row = state.selectedAttendanceRow;
+        const dirtyRows =
+            state.attendanceRows.filter(
+                (item) =>
+                    state.attendanceDirtyDates.has(
+                        item.ngay_lam
+                    )
+            );
 
-        if (!row || !state.selectedAttendanceId) return;
-
-        const hoursInput = row.querySelector('[data-field="so_gio_lam"]');
-        const lateInput = row.querySelector('[data-field="vao_muon"]');
-        const earlyInput = row.querySelector('[data-field="ve_som"]');
-
-        const hours = Number(hoursInput.value);
-
-        if (!Number.isFinite(hours) || hours < 0 || hours > 24) {
-            window.alert('Số giờ làm phải nằm trong khoảng 0 đến 24.');
+        if (!dirtyRows.length) {
             return;
         }
 
-        const oldLabel = elements.updateButton.textContent;
+        const invalid =
+            dirtyRows.find(
+                (item) =>
+                    !Number.isFinite(
+                        Number(item.so_gio_lam)
+                    ) ||
+                    Number(item.so_gio_lam) > 24 ||
+                    Number(item.so_gio_lam) < -1
+            );
 
-        elements.updateButton.disabled = true;
-        elements.updateButton.textContent = 'Đang cập nhật...';
+        if (invalid) {
+            window.alert(
+                `Số giờ làm ngày ${formatDate(invalid.ngay_lam)} phải nằm trong khoảng -1 đến 24.`
+            );
+            return;
+        }
 
-        try {
-            await requestJson(
-                `${CHAM_CONG_API_URL}/${encodeURIComponent(state.selectedAttendanceId)}`,
-                {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        so_gio_lam: hours,
-                        vao_muon: lateInput.checked ? 1 : 0,
-                        ve_som: earlyInput.checked ? 1 : 0,
-                    }),
+        /*
+         * Chỉ gửi row thực sự cần xử lý:
+         *
+         * Existing row:
+         * - gửi cả khi đổi về -1
+         * - backend hiểu -1 = delete
+         *
+         * Generated row:
+         * - chỉ gửi khi user đã nhập >= 0
+         * - generated row vẫn -1 thì không có gì phải lưu
+         */
+        const rowsToSave =
+            dirtyRows.filter(
+                (item) =>
+                    item._persisted ||
+                    Number(item.so_gio_lam) >= 0
+            );
+
+        if (!rowsToSave.length) {
+            dirtyRows.forEach(
+                (item) => {
+                    item._dirty = false;
+
+                    state.attendanceDirtyDates.delete(
+                        item.ngay_lam
+                    );
                 }
             );
 
+            loadAttendance(
+                state.attendancePage,
+                {
+                    reloadFromServer: false,
+                }
+            );
+
+            return;
+        }
+
+        const payload = {
+            ma_nv:
+            state.selectedEmployee.ma_nv,
+
+            thang:
+                Number(state.filters.thang),
+
+            nam:
+                Number(state.filters.nam),
+
+            /*
+             * Chỉ gửi những ngày user đã thay đổi.
+             *
+             * Không gửi full 28/29/30/31 ngày.
+             */
+            rows:
+                rowsToSave.map(
+                    (item) => ({
+                        ma_cc:
+                            item.ma_cc
+                                ? Number(item.ma_cc)
+                                : null,
+
+                        ngay_lam:
+                        item.ngay_lam,
+
+                        so_gio_lam:
+                            Number(item.so_gio_lam),
+
+                        vao_muon:
+                            Number(item.vao_muon) === 1
+                                ? 1
+                                : 0,
+
+                        ve_som:
+                            Number(item.ve_som) === 1
+                                ? 1
+                                : 0,
+                    })
+                ),
+        };
+
+        const oldLabel =
+            elements.updateButton.textContent;
+
+        elements.updateButton.disabled =
+            true;
+
+        elements.updateButton.textContent =
+            `Đang lưu ${payload.rows.length} ngày...`;
+
+        try {
+            /*
+             * CHỈ MỘT HTTP REQUEST.
+             *
+             * Backend tự phân loại:
+             * - insert
+             * - update
+             * - delete (-1)
+             *
+             * và xử lý trong transaction.
+             */
+            const result =
+                await requestJson(
+                    CHAM_CONG_BATCH_API_URL,
+                    {
+                        method: 'PUT',
+
+                        body:
+                            JSON.stringify(
+                                payload
+                            ),
+                    }
+                );
+
+            const data =
+                result?.data ||
+                {};
+
+            console.log(
+                'Batch attendance saved:',
+                data
+            );
+
+            /*
+             * Reload sau khi transaction thành công
+             * để lấy ma_cc mới và summary chính xác.
+             */
             await Promise.all([
-                loadAttendance(state.attendancePage),
-                loadEmployees(state.employeePage),
+                loadAttendance(
+                    state.attendancePage,
+                    {
+                        reloadFromServer: true,
+                    }
+                ),
+
+                loadEmployees(
+                    state.employeePage
+                ),
             ]);
         } catch (error) {
-            console.error(error);
-            window.alert(error.message);
+            console.error(
+                'Batch attendance save failed:',
+                error
+            );
+
+            /*
+             * Backend rollback toàn batch nên dirty state
+             * vẫn giữ nguyên để user có thể sửa rồi save lại.
+             */
+            window.alert(
+                error.message
+            );
         } finally {
-            elements.updateButton.textContent = oldLabel;
+            elements.updateButton.textContent =
+                oldLabel;
+
+            syncAttendanceUpdateButton();
         }
     }
 
@@ -1188,6 +1800,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!state.selectedAttendanceId) {
+            window.alert(
+                'Ngày được chọn chưa có bản ghi trong hệ thống nên không cần xóa.'
+            );
             return;
         }
 
@@ -1273,7 +1888,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (button.dataset.paginationType === 'employee') {
             loadEmployees(page);
         } else {
-            loadAttendance(page);
+            loadAttendance(
+                page,
+                {
+                    reloadFromServer: false,
+                }
+            );
         }
     }
 
@@ -2368,6 +2988,70 @@ document.addEventListener('DOMContentLoaded', () => {
         selectAttendance(row);
     });
 
+    elements.attendanceTbody.addEventListener(
+        'change',
+        (event) => {
+            const control =
+                event.target.closest(
+                    '[data-field][data-date]'
+                );
+
+            if (
+                !control ||
+                !can(PERMISSION_CODES.UPDATE)
+            ) {
+                return;
+            }
+
+            if (
+                control.dataset.field ===
+                'so_gio_lam'
+            ) {
+                const hours =
+                    Number(control.value);
+
+                if (
+                    !Number.isFinite(hours) ||
+                    hours < -1 ||
+                    hours > 24
+                ) {
+                    window.alert(
+                        'Số giờ làm phải nằm trong khoảng -1 đến 24.'
+                    );
+                    return;
+                }
+
+                markAttendanceDirty(
+                    control.dataset.date,
+                    'so_gio_lam',
+                    hours
+                );
+            }
+
+            if (
+                control.dataset.field ===
+                'vao_muon'
+            ) {
+                markAttendanceDirty(
+                    control.dataset.date,
+                    'vao_muon',
+                    control.checked
+                );
+            }
+
+            if (
+                control.dataset.field ===
+                've_som'
+            ) {
+                markAttendanceDirty(
+                    control.dataset.date,
+                    've_som',
+                    control.checked
+                );
+            }
+        }
+    );
+
     elements.employeePagination?.addEventListener('click', paginationClick);
     elements.attendancePagination?.addEventListener('click', paginationClick);
 
@@ -2388,7 +3072,12 @@ document.addEventListener('DOMContentLoaded', () => {
         state.attendancePerPage = value;
 
         if (state.selectedEmployee) {
-            loadAttendance(1);
+            loadAttendance(
+                1,
+                {
+                    reloadFromServer: false,
+                }
+            );
         }
     });
 
