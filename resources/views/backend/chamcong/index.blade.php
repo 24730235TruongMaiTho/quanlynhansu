@@ -83,7 +83,7 @@
                     data-attendance-permission="ChamCong.Update"
                     hidden
                 >
-                    Cập nhật chấm công
+                    Lưu thay đổi chấm công
                 </button>
 
                 <button
@@ -264,7 +264,7 @@
                 <div>
                     <h2 class="h6 fw-semibold mb-1" id="table-title">Bảng chấm công</h2>
                     <p class="small text-secondary mb-0" id="attendance-description">
-                        Chọn nhân viên ở bảng phía trên để tải dữ liệu chấm công.
+                        Chọn nhân viên để xem toàn bộ ngày trong kỳ. Ngày chưa có dữ liệu sẽ có số giờ làm mặc định -1.
                     </p>
                 </div>
 
@@ -918,6 +918,31 @@
                 min-height: 160px;
             }
         }
+
+        .attendance-page .attendance-generated-row > * {
+            background: #f6f8fa;
+        }
+
+        .attendance-page .attendance-generated-row .attendance-record-label {
+            color: #8c959f;
+            font-style: italic;
+            white-space: nowrap;
+        }
+
+        .attendance-page .attendance-dirty-row > * {
+            background: #fff8c5 !important;
+        }
+
+        .attendance-page .attendance-edit-input[data-empty="true"] {
+            color: #8c959f;
+            font-weight: 600;
+        }
+
+        .attendance-page .attendance-row-dirty-badge {
+            font-size: .6875rem;
+            vertical-align: middle;
+        }
+
     </style>
 @endsection
 

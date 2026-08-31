@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Contracts\NhanVienServiceContract;
+use App\Http\Requests\BatchSaveChamCongRequest;
 use App\Services\ChamCongService;
 use App\Services\ChamCongExportService;
 use App\Services\ChamCongImportService;
@@ -614,6 +615,28 @@ class ChamCongController extends Controller
             ], 500);
         }
     }
+
+    public function batchSave(
+        BatchSaveChamCongRequest $request
+    ): \Illuminate\Http\JsonResponse {
+        $result =
+            $this->chamCongService
+                ->saveBatchAttendance(
+                    $request->validated()
+                );
+
+        if (! $result['success']) {
+            return response()->json(
+                $result,
+                422
+            );
+        }
+
+        return response()->json(
+            $result
+        );
+    }
+
 
     // ...existing code...
     private function nullIfEmpty(mixed $value): mixed

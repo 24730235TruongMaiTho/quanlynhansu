@@ -116,6 +116,12 @@ Route::middleware('api')
                 )->name(
                     'api.v1.cham-cong.import'
                 );
+
+                Route::put(
+                    'batch',
+                    [ChamCongController::class, 'batchSave']
+                )->name('api.v1.cham-cong.batch');
+
             });
 
         Route::apiResource(
