@@ -259,46 +259,100 @@ document.addEventListener(
                 view;
         }
 
+        function csrfToken() {
+            return document
+                .querySelector(
+                    'meta[name="csrf-token"]'
+                )
+                ?.getAttribute('content') || null;
+        }
+
         async function requestJson(
             url,
             options = {}
         ) {
-            const response =
-                await fetch(
-                    url,
-                    {
-                        headers: {
-                            Accept:
-                                'application/json',
+            const method = String(
+                options.method || 'GET'
+            ).toUpperCase();
 
-                            'Content-Type':
-                                'application/json',
+            const headers = {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(options.headers || {}),
+            };
 
-                            'X-Requested-With':
-                                'XMLHttpRequest',
+            const token = csrfToken();
 
-                            ...(options.headers ||
-                                {}),
-                        },
+            if (
+                token &&
+                !['GET', 'HEAD'].includes(method)
+            ) {
+                headers['X-CSRF-TOKEN'] =
+                    token;
+            }
 
-                        credentials:
-                            'same-origin',
+            const response = await fetch(
+                url,
+                {
+                    ...options,
+                    method,
+                    headers,
 
-                        ...options,
-                    }
+                    credentials:
+                        'same-origin',
+                }
+            );
+
+            const contentType =
+                response.headers.get(
+                    'content-type'
+                ) || '';
+
+            if (
+                !contentType.includes(
+                    'application/json'
+                )
+            ) {
+                const text =
+                    await response.text();
+
+                console.error(
+                    'API trả về HTML/text:',
+                    text
                 );
+
+                throw new Error(
+                    `API không trả JSON. HTTP ${response.status}`
+                );
+            }
 
             const result =
                 await response.json();
 
             if (
                 !response.ok ||
-                result.success ===
-                false
+                result.success === false
             ) {
+                const validation =
+                    result.errors
+                        ? Object.values(
+                            result.errors
+                        )
+                            .flat()
+                            .join(' ')
+                        : null;
+
+                if (response.status === 419) {
+                    throw new Error(
+                        'CSRF token đã hết hạn. Vui lòng tải lại trang.'
+                    );
+                }
+
                 throw new Error(
+                    validation ||
                     result.message ||
-                    'Request thất bại.'
+                    `Request thất bại. HTTP ${response.status}`
                 );
             }
 
