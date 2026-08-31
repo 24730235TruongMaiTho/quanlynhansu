@@ -140,7 +140,7 @@
                     <li class="nav-item"><a href="{{ route('backend.vaitro.index') }}" class="nav-link"><i class="bi bi-person-gear"></i><span class="nav-title">Danh sách vai trò</span></a></li>
                     @endif
                     @if (app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'PhanQuyen'))
-                    <li class="nav-item"><a href="{{ route('backend.taikhoan.index') }}" class="nav-link"><i class="bi bi-key-fill"></i><span class="nav-title">Phân quyền tài khoản</span></a></li>
+                    <li class="nav-item"><a href="{{ route('backend.taikhoan.index') }}" class="nav-link"><i class="bi bi-person-check-fill"></i><span class="nav-title">Gán vai trò tài khoản</span></a></li>
                     @endif
                 </ul>
             </li>

@@ -202,6 +202,41 @@ class NhanVienIndexTest extends TestCase
             ->assertSee('Trang cuối');
     }
 
+    public function test_index_renders_on_demand_edit_modal_trigger_with_progressive_fallback(): void
+    {
+        $employee = (array) $this->employeePaginator()->items()[0];
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator([$employee]));
+            $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
+        });
+
+        $editUrl = route('backend.nhanvien.edit', ['ma_nv' => '00001']);
+
+        $this->get('/nhan-vien')
+            ->assertOk()
+            ->assertSee('data-employee-edit-modal', false)
+            ->assertSee('data-action="modal"', false)
+            ->assertSee('data-modal-url="'.e($editUrl).'"', false)
+            ->assertSee('href="'.e($editUrl).'"', false)
+            ->assertDontSee('data-employee-wizard', false);
+    }
+
+    public function test_index_does_not_render_edit_modal_without_update_permission(): void
+    {
+        $this->actingAsEmployeeWithPermissions([\App\Enums\NhanVienPermission::Xem]);
+        $employee = (array) $this->employeePaginator()->items()[0];
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($employee): void {
+            $mock->shouldReceive('paginate')->once()->andReturn($this->employeePaginator([$employee]));
+            $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
+        });
+
+        $this->get('/nhan-vien')
+            ->assertOk()
+            ->assertDontSee('data-employee-edit-modal', false)
+            ->assertDontSee('data-action="modal"', false)
+            ->assertDontSee('Chỉnh sửa');
+    }
+
     public function test_invalid_filters_do_not_call_the_service(): void
     {
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {

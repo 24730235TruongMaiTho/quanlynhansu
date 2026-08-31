@@ -8,7 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreChucVuRequest;
 use App\Http\Requests\ListChucVuRequest;
 use App\Http\Requests\UpdateChucVuRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Throwable;
@@ -61,7 +63,7 @@ final class ChucVuController extends Controller
         return redirect()->route('backend.chucvu.index')->with('success', 'Đã thêm chức vụ.');
     }
 
-    public function edit(string $ma_cv): View
+    public function edit(Request $request, string $ma_cv): View
     {
         try {
             $position = $this->positions->findOrFail($this->positionId($ma_cv));
@@ -75,10 +77,14 @@ final class ChucVuController extends Controller
             abort(503);
         }
 
+        if ($request->header('X-Edit-Modal') === '1' || $request->ajax()) {
+            return view('backend.chucvu.partials.edit-modal-content', compact('position'));
+        }
+
         return view('backend.chucvu.edit', compact('position'));
     }
 
-    public function update(UpdateChucVuRequest $request, string $ma_cv): RedirectResponse
+    public function update(UpdateChucVuRequest $request, string $ma_cv): JsonResponse|RedirectResponse
     {
         $positionId = $this->positionId($ma_cv);
 
@@ -90,15 +96,45 @@ final class ChucVuController extends Controller
             );
         } catch (ChucVuDomainException $exception) {
             if ($exception->domainCode === 'CV_NOT_FOUND') {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Không tìm thấy chức vụ.',
+                        'errors' => ['chuc_vu' => ['Không tìm thấy chức vụ.']],
+                    ], 404);
+                }
+
                 abort(404);
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                    'errors' => [$exception->field ?? 'chuc_vu' => [$exception->getMessage()]],
+                ], 422);
             }
 
             return back()->withInput()->withErrors([
                 $exception->field ?? 'chuc_vu' => $exception->getMessage(),
             ]);
         } catch (Throwable) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể cập nhật chức vụ lúc này. Vui lòng thử lại sau.',
+                ], 500);
+            }
+
             return back()->withInput()->withErrors([
                 'chuc_vu' => 'Không thể cập nhật chức vụ lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã cập nhật chức vụ.',
             ]);
         }
 

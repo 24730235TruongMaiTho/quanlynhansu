@@ -22,6 +22,7 @@ export function handleRowAction(
     browser = typeof window !== 'undefined' ? window : {},
     navigation = typeof window !== 'undefined' ? window.location : null,
     root = typeof document !== 'undefined' ? document : null,
+    handlers = {},
 ) {
     if (!option?.dataset?.action) {
         resetSelect(select);
@@ -68,12 +69,17 @@ export function handleRowAction(
             }
         }
     }
+
+    if (action === 'modal') {
+        handlers?.modal?.(option, select);
+    }
 }
 
 export function bindRowActionSelects(
     root = typeof document !== 'undefined' ? document : null,
     browser = typeof window !== 'undefined' ? window : {},
     navigation = typeof window !== 'undefined' ? window.location : null,
+    handlers = {},
 ) {
     if (!root?.querySelectorAll) {
         return;
@@ -81,7 +87,7 @@ export function bindRowActionSelects(
 
     root.querySelectorAll('[data-row-action-select]').forEach((select) => {
         select.addEventListener('change', () => {
-            handleRowAction(select, select.selectedOptions?.[0], browser, navigation, root);
+            handleRowAction(select, select.selectedOptions?.[0], browser, navigation, root, handlers);
         });
     });
 }

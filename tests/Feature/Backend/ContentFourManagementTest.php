@@ -166,7 +166,7 @@ final class ContentFourManagementTest extends TestCase
 
         $this->view('backend.layouts.sidebar')
             ->assertSee('Danh sách vai trò')
-            ->assertDontSee('Phân quyền tài khoản');
+            ->assertDontSee('Gán vai trò tài khoản');
     }
 
     public function test_sidebar_shows_only_the_permission_link_for_phan_quyen_read(): void
@@ -187,6 +187,6 @@ final class ContentFourManagementTest extends TestCase
 
         $this->view('backend.layouts.sidebar')
             ->assertDontSee('Danh sách vai trò')
-            ->assertSee('Phân quyền tài khoản');
+            ->assertSee('Gán vai trò tài khoản');
     }
 }
