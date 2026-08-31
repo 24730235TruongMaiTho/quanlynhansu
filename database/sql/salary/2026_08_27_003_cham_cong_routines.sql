@@ -5,21 +5,29 @@
 -- Creates/replaces:
 --   PROCEDURE sp_cham_cong_nhan_vien_phan_trang
 --   PROCEDURE sp_cham_cong_chi_tiet_phan_trang
+--
+-- SAFETY:
+-- - Explicitly selects database `quan_ly_nhan_su`.
+-- - Run only against the intended database after backup.
+-- - Routine DDL implicitly commits in MariaDB/MySQL.
 -- ============================================================================
+
+USE `quan_ly_nhan_su`;
 
 
 -- ============================================================================
 -- 0. READ-ONLY PREFLIGHT
 -- ============================================================================
+
 SELECT
     TABLE_NAME,
     TABLE_TYPE
 FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE()
   AND TABLE_NAME IN (
-      'cham_cong',
-      'vw_danh_sach_nhan_vien_chi_tiet'
-  )
+                     'cham_cong',
+                     'vw_danh_sach_nhan_vien_chi_tiet'
+    )
 ORDER BY TABLE_NAME;
 
 
@@ -30,46 +38,52 @@ SELECT
 FROM information_schema.COLUMNS
 WHERE TABLE_SCHEMA = DATABASE()
   AND (
-       (
-           TABLE_NAME = 'cham_cong'
-           AND COLUMN_NAME IN (
-               'ma_cc',
-               'ma_nv',
-               'ngay_lam',
-               'so_gio_lam',
-               'vao_muon',
-               've_som'
-           )
-       )
-       OR
-       (
-           TABLE_NAME = 'vw_danh_sach_nhan_vien_chi_tiet'
-           AND COLUMN_NAME IN (
-               'ma_nv',
-               'ho_ten',
-               'ngay_sinh',
-               'gioi_tinh',
-               'sdt',
-               'email',
-               'ma_pb',
-               'ten_pb',
-               'ma_cv',
-               'ten_cv'
-           )
-       )
-  )
-ORDER BY TABLE_NAME, ORDINAL_POSITION;
+    (
+        TABLE_NAME = 'cham_cong'
+            AND COLUMN_NAME IN (
+                                'ma_cc',
+                                'ma_nv',
+                                'ngay_lam',
+                                'so_gio_lam',
+                                'vao_muon',
+                                've_som'
+            )
+        )
+        OR
+    (
+        TABLE_NAME = 'vw_danh_sach_nhan_vien_chi_tiet'
+            AND COLUMN_NAME IN (
+                                'ma_nv',
+                                'ho_ten',
+                                'ngay_sinh',
+                                'gioi_tinh',
+                                'sdt',
+                                'email',
+                                'ma_pb',
+                                'ten_pb',
+                                'ma_cv',
+                                'ten_cv'
+            )
+        )
+    )
+ORDER BY
+    TABLE_NAME,
+    ORDINAL_POSITION;
 
 
 -- ============================================================================
 -- 0b. SEMANTIC PREFLIGHT
 -- ============================================================================
+
+DROP TEMPORARY TABLE IF EXISTS _cham_cong_migration_preflight;
+
 CREATE TEMPORARY TABLE _cham_cong_migration_preflight (
     check_name VARCHAR(96) NOT NULL PRIMARY KEY,
     check_ok TINYINT NOT NULL CHECK (check_ok = 1)
 ) ENGINE = InnoDB;
 
 
+-- Required attendance table and employee detail view
 INSERT INTO _cham_cong_migration_preflight (
     check_name,
     check_ok
@@ -82,15 +96,16 @@ SELECT
             FROM information_schema.TABLES
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME IN (
-                  'cham_cong',
-                  'vw_danh_sach_nhan_vien_chi_tiet'
-              )
+                                 'cham_cong',
+                                 'vw_danh_sach_nhan_vien_chi_tiet'
+                )
         ) = 2,
         1,
         0
     );
 
 
+-- Required attendance columns
 INSERT INTO _cham_cong_migration_preflight (
     check_name,
     check_ok
@@ -104,14 +119,45 @@ SELECT
             WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = 'cham_cong'
               AND COLUMN_NAME IN (
-                  'ma_cc',
-                  'ma_nv',
-                  'ngay_lam',
-                  'so_gio_lam',
-                  'vao_muon',
-                  've_som'
-              )
+                                  'ma_cc',
+                                  'ma_nv',
+                                  'ngay_lam',
+                                  'so_gio_lam',
+                                  'vao_muon',
+                                  've_som'
+                )
         ) = 6,
+        1,
+        0
+    );
+
+
+-- Required employee-detail view columns
+INSERT INTO _cham_cong_migration_preflight (
+    check_name,
+    check_ok
+)
+SELECT
+    'employee_detail_view_columns',
+    IF(
+        (
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'vw_danh_sach_nhan_vien_chi_tiet'
+              AND COLUMN_NAME IN (
+                                  'ma_nv',
+                                  'ho_ten',
+                                  'ngay_sinh',
+                                  'gioi_tinh',
+                                  'sdt',
+                                  'email',
+                                  'ma_pb',
+                                  'ten_pb',
+                                  'ma_cv',
+                                  'ten_cv'
+                )
+        ) = 10,
         1,
         0
     );
@@ -125,12 +171,14 @@ ORDER BY check_name;
 -- ============================================================================
 -- 1. MIGRATION
 -- ============================================================================
+
 DELIMITER $$
 
 
 -- ----------------------------------------------------------------------------
 -- 1.1 PROCEDURE: sp_cham_cong_nhan_vien_phan_trang
 -- ----------------------------------------------------------------------------
+
 DROP PROCEDURE IF EXISTS sp_cham_cong_nhan_vien_phan_trang$$
 
 CREATE PROCEDURE sp_cham_cong_nhan_vien_phan_trang(
@@ -147,6 +195,9 @@ BEGIN
     DECLARE v_offset INT DEFAULT 0;
     DECLARE v_tu_ngay DATE;
     DECLARE v_den_ngay DATE;
+    DECLARE v_tu_khoa VARCHAR(255);
+    DECLARE v_thang INT;
+    DECLARE v_nam INT;
 
     SET v_page =
         IFNULL(
@@ -160,46 +211,54 @@ BEGIN
             15
         );
 
-    IF v_page < 1 THEN
-        SET v_page = 1;
-    END IF;
-
-    IF v_per_page < 1 THEN
-        SET v_per_page = 15;
-    END IF;
-
-    IF v_per_page > 100 THEN
-        SET v_per_page = 100;
-    END IF;
-
-    SET v_offset =
-        (v_page - 1) * v_per_page;
-
-    SET p_tu_khoa =
+    SET v_tu_khoa =
         NULLIF(
             TRIM(p_tu_khoa),
             ''
         );
 
-    SET p_thang =
+    SET v_thang =
         IFNULL(
             p_thang,
             MONTH(CURDATE())
         );
 
-    SET p_nam =
+    SET v_nam =
         IFNULL(
             p_nam,
             YEAR(CURDATE())
         );
 
+    IF v_page < 1 THEN
+        SET v_page = 1;
+END IF;
+
+    IF v_per_page < 1 THEN
+        SET v_per_page = 15;
+END IF;
+
+    IF v_per_page > 100 THEN
+        SET v_per_page = 100;
+END IF;
+
+    IF v_thang < 1 OR v_thang > 12 THEN
+        SET v_thang = MONTH(CURDATE());
+END IF;
+
+    IF v_nam < 1900 OR v_nam > 2100 THEN
+        SET v_nam = YEAR(CURDATE());
+END IF;
+
+    SET v_offset =
+        (v_page - 1) * v_per_page;
+
     SET v_tu_ngay =
         STR_TO_DATE(
             CONCAT(
-                p_nam,
+                v_nam,
                 '-',
                 LPAD(
-                    p_thang,
+                    v_thang,
                     2,
                     '0'
                 ),
@@ -214,123 +273,124 @@ BEGIN
             INTERVAL 1 MONTH
         );
 
-    SELECT
-        rs.*,
-        COUNT(*) OVER() AS total_count
+SELECT
+    rs.*,
+    COUNT(*) OVER() AS total_count
 
-    FROM (
-        SELECT
-            nv.ma_nv,
-            nv.ho_ten,
-            nv.ngay_sinh,
-            nv.gioi_tinh,
-            nv.sdt,
-            nv.email,
-            nv.ma_pb,
-            nv.ten_pb,
-            nv.ma_cv,
-            nv.ten_cv,
+FROM (
+         SELECT
+             nv.ma_nv,
+             nv.ho_ten,
+             nv.ngay_sinh,
+             nv.gioi_tinh,
+             nv.sdt,
+             nv.email,
+             nv.ma_pb,
+             nv.ten_pb,
+             nv.ma_cv,
+             nv.ten_cv,
 
-            IFNULL(
-                cc.so_ngay_cham_cong,
-                0
-            ) AS so_ngay_cham_cong,
+             IFNULL(
+                 cc.so_ngay_cham_cong,
+                 0
+             ) AS so_ngay_cham_cong,
 
-            IFNULL(
-                cc.so_lan_vao_muon,
-                0
-            ) AS so_lan_vao_muon,
+             IFNULL(
+                 cc.so_lan_vao_muon,
+                 0
+             ) AS so_lan_vao_muon,
 
-            IFNULL(
-                cc.so_lan_ve_som,
-                0
-            ) AS so_lan_ve_som
+             IFNULL(
+                 cc.so_lan_ve_som,
+                 0
+             ) AS so_lan_ve_som
 
-        FROM vw_danh_sach_nhan_vien_chi_tiet nv
+         FROM vw_danh_sach_nhan_vien_chi_tiet nv
 
-        LEFT JOIN (
-            SELECT
-                ma_nv,
+                  LEFT JOIN (
+             SELECT
+                 ma_nv,
 
-                SUM(
-                    CASE
-                        WHEN so_gio_lam >= 8 THEN 1
-                        WHEN so_gio_lam >= 4 THEN 0.5
-                        ELSE 0
-                    END
-                ) AS so_ngay_cham_cong,
+                 SUM(
+                     CASE
+                         WHEN so_gio_lam >= 8 THEN 1
+                         WHEN so_gio_lam >= 4 THEN 0.5
+                         ELSE 0
+                         END
+                 ) AS so_ngay_cham_cong,
 
-                SUM(
-                    CASE
-                        WHEN vao_muon = 1 THEN 1
-                        ELSE 0
-                    END
-                ) AS so_lan_vao_muon,
+                 SUM(
+                     CASE
+                         WHEN vao_muon = 1 THEN 1
+                         ELSE 0
+                         END
+                 ) AS so_lan_vao_muon,
 
-                SUM(
-                    CASE
-                        WHEN ve_som = 1 THEN 1
-                        ELSE 0
-                    END
-                ) AS so_lan_ve_som
+                 SUM(
+                     CASE
+                         WHEN ve_som = 1 THEN 1
+                         ELSE 0
+                         END
+                 ) AS so_lan_ve_som
 
-            FROM cham_cong
+             FROM cham_cong
 
-            WHERE
-                ngay_lam >= v_tu_ngay
-                AND ngay_lam < v_den_ngay
+             WHERE
+                 ngay_lam >= v_tu_ngay
+               AND ngay_lam < v_den_ngay
 
-            GROUP BY
-                ma_nv
-        ) cc
-            ON cc.ma_nv = nv.ma_nv
+             GROUP BY
+                 ma_nv
+         ) cc
+                            ON cc.ma_nv = nv.ma_nv
 
-        WHERE
-            (
-                p_ma_pb IS NULL
-                OR nv.ma_pb = p_ma_pb
-            )
+         WHERE
+             (
+                 p_ma_pb IS NULL
+                     OR nv.ma_pb = p_ma_pb
+                 )
 
-            AND (
-                p_tu_khoa IS NULL
+           AND (
+             v_tu_khoa IS NULL
 
-                OR nv.ma_nv LIKE CONCAT(
-                    '%',
-                    p_tu_khoa,
-                    '%'
-                )
+                 OR nv.ma_nv LIKE CONCAT(
+                 '%',
+                 v_tu_khoa,
+                 '%'
+                                  )
 
-                OR nv.ho_ten LIKE CONCAT(
-                    '%',
-                    p_tu_khoa,
-                    '%'
-                )
+                 OR nv.ho_ten LIKE CONCAT(
+                 '%',
+                 v_tu_khoa,
+                 '%'
+                                   )
 
-                OR nv.ten_pb LIKE CONCAT(
-                    '%',
-                    p_tu_khoa,
-                    '%'
-                )
+                 OR nv.ten_pb LIKE CONCAT(
+                 '%',
+                 v_tu_khoa,
+                 '%'
+                                   )
 
-                OR nv.ten_cv LIKE CONCAT(
-                    '%',
-                    p_tu_khoa,
-                    '%'
-                )
-            )
-    ) rs
+                 OR nv.ten_cv LIKE CONCAT(
+                 '%',
+                 v_tu_khoa,
+                 '%'
+                                   )
+             )
+     ) rs
 
-    ORDER BY
-        rs.ma_nv ASC
+ORDER BY
+    rs.ma_nv ASC
 
     LIMIT v_per_page
-    OFFSET v_offset;
+OFFSET v_offset;
 END$$
 
 
 -- ----------------------------------------------------------------------------
 -- 1.2 PROCEDURE: sp_cham_cong_chi_tiet_phan_trang
 -- ----------------------------------------------------------------------------
+
 DROP PROCEDURE IF EXISTS sp_cham_cong_chi_tiet_phan_trang$$
 
 CREATE PROCEDURE sp_cham_cong_chi_tiet_phan_trang(
@@ -344,6 +404,8 @@ BEGIN
     DECLARE v_page INT DEFAULT 1;
     DECLARE v_per_page INT DEFAULT 15;
     DECLARE v_offset INT DEFAULT 0;
+    DECLARE v_thang INT;
+    DECLARE v_nam INT;
 
     SET v_page =
         IFNULL(
@@ -357,53 +419,73 @@ BEGIN
             15
         );
 
+    SET v_thang =
+        IFNULL(
+            p_thang,
+            MONTH(CURDATE())
+        );
+
+    SET v_nam =
+        IFNULL(
+            p_nam,
+            YEAR(CURDATE())
+        );
+
     IF v_page < 1 THEN
         SET v_page = 1;
-    END IF;
+END IF;
 
     IF v_per_page < 1 THEN
         SET v_per_page = 15;
-    END IF;
+END IF;
 
     IF v_per_page > 100 THEN
         SET v_per_page = 100;
-    END IF;
+END IF;
+
+    IF v_thang < 1 OR v_thang > 12 THEN
+        SET v_thang = MONTH(CURDATE());
+END IF;
+
+    IF v_nam < 1900 OR v_nam > 2100 THEN
+        SET v_nam = YEAR(CURDATE());
+END IF;
 
     SET v_offset =
         (v_page - 1) * v_per_page;
 
-    SELECT
-        cc.ma_cc,
-        cc.ma_nv,
-        cc.ngay_lam,
-        cc.so_gio_lam,
-        cc.vao_muon,
-        cc.ve_som,
+SELECT
+    cc.ma_cc,
+    cc.ma_nv,
+    cc.ngay_lam,
+    cc.so_gio_lam,
+    cc.vao_muon,
+    cc.ve_som,
 
-        CASE
-            WHEN cc.so_gio_lam >= 8 THEN 1
-            WHEN cc.so_gio_lam >= 4 THEN 0.5
-            ELSE 0
+    CASE
+        WHEN cc.so_gio_lam >= 8 THEN 1
+        WHEN cc.so_gio_lam >= 4 THEN 0.5
+        ELSE 0
         END AS ngay_cong,
 
-        COUNT(*) OVER() AS total_count
+    COUNT(*) OVER() AS total_count
 
-    FROM cham_cong cc
+FROM cham_cong cc
 
-    WHERE
-        cc.ma_nv = p_ma_nv
+WHERE
+    cc.ma_nv = p_ma_nv
         AND YEAR(
-            cc.ngay_lam
-        ) = p_nam
-        AND MONTH(
-            cc.ngay_lam
-        ) = p_thang
+    cc.ngay_lam
+    ) = v_nam
+  AND MONTH(
+    cc.ngay_lam
+    ) = v_thang
 
-    ORDER BY
-        cc.ngay_lam ASC
+ORDER BY
+    cc.ngay_lam ASC
 
     LIMIT v_per_page
-    OFFSET v_offset;
+OFFSET v_offset;
 END$$
 
 
@@ -413,6 +495,7 @@ DELIMITER ;
 -- ============================================================================
 -- 2. FINAL POSTCHECK
 -- ============================================================================
+
 SELECT
     ROUTINE_NAME,
     ROUTINE_TYPE,
@@ -421,9 +504,9 @@ FROM information_schema.ROUTINES
 WHERE ROUTINE_SCHEMA = DATABASE()
   AND ROUTINE_TYPE = 'PROCEDURE'
   AND ROUTINE_NAME IN (
-      'sp_cham_cong_nhan_vien_phan_trang',
-      'sp_cham_cong_chi_tiet_phan_trang'
-  )
+                       'sp_cham_cong_nhan_vien_phan_trang',
+                       'sp_cham_cong_chi_tiet_phan_trang'
+    )
 ORDER BY ROUTINE_NAME;
 
 
@@ -440,9 +523,9 @@ SELECT
             WHERE ROUTINE_SCHEMA = DATABASE()
               AND ROUTINE_TYPE = 'PROCEDURE'
               AND ROUTINE_NAME IN (
-                  'sp_cham_cong_nhan_vien_phan_trang',
-                  'sp_cham_cong_chi_tiet_phan_trang'
-              )
+                                   'sp_cham_cong_nhan_vien_phan_trang',
+                                   'sp_cham_cong_chi_tiet_phan_trang'
+                )
         ) = 2,
         1,
         0
@@ -454,4 +537,4 @@ FROM _cham_cong_migration_preflight
 ORDER BY check_name;
 
 
-DROP TEMPORARY TABLE _cham_cong_migration_preflight;
+DROP TEMPORARY TABLE IF EXISTS _cham_cong_migration_preflight;
