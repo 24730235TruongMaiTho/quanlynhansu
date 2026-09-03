@@ -3,9 +3,9 @@
 
 @section('content')
     <main class="container-fluid container-xxl py-4 hr-page leave-page" aria-labelledby="page-title"
-        data-nghi-phep-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Tao->value) ? '1' : '0' }}"
-        data-nghi-phep-can-update="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value) ? '1' : '0' }}"
-        data-nghi-phep-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Xoa->value) ? '1' : '0' }}">
+          data-nghi-phep-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Tao->value) ? '1' : '0' }}"
+          data-nghi-phep-can-update="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value) ? '1' : '0' }}"
+          data-nghi-phep-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Xoa->value) ? '1' : '0' }}">
         <section class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-4">
             <div>
                 <div class="d-flex align-items-center gap-2 mb-1 small text-secondary">
@@ -187,7 +187,7 @@
                     <div>
                         <h2 class="h6 fw-semibold mb-1" id="leave-table-title">Danh sách nghỉ phép</h2>
                         <p class="small text-secondary mb-0" id="leave-table-description">
-                            Chọn nhân viên ở bảng phía trên để tải dữ liệu nghỉ phép.
+                            Chờ duyệt hiển thị toàn bộ đơn. Chọn nhân viên để xem lịch sử nghỉ phép đã xử lý.
                         </p>
                     </div>
 
@@ -278,8 +278,8 @@
                     <thead class="table-light">
                     <tr>
                         <th style="width:42px;"></th>
-                        <th>Mã nghỉ phép</th>
                         <th>Mã nhân viên</th>
+                        <th>Họ tên</th>
                         <th>Từ ngày</th>
                         <th>Đến ngày</th>
                         <th>Loại phép</th>
@@ -289,15 +289,44 @@
                     </thead>
                     <tbody id="leave-tbody">
                     <tr class="empty-row">
-                        <td colspan="8" class="text-center text-secondary py-5">Chưa chọn nhân viên.</td>
+                        <td colspan="8" class="text-center text-secondary py-5">
+                            Đang tải danh sách nghỉ phép chờ duyệt...
+                        </td>
                     </tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="card-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
-                <span class="small text-secondary" id="page-info">Hiển thị 0 trên 0 yêu cầu</span>
-                <nav class="pagination mb-0" id="pagination" aria-label="Phân trang nghỉ phép"></nav>
+                <div class="d-flex align-items-center flex-wrap gap-3">
+                    <span class="small text-secondary" id="page-info">
+                        Hiển thị 0 trên 0 yêu cầu
+                    </span>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="small text-secondary mb-0 text-nowrap"
+                               for="leave-per-page">
+                            Số dòng
+                        </label>
+
+                        <select class="form-select form-select-sm"
+                                id="leave-per-page"
+                                style="width:84px;">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="15">15</option>
+                            <option value="25">25</option>
+                        </select>
+
+                        <span class="small text-secondary text-nowrap">
+                            / trang
+                        </span>
+                    </div>
+                </div>
+
+                <nav class="pagination mb-0"
+                     id="pagination"
+                     aria-label="Phân trang nghỉ phép"></nav>
             </div>
         </section>
     </main>

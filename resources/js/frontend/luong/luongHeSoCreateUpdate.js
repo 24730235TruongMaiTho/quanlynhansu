@@ -79,6 +79,26 @@ document.addEventListener(
                 document.getElementById(
                     'coefficient-to-date'
                 ),
+
+            modalMessage:
+                document.getElementById(
+                    'coefficient-modal-message'
+                ),
+
+            listError:
+                document.getElementById(
+                    'salary-coefficient-list-error'
+                ),
+
+            listErrorMessage:
+                document.getElementById(
+                    'salary-coefficient-list-error-message'
+                ),
+
+            listErrorClose:
+                document.getElementById(
+                    'salary-coefficient-list-error-close'
+                ),
         };
 
         const state = {
@@ -95,28 +115,184 @@ document.addEventListener(
                 null,
         };
 
+        function getCsrfToken() {
+            return document
+                .querySelector(
+                    'meta[name="csrf-token"]'
+                )
+                ?.getAttribute(
+                    'content'
+                ) || null;
+        }
+
+
+        function extractErrorMessage(
+            result,
+            fallback
+        ) {
+            const validation =
+                result?.errors &&
+                typeof result.errors ===
+                'object'
+                    ? Object.values(
+                        result.errors
+                    )
+                        .flat()
+                        .filter(Boolean)
+                        .join(' ')
+                    : null;
+
+            return (
+                validation ||
+                result?.message ||
+                fallback
+            );
+        }
+
+        function clearModalError() {
+            if (!elements.modalMessage) {
+                return;
+            }
+
+            elements.modalMessage.textContent =
+                '';
+
+            elements.modalMessage.hidden =
+                true;
+        }
+
+        function showModalError(message) {
+            if (!elements.modalMessage) {
+                return;
+            }
+
+            elements.modalMessage.textContent =
+                message;
+
+            elements.modalMessage.hidden =
+                false;
+        }
+
+        function clearListError() {
+            if (elements.listError) {
+                elements.listError.hidden =
+                    true;
+            }
+
+            if (elements.listErrorMessage) {
+                elements.listErrorMessage.textContent =
+                    '';
+            }
+        }
+
+        function showListError(message) {
+            if (!elements.listError) {
+                window.alert(message);
+                return;
+            }
+
+            if (elements.listErrorMessage) {
+                elements.listErrorMessage.textContent =
+                    message;
+            }
+
+            elements.listError.hidden =
+                false;
+        }
+
+        function showCoefficientError(
+            error,
+            {
+                modal = false,
+            } = {}
+        ) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : String(
+                        error ||
+                        'Đã xảy ra lỗi khi xử lý hệ số lương.'
+                    );
+
+            showListError(
+                message
+            );
+
+            if (modal) {
+                showModalError(
+                    message
+                );
+            }
+        }
+
         async function requestJson(
             url,
             options = {}
         ) {
+            const method = String(
+                options.method || 'GET'
+            ).toUpperCase();
+
+            const csrfToken =
+                getCsrfToken();
+
+            const headers = {
+                Accept:
+                    'application/json',
+
+                'Content-Type':
+                    'application/json',
+
+                'X-Requested-With':
+                    'XMLHttpRequest',
+
+                ...(options.headers || {}),
+            };
+
+            if (
+                csrfToken &&
+                !['GET', 'HEAD'].includes(
+                    method
+                )
+            ) {
+                headers['X-CSRF-TOKEN'] =
+                    csrfToken;
+            }
+
             const response =
                 await fetch(
                     url,
                     {
-                        headers: {
-                            Accept:
-                                'application/json',
-
-                            'Content-Type':
-                                'application/json',
-                        },
-
+                        ...options,
+                        method,
+                        headers,
                         credentials:
                             'same-origin',
-
-                        ...options,
                     }
                 );
+
+            const contentType =
+                response.headers.get(
+                    'content-type'
+                ) || '';
+
+            if (
+                !contentType.includes(
+                    'application/json'
+                )
+            ) {
+                const text =
+                    await response.text();
+
+                console.error(
+                    'Coefficient API trả về HTML/text:',
+                    text
+                );
+
+                throw new Error(
+                    `API hệ số lương không trả JSON. HTTP ${response.status}`
+                );
+            }
 
             const result =
                 await response.json();
@@ -126,9 +302,30 @@ document.addEventListener(
                 result.success ===
                 false
             ) {
+                if (response.status === 419) {
+                    throw new Error(
+                        'CSRF token đã hết hạn. Vui lòng tải lại trang.'
+                    );
+                }
+
+                if (response.status === 401) {
+                    throw new Error(
+                        'Phiên đăng nhập đã hết hạn.'
+                    );
+                }
+
+                if (response.status === 403) {
+                    throw new Error(
+                        result.message ||
+                        'Bạn không có quyền thực hiện thao tác này.'
+                    );
+                }
+
                 throw new Error(
-                    result.message ||
-                    'Request thất bại.'
+                    extractErrorMessage(
+                        result,
+                        `Request thất bại. HTTP ${response.status}`
+                    )
                 );
             }
 
@@ -136,6 +333,8 @@ document.addEventListener(
         }
 
         function reset() {
+            clearModalError();
+
             form.reset();
 
             elements.id.value =
@@ -204,56 +403,72 @@ document.addEventListener(
                 return;
             }
 
+            clearListError();
             reset();
+
             setMode(
                 mode
             );
 
             modal.showModal();
 
-            const result =
-                await requestJson(
-                    `${API}/${encodeURIComponent(
-                        id
-                    )}`
+            try {
+                const result =
+                    await requestJson(
+                        `${API}/${encodeURIComponent(
+                            id
+                        )}`
+                    );
+
+                const item =
+                    result.data ??
+                    result;
+
+                state.id =
+                    item.ma_ls;
+
+                elements.id.value =
+                    item.ma_ls ??
+                    '';
+
+                elements.employeeCode.value =
+                    item.ma_nv ??
+                    '';
+
+                elements.value.value =
+                    item.he_so_luong ??
+                    '';
+
+                elements.from.value =
+                    String(
+                        item.tu_ngay ||
+                        ''
+                    ).substring(
+                        0,
+                        10
+                    );
+
+                elements.to.value =
+                    String(
+                        item.den_ngay ||
+                        ''
+                    ).substring(
+                        0,
+                        10
+                    );
+            } catch (error) {
+                console.error(
+                    'Load coefficient failed:',
+                    error
                 );
 
-            const item =
-                result.data ??
-                result;
-
-            state.id =
-                item.ma_ls;
-
-            elements.id.value =
-                item.ma_ls ??
-                '';
-
-            elements.employeeCode.value =
-                item.ma_nv ??
-                '';
-
-            elements.value.value =
-                item.he_so_luong ??
-                '';
-
-            elements.from.value =
-                String(
-                    item.tu_ngay ||
-                    ''
-                ).substring(
-                    0,
-                    10
+                showCoefficientError(
+                    error,
+                    {
+                        modal: true,
+                    }
                 );
-
-            elements.to.value =
-                String(
-                    item.den_ngay ||
-                    ''
-                ).substring(
-                    0,
-                    10
-                );
+            }
         }
 
         document.addEventListener(
@@ -274,6 +489,8 @@ document.addEventListener(
                 state.employeeName =
                     employeeName;
 
+                clearListError();
+
                 if (
                     action ===
                     'create'
@@ -293,6 +510,7 @@ document.addEventListener(
                     );
 
                     modal.showModal();
+                    return;
                 }
 
                 if (
@@ -303,6 +521,7 @@ document.addEventListener(
                         coefficientId,
                         'view'
                     );
+                    return;
                 }
 
                 if (
@@ -313,6 +532,7 @@ document.addEventListener(
                         coefficientId,
                         'edit'
                     );
+                    return;
                 }
 
                 if (
@@ -336,21 +556,34 @@ document.addEventListener(
                         return;
                     }
 
-                    await requestJson(
-                        `${API}/${encodeURIComponent(
-                            coefficientId
-                        )}`,
-                        {
-                            method:
-                                'DELETE',
-                        }
-                    );
+                    try {
+                        await requestJson(
+                            `${API}/${encodeURIComponent(
+                                coefficientId
+                            )}`,
+                            {
+                                method:
+                                    'DELETE',
+                            }
+                        );
 
-                    document.dispatchEvent(
-                        new CustomEvent(
-                            'salary-coefficient:data-changed'
-                        )
-                    );
+                        clearListError();
+
+                        document.dispatchEvent(
+                            new CustomEvent(
+                                'salary-coefficient:data-changed'
+                            )
+                        );
+                    } catch (error) {
+                        console.error(
+                            'Delete coefficient failed:',
+                            error
+                        );
+
+                        showCoefficientError(
+                            error
+                        );
+                    }
                 }
             }
         );
@@ -385,6 +618,9 @@ document.addEventListener(
                     return;
                 }
 
+                clearModalError();
+                clearListError();
+
                 const payload = {
                     ma_nv:
                     elements.employeeCode
@@ -406,34 +642,69 @@ document.addEventListener(
                         null,
                 };
 
-                await requestJson(
+                const oldLabel =
+                    elements.submit.textContent;
+
+                elements.submit.disabled =
+                    true;
+
+                elements.submit.textContent =
                     state.mode ===
                     'edit'
-                        ? `${API}/${encodeURIComponent(
-                            state.id
-                        )}`
-                        : API,
-                    {
-                        method:
-                            state.mode ===
-                            'edit'
-                                ? 'PUT'
-                                : 'POST',
+                        ? 'Đang cập nhật...'
+                        : 'Đang lưu...';
 
-                        body:
-                            JSON.stringify(
-                                payload
-                            ),
-                    }
-                );
+                try {
+                    await requestJson(
+                        state.mode ===
+                        'edit'
+                            ? `${API}/${encodeURIComponent(
+                                state.id
+                            )}`
+                            : API,
+                        {
+                            method:
+                                state.mode ===
+                                'edit'
+                                    ? 'PUT'
+                                    : 'POST',
 
-                modal.close();
+                            body:
+                                JSON.stringify(
+                                    payload
+                                ),
+                        }
+                    );
 
-                document.dispatchEvent(
-                    new CustomEvent(
-                        'salary-coefficient:data-changed'
-                    )
-                );
+                    clearModalError();
+                    clearListError();
+
+                    modal.close();
+
+                    document.dispatchEvent(
+                        new CustomEvent(
+                            'salary-coefficient:data-changed'
+                        )
+                    );
+                } catch (error) {
+                    console.error(
+                        'Save coefficient failed:',
+                        error
+                    );
+
+                    showCoefficientError(
+                        error,
+                        {
+                            modal: true,
+                        }
+                    );
+                } finally {
+                    elements.submit.disabled =
+                        false;
+
+                    elements.submit.textContent =
+                        oldLabel;
+                }
             }
         );
 
@@ -449,6 +720,12 @@ document.addEventListener(
                 'click',
                 () =>
                     modal.close()
+            );
+
+        elements.listErrorClose
+            ?.addEventListener(
+                'click',
+                clearListError
             );
     }
 );
