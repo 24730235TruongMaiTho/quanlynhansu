@@ -664,4 +664,31 @@ class ChamCongController extends Controller
             'message' => $fallback,
         ], 422);
     }
+
+
+
+    /**
+     * =========================================================
+     * XÓA CHẤM CÔNG
+     * =========================================================
+     *
+     * DELETE /api/v1/cham-cong/{ma_cc}
+     */
+    public function destroy(int $cham_cong): JsonResponse
+    {
+        try {
+            $result = $this->chamCongService->delete($cham_cong);
+
+            if (!$result['success']) {
+                return response()->json($result, 404);
+            }
+
+            return response()->json($result);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 500);
+        }
+    }
 }

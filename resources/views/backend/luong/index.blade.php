@@ -347,6 +347,33 @@
                     </div>
                 </div>
 
+                <div
+                    class="alert alert-danger mx-3 mt-3 mb-0 py-2"
+                    id="salary-coefficient-list-error"
+                    role="alert"
+                    hidden
+                >
+                    <div class="d-flex align-items-start justify-content-between gap-3">
+                        <div>
+                            <div class="fw-semibold mb-1">
+                                Không thể xử lý hệ số lương
+                            </div>
+
+                            <div
+                                class="small"
+                                id="salary-coefficient-list-error-message"
+                            ></div>
+                        </div>
+
+                        <button
+                            class="btn-close"
+                            id="salary-coefficient-list-error-close"
+                            type="button"
+                            aria-label="Đóng thông báo lỗi"
+                        ></button>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
@@ -386,29 +413,29 @@
                     Hiển thị 0 bản ghi
                 </span>
 
-                    <div class="d-flex align-items-center gap-2">
-                        <button
-                            class="btn btn-outline-secondary btn-sm"
-                            id="edit-coefficient-btn"
-                            type="button"
-                            disabled
-                            data-salary-permission="HeSoLuong.Update"
-                            hidden
-                        >
-                            Sửa hệ số
-                        </button>
+                    {{--                    <div class="d-flex align-items-center gap-2">--}}
+                    {{--                        <button--}}
+                    {{--                            class="btn btn-outline-secondary btn-sm"--}}
+                    {{--                            id="edit-coefficient-btn"--}}
+                    {{--                            type="button"--}}
+                    {{--                            disabled--}}
+                    {{--                            data-salary-permission="HeSoLuong.Update"--}}
+                    {{--                            hidden--}}
+                    {{--                        >--}}
+                    {{--                            Sửa hệ số--}}
+                    {{--                        </button>--}}
 
-                        <button
-                            class="btn btn-outline-danger btn-sm"
-                            id="delete-coefficient-btn"
-                            type="button"
-                            disabled
-                            data-salary-permission="HeSoLuong.Delete"
-                            hidden
-                        >
-                            Xóa hệ số
-                        </button>
-                    </div>
+                    {{--                        <button--}}
+                    {{--                            class="btn btn-outline-danger btn-sm"--}}
+                    {{--                            id="delete-coefficient-btn"--}}
+                    {{--                            type="button"--}}
+                    {{--                            disabled--}}
+                    {{--                            data-salary-permission="HeSoLuong.Delete"--}}
+                    {{--                            hidden--}}
+                    {{--                        >--}}
+                    {{--                            Xóa hệ số--}}
+                    {{--                        </button>--}}
+                    {{--                    </div>--}}
                 </div>
             </section>
         </div>
@@ -954,6 +981,17 @@
                 flex: 0 0 82px;
             }
         }
+
+        .salary-page #salary-coefficient-list-error {
+            border-radius: 8px;
+            font-size: .8125rem;
+        }
+
+        .salary-page #salary-coefficient-list-error .btn-close {
+            flex: 0 0 auto;
+            margin-top: 2px;
+        }
+
     </style>
 @endsection
 

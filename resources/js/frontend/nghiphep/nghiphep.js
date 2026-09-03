@@ -246,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         leaveTbody: document.getElementById('leave-tbody'),
         pageInfo: document.getElementById('page-info'),
         pagination: document.getElementById('pagination'),
+        leavePerPage: document.getElementById('leave-per-page'),
         leaveDescription: document.getElementById('leave-table-description'),
 
         pendingTab: document.getElementById('pending-tab'),
@@ -296,12 +297,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         selectedEmployee: null,
 
-        leaveRows: [],
+        pendingRows: [],
+        historyRows: [],
+
         activeTab: 'pending',
         selectedLeaveId: null,
 
+        leavePage: 1,
+        leavePerPage:
+            Number(
+                document.getElementById('leave-per-page')?.value || 10
+            ),
+
         employeeAbortController: null,
-        leaveAbortController: null,
+        pendingAbortController: null,
+        historyAbortController: null,
 
         modalMode: 'edit',
     };
@@ -327,15 +337,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function normalizeLeave(leave) {
+        const maNv =
+            leave.ma_nv ??
+            '';
+
         return {
-            ma_np: leave.ma_np,
-            ma_nv: leave.ma_nv ?? state.selectedEmployee?.ma_nv ?? '',
-            tu_ngay: leave.tu_ngay,
-            den_ngay: leave.den_ngay,
-            ma_lp: leave.ma_lp ?? leave.loai_phep?.ma_lp ?? null,
-            ten_lp: leave.ten_lp ?? leave.loai_phep?.ten_lp ?? 'Nghỉ phép',
-            ly_do: leave.ly_do ?? '',
-            trang_thai_duyet: Number(leave.trang_thai_duyet ?? 0),
+            /*
+             * ma_np vẫn giữ nội bộ để action
+             * sửa / xóa / duyệt hoạt động.
+             * Chỉ không hiển thị cột này trên UI.
+             */
+            ma_np:
+            leave.ma_np,
+
+            ma_nv:
+            maNv,
+
+            ho_ten:
+                leave.ho_ten ??
+                leave.ten_nv ??
+                leave.nhan_vien?.ho_ten ??
+                (
+                    String(
+                        state.selectedEmployee?.ma_nv ??
+                        ''
+                    ) ===
+                    String(maNv)
+                        ? state.selectedEmployee?.ho_ten
+                        : null
+                ) ??
+                '—',
+
+            tu_ngay:
+            leave.tu_ngay,
+
+            den_ngay:
+            leave.den_ngay,
+
+            ma_lp:
+                leave.ma_lp ??
+                leave.loai_phep?.ma_lp ??
+                null,
+
+            ten_lp:
+                leave.ten_lp ??
+                leave.loai_phep?.ten_lp ??
+                'Nghỉ phép',
+
+            ly_do:
+                leave.ly_do ??
+                '',
+
+            trang_thai_duyet:
+                Number(
+                    leave.trang_thai_duyet ??
+                    0
+                ),
         };
     }
 
@@ -1064,12 +1121,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.selectedEmployee = employee;
         state.selectedLeaveId = null;
+        state.leavePage = 1;
 
         elements.selectedEmployeeBadge.textContent =
             `${employee.ma_nv} · ${employee.ho_ten}`;
 
-        elements.leaveDescription.textContent =
-            `Dữ liệu nghỉ phép của ${employee.ho_ten} (${employee.ma_nv}).`;
+        if (state.activeTab === 'history') {
+            elements.leaveDescription.textContent =
+                `Lịch sử nghỉ phép đã xử lý của ${employee.ho_ten} (${employee.ma_nv}).`;
+        } else {
+            elements.leaveDescription.textContent =
+                'Hiển thị toàn bộ đơn nghỉ phép đang chờ duyệt.';
+        }
 
         elements.createButton.disabled = !can(PERMISSION_CODES.INSERT);
         elements.editButton.disabled = true;
@@ -1086,7 +1149,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (radio) radio.checked = selected;
             });
 
-        loadLeaves();
+        // Click nhân viên chỉ reload lịch sử đã xử lý của nhân viên đó.
+        loadProcessedLeavesForEmployee();
     }
 
     function leaveStatusLabel(status) {
@@ -1122,25 +1186,24 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    function filterLeavesForActiveTab(rows) {
-        if (state.activeTab === 'pending') {
-            return rows.filter((item) => item.trang_thai_duyet === 0);
-        }
-
-        return rows.filter((item) => item.trang_thai_duyet !== 0);
+    function rowsForActiveTab() {
+        return state.activeTab === 'pending'
+            ? state.pendingRows
+            : state.historyRows;
     }
 
-    function updateLeaveCounts(rows) {
-        const pending = rows.filter(
-            (item) => item.trang_thai_duyet === 0
-        ).length;
+    function updateLeaveCounts() {
+        if (elements.pendingCount) {
+            elements.pendingCount.textContent =
+                String(state.pendingRows.length);
+        }
 
-        const history = rows.length - pending;
+        if (elements.historyCount) {
+            elements.historyCount.textContent =
+                String(state.historyRows.length);
+        }
 
-        elements.pendingCount.textContent = pending;
-        elements.historyCount.textContent = history;
-
-        const approved = rows.filter(
+        const approved = state.historyRows.filter(
             (item) => item.trang_thai_duyet === 1
         ).length;
 
@@ -1148,18 +1211,103 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('approved-count');
 
         if (oldApprovedCount) {
-            oldApprovedCount.textContent = approved;
+            oldApprovedCount.textContent = String(approved);
         }
     }
 
-    function renderLeaves() {
-        const rows = filterLeavesForActiveTab(state.leaveRows);
+    function leavePaginator() {
+        const rows = rowsForActiveTab();
+        const total = rows.length;
+        const perPage = Math.max(Number(state.leavePerPage) || 10, 1);
+        const lastPage = Math.max(Math.ceil(total / perPage), 1);
 
+        state.leavePage = Math.min(
+            Math.max(Number(state.leavePage) || 1, 1),
+            lastPage
+        );
+
+        const fromIndex = (state.leavePage - 1) * perPage;
+        const toIndex = Math.min(fromIndex + perPage, total);
+
+        return {
+            current_page: state.leavePage,
+            last_page: lastPage,
+            per_page: perPage,
+            total,
+            from: total > 0 ? fromIndex + 1 : 0,
+            to: toIndex,
+            data: rows.slice(fromIndex, toIndex),
+        };
+    }
+
+    function renderLeavePagination(paginator) {
+        if (!elements.pagination) return;
+
+        elements.pagination.innerHTML = '';
+
+        const current = Number(paginator.current_page || 1);
+        const last = Number(paginator.last_page || 1);
+
+        if (last <= 1) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'btn-group btn-group-sm';
+
+        function addButton(label, page, disabled = false, active = false) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = label;
+            button.dataset.leavePage = String(page);
+            button.disabled = disabled;
+            button.className = active
+                ? 'btn btn-primary'
+                : 'btn btn-outline-secondary';
+            wrapper.appendChild(button);
+        }
+
+        addButton('‹', current - 1, current <= 1);
+
+        getPageItems(current, last).forEach((item) => {
+            if (item === 'ellipsis') {
+                const span = document.createElement('span');
+                span.className = 'btn btn-outline-secondary disabled';
+                span.textContent = '…';
+                wrapper.appendChild(span);
+                return;
+            }
+
+            addButton(String(item), item, false, item === current);
+        });
+
+        addButton('›', current + 1, current >= last);
+        elements.pagination.appendChild(wrapper);
+    }
+
+    function renderLeaves() {
         state.selectedLeaveId = null;
         elements.editButton.disabled = true;
         elements.deleteButton.disabled = true;
         elements.approveButton.disabled = true;
         syncApproveButtonVisibility();
+
+        if (
+            state.activeTab === 'history' &&
+            !state.selectedEmployee
+        ) {
+            elements.leaveTbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-secondary py-5">
+                        Chọn một nhân viên để xem lịch sử nghỉ phép đã xử lý.
+                    </td>
+                </tr>
+            `;
+            elements.pageInfo.textContent = 'Hiển thị 0 trên 0 yêu cầu';
+            elements.pagination.innerHTML = '';
+            return;
+        }
+
+        const paginator = leavePaginator();
+        const rows = paginator.data;
 
         if (!rows.length) {
             elements.leaveTbody.innerHTML = `
@@ -1168,87 +1316,84 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${
                 state.activeTab === 'pending'
                     ? 'Không có đơn nghỉ phép chờ duyệt.'
-                    : 'Chưa có lịch sử nghỉ phép.'
+                    : 'Nhân viên này chưa có lịch sử nghỉ phép đã xử lý.'
             }
                     </td>
                 </tr>
             `;
-
             elements.pageInfo.textContent = 'Hiển thị 0 trên 0 yêu cầu';
+            elements.pagination.innerHTML = '';
             return;
         }
 
-        elements.leaveTbody.innerHTML = rows
-            .map((leave) => `
-                <tr
-                    data-leave-row
-                    data-id="${escapeHtml(leave.ma_np)}"
-                    style="cursor:pointer;"
-                >
-                    <td>
-                        <input
-                            class="form-check-input leave-radio"
-                            type="radio"
-                            name="selected-leave"
-                            value="${escapeHtml(leave.ma_np)}"
-                            ${canAny(
-                PERMISSION_CODES.UPDATE,
-                PERMISSION_CODES.DELETE
-            ) ? '' : 'disabled'}
-                        >
-                    </td>
-                    <td class="fw-semibold">${escapeHtml(leave.ma_np)}</td>
-                    <td>${escapeHtml(leave.ma_nv)}</td>
-                    <td>${formatDate(leave.tu_ngay)}</td>
-                    <td>${formatDate(leave.den_ngay)}</td>
-                    <td>${escapeHtml(leave.ten_lp)}</td>
-                    <td class="leave-reason-cell">
-                        <span
-                            class="leave-reason-text"
-                            title="${escapeHtml(leave.ly_do || 'Không có lý do')}"
-                        >
-                            ${escapeHtml(leave.ly_do || '—')}
-                        </span>
-                    </td>
-                    <td>${leaveStatusLabel(leave.trang_thai_duyet)}</td>
-                </tr>
-            `)
-            .join('');
+        elements.leaveTbody.innerHTML = rows.map((leave) => `
+            <tr
+                data-leave-row
+                data-id="${escapeHtml(leave.ma_np)}"
+                style="cursor:pointer;"
+            >
+                <td>
+                    <input
+                        class="form-check-input leave-radio"
+                        type="radio"
+                        name="selected-leave"
+                        value="${escapeHtml(leave.ma_np)}"
+                        ${canAny(PERMISSION_CODES.UPDATE, PERMISSION_CODES.DELETE) ? '' : 'disabled'}
+                    >
+                </td>
+                <td class="fw-semibold">
+                    ${escapeHtml(leave.ma_nv)}
+                </td>
+
+                <td>
+                    ${escapeHtml(leave.ho_ten)}
+                </td>
+
+                <td>${formatDate(leave.tu_ngay)}</td>
+                <td>${formatDate(leave.den_ngay)}</td>
+                <td>${escapeHtml(leave.ten_lp)}</td>
+                <td class="leave-reason-cell">
+                    <span
+                        class="leave-reason-text"
+                        title="${escapeHtml(leave.ly_do || 'Không có lý do')}"
+                    >
+                        ${escapeHtml(leave.ly_do || '—')}
+                    </span>
+                </td>
+                <td>${leaveStatusLabel(leave.trang_thai_duyet)}</td>
+            </tr>
+        `).join('');
 
         elements.pageInfo.textContent =
-            `Hiển thị 1–${rows.length} trên ${rows.length} yêu cầu`;
+            `Hiển thị ${paginator.from}–${paginator.to} trên ${paginator.total} yêu cầu`;
+
+        renderLeavePagination(paginator);
     }
 
-    async function loadLeaves() {
-        if (
-            !can(PERMISSION_CODES.READ) ||
-            !state.selectedEmployee?.ma_nv
-        ) {
-            return;
-        }
-
-        state.leaveAbortController?.abort();
-        state.leaveAbortController = new AbortController();
-
+    function renderLeaveLoading(message = 'Đang tải dữ liệu nghỉ phép...') {
         elements.leaveTbody.innerHTML = `
             <tr>
                 <td colspan="8" class="text-center text-secondary py-5">
                     <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                    Đang tải dữ liệu nghỉ phép...
+                    ${escapeHtml(message)}
                 </td>
             </tr>
         `;
+    }
+
+    async function loadPendingLeaves({ render = true } = {}) {
+        if (!can(PERMISSION_CODES.READ)) return;
+
+        state.pendingAbortController?.abort();
+        state.pendingAbortController = new AbortController();
+
+        if (render && state.activeTab === 'pending') {
+            renderLeaveLoading('Đang tải toàn bộ đơn chờ duyệt...');
+        }
 
         try {
-            const url = new URL(
-                NGHI_PHEP_API_URL,
-                window.location.origin
-            );
-
-            url.searchParams.set(
-                'ma_nv',
-                state.selectedEmployee.ma_nv
-            );
+            const url = new URL(NGHI_PHEP_API_URL, window.location.origin);
+            url.searchParams.set('trang_thai_duyet', '0');
 
             const response = await fetch(url.toString(), {
                 headers: {
@@ -1256,45 +1401,137 @@ document.addEventListener('DOMContentLoaded', () => {
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
-                signal: state.leaveAbortController.signal,
+                signal: state.pendingAbortController.signal,
             });
 
-            const contentType =
-                response.headers.get('content-type') || '';
-
+            const contentType = response.headers.get('content-type') || '';
             if (!contentType.includes('application/json')) {
-                throw new Error(
-                    `API nghỉ phép không trả JSON. HTTP ${response.status}`
-                );
+                throw new Error(`API nghỉ phép không trả JSON. HTTP ${response.status}`);
             }
 
             const result = await response.json();
-
             if (!response.ok || result.success === false) {
-                throw new Error(
-                    result.message ||
-                    'Không thể tải dữ liệu nghỉ phép.'
-                );
+                throw new Error(result.message || 'Không thể tải danh sách chờ duyệt.');
             }
 
-            state.leaveRows = extractData(result)
-                .map(normalizeLeave);
+            state.pendingRows = extractData(result)
+                .map(normalizeLeave)
+                .filter((item) => item.trang_thai_duyet === 0);
 
-            updateLeaveCounts(state.leaveRows);
-            renderLeaves();
+            updateLeaveCounts();
+
+            if (render && state.activeTab === 'pending') {
+                renderLeaves();
+            }
         } catch (error) {
             if (error.name === 'AbortError') return;
 
-            console.error('Error loading leave data:', error);
+            console.error('Error loading pending leaves:', error);
 
-            elements.leaveTbody.innerHTML = `
-                <tr>
-                    <td colspan="8" class="text-center text-danger py-5">
-                        ${escapeHtml(error.message)}
-                    </td>
-                </tr>
-            `;
+            if (render && state.activeTab === 'pending') {
+                elements.leaveTbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger py-5">
+                            ${escapeHtml(error.message)}
+                        </td>
+                    </tr>
+                `;
+            }
         }
+    }
+
+    async function loadProcessedLeavesForEmployee({ render = true } = {}) {
+        state.historyAbortController?.abort();
+
+        if (
+            !can(PERMISSION_CODES.READ) ||
+            !state.selectedEmployee?.ma_nv
+        ) {
+            state.historyRows = [];
+            updateLeaveCounts();
+
+            if (render && state.activeTab === 'history') {
+                renderLeaves();
+            }
+            return;
+        }
+
+        state.historyAbortController = new AbortController();
+
+        if (render && state.activeTab === 'history') {
+            renderLeaveLoading(
+                `Đang tải lịch sử nghỉ phép của ${state.selectedEmployee.ho_ten}...`
+            );
+        }
+
+        try {
+            const url = new URL(NGHI_PHEP_API_URL, window.location.origin);
+            url.searchParams.set('ma_nv', state.selectedEmployee.ma_nv);
+
+            const response = await fetch(url.toString(), {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                signal: state.historyAbortController.signal,
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error(`API nghỉ phép không trả JSON. HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (!response.ok || result.success === false) {
+                throw new Error(result.message || 'Không thể tải lịch sử nghỉ phép.');
+            }
+
+            state.historyRows = extractData(result)
+                .map(normalizeLeave)
+                .filter((item) =>
+                    String(item.ma_nv) === String(state.selectedEmployee.ma_nv) &&
+                    item.trang_thai_duyet !== 0
+                );
+
+            updateLeaveCounts();
+
+            if (render && state.activeTab === 'history') {
+                renderLeaves();
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+
+            console.error('Error loading processed leave data:', error);
+
+            if (render && state.activeTab === 'history') {
+                elements.leaveTbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger py-5">
+                            ${escapeHtml(error.message)}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+    }
+
+    async function refreshLeaveData() {
+        const tasks = [
+            loadPendingLeaves({
+                render: state.activeTab === 'pending',
+            }),
+        ];
+
+        if (state.selectedEmployee) {
+            tasks.push(
+                loadProcessedLeavesForEmployee({
+                    render: state.activeTab === 'history',
+                })
+            );
+        }
+
+        await Promise.all(tasks);
     }
 
     function selectLeave(leaveId) {
@@ -1311,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', () => {
             String(leaveId);
 
         const leave =
-            state.leaveRows.find(
+            rowsForActiveTab().find(
                 (item) =>
                     String(item.ma_np) ===
                     state.selectedLeaveId
@@ -1390,6 +1627,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function switchTab(tab) {
         state.activeTab = tab;
         state.selectedLeaveId = null;
+        state.leavePage = 1;
 
         elements.pendingTab.classList.toggle(
             'active',
@@ -1410,6 +1648,17 @@ document.addEventListener('DOMContentLoaded', () => {
             'aria-selected',
             tab === 'history' ? 'true' : 'false'
         );
+
+        if (tab === 'pending') {
+            elements.leaveDescription.textContent =
+                'Hiển thị toàn bộ đơn nghỉ phép đang chờ duyệt.';
+        } else if (state.selectedEmployee) {
+            elements.leaveDescription.textContent =
+                `Lịch sử nghỉ phép đã xử lý của ${state.selectedEmployee.ho_ten} (${state.selectedEmployee.ma_nv}).`;
+        } else {
+            elements.leaveDescription.textContent =
+                'Chọn một nhân viên ở bảng phía trên để xem lịch sử nghỉ phép đã xử lý.';
+        }
 
         syncApproveButtonVisibility();
         renderLeaves();
@@ -1452,11 +1701,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const leave = state.leaveRows.find(
-            (item) =>
-                String(item.ma_np) ===
-                String(state.selectedLeaveId)
-        );
+        const leave =
+            rowsForActiveTab().find(
+                (item) =>
+                    String(item.ma_np) ===
+                    String(state.selectedLeaveId)
+            );
 
         if (!leave) return;
 
@@ -1570,7 +1820,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             closeModal();
-            await loadLeaves();
+            await refreshLeaveData();
         } catch (error) {
             console.error(error);
             showModalMessage(error.message);
@@ -1611,7 +1861,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 { method: 'DELETE' }
             );
 
-            await loadLeaves();
+            await refreshLeaveData();
         } catch (error) {
             console.error(error);
             window.alert(error.message);
@@ -1628,10 +1878,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (
-            !state.selectedLeaveId ||
-            !state.selectedEmployee
-        ) {
+        if (!state.selectedLeaveId) {
+            return;
+        }
+
+        const leave =
+            state.pendingRows.find(
+                (item) =>
+                    String(item.ma_np) ===
+                    String(state.selectedLeaveId)
+            );
+
+        if (!leave) {
             return;
         }
 
@@ -1643,14 +1901,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 {
                     method: 'PATCH',
                     body: JSON.stringify({
-                        ma_nv:
-                        state.selectedEmployee.ma_nv,
+                        // Pending là global nên lấy ma_nv từ chính đơn.
+                        ma_nv: leave.ma_nv,
                         trang_thai_duyet: 1,
                     }),
                 }
             );
 
-            await loadLeaves();
+            await refreshLeaveData();
         } catch (error) {
             console.error(error);
             window.alert(error.message);
@@ -1807,6 +2065,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     );
 
+    elements.pagination?.addEventListener(
+        'click',
+        (event) => {
+            const button =
+                event.target.closest(
+                    'button[data-leave-page]'
+                );
+
+            if (!button || button.disabled) {
+                return;
+            }
+
+            const page = Number(
+                button.dataset.leavePage
+            );
+
+            if (!Number.isInteger(page) || page < 1) {
+                return;
+            }
+
+            state.leavePage = page;
+            renderLeaves();
+        }
+    );
+
+    elements.leavePerPage?.addEventListener(
+        'change',
+        () => {
+            const value = Number(
+                elements.leavePerPage.value
+            );
+
+            if (!Number.isInteger(value) || value < 1) {
+                return;
+            }
+
+            state.leavePerPage = value;
+            state.leavePage = 1;
+            renderLeaves();
+        }
+    );
+
     elements.pendingTab?.addEventListener(
         'click',
         () => switchTab('pending')
@@ -1957,7 +2257,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             syncEmployeeFiltersFromUI();
-            await loadEmployees(1);
+
+            // Pending global được load ngay, không cần chọn nhân viên.
+            await Promise.all([
+                loadEmployees(1),
+                loadPendingLeaves(),
+            ]);
         } catch (error) {
             console.error(
                 'Initialize leave module failed:',
