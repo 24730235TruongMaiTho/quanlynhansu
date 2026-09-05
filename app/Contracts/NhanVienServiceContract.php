@@ -17,6 +17,12 @@ interface NhanVienServiceContract
 
     public function update(string $maNv, array $validated): object;
 
+    public function updateOwnProfile(string $maNv, array $validated): object;
+
+    public function changeOwnPassword(string $maNv, string $currentPassword, string $newPassword): void;
+
+    public function resetPassword(string $maNv, string $actorMaNv): void;
+
     public function removeOrTerminate(string $maNv): NhanVienRemovalAction;
 
     /**

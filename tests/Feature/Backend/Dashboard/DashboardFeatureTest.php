@@ -11,10 +11,14 @@ final class DashboardFeatureTest extends TestCase
         $source = file_get_contents(resource_path('views/backend/tongquan/index.blade.php'));
         self::assertIsString($source);
         self::assertStringContainsString('function escapeHtml(value)', $source);
+        self::assertStringContainsString('formatDisplayDate(contract.ngay_bat_dau)', $source);
+        self::assertStringContainsString('formatDisplayDate(contract.ngay_ket_thuc)', $source);
         self::assertStringContainsString('escapeHtml(contract.ho_ten', $source);
         self::assertStringContainsString('escapeHtml(contract.ten_loai_hop_dong', $source);
-        self::assertStringContainsString('escapeHtml(contract.ngay_bat_dau', $source);
-        self::assertStringContainsString('escapeHtml(contract.ngay_ket_thuc', $source);
+        self::assertStringContainsString('escapeHtml(startDate)', $source);
+        self::assertStringContainsString('escapeHtml(endDate)', $source);
+        self::assertStringNotContainsString('escapeHtml(contract.ngay_bat_dau', $source);
+        self::assertStringNotContainsString('escapeHtml(contract.ngay_ket_thuc', $source);
         self::assertStringContainsString('escapeHtml(badgeText)', $source);
     }
 

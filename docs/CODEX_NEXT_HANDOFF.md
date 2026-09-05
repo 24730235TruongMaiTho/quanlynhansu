@@ -1,5 +1,11 @@
 # Handoff tiếp tục `quanlynhansu`
 
+## Handoff hòa giải/UI 2026-09-05
+
+Đã hòa giải các tính năng incoming và hồi quy UI trên HEAD `ce22524ef245ea24e4365ef830d822a1a247d9a6` mà không đổi route/controller nghiệp vụ ngoài phạm vi cần thiết, không tạo procedure/view và không mutation DB. Employee attendance lookup dùng `NhanVienServiceContract::paginateForAttendance` với Query Builder active, lọc `so_dong` và lỗi public an toàn; import/date, Hợp đồng, Lương, Dashboard, Vai trò, pagination/shared UI, action trực tiếp CV/PB/HĐ, date-field hệ số, guard script, auth role hydration và dashboard display dates đã có targeted contract xanh.
+
+Verification mới: full Laravel `456 passed, 3655 assertions`; targeted PHP root rerun `19 tests, 249 assertions` pass; shared pagination Node `4/4` pass; frontend `38/38` pass; Vite `29 modules transformed`; route inventory `96`, duplicate signature/name `0`; Composer validate, PHP lint và `git diff --check` pass. Chrome fresh read-only ngày 2026-09-05 đã xác nhận `/vai-tro` main `1320` và card `1296` theo module chuẩn, `/luong` chỉ một nút `Đặt lại`, identifiers `ma_pb`/`so_nhan_vien` ở `/phong-ban` transparent không nền, paginator tại `/vai-tro`, `/luong`, `/nghi-phep`, `/cham-cong` center delta `0` với page-link `44x44`, radius `10px`, active `rgb(233,69,96)` và không document overflow ở viewport desktop hiện tại; screenshot visual review pass. Không claim responsive browser mới hoặc mọi interaction; không có browser mutation/DB write.
+
 > Cập nhật 2026-08-27 trên local `main`, HEAD `f71c0b20a4e04e8e2ec32cdad2a68722e4aaa0b7`. Chỉ có thay đổi local của lát cắt Nhân viên và tài liệu; file `AIAssistantInput-a1d28494-8caf-4d5a-8217-4d71fad94b75.chatInput` là untracked của người dùng và phải giữ nguyên.
 
 ## Nguồn sự thật và ownership

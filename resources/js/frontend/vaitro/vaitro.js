@@ -1,4 +1,6 @@
-const state = { editingId: null, roles: [], currentPage: 1, pageSize: 10 };
+import { renderSharedPagination } from '../shared/pagination.js';
+
+const state = { editingId: null, roles: [], currentPage: 1, pageSize: 10, paginator: null };
 
 const dom = typeof document !== 'undefined' ? document : null;
 
@@ -39,16 +41,16 @@ function renderRoleActions(role, permissions) {
     const actions = [];
 
     if (permissions.canViewPermissions) {
-        actions.push(`<a class="btn btn-sm btn-outline-secondary me-1" href="/vai-tro/${roleId}/phan-quyen" aria-label="Phân quyền ${roleName}"><i class="bi bi-key" aria-hidden="true"></i></a>`);
+        actions.push(`<a class="btn btn-outline-secondary" href="/vai-tro/${roleId}/phan-quyen" aria-label="Phân quyền ${roleName}" title="Phân quyền ${roleName}"><i class="bi bi-key" aria-hidden="true"></i>Phân quyền</a>`);
     }
     if (permissions.canEdit) {
-        actions.push(`<button class="btn btn-sm btn-outline-primary me-1" type="button" data-role-edit="${roleId}" aria-label="Sửa ${roleName}"><i class="bi bi-pencil" aria-hidden="true"></i></button>`);
+        actions.push(`<button class="btn btn-outline-primary btn-icon-action" type="button" data-role-edit="${roleId}" aria-label="Sửa ${roleName}" title="Sửa ${roleName}"><i class="bi bi-pencil" aria-hidden="true"></i></button>`);
     }
     if (permissions.canDelete) {
-        actions.push(`<button class="btn btn-sm btn-outline-danger" type="button" data-role-delete="${roleId}" aria-label="Xóa ${roleName}"><i class="bi bi-trash" aria-hidden="true"></i></button>`);
+        actions.push(`<button class="btn btn-outline-danger btn-icon-action" type="button" data-role-delete="${roleId}" aria-label="Xóa ${roleName}" title="Xóa ${roleName}"><i class="bi bi-trash" aria-hidden="true"></i></button>`);
     }
 
-    return actions.join('\n');
+    return `<div class="table-actions role-row-actions">${actions.join('\n')}</div>`;
 }
 
 async function request(url, options = {}) {
@@ -64,18 +66,22 @@ async function request(url, options = {}) {
     return payload;
 }
 
-function renderRoles(roles = state.roles) {
+function renderRoles(roles = state.roles, paginator = null) {
     state.roles = roles;
-    const totalPages = Math.max(1, Math.ceil(roles.length / state.pageSize));
-    state.currentPage = Math.min(state.currentPage, totalPages);
-    const start = (state.currentPage - 1) * state.pageSize;
-    const visibleRoles = roles.slice(start, start + state.pageSize);
+    const total = Number(paginator?.total ?? roles.length);
+    const perPage = Number(paginator?.per_page ?? state.pageSize) || state.pageSize;
+    const currentPage = Math.max(Number(paginator?.current_page ?? state.currentPage) || 1, 1);
+    const totalPages = Math.max(Number(paginator?.last_page ?? Math.ceil(total / perPage)) || 1, 1);
+    state.currentPage = Math.min(currentPage, totalPages);
+    state.pageSize = perPage;
+    const start = paginator ? Math.max(Number(paginator.from || 0) - 1, 0) : (state.currentPage - 1) * perPage;
+    const visibleRoles = paginator ? roles : roles.slice(start, start + perPage);
 
     if (!roles.length) {
         elements.tableBody.innerHTML = '<tr><td class="text-center text-secondary py-5" colspan="4">Chưa có vai trò phù hợp.</td></tr>';
         elements.paginationSummary.textContent = '';
         elements.totalSummary.textContent = 'Hiển thị 0 trong tổng số 0 vai trò';
-        elements.pagination.innerHTML = '';
+        elements.pagination.replaceChildren();
         return;
     }
 
@@ -93,38 +99,40 @@ function renderRoles(roles = state.roles) {
                 ${renderRoleActions(role, permissions)}
             </td>
         </tr>`).join('');
-    elements.paginationSummary.textContent = `Hiển thị ${start + 1}-${Math.min(start + state.pageSize, roles.length)} trong tổng số ${roles.length} vai trò`;
-    elements.totalSummary.textContent = `Hiển thị ${start + 1} - ${Math.min(start + state.pageSize, roles.length)} trong tổng số ${roles.length} vai trò`;
-    elements.pagination.innerHTML = `
-        <li class="page-item ${state.currentPage === 1 ? 'disabled' : ''}">
-            <button class="page-link" type="button" data-role-page="${state.currentPage - 1}" aria-label="Trang trước" ${state.currentPage === 1 ? 'disabled' : ''}>
-                <i class="bi bi-chevron-left" aria-hidden="true"></i>
-            </button>
-        </li>
-        ${Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => `
-            <li class="page-item ${page === state.currentPage ? 'active' : ''}">
-                <button class="page-link" type="button" data-role-page="${page}" aria-label="Trang ${page}" ${page === state.currentPage ? 'aria-current="page"' : ''}>${page}</button>
-            </li>`).join('')}
-        <li class="page-item ${state.currentPage === totalPages ? 'disabled' : ''}">
-            <button class="page-link" type="button" data-role-page="${state.currentPage + 1}" aria-label="Trang sau" ${state.currentPage === totalPages ? 'disabled' : ''}>
-                <i class="bi bi-chevron-right" aria-hidden="true"></i>
-            </button>
-        </li>`;
+    const shownTo = Math.min(start + visibleRoles.length, total);
+    elements.paginationSummary.textContent = `Hiển thị ${start + 1}-${shownTo} trong tổng số ${total} vai trò`;
+    elements.totalSummary.textContent = `Hiển thị ${start + 1} - ${shownTo} trong tổng số ${total} vai trò`;
+    renderSharedPagination(elements.pagination, {
+        current_page: state.currentPage,
+        last_page: totalPages,
+        per_page: perPage,
+        total,
+        from: start + 1,
+        to: shownTo,
+    }, {
+        document: elements.pagination.ownerDocument,
+        pageAttribute: 'rolePage',
+        showSinglePage: true,
+    });
 }
 
 async function loadRoles() {
     elements.tableBody.innerHTML = '<tr><td class="text-center text-secondary py-5" colspan="4">Đang tải dữ liệu...</td></tr>';
     try {
         const query = new URLSearchParams(new FormData(elements.searchForm));
+        query.set('page', String(state.currentPage));
+        query.set('per_page', String(state.pageSize));
         const endpoint = query.get('ten_vt') ? elements.page.dataset.roleSearchUrl : elements.page.dataset.roleDataUrl;
         const payload = await request(`${endpoint}?${query}`);
-        state.currentPage = 1;
-        renderRoles(payload.data || []);
+        const paginator = payload.data && Array.isArray(payload.data.data)
+            ? payload.data
+            : null;
+        renderRoles(paginator?.data || payload.data || [], paginator);
     } catch (error) {
         elements.tableBody.innerHTML = `<tr><td class="text-center text-danger py-5" colspan="4">${escapeHtml(error.message)}</td></tr>`;
         elements.paginationSummary.textContent = '';
         elements.totalSummary.textContent = '';
-        elements.pagination.innerHTML = '';
+        elements.pagination.replaceChildren();
     }
 }
 
@@ -199,12 +207,12 @@ if (elements.searchForm) {
         const pageButton = event.target.closest('[data-role-page]');
         if (!pageButton || pageButton.disabled) return;
         state.currentPage = Number(pageButton.dataset.rolePage);
-        renderRoles();
+        loadRoles();
     });
     elements.pageSize.addEventListener('change', () => {
         state.pageSize = Number(elements.pageSize.value);
         state.currentPage = 1;
-        renderRoles();
+        loadRoles();
     });
     loadRoles();
 }

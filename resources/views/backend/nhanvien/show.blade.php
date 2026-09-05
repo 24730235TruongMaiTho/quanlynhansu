@@ -32,16 +32,18 @@
     @endphp
 
     <main class="container container-lg py-4" aria-labelledby="page-title">
-        <nav class="mb-3" aria-label="Đường dẫn trang">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item">Nhân sự</li>
-                <li class="breadcrumb-item"><a href="{{ $backUrl }}">Danh sách nhân viên</a></li>
-                <li class="breadcrumb-item active" aria-current="page">{{ $employee->ma_nv }}</li>
-            </ol>
-        </nav>
-
-        <header class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4">
-            <div class="d-flex align-items-center gap-3">
+        <x-backend.page-header
+            title="{{ $employee->ho_ten }}"
+            title-id="page-title"
+            icon="bi-person-circle"
+            description="{{ $employee->ma_nv }} · {{ $employee->ten_cv }}"
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Danh sách nhân viên', 'url' => $backUrl],
+                ['label' => $employee->ma_nv],
+            ]"
+        >
+            <x-slot:titlePrefix>
                 @if ($avatarUrl)
                     <img
                         class="rounded-circle border object-fit-cover"
@@ -57,12 +59,8 @@
                         aria-label="Ảnh đại diện của {{ $employee->ho_ten }}"
                     >{{ $initials }}</span>
                 @endif
-                <div>
-                    <h1 class="h3 fw-semibold mb-1" id="page-title">{{ $employee->ho_ten }}</h1>
-                    <p class="text-secondary mb-0">{{ $employee->ma_nv }} · {{ $employee->ten_cv }}</p>
-                </div>
-            </div>
-            <div class="d-flex flex-wrap gap-2 align-self-start align-self-sm-center">
+            </x-slot:titlePrefix>
+            <x-slot:actions>
                 @can(\App\Enums\NhanVienPermission::Sua->value)
                     <a class="btn btn-primary" href="{{ $editUrl }}" data-employee-edit-trigger>
                         <i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa
@@ -71,34 +69,12 @@
                 <a class="btn btn-outline-secondary" href="{{ $backUrl }}">
                     <i class="bi bi-arrow-left" aria-hidden="true"></i> Quay lại danh sách
                 </a>
-            </div>
-        </header>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         @include('backend.nhanvien.partials.flash')
 
-        @php
-            $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);
-            $destroyDialogId = 'employee-destroy-' . $dialogKey;
-        @endphp
-        @can(\App\Enums\NhanVienPermission::Xoa->value)
-            @if ((string) auth()->id() !== (string) $employee->ma_nv)
-                <div class="employee-action-dialogs d-inline-flex flex-wrap gap-2 mt-2" data-action-dialogs>
-                    <button class="btn btn-sm btn-outline-danger" type="button" data-dialog-open="{{ $destroyDialogId }}" aria-controls="{{ $destroyDialogId }}">Xóa hoặc kết thúc</button>
-                    <dialog class="employee-action-dialog" id="{{ $destroyDialogId }}" data-action-dialog aria-labelledby="{{ $destroyDialogId }}-title">
-                        <form method="POST" action="{{ route('backend.nhanvien.destroy', ['ma_nv' => $employee->ma_nv]) }}" data-dialog-form data-confirm-message="Xác nhận xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.">
-                            @csrf
-                            @method('DELETE')
-                            <h2 class="h5" id="{{ $destroyDialogId }}-title">Xóa hoặc kết thúc hồ sơ</h2>
-                            <p>Xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.</p>
-                            <div class="d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-outline-secondary" data-dialog-cancel>Hủy</button>
-                                <button type="submit" class="btn btn-danger" data-dialog-submit>Xác nhận thao tác</button>
-                            </div>
-                        </form>
-                    </dialog>
-                </div>
-            @endif
-        @endcan
+        @include('backend.nhanvien.partials.action-dialogs', ['employee' => $employee])
 
         <div class="row g-3">
             <div class="col-12">

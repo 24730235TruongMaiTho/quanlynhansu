@@ -10,24 +10,24 @@
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="contract-title">
-        <nav class="mb-3" aria-label="Đường dẫn trang">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item">Nhân sự</li>
-                <li class="breadcrumb-item active" aria-current="page">Quản lý hợp đồng</li>
-            </ol>
-        </nav>
-
-        <header class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-            <div>
-                <h1 class="h3 fw-semibold mb-1" id="contract-title">Danh sách hợp đồng</h1>
-                <p class="text-secondary mb-0">Theo dõi hợp đồng và cảnh báo hết hạn trong {{ config('hopdong.expiring_warning_days', 30) }} ngày.</p>
-            </div>
+        <x-backend.page-header
+            title="Danh sách hợp đồng"
+            title-id="contract-title"
+            icon="bi-file-earmark-text"
+            description="Theo dõi hợp đồng và cảnh báo hết hạn trong {{ config('hopdong.expiring_warning_days', 30) }} ngày."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Quản lý hợp đồng'],
+            ]"
+        >
+            <x-slot:actions>
             @can(\App\Enums\HopDongPermission::Tao->value)
-                <a class="btn btn-primary" href="{{ route('backend.hopdong.create') }}">
-                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Thêm hợp đồng
+                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm hợp đồng" title="Thêm hợp đồng" href="{{ route('backend.hopdong.create') }}">
+                    <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm hợp đồng
                 </a>
             @endcan
-        </header>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         @if (session('success'))
             <div class="alert alert-success" role="status"><i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>{{ session('success') }}</div>
@@ -36,18 +36,18 @@
             <div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>
         @endif
 
-        <section class="card shadow-sm mb-3" aria-labelledby="contract-filter-title">
+        <section class="card shadow-sm mb-3 filter-card" aria-labelledby="contract-filter-title">
             <div class="card-header bg-white py-3">
                 <h2 class="h6 fw-semibold mb-0" id="contract-filter-title">Bộ lọc hợp đồng</h2>
             </div>
             <div class="card-body">
-                <form method="get" action="{{ route('backend.hopdong.index') }}">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-12 col-lg-4">
+                <form method="get" action="{{ route('backend.hopdong.index') }}" class="filter-bar">
+                    <div class="filter-bar__fields">
+                        <div class="filter-bar__field">
                             <label class="form-label" for="keyword">Nhân viên</label>
                             <input class="form-control" id="keyword" name="keyword" type="search" maxlength="100" value="{{ request('keyword') }}" placeholder="Mã hoặc tên nhân viên">
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-3">
+                        <div class="filter-bar__field">
                             <label class="form-label" for="ma_lhd">Loại hợp đồng</label>
                             <select class="form-select" id="ma_lhd" name="ma_lhd">
                                 <option value="">Tất cả loại hợp đồng</option>
@@ -56,7 +56,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-2">
+                        <div class="filter-bar__field">
                             <label class="form-label" for="per_page">Số dòng</label>
                             <select class="form-select" id="per_page" name="per_page">
                                 @foreach ([5, 10, 20, 50, 100] as $pageSize)
@@ -64,16 +64,16 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-12 col-lg-3">
+                        <div class="filter-bar__field filter-bar__field--toggle">
                             <div class="form-check mb-2">
                                 <input class="form-check-input" id="sap_het_han" name="sap_het_han" type="checkbox" value="1" @checked(request()->boolean('sap_het_han'))>
                                 <label class="form-check-label" for="sap_het_han">Chỉ xem hợp đồng sắp hết hạn</label>
                             </div>
-                            <div class="d-flex flex-wrap gap-2">
-                                <button class="btn btn-success" type="submit">Lọc</button>
-                                @if ($hasFilters)<a class="btn btn-outline-secondary" href="{{ route('backend.hopdong.index') }}">Xóa lọc</a>@endif
-                            </div>
                         </div>
+                    </div>
+                    <div class="filter-bar__actions">
+                            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
+                        @if ($hasFilters)<a class="btn btn-outline-secondary" href="{{ route('backend.hopdong.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa lọc</a>@endif
                     </div>
                 </form>
             </div>
@@ -105,7 +105,7 @@
                                 @php($deleteId = 'contract-delete-' . (int) $contract->ma_hd)
                                 <tr class="{{ $contract->sap_het_han ? 'table-warning' : '' }}">
                                     <td>{{ ($contracts->firstItem() ?? 0) + $loop->index }}</td>
-                                    <th scope="row"><span class="badge bg-primary">{{ $contract->ma_hd }}</span></th>
+                                    <th scope="row"><span class="identifier-text">{{ $contract->ma_hd }}</span></th>
                                     <td><span class="fw-semibold">{{ $contract->ho_ten }}</span><small class="d-block text-secondary">{{ $contract->ma_nv }}</small></td>
                                     <td>{{ $contract->ten_lhd }}</td>
                                     <td>{{ $contract->ngay_ky }}</td>
@@ -115,15 +115,18 @@
                                     </td>
                                     @if ($canEdit || $canDelete)
                                         <td>
-                                            <label class="visually-hidden" for="contract-action-{{ $contract->ma_hd }}">Thao tác với hợp đồng {{ $contract->ma_hd }}</label>
-                                            <select class="form-select form-select-sm" id="contract-action-{{ $contract->ma_hd }}" data-row-action-select>
-                                                <option value="">Chọn thao tác</option>
-                                                @if ($canEdit)<option value="{{ route('backend.hopdong.edit', $contract->ma_hd) }}" data-action="navigate">Sửa</option>@endif
-                                                @if ($canDelete)<option value="delete" data-action="delete" data-form-id="{{ $deleteId }}" data-confirm-message="Bạn có chắc muốn xóa hợp đồng này?">Xóa</option>@endif
-                                            </select>
-                                            @if ($canDelete)
-                                                <form class="d-none" id="{{ $deleteId }}" method="post" action="{{ route('backend.hopdong.destroy', $contract->ma_hd) }}">@csrf @method('DELETE')</form>
-                                            @endif
+                                            <div class="table-actions">
+                                                @if ($canEdit)
+                                                    <a class="btn btn-outline-primary btn-icon-action" href="{{ route('backend.hopdong.edit', $contract->ma_hd) }}" aria-label="Sửa hợp đồng {{ $contract->ma_hd }}" title="Sửa hợp đồng {{ $contract->ma_hd }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                                                @endif
+                                                @if ($canDelete)
+                                                    <form id="{{ $deleteId }}" method="post" action="{{ route('backend.hopdong.destroy', $contract->ma_hd) }}" onsubmit="return confirm('Bạn có chắc muốn xóa hợp đồng này?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button class="btn btn-outline-danger btn-icon-action" type="submit" aria-label="Xóa hợp đồng {{ $contract->ma_hd }}" title="Xóa hợp đồng {{ $contract->ma_hd }}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                                                    </form>
+                                                @endif
+                                            </div>
                                         </td>
                                     @endif
                                 </tr>
@@ -140,7 +143,7 @@
             @endif
 
             @if ($contracts->hasPages())
-                <div class="card-footer bg-white d-flex justify-content-center py-3">
+                <div class="card-footer pagination-footer bg-white d-flex justify-content-center py-3">
                     @include('backend.partials.pagination', ['paginator' => $contracts, 'label' => 'hợp đồng'])
                 </div>
             @endif

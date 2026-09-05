@@ -86,6 +86,23 @@ class PhongBanFeatureTest extends TestCase
             ->assertSee('Xóa');
     }
 
+    public function test_identifiers_and_counts_are_plain_text_without_status_badges(): void
+    {
+        $source = file_get_contents(resource_path('views/backend/phongban/index.blade.php'));
+
+        self::assertIsString($source);
+        self::assertDoesNotMatchRegularExpression(
+            '/<span\s+class="[^"]*\bbadge\b[^"]*"[^>]*>\s*\{\{\s*\$department->ma_pb/s',
+            $source,
+        );
+        self::assertDoesNotMatchRegularExpression(
+            '/<span\s+class="[^"]*\bbadge\b[^"]*"[^>]*>\s*\{\{\s*\$department->so_nhan_vien/s',
+            $source,
+        );
+        self::assertStringContainsString('class="identifier-text">{{ $department->ma_pb }}</span>', $source);
+        self::assertStringContainsString('class="text-secondary">{{ $department->so_nhan_vien ?? 0 }}</span>', $source);
+    }
+
     public function test_authenticated_list_renders_create_edit_and_safe_delete_actions(): void
     {
         $rows = [
@@ -126,13 +143,14 @@ class PhongBanFeatureTest extends TestCase
             ->assertSee('name="ten_pb"', false)
             ->assertSee('option value="5" selected', false)
             ->assertSee('Hiển thị 6-6 / 11 phòng ban')
-            ->assertSee('data-row-action-select', false)
-            ->assertSee('Sửa')
-            ->assertSee('Xóa')
+            ->assertDontSee('data-row-action-select', false)
+            ->assertSee('btn-icon-action', false)
+            ->assertSee('aria-label="Sửa Phòng Kế hoạch"', false)
+            ->assertSee('title="Sửa Phòng Kế hoạch"', false)
+            ->assertSee('aria-label="Xóa Phòng Kế hoạch"', false)
             ->assertSee('«')
             ->assertSee('Trang cuối')
-            ->assertSee('data-confirm-message=', false)
-            ->assertSee('<noscript>', false)
+            ->assertSee('onsubmit="return confirm(', false)
             ->assertSee('data-action="modal"', false);
     }
 
@@ -149,7 +167,7 @@ class PhongBanFeatureTest extends TestCase
             ->assertSee('data-simple-edit-modal', false)
             ->assertSee('data-action="modal"', false)
             ->assertSee('data-modal-url="'.e($editUrl).'"', false)
-            ->assertSee('value="'.$editUrl.'"', false);
+            ->assertSee('href="'.e($editUrl).'"', false);
     }
 
     public function test_modal_edit_returns_a_partial_and_ajax_update_returns_safe_json(): void
@@ -198,7 +216,7 @@ class PhongBanFeatureTest extends TestCase
         $this->get('/phong-ban?ten_pb=K%E1%BB%B9%20thu%E1%BA%ADt&page=2&so_dong=5')
             ->assertOk()
             ->assertSee('data-action="modal"', false)
-            ->assertSee('<noscript>', false);
+            ->assertSee('btn-icon-action', false);
 
         $backUrl = route('backend.phongban.index', [
             'ten_pb' => 'Kỹ thuật',

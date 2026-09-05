@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Contracts\NhanVienRepositoryContract;
 use App\Contracts\NhanVienServiceContract;
 use App\Enums\NhanVienRemovalAction;
+use App\Enums\NhanVienRole;
+use App\Enums\NhanVienStatus;
 use App\Exceptions\NhanVienDomainException;
 use App\Support\NhanVienAvatarPath;
 use Carbon\CarbonImmutable;
@@ -26,6 +28,11 @@ final class NhanVienService implements NhanVienServiceContract
 
     private const ADDRESS_FIELDS = [
         'dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh',
+    ];
+
+    private const OWN_PROFILE_FIELDS = [
+        'ho_ten', 'ngay_sinh', 'gioi_tinh', 'sdt', 'email',
+        'dan_toc', 'cccd', 'noi_cap_cccd', 'hoc_van',
     ];
 
     public function __construct(
@@ -215,6 +222,121 @@ final class NhanVienService implements NhanVienServiceContract
         }
 
         return $employee;
+    }
+
+    public function updateOwnProfile(string $maNv, array $validated): object
+    {
+        if (array_key_exists('ngay_sinh', $validated)) {
+            $birthDate = $this->parseIsoDate($validated['ngay_sinh']);
+            if ($birthDate === null) {
+                throw new NhanVienDomainException(
+                    'Ngày sinh không hợp lệ.',
+                    'NV_PROFILE_BIRTH_DATE_INVALID',
+                    'ngay_sinh',
+                );
+            }
+
+            $current = $this->repository->find($maNv);
+            if ($current === null) {
+                throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+            }
+
+            $startDate = $this->parseIsoDate($current->ngay_vao_lam ?? null);
+            if ($startDate !== null && $birthDate->addYears(18)->isAfter($startDate)) {
+                throw new NhanVienDomainException(
+                    'Nhân viên phải đủ 18 tuổi tại ngày vào làm.',
+                    'NV_PROFILE_BIRTH_DATE_TOO_YOUNG',
+                    'ngay_sinh',
+                );
+            }
+        }
+
+        $allowed = array_merge(self::OWN_PROFILE_FIELDS, self::ADDRESS_FIELDS, [
+            'anh_dai_dien', 'xoa_anh_dai_dien',
+        ]);
+
+        return $this->update($maNv, array_intersect_key($validated, array_flip($allowed)));
+    }
+
+    public function changeOwnPassword(string $maNv, string $currentPassword, string $newPassword): void
+    {
+        $employee = $this->repository->findAccountByIdentifier($maNv);
+        if ($employee === null || ! $this->matchesPassword($currentPassword, (string) $employee->getAuthPassword())) {
+            throw new NhanVienDomainException('Mật khẩu hiện tại không đúng.', 'NV_PROFILE_PASSWORD_INVALID', 'mat_khau_hien_tai');
+        }
+
+        if ($this->matchesPassword($newPassword, (string) $employee->getAuthPassword())) {
+            throw new NhanVienDomainException('Mật khẩu mới phải khác mật khẩu hiện tại.', 'NV_PROFILE_PASSWORD_REUSED', 'mat_khau_moi');
+        }
+
+        $this->repository->rehashAuthenticatedPassword(
+            $maNv,
+            (string) $employee->getAuthPassword(),
+            $this->hasher->make($newPassword),
+        );
+    }
+
+    public function resetPassword(string $maNv, string $actorMaNv): void
+    {
+        if ($maNv === $actorMaNv) {
+            throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_RESET_SELF_FORBIDDEN');
+        }
+
+        $actor = $this->repository->find($actorMaNv);
+        $target = $this->repository->find($maNv);
+
+        if ($target === null || NhanVienStatus::isTerminalValue((int) ($target->ma_tt ?? 0))) {
+            throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_RESET_NOT_FOUND');
+        }
+
+        $actorRole = (int) ($actor->ma_vt ?? 0);
+        if ((int) ($target->ma_vt ?? 0) === NhanVienRole::SuperAdmin->value
+            && $actorRole !== NhanVienRole::SuperAdmin->value) {
+            throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_RESET_PROTECTED_TARGET');
+        }
+
+        if ($actorRole === NhanVienRole::DepartmentManager->value
+            && (int) ($actor->ma_pb ?? 0) !== (int) ($target->ma_pb ?? 0)) {
+            throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_RESET_SCOPE_FORBIDDEN');
+        }
+
+        $plainPassword = 'nhom3@'.now(config('app.timezone'))->year;
+        $hash = $this->hasher->make($plainPassword);
+        unset($plainPassword);
+
+        $this->repository->resetPassword($maNv, $hash);
+    }
+
+    private function matchesPassword(string $plainText, string $storedHash): bool
+    {
+        $algorithm = password_get_info($storedHash)['algo'];
+        if ($algorithm !== null && $algorithm !== 0) {
+            return $this->hasher->check($plainText, $storedHash);
+        }
+
+        return hash_equals(strtolower($storedHash), strtolower(hash('sha256', $plainText)));
+    }
+
+    private function parseIsoDate(mixed $value): ?CarbonImmutable
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        try {
+            $date = CarbonImmutable::createFromFormat('!Y-m-d', $value);
+            $errors = CarbonImmutable::getLastErrors();
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($date === false
+            || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
+            || $date->format('Y-m-d') !== $value) {
+            return null;
+        }
+
+        return $date;
     }
 
     public function removeOrTerminate(string $maNv): NhanVienRemovalAction

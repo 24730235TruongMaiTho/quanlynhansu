@@ -15,7 +15,9 @@ final class ContentFourFeedbackUiTest extends TestCase
         self::assertStringContainsString('[5, 10, 20, 50, 100]', $source);
         self::assertStringContainsString("backend.partials.pagination-summary", $source);
         self::assertStringContainsString("backend.partials.pagination", $source);
-        self::assertStringContainsString('data-row-action-select', $source);
+        self::assertStringNotContainsString('data-row-action-select', $source);
+        self::assertStringContainsString('btn-icon-action', $source);
+        self::assertStringContainsString('Áp dụng bộ lọc', $source);
         self::assertStringNotContainsString('<th scope="col">Lương cơ bản</th>', $source);
     }
 
@@ -26,9 +28,10 @@ final class ContentFourFeedbackUiTest extends TestCase
 
         self::assertIsString($contractForm);
         self::assertIsString($permissionForm);
-        self::assertStringContainsString('aria-label="Đường dẫn trang"', $contractForm);
-        self::assertStringContainsString('class="h3 fw-semibold', $contractForm);
-        self::assertStringContainsString('aria-label="Đường dẫn trang"', $permissionForm);
+        self::assertStringContainsString('<x-backend.page-header', $contractForm);
+        self::assertStringContainsString('icon="bi-file-earmark-text"', $contractForm);
+        self::assertStringContainsString('<x-backend.page-header', $permissionForm);
+        self::assertStringContainsString('icon="bi-shield-lock"', $permissionForm);
         self::assertStringContainsString('Quyền theo module', $permissionForm);
     }
 
@@ -39,9 +42,11 @@ final class ContentFourFeedbackUiTest extends TestCase
 
         self::assertIsString($accountPage);
         self::assertIsString($sidebar);
-        self::assertStringContainsString('Gán vai trò tài khoản', $accountPage);
+        self::assertStringContainsString('Phân Quyền', $accountPage);
+        self::assertStringContainsString("backend.taikhoan.assign-roles", $accountPage);
         self::assertStringContainsString('Quyền được cấu hình theo vai trò', $accountPage);
-        self::assertStringContainsString('Gán vai trò tài khoản', $sidebar);
+        self::assertStringContainsString('Phân Quyền', $sidebar);
+        self::assertStringNotContainsString('Gán vai trò', $sidebar);
         self::assertStringNotContainsString('Phân quyền tài khoản', $sidebar);
     }
 }

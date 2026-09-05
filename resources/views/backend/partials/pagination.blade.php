@@ -9,20 +9,20 @@
         $windowStart = max(1, $currentPage - 2);
         $windowEnd = min($lastPage, $currentPage + 2);
     @endphp
-    <nav aria-label="Phân trang {{ $label }}">
+    <nav class="backend-pagination" aria-label="Phân trang {{ $label }}">
         <ul class="pagination pagination-sm mb-0 flex-wrap justify-content-center">
             <li class="page-item {{ $paginator->onFirstPage() ? 'disabled' : '' }}">
                 @if ($paginator->onFirstPage())
-                    <span class="page-link" aria-disabled="true" aria-label="Trang đầu">«</span>
+                    <span class="page-link" aria-disabled="true" aria-label="Trang đầu"><i class="bi bi-chevron-double-left" aria-hidden="true"></i><span class="visually-hidden">«</span></span>
                 @else
-                    <a class="page-link" href="{{ $paginator->url(1) }}" aria-label="Trang đầu">«</a>
+                    <a class="page-link" href="{{ $paginator->url(1) }}" aria-label="Trang đầu"><i class="bi bi-chevron-double-left" aria-hidden="true"></i><span class="visually-hidden">«</span></a>
                 @endif
             </li>
             <li class="page-item {{ $paginator->onFirstPage() ? 'disabled' : '' }}">
                 @if ($paginator->onFirstPage())
-                    <span class="page-link" aria-disabled="true" aria-label="Trang trước">‹</span>
+                    <span class="page-link" aria-disabled="true" aria-label="Trang trước"><i class="bi bi-chevron-left" aria-hidden="true"></i></span>
                 @else
-                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}" aria-label="Trang trước">‹</a>
+                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}" aria-label="Trang trước"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
                 @endif
             </li>
 
@@ -52,16 +52,16 @@
 
             <li class="page-item {{ $paginator->hasMorePages() ? '' : 'disabled' }}">
                 @if ($paginator->hasMorePages())
-                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}" aria-label="Trang sau">›</a>
+                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}" aria-label="Trang sau"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
                 @else
-                    <span class="page-link" aria-disabled="true" aria-label="Trang sau">›</span>
+                    <span class="page-link" aria-disabled="true" aria-label="Trang sau"><i class="bi bi-chevron-right" aria-hidden="true"></i></span>
                 @endif
             </li>
             <li class="page-item {{ $paginator->hasMorePages() ? '' : 'disabled' }}">
                 @if ($paginator->hasMorePages())
-                    <a class="page-link" href="{{ $paginator->url($lastPage) }}" aria-label="Trang cuối">»</a>
+                    <a class="page-link" href="{{ $paginator->url($lastPage) }}" aria-label="Trang cuối"><i class="bi bi-chevron-double-right" aria-hidden="true"></i><span class="visually-hidden">»</span></a>
                 @else
-                    <span class="page-link" aria-disabled="true" aria-label="Trang cuối">»</span>
+                    <span class="page-link" aria-disabled="true" aria-label="Trang cuối"><i class="bi bi-chevron-double-right" aria-hidden="true"></i><span class="visually-hidden">»</span></span>
                 @endif
             </li>
         </ul>

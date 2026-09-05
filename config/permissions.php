@@ -9,6 +9,7 @@ use App\Enums\VaiTroPermission;
 use App\Enums\NghiPhepPermission;
 use App\Enums\ChamCongPermission;
 use App\Enums\LuongPermission;
+use App\Enums\HeSoLuongPermission;
 
 return [
     // Các module mới chỉ cần đăng ký enum quyền canonical tại đây.
@@ -22,5 +23,6 @@ return [
         NghiPhepPermission::class,
         ChamCongPermission::class,
         LuongPermission::class,
+        HeSoLuongPermission::class,
     ],
 ];

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Repositories\LuongRepository;
+use App\Support\JsonPaginator;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Collection;
@@ -27,14 +28,18 @@ class LuongService
     public function getAll($filters = [])
     {
         try {
+            $paginator = $this->repository->all($filters);
+
             return [
                 'success' => true,
-                'data' => $this->repository->all($filters),
+                'data' => JsonPaginator::from($paginator),
             ];
         } catch (Exception $e) {
+            report($e);
+
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể tải danh sách lương.',
             ];
         }
     }
@@ -56,9 +61,11 @@ class LuongService
                 'data' => $record,
             ];
         } catch (Exception $e) {
+            report($e);
+
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể tải bản ghi lương.',
             ];
         }
     }
@@ -74,9 +81,11 @@ class LuongService
                 'data' => $record,
             ];
         } catch (Exception $e) {
+            report($e);
+
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể tạo bản ghi lương.',
             ];
         }
     }
@@ -99,9 +108,11 @@ class LuongService
                 'data' => $record,
             ];
         } catch (Exception $e) {
+            report($e);
+
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể cập nhật bản ghi lương.',
             ];
         }
     }
@@ -123,9 +134,11 @@ class LuongService
                 'message' => 'Xóa thành công',
             ];
         } catch (Exception $e) {
+            report($e);
+
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể xóa bản ghi lương.',
             ];
         }
     }
@@ -552,7 +565,7 @@ class LuongService
 
             return [
                 'success' => false,
-                'message' => 'Không thể xuất báo cáo lương: '.$e->getMessage(),
+                'message' => 'Không thể xuất báo cáo lương.',
             ];
         }
     }
@@ -608,93 +621,33 @@ class LuongService
     /**
      * Lấy toàn bộ dữ liệu lương theo filter.
      *
-     * SP:
-     * sp_luong_tim_kiem_phan_trang(
-     *     p_tu_khoa,
-     *     p_ky_luong,
-     *     p_ma_pb,
-     *     p_ma_cv,
-     *     p_page,
-     *     p_per_page
-     * )
-     *
-     * SP giới hạn tối đa 100 dòng/page,
-     * nên export loop đến khi lấy đủ total_count.
+     * Repository pagination is deliberately reused here so exports remain
+     * available on installations that do not ship the legacy procedure.
      */
     private function getAllSalaryRowsForExport(
         array $filters
     ): Collection {
         $allRows = collect();
-
-        $tuKhoa =
-            $filters['tu_khoa']
-            ?? null;
-
-        $kyLuong =
-            $filters['ky_luong']
-            ?? null;
-
-        $maPb =
-            $filters['ma_pb']
-            ?? null;
-
-        $maCv =
-            $filters['ma_cv']
-            ?? null;
-
         $page = 1;
-        $perPage = 100;
-        $total = null;
+        $perPage = 50;
+
+        $queryFilters = array_filter([
+            'tu_khoa' => $filters['tu_khoa'] ?? null,
+            'ky_luong' => $filters['ky_luong'] ?? null,
+            'ma_pb' => $filters['ma_pb'] ?? null,
+            'ma_cv' => $filters['ma_cv'] ?? null,
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
 
         do {
-            $rows = collect(
-                DB::select(
-                    'CALL sp_luong_tim_kiem_phan_trang(?, ?, ?, ?, ?, ?)',
-                    [
-                        $tuKhoa,
-                        $kyLuong,
-                        $maPb,
-                        $maCv,
-                        $page,
-                        $perPage,
-                    ]
-                )
-            );
-
-            if ($rows->isEmpty()) {
-                break;
-            }
-
-            if ($total === null) {
-                $total = (int) (
-                    $rows->first()
-                        ->total_count
-                    ?? 0
-                );
-            }
-
-            $cleanRows = $rows
-                ->map(function ($row) {
-                    $data = (array) $row;
-
-                    unset(
-                        $data['total_count']
-                    );
-
-                    return (object) $data;
-                })
-                ->values();
-
-            $allRows =
-                $allRows->concat(
-                    $cleanRows
-                );
+            $paginator = $this->repository->all($queryFilters + [
+                'page' => $page,
+                'per_page' => $perPage,
+            ]);
+            $rows = collect($paginator->items());
+            $allRows = $allRows->concat($rows);
 
             $page++;
-        } while (
-            $total !== null
-            && $allRows->count() < $total
-        );
+        } while ($rows->isNotEmpty() && $paginator->currentPage() < $paginator->lastPage());
 
         return $allRows->values();
     }

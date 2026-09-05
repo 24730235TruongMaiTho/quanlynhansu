@@ -6,7 +6,7 @@ export function extractData(result) {
 }
 
 export function genderLabel(value) {
-    return value ? (value === 1) ? 'Nam' : 'Nữ' : "-";
+    return value ? (value === 1) ? 'Nam' : 'Nữ' : '—';
 }
 
 export function normalizeEmployee(employee) {

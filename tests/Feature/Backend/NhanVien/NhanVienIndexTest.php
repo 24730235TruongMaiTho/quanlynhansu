@@ -356,6 +356,7 @@ class NhanVienIndexTest extends TestCase
                 'nhan-vien',
                 'nhan-vien/{ma_nv}/edit',
                 'nhan-vien/{ma_nv}',
+                'nhan-vien/{ma_nv}/reset-mat-khau',
                 'nhan-vien/{ma_nv}',
                 'nhan-vien/{ma_nv}',
             ],
@@ -388,6 +389,14 @@ class NhanVienIndexTest extends TestCase
             $destroyRoute->getActionName(),
         );
         $this->assertSame('[0-9]{5}', $destroyRoute->wheres['ma_nv']);
+
+        $resetRoute = Route::getRoutes()->getByName('backend.nhanvien.reset-password');
+        $this->assertInstanceOf(RoutingRoute::class, $resetRoute);
+        $this->assertSame('nhan-vien/{ma_nv}/reset-mat-khau', $resetRoute->uri());
+        $this->assertSame(['POST'], $resetRoute->methods());
+        $this->assertSame(NhanVienController::class.'@resetPassword', $resetRoute->getActionName());
+        $this->assertContains('auth', $resetRoute->gatherMiddleware());
+        $this->assertContains('can:NhanVien.ResetPassword', $resetRoute->gatherMiddleware());
 
         $showRoute = Route::getRoutes()->getByName('backend.nhanvien.show');
         $this->assertInstanceOf(RoutingRoute::class, $showRoute);

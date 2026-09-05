@@ -40,6 +40,7 @@ use App\Http\Controllers\Backend\ {
     NhomQuyenController,
     PhongBanController,
     PhanQuyenController,
+    ProfileController,
     QuyenController,
     TaiKhoanController,
     TruyCapController,
@@ -107,6 +108,20 @@ Route::prefix('')->name('backend.')
         ->middleware('auth')
         ->name('tongquan.index');
 
+    // Tài khoản tự quản lý hồ sơ và mật khẩu, không yêu cầu quyền HR.
+    Route::get('/ho-so-ca-nhan', [ProfileController::class, 'edit'])
+        ->middleware('auth')
+        ->name('profile.edit');
+    Route::match(['put', 'patch'], '/ho-so-ca-nhan', [ProfileController::class, 'update'])
+        ->middleware('auth')
+        ->name('profile.update');
+    Route::get('/doi-mat-khau', [ProfileController::class, 'password'])
+        ->middleware('auth')
+        ->name('profile.password.edit');
+    Route::match(['put', 'patch'], '/doi-mat-khau', [ProfileController::class, 'updatePassword'])
+        ->middleware('auth')
+        ->name('profile.password.update');
+
     // Danh sách phòng ban, yêu cầu quyền xem.
     Route::get('/phong-ban', [PhongBanController::class, 'index'])
         ->middleware(['auth', 'can:'.PhongBanPermission::Xem->value])
@@ -161,8 +176,8 @@ Route::prefix('')->name('backend.')
         ->where('ma_vt', '[1-9][0-9]*')->middleware(['auth', 'can:'.PhanQuyenPermission::Sua->value])->name('vaitro.permissions.update');
     Route::get('/tai-khoan', [PhanQuyenController::class, 'accounts'])
         ->middleware(['auth', 'can:'.PhanQuyenPermission::Xem->value])->name('taikhoan.index');
-    Route::patch('/tai-khoan/{ma_nv}/vai-tro', [PhanQuyenController::class, 'assignRole'])
-        ->where('ma_nv', '[0-9]{5}')->middleware(['auth', 'can:'.PhanQuyenPermission::Sua->value])->name('taikhoan.assign-role');
+    Route::patch('/tai-khoan/vai-tro', [PhanQuyenController::class, 'assignRoles'])
+        ->middleware(['auth', 'can:'.PhanQuyenPermission::Sua->value])->name('taikhoan.assign-roles');
 
     Route::get('/hop-dong', [HopDongController::class, 'index'])->middleware(['auth', 'can:'.HopDongPermission::Xem->value])->name('hopdong.index');
     Route::get('/hop-dong/create', [HopDongController::class, 'create'])->middleware(['auth', 'can:'.HopDongPermission::Tao->value])->name('hopdong.create');
@@ -225,6 +240,11 @@ Route::prefix('')->name('backend.')
         ->middleware(['auth', 'can:'.NhanVienPermission::Sua->value])
         ->name('nhanvien.update');
 
+    Route::post('/nhan-vien/{ma_nv}/reset-mat-khau', [NhanVienController::class, 'resetPassword'])
+        ->where('ma_nv', '[0-9]{5}')
+        ->middleware(['auth', 'can:'.NhanVienPermission::DatLaiMatKhau->value])
+        ->name('nhanvien.reset-password');
+
     // Xóa hoặc chuyển trạng thái nhân viên theo nghiệp vụ controller.
     Route::delete('/nhan-vien/{ma_nv}', [NhanVienController::class, 'destroy'])
         ->where('ma_nv', '[0-9]{5}')
@@ -254,10 +274,14 @@ Route::prefix('')->name('backend.')
 
     Route::get('/duyet-nghi-phep', function () {
         return view('backend.nghiphep.duyet-nghi-phep');
-    })->name('backend.nghiphep.duyet-nghi-phep');
+    })->middleware([
+        'auth',
+        'can:'.NghiPhepPermission::Sua->value,
+        'can:department-manager',
+    ])->name('nghiphep.duyet-nghi-phep');
 
     Route::get('/tao-nghi-phep', function () {
         return view('backend.nghiphep.create');
-    })->name('backend.nghiphep.create');
+    })->middleware(['auth', 'can:'.NghiPhepPermission::Tao->value])->name('nghiphep.create');
 
 });

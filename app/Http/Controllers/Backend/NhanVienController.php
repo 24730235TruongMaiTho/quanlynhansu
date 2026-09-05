@@ -7,6 +7,7 @@ use App\Enums\NhanVienRemovalAction;
 use App\Enums\NhanVienStatus;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Requests\ListNhanVienRequest;
+use App\Http\Requests\ResetNhanVienPasswordRequest;
 use App\Http\Requests\StoreNhanVienRequest;
 use App\Http\Requests\UpdateNhanVienRequest;
 use App\Support\NhanVienAvatarPath;
@@ -323,7 +324,51 @@ class NhanVienController extends Controller
             ->route('backend.nhanvien.index')
             ->with('success', $action === NhanVienRemovalAction::Deleted
                 ? 'Đã xóa hồ sơ nhân viên.'
-                : 'Đã ghi nhận nhân viên nghỉ việc theo lịch sử.');
+            : 'Đã ghi nhận nhân viên nghỉ việc theo lịch sử.');
+    }
+
+    public function resetPassword(ResetNhanVienPasswordRequest $request, string $ma_nv): RedirectResponse|JsonResponse
+    {
+        try {
+            $this->employees->resetPassword($ma_nv, (string) auth()->id());
+        } catch (NhanVienDomainException $exception) {
+            if ($exception->domainCode === 'NV_RESET_NOT_FOUND' || $exception->domainCode === 'NV_NOT_FOUND') {
+                abort(404);
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.',
+                ], 422);
+            }
+
+            return back()->withErrors([
+                'nhan_vien' => 'Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.',
+            ]);
+        } catch (Throwable) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.',
+                ], 500);
+            }
+
+            return back()->withErrors([
+                'nhan_vien' => 'Không thể đặt lại mật khẩu lúc này. Vui lòng thử lại sau.',
+            ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã đặt lại mật khẩu theo quy ước mật khẩu mặc định.',
+            ]);
+        }
+
+        return redirect()
+            ->route('backend.nhanvien.show', ['ma_nv' => $ma_nv])
+            ->with('success', 'Đã đặt lại mật khẩu theo quy ước mật khẩu mặc định.');
     }
 
     private function findForCurrentActor(string $maNv): object

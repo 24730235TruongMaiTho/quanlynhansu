@@ -156,7 +156,7 @@ class ChamCongImportService
             ->createTextRun(
                 "Ngày làm.\n".
                 "Bắt buộc.\n".
-                "Định dạng: YYYY-MM-DD."
+                "Định dạng: dd/mm/yyyy."
             );
 
         $sheet->getComment('C1')
@@ -188,7 +188,7 @@ class ChamCongImportService
          */
         $sheet->getStyle('B2:B1000')
             ->getNumberFormat()
-            ->setFormatCode('yyyy-mm-dd');
+            ->setFormatCode('dd/mm/yyyy');
 
         $dateValidation = new DataValidation();
         $dateValidation->setType(
@@ -210,7 +210,7 @@ class ChamCongImportService
             'Định dạng ngày'
         );
         $dateValidation->setPrompt(
-            'Nhập ngày theo YYYY-MM-DD.'
+            'Nhập ngày theo dd/mm/yyyy.'
         );
         $dateValidation->setOperator(
             DataValidation::OPERATOR_BETWEEN
@@ -362,9 +362,17 @@ class ChamCongImportService
                     continue;
                 }
 
+                $data = $this->combineRow($header, $row);
+
+                if (array_key_exists('ngay_lam', $data)) {
+                    $data['ngay_lam'] = $this->normalizeDateString(
+                        trim((string) $data['ngay_lam'])
+                    );
+                }
+
                 $rows[] = [
                     'row_num' => $rowNumber,
-                    'data' => $this->combineRow($header, $row),
+                    'data' => $data,
                 ];
             }
 
@@ -542,7 +550,7 @@ class ChamCongImportService
             if ($ngayLam === '') {
                 $rowErrors[] = 'Ngày làm không được để trống.';
             } elseif (! $this->isValidDate($ngayLam)) {
-                $rowErrors[] = "Ngày làm '{$ngayLam}' không hợp lệ, định dạng YYYY-MM-DD.";
+                $rowErrors[] = "Ngày làm '{$ngayLam}' không hợp lệ, định dạng dd/mm/yyyy.";
             }
 
             if (
@@ -669,48 +677,37 @@ class ChamCongImportService
             )->format('Y-m-d');
         }
 
-        $value = trim(
-            (string) $value
-        );
+        return $this->normalizeDateString(trim((string) $value));
+    }
 
+    private function normalizeDateString(string $value): string
+    {
         if ($value === '') {
             return '';
         }
 
         /*
-         * Format chuẩn của hệ thống.
+         * Format chuẩn của hệ thống là ngày hiển thị dd/mm/yyyy. ISO vẫn
+         * được nhận để tương thích với các file đã phát hành trước đây.
          */
         $formats = [
+            'd/m/Y',
             'Y-m-d',
 
-            /*
-             * Excel Windows / locale US có thể trả:
-             * 8/27/2026 hoặc 08/27/2026.
-             */
+            /* Excel Windows / locale US có thể trả 8/27/2026. */
             'n/j/Y',
             'm/d/Y',
         ];
 
         foreach ($formats as $format) {
-            $date = DateTime::createFromFormat(
-                '!'.$format,
-                $value
-            );
+            $date = DateTime::createFromFormat('!'.$format, $value);
 
-            if (
-                $date !== false
-                && $date->format($format) === $value
-            ) {
-                return $date->format(
-                    'Y-m-d'
-                );
+            if ($date !== false && $date->format($format) === $value) {
+                return $date->format('Y-m-d');
             }
         }
 
-        /*
-         * Không đoán các format mơ hồ khác.
-         * validateAndImport() sẽ trả lỗi rõ ràng.
-         */
+        /* Không đoán format khác; validateAndImport() sẽ trả lỗi rõ ràng. */
         return $value;
     }
 

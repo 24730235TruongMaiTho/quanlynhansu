@@ -8,6 +8,7 @@ interface HopDongRepositoryContract
 {
     public function paginate(array $filters, int $perPage, int $warningDays): LengthAwarePaginator;
     public function find(int $maHd): ?object;
+    public function findType(int $maLhd): ?object;
     public function employees(): array;
     public function types(): array;
     public function create(array $data): int;

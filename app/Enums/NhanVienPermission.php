@@ -10,6 +10,7 @@ enum NhanVienPermission: string implements PermissionDefinitionContract
     case Tao = 'NhanVien.Insert';
     case Sua = 'NhanVien.Update';
     case Xoa = 'NhanVien.Delete';
+    case DatLaiMatKhau = 'NhanVien.ResetPassword';
 
     public function id(): int
     {
@@ -18,6 +19,7 @@ enum NhanVienPermission: string implements PermissionDefinitionContract
             self::Tao => 18,
             self::Sua => 19,
             self::Xoa => 20,
+            self::DatLaiMatKhau => 42,
         };
     }
 
@@ -38,6 +40,7 @@ enum NhanVienPermission: string implements PermissionDefinitionContract
             self::Tao => PermissionAction::Create,
             self::Sua => PermissionAction::Edit,
             self::Xoa => PermissionAction::Delete,
+            self::DatLaiMatKhau => null,
         };
     }
 }

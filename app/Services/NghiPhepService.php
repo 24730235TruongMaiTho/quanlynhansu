@@ -28,20 +28,6 @@ class NghiPhepService
                 );
             }
 
-            if (
-                array_key_exists(
-                    'trang_thai_duyet',
-                    $filters
-                )
-                && $filters['trang_thai_duyet'] !== null
-                && $filters['trang_thai_duyet'] !== ''
-            ) {
-                $query->where(
-                    'np.trang_thai_duyet',
-                    (int) $filters['trang_thai_duyet']
-                );
-            }
-
             /*
              * Lọc theo khoảng ngày giao nhau:
              *
@@ -64,18 +50,40 @@ class NghiPhepService
                 );
             }
 
+            $tab = $filters['tab'] ?? null;
+            if (($filters['tab'] ?? null) === 'pending') {
+                $query->where('np.trang_thai_duyet', 0);
+            } elseif (($filters['tab'] ?? null) === 'history') {
+                $query->whereIn('np.trang_thai_duyet', [1, 2]);
+            } elseif (
+                array_key_exists('trang_thai_duyet', $filters)
+                && $filters['trang_thai_duyet'] !== null
+                && $filters['trang_thai_duyet'] !== ''
+            ) {
+                $query->where(
+                    'np.trang_thai_duyet',
+                    (int) $filters['trang_thai_duyet']
+                );
+            }
+
+            $counts = [
+                'pending' => (clone $query)->where('np.trang_thai_duyet', 0)->count(),
+                'history' => (clone $query)->whereIn('np.trang_thai_duyet', [1, 2])->count(),
+            ];
+
             return [
                 'success' => true,
                 'data' => $query
                     ->orderByDesc('np.ma_np')
                     ->get(),
+                'counts' => $counts,
             ];
         } catch (\Throwable $e) {
             report($e);
 
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể tải danh sách nghỉ phép.',
             ];
         }
     }
@@ -109,7 +117,7 @@ class NghiPhepService
 
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể tải chi tiết nghỉ phép.',
             ];
         }
     }
@@ -207,7 +215,7 @@ class NghiPhepService
 
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể tạo đơn nghỉ phép.',
             ];
         }
     }
@@ -334,7 +342,7 @@ class NghiPhepService
 
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể cập nhật đơn nghỉ phép.',
             ];
         }
     }
@@ -371,7 +379,7 @@ class NghiPhepService
 
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể xóa đơn nghỉ phép.',
             ];
         }
     }
@@ -605,9 +613,7 @@ class NghiPhepService
                 'np.ly_do',
                 'np.trang_thai_duyet',
             ])
-            ->selectRaw(
-                'DATEDIFF(np.den_ngay, np.tu_ngay) + 1 AS so_ngay'
-            )
+            ->selectRaw($this->leaveDaysExpression())
             ->selectRaw(
                 "CASE np.trang_thai_duyet
                     WHEN 0 THEN 'Chờ duyệt'
@@ -721,7 +727,6 @@ class NghiPhepService
      */
     public function duyet(
         int $maNp,
-        string $maNv,
         int $trangThai,
         int $maPb
     ): array {
@@ -754,10 +759,6 @@ class NghiPhepService
                     $maNp
                 )
                 ->where(
-                    'np.ma_nv',
-                    $maNv
-                )
-                ->where(
                     'nv.ma_pb',
                     $maPb
                 )
@@ -766,6 +767,7 @@ class NghiPhepService
                     'np.ma_nv',
                     'np.trang_thai_duyet',
                 ])
+                ->lockForUpdate()
                 ->first();
 
             if (! $leave) {
@@ -781,6 +783,7 @@ class NghiPhepService
             ) {
                 return [
                     'success' => false,
+                    'code' => 'NGHI_PHEP_ALREADY_PROCESSED',
                     'message' =>
                         'Đơn nghỉ phép đã được xử lý trước đó.',
                 ];
@@ -794,10 +797,6 @@ class NghiPhepService
                 ->where(
                     'ma_np',
                     $maNp
-                )
-                ->where(
-                    'ma_nv',
-                    $maNv
                 )
                 ->where(
                     'trang_thai_duyet',
@@ -946,9 +945,7 @@ class NghiPhepService
                 'np.ly_do',
                 'np.trang_thai_duyet',
             ])
-            ->selectRaw(
-                'DATEDIFF(np.den_ngay, np.tu_ngay) + 1 AS so_ngay'
-            )
+            ->selectRaw($this->leaveDaysExpression())
             ->selectRaw(
                 "CASE np.trang_thai_duyet
                     WHEN 0 THEN 'Chờ duyệt'
@@ -957,5 +954,12 @@ class NghiPhepService
                     ELSE 'Không xác định'
                  END AS ten_trang_thai"
             );
+    }
+
+    private function leaveDaysExpression(): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? 'CAST(julianday(np.den_ngay) - julianday(np.tu_ngay) AS INTEGER) + 1 AS so_ngay'
+            : 'DATEDIFF(np.den_ngay, np.tu_ngay) + 1 AS so_ngay';
     }
 }

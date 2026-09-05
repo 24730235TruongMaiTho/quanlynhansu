@@ -34,13 +34,10 @@ class LuongRepository
             1
         );
 
-        $perPage = min(
-            max(
-                (int) ($filters['per_page'] ?? 15),
-                1
-            ),
-            100
-        );
+        $candidate = (int) ($filters['per_page'] ?? 10);
+        $perPage = in_array($candidate, [10, 20, 50], true)
+            ? $candidate
+            : 10;
 
         /*
          * SP cũ dùng p_tu_khoa.

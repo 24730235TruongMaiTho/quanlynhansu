@@ -99,7 +99,8 @@ final class PermissionServiceTest extends TestCase
         $this->assertSame('NhanVien', NhanVienPermission::Xem->module());
         $this->assertSame(17, $registry->forAbility('NhanVien.Read')?->id());
         $this->assertSame('PhongBan', $registry->forAbility('PhongBan.Read')?->module());
-        $this->assertNull($registry->forAbility('NhanVien.ResetPassword'));
+        $this->assertSame(42, $registry->forAbility('NhanVien.ResetPassword')?->id());
+        $this->assertSame('NhanVien', $registry->forAbility('NhanVien.ResetPassword')?->module());
         $this->assertNull($registry->forAbility('NhanVien.ResetPassword '));
         $this->assertNull($registry->forAbility('NhanVien.LegacyRead'));
     }

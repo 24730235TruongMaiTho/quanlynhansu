@@ -22,11 +22,11 @@ class UpdateLuongRequest extends FormRequest
                 'max:5',
                 Rule::exists('nhan_vien', 'ma_nv'),
             ],
-            'ky_luong' => 'sometimes|required|date',
-            'thuong' => 'nullable|numeric|min:0',
-            'phat' => 'nullable|numeric|min:0',
-            'bao_hiem' => 'nullable|numeric|min:0',
-            'thue' => 'nullable|numeric|min:0',
+            'ky_luong' => 'sometimes|required|date_format:Y-m-d',
+            'thuong' => ['nullable', 'regex:/\A\d{1,18}\z/', 'numeric', 'min:0', 'max:999999999999999999'],
+            'phat' => ['nullable', 'regex:/\A\d{1,18}\z/', 'numeric', 'min:0', 'max:999999999999999999'],
+            'bao_hiem' => ['nullable', 'regex:/\A\d{1,18}\z/', 'numeric', 'min:0', 'max:999999999999999999'],
+            'thue' => ['nullable', 'regex:/\A\d{1,18}\z/', 'numeric', 'min:0', 'max:999999999999999999'],
         ];
     }
 
@@ -36,5 +36,14 @@ class UpdateLuongRequest extends FormRequest
             'ma_nv.required' => 'Mã nhân viên không được để trống',
             'ky_luong.required' => 'Kỳ lương không được để trống',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $period = (string) $this->input('ky_luong', '');
+
+        if (preg_match('/\A\d{4}-\d{2}\z/', $period) === 1) {
+            $this->merge(['ky_luong' => $period . '-01']);
+        }
     }
 }

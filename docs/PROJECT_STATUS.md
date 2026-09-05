@@ -1,5 +1,11 @@
 # Trạng thái dự án
 
+## Bằng chứng hòa giải/UI mới nhất — 2026-09-05
+
+HEAD hiện tại là `ce22524ef245ea24e4365ef830d822a1a247d9a6`. Fresh full Laravel `456 passed, 3655 assertions`; targeted PHP root rerun `19 tests, 249 assertions` pass; shared pagination Node `4/4` pass; `npm run test:frontend`: `38/38` pass; `npm run build`: `29 modules transformed`; route inventory `96`, duplicate signature/name `0`; `composer validate --no-check-publish`, PHP lint và `git diff --check` pass.
+
+Chrome fresh read-only ngày 2026-09-05: `/vai-tro` có main `1320` và card `1296` theo module chuẩn; `/luong` chỉ còn một nút `Đặt lại`; `/phong-ban` có `ma_pb` và `so_nhan_vien` transparent, không nền; paginator tại `/vai-tro`, `/luong`, `/nghi-phep`, `/cham-cong` có center delta `0`, page-link `44x44`, radius `10px`, active `rgb(233,69,96)`, không document overflow ở viewport desktop hiện tại; screenshot visual review pass. Không claim responsive browser mới hoặc mọi interaction; không có browser mutation/DB write.
+
 > Cập nhật 2026-08-27 trên local `main` (HEAD `f71c0b20a4e04e8e2ec32cdad2a68722e4aaa0b7`). Các số liệu trong tài liệu này chỉ là bằng chứng của đúng lệnh/ môi trường được ghi; không suy rộng thành production hoặc browser acceptance.
 
 ## Nguồn và phạm vi

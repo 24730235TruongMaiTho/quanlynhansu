@@ -16,24 +16,24 @@
     @endphp
 
     <main class="employee-page container container-xl py-4" aria-labelledby="page-title">
-        <nav class="mb-3" aria-label="Đường dẫn trang">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item">Nhân sự</li>
-                <li class="breadcrumb-item"><a href="{{ route('backend.nhanvien.index') }}">Danh sách nhân viên</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Thêm nhân viên</li>
-            </ol>
-        </nav>
-
-        <header class="d-flex flex-column flex-sm-row align-items-sm-start justify-content-between gap-3 mb-4">
-            <div>
-                <h1 class="h3 fw-semibold mb-1" id="page-title">Thêm nhân viên</h1>
-                <p class="text-secondary mb-0">Nhập hồ sơ, thông tin công việc rồi kiểm tra trước khi lưu.</p>
-            </div>
-            <a class="btn btn-outline-secondary" href="{{ route('backend.nhanvien.index') }}">
+        <x-backend.page-header
+            title="Thêm nhân viên"
+            title-id="page-title"
+            icon="bi-person-plus"
+            description="Nhập hồ sơ, thông tin công việc rồi kiểm tra trước khi lưu."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Danh sách nhân viên', 'url' => route('backend.nhanvien.index')],
+                ['label' => 'Thêm nhân viên'],
+            ]"
+        >
+            <x-slot:actions>
+            <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.nhanvien.index') }}">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 Quay lại danh sách
             </a>
-        </header>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         @include('backend.nhanvien.partials.flash')
 

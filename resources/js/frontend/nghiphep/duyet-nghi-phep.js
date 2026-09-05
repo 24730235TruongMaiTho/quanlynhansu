@@ -1,3 +1,5 @@
+import { renderSharedPagination } from '../shared/pagination.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
     const APPROVAL_LIST_API_URL = '/api/v1/nghi-phep/phe-duyet';
@@ -258,12 +260,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const last = Number(p.last_page || 1);
         const total = Number(p.total || 0);
         el.pageInfo.textContent = total ? `Hiển thị ${p.from ?? 0} đến ${p.to ?? 0} trong tổng số ${total} đơn` : 'Hiển thị 0 đơn';
-        let html = `<li class="page-item ${current <= 1 ? 'disabled' : ''}"><button class="page-link" data-page="${current-1}">‹</button></li>`;
-        for (let i = Math.max(1, current-2); i <= Math.min(last, current+2); i++) {
-            html += `<li class="page-item ${i === current ? 'active' : ''}"><button class="page-link" data-page="${i}">${i}</button></li>`;
-        }
-        html += `<li class="page-item ${current >= last ? 'disabled' : ''}"><button class="page-link" data-page="${current+1}">›</button></li>`;
-        el.pagination.innerHTML = html;
+        renderSharedPagination(el.pagination, p, {
+            pageAttribute: 'page',
+        });
     }
 
     function selectedLeave() {

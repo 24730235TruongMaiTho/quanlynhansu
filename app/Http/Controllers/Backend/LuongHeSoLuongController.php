@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Http\Requests\StoreLuongHeSoLuongRequest;
+use App\Http\Requests\UpdateLuongHeSoLuongRequest;
+use App\Support\JsonPaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class LuongHeSoLuongController extends Controller
@@ -15,39 +19,53 @@ class LuongHeSoLuongController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $maNv = $request->query('ma_nv');
+        try {
+            $maNv = $request->query('ma_nv');
+            $page = max((int) $request->query('page', 1), 1);
+            $requestedPerPage = (int) $request->query('per_page', 10);
+            $perPage = in_array($requestedPerPage, [10, 20, 50], true)
+                ? $requestedPerPage
+                : 10;
 
-        if (empty($maNv)) {
+            if (empty($maNv)) {
+                $paginator = new LengthAwarePaginator([], 0, $perPage, $page);
+            } else {
+                $paginator = DB::table('lich_su_he_so_luong')
+                    ->select('ma_ls', 'ma_nv', 'he_so_luong', 'tu_ngay', 'den_ngay')
+                    ->where('ma_nv', $maNv)
+                    ->orderByDesc('tu_ngay')
+                    ->paginate($perPage, ['*'], 'page', $page)
+                    ->withQueryString();
+            }
+
             return response()->json([
                 'success' => true,
-                'data' => [],
+                'data' => JsonPaginator::from($paginator),
             ]);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể tải danh sách hệ số lương.',
+            ], 500);
         }
-
-        $items = DB::table('lich_su_he_so_luong')
-            ->select('ma_ls', 'ma_nv', 'he_so_luong', 'tu_ngay', 'den_ngay')
-            ->where('ma_nv', $maNv)
-            ->orderByDesc('tu_ngay')
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'data' => $items,
-        ]);
     }
 
     /**
      * Thêm một bản ghi lịch sử hệ số lương
      * POST /api/v1/luong/he-so-luong
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreLuongHeSoLuongRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'ma_nv' => ['required', 'string', 'max:50'],
-            'he_so_luong' => ['required', 'numeric'],
-            'tu_ngay' => ['nullable', 'date'],
-            'den_ngay' => ['nullable', 'date', 'after_or_equal:tu_ngay'],
-        ]);
+        $data = $request->validated();
+
+        if ($this->hasOverlappingPeriod($data['ma_nv'], $data['tu_ngay'], $data['den_ngay'])) {
+            return response()->json([
+                'message' => 'Khoảng thời gian hệ số lương bị trùng.',
+                'errors' => ['tu_ngay' => ['Khoảng thời gian bị trùng với bản ghi hiện có.']],
+            ], 422);
+        }
 
         $insertId = DB::table('lich_su_he_so_luong')->insertGetId([
             'ma_nv' => $data['ma_nv'],
@@ -71,7 +89,7 @@ class LuongHeSoLuongController extends Controller
      * Cập nhật (PUT/PATCH) một bản ghi lịch sử hệ số lương
      * PUT|PATCH /api/v1/luong/he-so-luong/{ma_ls}
      */
-    public function update(Request $request, $ma_ls): JsonResponse
+    public function update(UpdateLuongHeSoLuongRequest $request, $ma_ls): JsonResponse
     {
         $exists = DB::table('lich_su_he_so_luong')
             ->where('ma_ls', $ma_ls)
@@ -84,25 +102,13 @@ class LuongHeSoLuongController extends Controller
             ], 404);
         }
 
-        // For PUT require fields; for PATCH allow partial
-        if ($request->isMethod('put')) {
-            $rules = [
-                'ma_nv' => ['required', 'string', 'max:50'],
-                'he_so_luong' => ['required', 'numeric'],
-                'tu_ngay' => ['nullable', 'date'],
-                'den_ngay' => ['nullable', 'date', 'after_or_equal:tu_ngay'],
-            ];
+        $data = $request->validated();
 
-            $data = $request->validate($rules);
-        } else {
-            $rules = [
-                'ma_nv' => ['sometimes', 'string', 'max:50'],
-                'he_so_luong' => ['sometimes', 'numeric'],
-                'tu_ngay' => ['sometimes', 'nullable', 'date'],
-                'den_ngay' => ['sometimes', 'nullable', 'date', 'after_or_equal:tu_ngay'],
-            ];
-
-            $data = $request->validate($rules);
+        if ($this->hasOverlappingPeriod($data['ma_nv'], $data['tu_ngay'], $data['den_ngay'], (int) $ma_ls)) {
+            return response()->json([
+                'message' => 'Khoảng thời gian hệ số lương bị trùng.',
+                'errors' => ['tu_ngay' => ['Khoảng thời gian bị trùng với bản ghi hiện có.']],
+            ], 422);
         }
 
         // perform update
@@ -142,5 +148,47 @@ class LuongHeSoLuongController extends Controller
             'success' => true,
             'data' => $item,
         ]);
+    }
+
+    public function destroy($ma_ls): JsonResponse
+    {
+        try {
+            $deleted = DB::table('lich_su_he_so_luong')
+                ->where('ma_ls', $ma_ls)
+                ->delete();
+
+            if ($deleted === 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không tìm thấy bản ghi hệ số lương.',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Xóa bản ghi hệ số lương thành công.',
+            ]);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể xóa bản ghi hệ số lương.',
+            ], 500);
+        }
+    }
+
+    private function hasOverlappingPeriod(
+        string $maNv,
+        string $fromDate,
+        string $toDate,
+        ?int $exceptId = null,
+    ): bool {
+        return DB::table('lich_su_he_so_luong')
+            ->where('ma_nv', $maNv)
+            ->when($exceptId !== null, fn ($query) => $query->where('ma_ls', '<>', $exceptId))
+            ->where('tu_ngay', '<=', $toDate)
+            ->where('den_ngay', '>=', $fromDate)
+            ->exists();
     }
 }

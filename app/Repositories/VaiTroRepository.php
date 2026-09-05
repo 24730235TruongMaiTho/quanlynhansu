@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Contracts\VaiTroRepositoryContract;
 use App\Exceptions\VaiTroDomainException;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class VaiTroRepository implements VaiTroRepositoryContract
 {
@@ -17,6 +18,16 @@ final class VaiTroRepository implements VaiTroRepositoryContract
             ->when($keyword !== '', fn ($q) => $q->where('vt.ten_vt', 'like', '%'.$keyword.'%'))
             ->select(['vt.ma_vt', 'vt.ten_vt', 'vt.mo_ta'])->selectRaw('COUNT(nv.ma_nv) AS so_tai_khoan')
             ->groupBy('vt.ma_vt', 'vt.ten_vt', 'vt.mo_ta')->orderBy('vt.ma_vt')->get()->all();
+    }
+
+    public function paginate(array $filters): LengthAwarePaginator
+    {
+        return $this->database->connection()->table('vai_tro as vt')
+            ->when(($filters['ten_vt'] ?? null) !== null, fn ($query) => $query->where('vt.ten_vt', 'like', '%'.$filters['ten_vt'].'%'))
+            ->select(['vt.ma_vt', 'vt.ten_vt', 'vt.mo_ta'])
+            ->orderBy('vt.ma_vt')
+            ->paginate((int) ($filters['per_page'] ?? 10), ['*'], 'page', (int) ($filters['page'] ?? 1))
+            ->withQueryString();
     }
 
     public function find(int $maVt): ?object

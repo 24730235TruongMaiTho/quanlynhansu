@@ -4,6 +4,7 @@ import {
     genderLabel,
     normalizeEmployee,
 } from './employee-response.js';
+import { renderSharedPagination } from '../shared/pagination.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
@@ -173,8 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function notifyDenied(
         action = 'thực hiện thao tác này'
     ) {
-        const message =
-            `Bạn không có quyền ${action}.`;
+        const message = action === 'xóa đơn nghỉ phép'
+            ? 'Bạn không có quyền xóa đơn nghỉ phép.'
+            : `Bạn không có quyền ${action}.`;
 
         const toast =
             document.querySelector('.leave-toast');
@@ -711,58 +713,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Tạo danh sách page hiển thị gọn:
-     * 1 ... 4 5 6 ... 20
-     */
-    function getPageItems(
-        currentPage,
-        lastPage
-    ) {
-        if (lastPage <= 7) {
-            return Array.from(
-                { length: lastPage },
-                (_, index) => index + 1
-            );
-        }
-
-        const pages = new Set([
-            1,
-            lastPage,
-            currentPage - 1,
-            currentPage,
-            currentPage + 1,
-        ]);
-
-        const validPages = [...pages]
-            .filter(
-                (page) =>
-                    page >= 1 &&
-                    page <= lastPage
-            )
-            .sort((a, b) => a - b);
-
-        const items = [];
-
-        validPages.forEach(
-            (page, index) => {
-                const previous =
-                    validPages[index - 1];
-
-                if (
-                    previous !== undefined &&
-                    page - previous > 1
-                ) {
-                    items.push('ellipsis');
-                }
-
-                items.push(page);
-            }
-        );
-
-        return items;
-    }
-
-    /**
      * Render pagination cho bảng nhân viên.
      */
     function renderEmployeePagination(meta) {
@@ -770,107 +720,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const currentPage =
-            Number(meta?.current_page || 1);
-
-        const lastPage =
-            Number(meta?.last_page || 1);
-
-        elements.employeePagination.innerHTML = '';
-
-        if (lastPage <= 1) {
-            return;
-        }
-
-        const wrapper =
-            document.createElement('div');
-
-        wrapper.className =
-            'btn-group btn-group-sm';
-
-        const previousButton =
-            document.createElement('button');
-
-        previousButton.type = 'button';
-        previousButton.className =
-            'btn btn-outline-secondary';
-
-        previousButton.textContent = '‹';
-        previousButton.disabled =
-            currentPage <= 1;
-
-        previousButton.dataset.page =
-            String(currentPage - 1);
-
-        wrapper.appendChild(
-            previousButton
-        );
-
-        const pageItems =
-            getPageItems(
-                currentPage,
-                lastPage
-            );
-
-        pageItems.forEach((item) => {
-            if (item === 'ellipsis') {
-                const ellipsis =
-                    document.createElement(
-                        'span'
-                    );
-
-                ellipsis.className =
-                    'btn btn-outline-secondary disabled';
-
-                ellipsis.textContent = '…';
-
-                wrapper.appendChild(
-                    ellipsis
-                );
-
-                return;
-            }
-
-            const button =
-                document.createElement(
-                    'button'
-                );
-
-            button.type = 'button';
-
-            button.className =
-                item === currentPage
-                    ? 'btn btn-primary'
-                    : 'btn btn-outline-secondary';
-
-            button.textContent =
-                String(item);
-
-            button.dataset.page =
-                String(item);
-
-            wrapper.appendChild(button);
+        renderSharedPagination(elements.employeePagination, meta, {
+            pageAttribute: 'page',
         });
-
-        const nextButton =
-            document.createElement('button');
-
-        nextButton.type = 'button';
-        nextButton.className =
-            'btn btn-outline-secondary';
-
-        nextButton.textContent = '›';
-        nextButton.disabled =
-            currentPage >= lastPage;
-
-        nextButton.dataset.page =
-            String(currentPage + 1);
-
-        wrapper.appendChild(nextButton);
-
-        elements.employeePagination.appendChild(
-            wrapper
-        );
     }
 
     /**
@@ -1243,44 +1095,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLeavePagination(paginator) {
         if (!elements.pagination) return;
 
-        elements.pagination.innerHTML = '';
-
-        const current = Number(paginator.current_page || 1);
-        const last = Number(paginator.last_page || 1);
-
-        if (last <= 1) return;
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'btn-group btn-group-sm';
-
-        function addButton(label, page, disabled = false, active = false) {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = label;
-            button.dataset.leavePage = String(page);
-            button.disabled = disabled;
-            button.className = active
-                ? 'btn btn-primary'
-                : 'btn btn-outline-secondary';
-            wrapper.appendChild(button);
-        }
-
-        addButton('‹', current - 1, current <= 1);
-
-        getPageItems(current, last).forEach((item) => {
-            if (item === 'ellipsis') {
-                const span = document.createElement('span');
-                span.className = 'btn btn-outline-secondary disabled';
-                span.textContent = '…';
-                wrapper.appendChild(span);
-                return;
-            }
-
-            addButton(String(item), item, false, item === current);
+        renderSharedPagination(elements.pagination, paginator, {
+            pageAttribute: 'leavePage',
         });
-
-        addButton('›', current + 1, current >= last);
-        elements.pagination.appendChild(wrapper);
     }
 
     function renderLeaves() {
@@ -1835,7 +1652,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (
             !guard(
                 PERMISSION_CODES.DELETE,
-                'xóa nghỉ phép'
+                'xóa đơn nghỉ phép'
             )
         ) {
             return;

@@ -9,11 +9,17 @@
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="department-edit-title">
-        <div class="mb-4">
-            <div class="small text-secondary mb-1"><a href="{{ $backUrl }}">Phòng ban</a> / Chỉnh sửa</div>
-            <h1 class="h3 fw-semibold mb-1" id="department-edit-title">Sửa phòng ban</h1>
-            <p class="text-secondary mb-0">Cập nhật tên phòng ban #{{ $department->ma_pb }}.</p>
-        </div>
+        <x-backend.page-header
+            title="Sửa phòng ban"
+            title-id="department-edit-title"
+            icon="bi-building"
+            description="Cập nhật tên phòng ban #{{ $department->ma_pb }}."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Phòng ban', 'url' => $backUrl],
+                ['label' => 'Chỉnh sửa'],
+            ]"
+        />
 
         @if ($errors->has('phong_ban'))
             <div class="alert alert-danger" role="alert">{{ $errors->first('phong_ban') }}</div>
@@ -23,7 +29,7 @@
             <div class="card-body">
                 @include('backend.phongban.partials.edit-form')
                 <div class="mt-3">
-                    <a class="btn btn-outline-secondary" href="{{ $backUrl }}">Hủy</a>
+                    <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ $backUrl }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
                 </div>
             </div>
         </section>

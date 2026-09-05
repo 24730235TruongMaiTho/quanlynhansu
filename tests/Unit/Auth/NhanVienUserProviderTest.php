@@ -44,6 +44,19 @@ class NhanVienUserProviderTest extends TestCase
         $this->assertNull($provider->retrieveById('00001'));
     }
 
+    public function test_retrieve_by_id_preserves_the_hydrated_role_name_for_topbar(): void
+    {
+        $employee = $this->employee(['ten_vt' => 'Quản trị hệ thống']);
+        $repository = Mockery::mock(NhanVienRepositoryContract::class);
+        $repository->shouldReceive('findAccountByIdentifier')->once()->with('00001')->andReturn($employee);
+        $provider = new NhanVienUserProvider($repository, Mockery::mock(Hasher::class));
+
+        $restored = $provider->retrieveById('00001');
+
+        self::assertInstanceOf(NhanVien::class, $restored);
+        self::assertSame('Quản trị hệ thống', $restored->ten_vt);
+    }
+
     public function test_unknown_restore_lookup_failure_fails_closed_as_missing_user(): void
     {
         $repository = Mockery::mock(NhanVienRepositoryContract::class);

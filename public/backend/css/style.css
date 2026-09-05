@@ -1063,3 +1063,148 @@ body {
                 padding-right: 1rem;
             }
         }
+
+        /* Shared backend list action and pagination contract. */
+        .table-actions,
+        .role-row-actions,
+        .salary-row-actions,
+        .coefficient-row-actions,
+        .leave-log-row-actions {
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: .5rem;
+            white-space: nowrap;
+        }
+
+        .table-actions > .btn,
+        .table-actions > form > .btn,
+        .role-row-actions > .btn,
+        .role-row-actions > form > .btn,
+        .salary-row-actions > .btn,
+        .salary-row-actions > form > .btn,
+        .coefficient-row-actions > .btn,
+        .coefficient-row-actions > form > .btn,
+        .leave-log-row-actions > .btn,
+        .leave-log-row-actions > form > .btn {
+            height: 2.375rem;
+            min-height: 2.375rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon-action {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 2.375rem;
+            min-width: 2.375rem;
+            height: 2.375rem;
+            min-height: 2.375rem;
+            padding: 0 !important;
+        }
+
+        .pagination-footer {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .pagination-footer > .pagination-footer__meta {
+            grid-column: 1;
+            min-width: 0;
+        }
+
+        .pagination-footer > .backend-pagination {
+            grid-column: 2;
+            justify-self: center;
+        }
+
+        .pagination-footer > .pagination-footer__size {
+            grid-column: 3;
+            justify-self: end;
+        }
+
+        @media (max-width: 767.98px) {
+            .pagination-footer {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .pagination-footer > .pagination-footer__meta,
+            .pagination-footer > .backend-pagination,
+            .pagination-footer > .pagination-footer__size {
+                grid-column: 1;
+            }
+
+            .pagination-footer > .backend-pagination {
+                justify-self: center;
+            }
+
+            .pagination-footer > .pagination-footer__size {
+                justify-self: start;
+            }
+        }
+
+        .backend-pagination .pagination {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+            margin-bottom: 0;
+        }
+
+        .backend-pagination .page-item + .page-item {
+            margin-left: 0;
+        }
+
+        .backend-pagination .pagination .page-item + .page-item {
+            margin-left: 0;
+        }
+
+        .backend-pagination .page-item .page-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            color: #495057;
+            background: #fff;
+            box-shadow: none;
+        }
+
+        .backend-pagination .pagination .page-item .page-link {
+            margin-left: 0;
+            border-radius: 10px;
+        }
+
+        .backend-pagination .page-item .page-link:hover,
+        .backend-pagination .page-item .page-link:focus-visible {
+            color: #e94560;
+            border-color: #e94560;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(233, 69, 96, .1);
+        }
+
+        .backend-pagination .page-item.active .page-link {
+            color: #fff;
+            border-color: #e94560;
+            background: #e94560;
+        }
+
+        .backend-pagination .page-item.disabled .page-link {
+            color: #adb5bd;
+            border-color: #e9ecef;
+            background: #fff;
+            pointer-events: none;
+        }
+
+        @media (max-width: 575.98px) {
+            .backend-pagination .page-item .page-link {
+                width: 40px;
+                height: 40px;
+            }
+        }

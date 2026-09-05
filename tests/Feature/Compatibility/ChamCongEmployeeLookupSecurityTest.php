@@ -22,8 +22,9 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
 
         Schema::create('phong_ban', function (Blueprint $table): void {
             $table->unsignedInteger('ma_pb')->primary();
+            $table->string('ten_pb')->nullable();
         });
-        DB::table('phong_ban')->insert(['ma_pb' => 2]);
+        DB::table('phong_ban')->insert(['ma_pb' => 2, 'ten_pb' => 'Kỹ thuật']);
     }
 
     public function test_guest_cannot_read_or_update_attendance_api(): void
@@ -65,17 +66,11 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         $this->actingAsEmployeeWithPermissions([
             \App\Enums\ChamCongPermission::Xem,
         ]);
-        DB::shouldReceive('select')
-            ->once()
-            ->with('CALL sp_phong_ban_danh_sach()')
-            ->andReturn([]);
-
         $this->getJson('/api/v1/cham-cong/phong-ban')
             ->assertOk()
-            ->assertExactJson([
-                'success' => true,
-                'data' => [],
-            ]);
+            ->assertExactJson(['success' => true, 'data' => [
+                ['ma_pb' => 2, 'ten_pb' => 'Kỹ thuật'],
+            ]]);
     }
 
     public function test_permissioned_actor_can_read_department_lookup_without_rollout_switch(): void
@@ -83,14 +78,11 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         $this->actingAsEmployeeWithPermissions([
             \App\Enums\ChamCongPermission::Xem,
         ]);
-        DB::shouldReceive('select')
-            ->once()
-            ->with('CALL sp_phong_ban_danh_sach()')
-            ->andReturn([]);
-
         $this->getJson('/api/v1/cham-cong/phong-ban')
             ->assertOk()
-            ->assertExactJson(['success' => true, 'data' => []]);
+            ->assertExactJson(['success' => true, 'data' => [
+                ['ma_pb' => 2, 'ten_pb' => 'Kỹ thuật'],
+            ]]);
     }
 
     public function test_xem_only_actor_cannot_update_attendance_api(): void
@@ -323,10 +315,14 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
             ->assertJsonValidationErrors(['thang']);
     }
 
-    public function test_permissioned_update_reaches_controller_and_hides_database_error(): void
+    public function test_permissioned_update_uses_query_builder_with_canonical_payload(): void
     {
         $this->actingAsEmployeeWithPermissions([\App\Enums\ChamCongPermission::Sua]);
 
+        Schema::create('nhan_vien', function (Blueprint $table): void {
+            $table->string('ma_nv', 5)->primary();
+        });
+        DB::table('nhan_vien')->insert(['ma_nv' => '00001']);
         Schema::create('cham_cong', function (Blueprint $table): void {
             $table->increments('ma_cc');
             $table->string('ma_nv', 5);
@@ -344,21 +340,18 @@ class ChamCongEmployeeLookupSecurityTest extends TestCase
         ]);
 
         $response = $this->putJson('/api/v1/cham-cong/1', [
+            'ma_nv' => '00001',
             'so_gio_lam' => 7.5,
-            'vao_muon' => true,
-            've_som' => false,
+            'vao_muon' => 1,
+            've_som' => 0,
         ]);
 
         $response
-            ->assertStatus(422)
-            ->assertExactJson([
-                'success' => false,
-                'message' => 'Không thể cập nhật chấm công.',
-            ]);
-
-        $body = $response->getContent();
-        $this->assertStringNotContainsString('SQLSTATE', $body);
-        $this->assertStringNotContainsString('CALL', $body);
-        $this->assertStringNotContainsString('cham_cong', $body);
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.ma_nv', '00001')
+            ->assertJsonPath('data.so_gio_lam', 7.5)
+            ->assertJsonPath('data.vao_muon', 1)
+            ->assertJsonPath('data.ve_som', 0);
     }
 }

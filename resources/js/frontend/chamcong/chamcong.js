@@ -1,3 +1,5 @@
+import { renderSharedPagination } from '../shared/pagination.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
 
@@ -561,80 +563,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function pageItems(current, last) {
-        if (last <= 7) {
-            return Array.from({ length: last }, (_, i) => i + 1);
-        }
-
-        const pages = [...new Set([
-            1,
-            last,
-            current - 1,
-            current,
-            current + 1,
-        ])]
-            .filter((p) => p >= 1 && p <= last)
-            .sort((a, b) => a - b);
-
-        const items = [];
-
-        pages.forEach((page, index) => {
-            const prev = pages[index - 1];
-
-            if (prev !== undefined && page - prev > 1) {
-                items.push('...');
-            }
-
-            items.push(page);
-        });
-
-        return items;
-    }
-
     function renderPagination(container, paginator, type) {
         if (!container) return;
 
-        container.innerHTML = '';
-
-        const current = Number(paginator?.current_page || 1);
-        const last = Number(paginator?.last_page || 1);
-
-        if (last <= 1) return;
-
-        const group = document.createElement('div');
-        group.className = 'btn-group btn-group-sm';
-
-        function addButton(label, page, disabled, active = false) {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = label;
-            button.disabled = disabled;
-            button.dataset.page = String(page);
-            button.dataset.paginationType = type;
-            button.className = active
-                ? 'btn btn-primary'
-                : 'btn btn-outline-secondary';
-
-            group.appendChild(button);
-        }
-
-        addButton('‹', current - 1, current <= 1);
-
-        pageItems(current, last).forEach((item) => {
-            if (item === '...') {
-                const span = document.createElement('span');
-                span.className = 'btn btn-outline-secondary disabled';
-                span.textContent = '…';
-                group.appendChild(span);
-                return;
-            }
-
-            addButton(String(item), item, false, item === current);
+        renderSharedPagination(container, paginator, {
+            pageAttribute: 'paginationType',
+            decorateControl: (button, { page }) => {
+                button.dataset.page = String(page);
+                button.dataset.paginationType = type;
+            },
         });
-
-        addButton('›', current + 1, current >= last);
-
-        container.appendChild(group);
     }
 
     function renderPageInfo(element, paginator, noun) {
@@ -1801,7 +1739,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!state.selectedAttendanceId) {
             window.alert(
-                'Ngày được chọn chưa có bản ghi trong hệ thống nên không cần xóa.'
+                'Bản ghi chấm công chưa được lưu nên không thể xóa.'
             );
             return;
         }

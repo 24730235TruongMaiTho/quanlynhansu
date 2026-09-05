@@ -4,11 +4,17 @@
 
 @section('content')
     <main class="container-fluid container-xxl py-4" aria-labelledby="department-create-title">
-        <div class="mb-4">
-            <div class="small text-secondary mb-1"><a href="{{ route('backend.phongban.index') }}">Phòng ban</a> / Thêm mới</div>
-            <h1 class="h3 fw-semibold mb-1" id="department-create-title">Thêm phòng ban</h1>
-            <p class="text-secondary mb-0">Nhập tên phòng ban theo danh mục dùng chung của hệ thống.</p>
-        </div>
+        <x-backend.page-header
+            title="Thêm phòng ban"
+            title-id="department-create-title"
+            icon="bi-building-add"
+            description="Nhập tên phòng ban theo danh mục dùng chung của hệ thống."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Phòng ban', 'url' => route('backend.phongban.index')],
+                ['label' => 'Thêm mới'],
+            ]"
+        />
 
         @if ($errors->has('phong_ban'))
             <div class="alert alert-danger" role="alert">{{ $errors->first('phong_ban') }}</div>
@@ -27,8 +33,8 @@
                         @enderror
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-primary" type="submit" data-submit data-submitting-text="Đang lưu...">Lưu phòng ban</button>
-                        <a class="btn btn-outline-secondary" href="{{ route('backend.phongban.index') }}">Hủy</a>
+                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit" data-submit data-submitting-text="Đang lưu..."><i class="bi bi-check2" aria-hidden="true"></i>Lưu phòng ban</button>
+                        <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.phongban.index') }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
                     </div>
                 </form>
             </div>

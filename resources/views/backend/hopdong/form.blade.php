@@ -5,18 +5,17 @@
 @section('content')
     @php($isEdit = isset($contract))
     <main class="container-fluid container-xxl py-4" aria-labelledby="contract-form-title">
-        <nav class="mb-3" aria-label="Đường dẫn trang">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item">Nhân sự</li>
-                <li class="breadcrumb-item"><a href="{{ route('backend.hopdong.index') }}">Quản lý hợp đồng</a></li>
-                <li class="breadcrumb-item active" aria-current="page">{{ $isEdit ? 'Chỉnh sửa' : 'Thêm mới' }}</li>
-            </ol>
-        </nav>
-
-        <header class="mb-4">
-            <h1 class="h3 fw-semibold mb-1" id="contract-form-title">{{ $isEdit ? 'Chỉnh sửa hợp đồng' : 'Thêm hợp đồng' }}</h1>
-            <p class="text-secondary mb-0">Cập nhật thông tin nhân viên, loại hợp đồng và thời hạn hiệu lực.</p>
-        </header>
+        <x-backend.page-header
+            title="{{ $isEdit ? 'Chỉnh sửa hợp đồng' : 'Thêm hợp đồng' }}"
+            title-id="contract-form-title"
+            icon="bi-file-earmark-text"
+            description="Cập nhật thông tin nhân viên, loại hợp đồng và thời hạn hiệu lực."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Quản lý hợp đồng', 'url' => route('backend.hopdong.index')],
+                ['label' => $isEdit ? 'Chỉnh sửa' : 'Thêm mới'],
+            ]"
+        />
 
         <form class="card shadow-sm overflow-hidden" method="post" action="{{ $isEdit ? route('backend.hopdong.update', $contract->ma_hd) : route('backend.hopdong.store') }}">
             @csrf
@@ -65,8 +64,8 @@
                 </div>
             </div>
             <div class="card-footer bg-white d-flex flex-wrap justify-content-end gap-2 py-3">
-                <a class="btn btn-outline-secondary" href="{{ route('backend.hopdong.index') }}">Hủy</a>
-                <button class="btn btn-primary" type="submit">{{ $isEdit ? 'Cập nhật hợp đồng' : 'Lưu hợp đồng' }}</button>
+                <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.hopdong.index') }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
+                <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>{{ $isEdit ? 'Cập nhật hợp đồng' : 'Lưu hợp đồng' }}</button>
             </div>
         </form>
     </main>

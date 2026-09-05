@@ -4,6 +4,12 @@ Hướng dẫn bắt buộc cho Codex và AI agent làm việc trong repository 
 
 Nếu tài liệu mâu thuẫn với code, route, test hoặc database live, ưu tiên bằng chứng live rồi cập nhật lại tài liệu. Không suy rộng một response `200`, Vite build hoặc test mẫu thành “nghiệp vụ hoàn thành”.
 
+## Cập nhật hòa giải/UI 2026-09-05
+
+Trong workstream hòa giải/UI tại HEAD `ce22524ef245ea24e4365ef830d822a1a247d9a6`, quyền sở hữu đã được giao mở rộng cho lát cắt UI/API/test cần thiết của Nhân viên, Phòng ban, Chức vụ, Dashboard, Chấm công, Nghỉ phép, Lương, Hợp đồng và Vai trò/Phân quyền. Các thay đổi phải vẫn giữ contract 15 bảng, không dùng procedure/view mới và bảo toàn các tính năng incoming. Fresh full Laravel hiện `456 passed, 3655 assertions`; targeted PHP root rerun `19 tests, 249 assertions` pass; frontend chuẩn `38/38` pass, shared pagination Node `4/4` pass, Vite build `29 modules transformed`, route inventory `96` với duplicate signature/name `0`, Composer, PHP lint và `git diff --check` pass.
+
+Chrome fresh read-only ngày 2026-09-05 đã kiểm tra `/vai-tro` (main `1320`, card `1296` theo module chuẩn), `/luong` (chỉ còn một nút `Đặt lại`), `/phong-ban` (mã và số nhân viên transparent, không nền), cùng paginator tại `/vai-tro`, `/luong`, `/nghi-phep`, `/cham-cong`: center delta `0`, page-link `44x44`, radius `10px`, active `rgb(233,69,96)`, không document overflow ở viewport desktop hiện tại; screenshot visual review pass. Không claim responsive browser mới hoặc mọi interaction; không có browser mutation/DB write.
+
 ## Tổng quan
 
 - Đồ án: website quản lý nhân sự cho hai môn Web Application và UI/UX.

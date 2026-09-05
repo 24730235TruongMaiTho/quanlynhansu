@@ -19,6 +19,8 @@ interface NhanVienRepositoryContract
 
     public function update(string $maNv, array $profile): void;
 
+    public function resetPassword(string $maNv, string $passwordHash): void;
+
     public function replaceAvatarPath(string $maNv, ?string $newPath): ?string;
 
     public function upsertAddress(string $maNv, array $address): void;

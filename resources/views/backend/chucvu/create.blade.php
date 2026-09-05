@@ -4,11 +4,17 @@
 
 @section('content')
     <main class="container-fluid container-xxl py-4" aria-labelledby="position-create-title">
-        <div class="mb-4">
-            <div class="small text-secondary mb-1"><a href="{{ route('backend.chucvu.index') }}">Chức vụ</a> / Thêm mới</div>
-            <h1 class="h3 fw-semibold mb-1" id="position-create-title">Thêm chức vụ</h1>
-            <p class="text-secondary mb-0">Nhập tên chức vụ và hệ số phụ cấp theo danh mục dùng chung.</p>
-        </div>
+        <x-backend.page-header
+            title="Thêm chức vụ"
+            title-id="position-create-title"
+            icon="bi-person-badge"
+            description="Nhập tên chức vụ và hệ số phụ cấp theo danh mục dùng chung."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Chức vụ', 'url' => route('backend.chucvu.index')],
+                ['label' => 'Thêm mới'],
+            ]"
+        />
 
         @if ($errors->has('chuc_vu'))
             <div class="alert alert-danger" role="alert">{{ $errors->first('chuc_vu') }}</div>
@@ -30,8 +36,8 @@
                         @error('he_so_phu_cap')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-primary" type="submit" data-submit data-submitting-text="Đang lưu...">Lưu chức vụ</button>
-                        <a class="btn btn-outline-secondary" href="{{ route('backend.chucvu.index') }}">Hủy</a>
+                        <button class="btn btn-primary" type="submit" data-submit data-submitting-text="Đang lưu..."><i class="bi bi-check2" aria-hidden="true"></i>Lưu chức vụ</button>
+                        <a class="btn btn-outline-secondary" href="{{ route('backend.chucvu.index') }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
                     </div>
                 </form>
             </div>

@@ -4,21 +4,21 @@
 
 @section('content')
     <main class="container-fluid container-xxl py-4" aria-labelledby="permissions-title">
-        <nav class="mb-3" aria-label="Đường dẫn trang">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item">Hệ thống</li>
-                <li class="breadcrumb-item"><a href="{{ route('backend.vaitro.index') }}">Quản lý vai trò</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Phân quyền</li>
-            </ol>
-        </nav>
-
-        <header class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-            <div>
-                <h1 class="h3 fw-semibold mb-1" id="permissions-title">Phân quyền vai trò</h1>
-                <p class="text-secondary mb-0">Vai trò <strong>{{ $role->ten_vt }}</strong> được làm gì trên từng module của hệ thống.</p>
-            </div>
-            <span class="badge rounded-pill text-bg-light border px-3 py-2">Mã vai trò: {{ $role->ma_vt }}</span>
-        </header>
+        <x-backend.page-header
+            title="Phân quyền vai trò"
+            title-id="permissions-title"
+            icon="bi-shield-lock"
+            description="Vai trò {{ $role->ten_vt }} được làm gì trên từng module của hệ thống."
+            :breadcrumbs="[
+                ['label' => 'Hệ thống', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Quản lý vai trò', 'url' => route('backend.vaitro.index')],
+                ['label' => 'Phân quyền'],
+            ]"
+        >
+            <x-slot:titleSuffix>
+                <span class="identifier-text">Mã vai trò: {{ $role->ma_vt }}</span>
+            </x-slot:titleSuffix>
+        </x-backend.page-header>
 
         @if (session('success'))<div class="alert alert-success" role="status"><i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>{{ session('success') }}</div>@endif
         @if ($errors->any())<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>@endif
@@ -47,7 +47,6 @@
                                                 <input class="form-check-input mt-1" type="checkbox" name="ma_quyen[]" value="{{ $permission->ma_quyen }}" id="permission-{{ $permission->ma_quyen }}" @checked(in_array((int) $permission->ma_quyen, $selected, true))>
                                                 <span>
                                                     <span class="d-block fw-semibold">{{ $permission->ten_quyen }}</span>
-                                                    <small class="text-secondary">{{ $permission->ky_hieu_quyen }}</small>
                                                 </span>
                                             </label>
                                         @endforeach
@@ -58,7 +57,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-white d-flex flex-wrap justify-content-end gap-2 py-3">
-                    <a class="btn btn-outline-secondary" href="{{ route('backend.vaitro.index') }}">Quay lại danh sách vai trò</a>
+                    <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.vaitro.index') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i>Quay lại danh sách vai trò</a>
                     <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Lưu phân quyền</button>
                 </div>
             </section>

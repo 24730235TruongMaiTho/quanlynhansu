@@ -3,26 +3,20 @@
 
 @section('content')
     <main class="container-fluid container-xxl py-4 attendance-page" aria-labelledby="page-title">
-        <section class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-4">
-            <div>
-                <div class="d-flex align-items-center gap-2 mb-1 small text-secondary">
-                    <a href="#" class="text-secondary text-decoration-none">Thời gian làm việc</a>
-                    <span>/</span><span>Chấm công</span>
-                </div>
-                <div class="d-flex align-items-center flex-wrap gap-2">
-                    <h1 class="h3 fw-semibold mb-1" id="page-title">Chấm công</h1>
-                    <span
-                        class="badge rounded-pill text-bg-light border"
-                        id="attendance-readonly-badge"
-                        hidden
-                    >
-                        Chế độ chỉ xem
-                    </span>
-                </div>
-                <p class="text-secondary mb-0">Theo dõi ngày công, số giờ làm, vào muộn và về sớm theo từng nhân viên.</p>
-            </div>
-
-            <div class="d-flex flex-wrap gap-2">
+        <x-backend.page-header
+            title="Chấm công"
+            title-id="page-title"
+            icon="bi-calendar-check"
+            description="Theo dõi ngày công, số giờ làm, vào muộn và về sớm theo từng nhân viên."
+            :breadcrumbs="[
+                ['label' => 'Thời gian làm việc', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Chấm công'],
+            ]"
+        >
+            <x-slot:titleSuffix>
+                <span class="badge rounded-pill text-bg-light border" id="attendance-readonly-badge" hidden>Chế độ chỉ xem</span>
+            </x-slot:titleSuffix>
+            <x-slot:actions>
                 <button
                     class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
                     id="import-btn"
@@ -31,22 +25,7 @@
                     hidden
                     title="Nhập bảng chấm công"
                 >
-                    <svg
-                        aria-hidden="true"
-                        width="15"
-                        height="15"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M8 14V6"></path>
-                        <path d="m4.8 8.8 3.2-3.2 3.2 3.2"></path>
-                        <path d="M3 2h10"></path>
-                    </svg>
-
+                    <i class="bi bi-upload" aria-hidden="true"></i>
                     <span>Nhập bảng chấm công</span>
                 </button>
                 <button
@@ -57,22 +36,7 @@
                     hidden
                     title="Xuất bảng chấm công"
                 >
-                    <svg
-                        aria-hidden="true"
-                        width="15"
-                        height="15"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M8 2v8"></path>
-                        <path d="m4.8 7.2 3.2 3.2 3.2-3.2"></path>
-                        <path d="M3 14h10"></path>
-                    </svg>
-
+                    <i class="bi bi-download" aria-hidden="true"></i>
                     <span>Xuất bảng chấm công</span>
                 </button>
                 <button
@@ -83,7 +47,7 @@
                     data-attendance-permission="ChamCong.Update"
                     hidden
                 >
-                    Lưu thay đổi chấm công
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i>Lưu thay đổi chấm công
                 </button>
 
                 <button
@@ -94,10 +58,10 @@
                     data-attendance-permission="ChamCong.Delete"
                     hidden
                 >
-                    Xóa chấm công
+                    <i class="bi bi-trash" aria-hidden="true"></i>Xóa chấm công
                 </button>
-            </div>
-        </section>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         <section
             class="alert alert-light border shadow-sm mb-3"
@@ -132,40 +96,35 @@
         </section>
 
         <section
-            class="card shadow-sm mb-3"
+            class="card shadow-sm mb-3 filter-card"
             aria-label="Bộ lọc chấm công"
             data-attendance-permission="ChamCong.Read"
             hidden
         >
+            <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0">Bộ lọc chấm công</h2></div>
             <div class="card-body py-3">
-                <div class="row g-2 align-items-center">
-                    <div class="col-12 col-xl-4">
-                        <div class="input-group input-group-sm">
+                <form id="attendance-filter-form" class="filter-bar">
+                <div class="filter-bar__fields">
+                    <div class="filter-bar__field">
+                        <div class="input-group">
                             <span class="input-group-text bg-white">⌕</span>
                             <input class="form-control" type="search" id="search-field"
                                    placeholder="Tìm mã hoặc tên nhân viên..." aria-label="Tìm nhân viên">
                         </div>
                     </div>
 
-                    <div class="col-12 col-lg-auto">
-                        <div
-                            class="attendance-period-picker d-flex align-items-center flex-nowrap gap-2"
-                        >
-                            <label
-                                class="text-secondary fw-semibold mb-0 text-nowrap"
-                                for="month-filter"
-                            >
-                                Kỳ chấm công
-                            </label>
+                    <div class="filter-bar__field filter-bar__field--period">
+                            <label class="form-label" id="attendance-period-label" for="month-filter">Kỳ chấm công</label>
+                        <div class="filter-period-controls attendance-period-picker" role="group" aria-labelledby="attendance-period-label">
 
                             <select
-                                class="form-select form-select-sm attendance-month-select"
+                                class="form-select attendance-month-select"
                                 id="month-filter"
                                 aria-label="Tháng chấm công"
                             ></select>
 
                             <input
-                                class="form-control form-control-sm attendance-year-input"
+                                class="form-control attendance-year-input"
                                 id="year-filter"
                                 type="search"
                                 inputmode="numeric"
@@ -176,8 +135,8 @@
                         </div>
                     </div>
 
-                    <div class="col-12 col-md-4 col-xl-2">
-                        <select class="form-select form-select-sm" id="department-filter" aria-label="Phòng ban">
+                    <div class="filter-bar__field">
+                        <select class="form-select" id="department-filter" aria-label="Phòng ban">
                             <option value="">-- Tất cả phòng ban --</option>
                         </select>
                     </div>
@@ -189,10 +148,12 @@
                         <option value="leave">Có nghỉ phép</option>
                     </select>
 
-                    <div class="col-12 col-md-2 col-xl-2">
-                        <button class="btn btn-outline-secondary btn-sm w-100" id="clear-filter-btn" type="button">Xóa lọc</button>
-                    </div>
                 </div>
+                <div class="filter-bar__actions">
+                    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
+                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa lọc</button>
+                </div>
+                </form>
             </div>
         </section>
 
@@ -210,7 +171,7 @@
                     </p>
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span class="badge text-bg-light border fw-normal" id="selected-employee-badge">Chưa chọn nhân viên</span>
+                    <span class="identifier-text" id="selected-employee-badge">Chưa chọn nhân viên</span>
                     <span class="small text-secondary" id="employee-updated">Chưa tải dữ liệu</span>
                 </div>
             </div>
@@ -238,8 +199,8 @@
                 </table>
             </div>
 
-            <div class="card-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
-                <div class="d-flex align-items-center flex-wrap gap-3">
+            <div class="card-footer pagination-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
+                <div class="pagination-footer__meta d-flex align-items-center flex-wrap gap-3">
                     <span class="small text-secondary" id="employee-page-info">Hiển thị 0 trên 0 nhân viên</span>
                     <div class="d-flex align-items-center gap-2">
                         <label class="small text-secondary mb-0 text-nowrap" for="employee-per-page">Số dòng</label>
@@ -250,7 +211,7 @@
                         <span class="small text-secondary text-nowrap">/ trang</span>
                     </div>
                 </div>
-                <nav id="employee-pagination" aria-label="Phân trang nhân viên"></nav>
+                <nav class="backend-pagination" id="employee-pagination" aria-label="Phân trang nhân viên"></nav>
             </div>
         </section>
 
@@ -298,8 +259,8 @@
                 </table>
             </div>
 
-            <div class="card-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
-                <div class="d-flex align-items-center flex-wrap gap-3">
+            <div class="card-footer pagination-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
+                <div class="pagination-footer__meta d-flex align-items-center flex-wrap gap-3">
                     <span class="small text-secondary" id="page-info">Hiển thị 0 trên 0 bản ghi</span>
                     <div class="d-flex align-items-center gap-2">
                         <label class="small text-secondary mb-0 text-nowrap" for="attendance-per-page">Số dòng</label>
@@ -310,7 +271,7 @@
                         <span class="small text-secondary text-nowrap">/ trang</span>
                     </div>
                 </div>
-                <nav class="pagination mb-0" id="pagination" aria-label="Phân trang chấm công"></nav>
+                <nav class="backend-pagination pagination mb-0" id="pagination" aria-label="Phân trang chấm công"></nav>
             </div>
         </section>
     </main>
@@ -491,7 +452,7 @@
                             id="attendance-import-remove-file"
                             type="button"
                         >
-                            Bỏ file
+                            <i class="bi bi-x-lg" aria-hidden="true"></i>Bỏ file
                         </button>
                     </div>
                 </div>
@@ -506,7 +467,7 @@
                     id="attendance-import-cancel"
                     type="button"
                 >
-                    Đóng
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>Đóng
                 </button>
 
                 <button
@@ -516,21 +477,7 @@
                     type="button"
                     disabled
                 >
-                    <svg
-                        aria-hidden="true"
-                        width="15"
-                        height="15"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M8 14V6"></path>
-                        <path d="m4.8 8.8 3.2-3.2 3.2 3.2"></path>
-                        <path d="M3 2h10"></path>
-                    </svg>
+                    <i class="bi bi-upload" aria-hidden="true"></i>
 
                     <span id="attendance-import-submit-label">
                         Nhập dữ liệu
@@ -644,7 +591,7 @@
                     id="attendance-export-cancel"
                     type="button"
                 >
-                    Hủy
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>Hủy
                 </button>
 
                 <button
@@ -652,21 +599,7 @@
                     id="attendance-export-submit"
                     type="submit"
                 >
-                    <svg
-                        aria-hidden="true"
-                        width="15"
-                        height="15"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M8 2v8"></path>
-                        <path d="m4.8 7.2 3.2 3.2 3.2-3.2"></path>
-                        <path d="M3 14h10"></path>
-                    </svg>
+                    <i class="bi bi-download" aria-hidden="true"></i>
 
                     <span id="attendance-export-submit-label">
                         Xuất file
@@ -687,54 +620,6 @@
     <style>
         .attendance-page {
             --attendance-border: #d0d7de;
-        }
-
-        .attendance-page .attendance-period-picker {
-            min-height: 38px;
-            padding: 3px 5px 3px 10px;
-            border: 1px solid var(--attendance-border);
-            border-radius: 8px;
-            background: #fff;
-            white-space: nowrap;
-        }
-
-        .attendance-page .attendance-period-picker > label {
-            margin-right: 4px;
-            font-size: .75rem;
-            font-weight: 600;
-        }
-
-        .attendance-page .attendance-month-select {
-            width: 108px !important;
-            min-width: 108px !important;
-            height: 32px;
-            padding: 4px 36px 4px 10px !important;
-            border: 0 !important;
-            box-shadow: none !important;
-            background-position: right 10px center !important;
-            background-size: 12px 12px !important;
-            font-size: .8125rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .attendance-page .attendance-year-input {
-            width: 78px !important;
-            min-width: 78px !important;
-            height: 32px;
-            padding: 4px 8px;
-            border: 0 !important;
-            border-left: 1px solid #d8dee4 !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            text-align: center;
-            font-size: .8125rem;
-            font-weight: 600;
-        }
-
-        .attendance-page .attendance-period-picker:focus-within {
-            border-color: #0969da;
-            box-shadow: 0 0 0 .2rem rgba(9,105,218,.12);
         }
 
         .attendance-page .attendance-employee-table {
@@ -785,21 +670,6 @@
 
         .attendance-page .attendance-status-badge {
             cursor: help;
-        }
-
-        @media (max-width: 767.98px) {
-            .attendance-page .attendance-period-picker {
-                width: 100%;
-            }
-
-            .attendance-page .attendance-month-select {
-                flex: 1 1 108px;
-                width: auto !important;
-            }
-
-            .attendance-page .attendance-year-input {
-                flex: 0 0 82px;
-            }
         }
 
         .attendance-export-dialog,

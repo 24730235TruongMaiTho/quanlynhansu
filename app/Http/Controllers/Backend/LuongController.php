@@ -19,7 +19,23 @@ class LuongController extends Controller
 
     public function index(Request $request)
     {
-        $filters = $request->only(['ma_nv', 'ky_luong', 'ma_pb', 'ma_cv']);
+        $validated = $request->validate([
+            'ma_nv' => ['nullable', 'string', 'max:50'],
+            'ky_luong' => ['nullable', 'date_format:Y-m-d'],
+            'ma_pb' => ['nullable', 'integer', 'min:1'],
+            'ma_cv' => ['nullable', 'integer', 'min:1'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer'],
+        ]);
+
+        $filters = [
+            'ma_nv' => $validated['ma_nv'] ?? null,
+            'ky_luong' => $validated['ky_luong'] ?? null,
+            'ma_pb' => isset($validated['ma_pb']) ? (int) $validated['ma_pb'] : null,
+            'ma_cv' => isset($validated['ma_cv']) ? (int) $validated['ma_cv'] : null,
+            'page' => max((int) ($validated['page'] ?? 1), 1),
+            'per_page' => $this->pageSize($validated['per_page'] ?? null),
+        ];
         $result = $this->service->getAll($filters);
 
         if (!$result['success']) {
@@ -27,6 +43,13 @@ class LuongController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    private function pageSize(mixed $value): int
+    {
+        return in_array((int) $value, [10, 20, 50], true)
+            ? (int) $value
+            : 10;
     }
 
     public function show($id)

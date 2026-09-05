@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Backend;
 
-use App\Contracts\NhanVienServiceContract;
 use App\Http\Requests\BatchSaveChamCongRequest;
+use App\Http\Requests\UpdateChamCongRequest;
+use App\Contracts\NhanVienServiceContract;
 use App\Services\ChamCongService;
 use App\Services\ChamCongExportService;
 use App\Services\ChamCongImportService;
+use App\Support\JsonPaginator;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,8 +20,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class ChamCongController extends Controller
 {
     public function __construct(
-        private NhanVienServiceContract $nhanVienService,
-        private ChamCongService $chamCongService
+        private ChamCongService $chamCongService,
+        private NhanVienServiceContract $nhanVienService
     )
     {
     }
@@ -75,12 +77,7 @@ class ChamCongController extends Controller
                     'min:1',
                 ],
 
-                'per_page' => [
-                    'nullable',
-                    'integer',
-                    'min:1',
-                    'max:100',
-                ],
+                'per_page' => ['nullable', 'integer'],
             ]);
 
             $filters = [
@@ -89,31 +86,41 @@ class ChamCongController extends Controller
                 'thang' => (int) ($validated['thang'] ?? now()->month),
                 'nam' => (int) ($validated['nam'] ?? now()->year),
                 'page' => (int) ($validated['page'] ?? 1),
-                'so_dong' => (int) ($validated['per_page'] ?? 15),
+                'so_dong' => $this->pageSize($validated['per_page'] ?? null),
             ];
 
-            $paginator = $this->chamCongService->paginateEmployeeAttendance($filters);
-            $paginator->withPath($request->url())->appends($request->query());
+            $paginator = $this->nhanVienService->paginateForAttendance($filters);
 
             return response()->json([
                 'success' => true,
-                'data' => $paginator,
+                'data' => JsonPaginator::from($paginator),
             ]);
 
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (QueryException $exception) {
 
             return $this->queryError(
                 $exception,
-                'Không thể tải danh sách nhân viên.'
+                'Không thể tải danh sách nhân viên.',
+                500
             );
 
         } catch (\Throwable $exception) {
+            report($exception);
 
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage(),
+                'message' => 'Không thể tải danh sách nhân viên.',
             ], 500);
         }
+    }
+
+    private function pageSize(mixed $value): int
+    {
+        return in_array((int) $value, [10, 20, 25, 50], true)
+            ? (int) $value
+            : 10;
     }
 
     /**
@@ -127,7 +134,7 @@ class ChamCongController extends Controller
      * &thang=8
      * &nam=2026
      * &page=1
-     * &per_page=15
+     * &per_page=31 (full calendar month; visible table uses 10/20/50)
      */
     public function index(Request $request): JsonResponse
     {
@@ -166,12 +173,12 @@ class ChamCongController extends Controller
             $thang = (int) $validated['thang'];
             $nam = (int) $validated['nam'];
 
+            // The detail endpoint remains permissive for existing callers;
+            // the calendar UI requests 31 while its visible selector uses
+            // the shared 10/20/50 sizes.
             $perPage = min(
                 100,
-                max(
-                    1,
-                    (int) ($validated['per_page'] ?? 15)
-                )
+                max(1, (int) ($validated['per_page'] ?? 31))
             );
 
             $paginator = DB::table('cham_cong')
@@ -258,7 +265,7 @@ class ChamCongController extends Controller
             return response()->json([
                 'success' => true,
 
-                'data' => $paginator,
+                'data' => JsonPaginator::from($paginator),
 
                 'summary' => [
                     'tong_gio_lam' => (float) ($summary->tong_gio_lam ?? 0),
@@ -297,21 +304,23 @@ class ChamCongController extends Controller
     public function phongBan(): JsonResponse
     {
         try {
-            $rows = DB::select(
-                'CALL sp_phong_ban_danh_sach()'
-            );
+            $rows = DB::table('phong_ban')
+                ->select(['ma_pb', 'ten_pb'])
+                ->orderBy('ma_pb')
+                ->get();
 
             return response()->json([
                 'success' => true,
                 'data' => $rows,
             ]);
 
-        } catch (QueryException $exception) {
+        } catch (\Throwable $exception) {
+            report($exception);
 
-            return $this->queryError(
-                $exception,
-                'Không thể tải danh sách phòng ban. '.$exception->getMessage()
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể tải danh sách phòng ban.',
+            ], 500);
         }
     }
 
@@ -331,103 +340,61 @@ class ChamCongController extends Controller
      * }
      */
     public function update(
-        Request $request,
+        UpdateChamCongRequest $request,
         int $cham_cong
     ): JsonResponse {
         try {
-            $validated = $request->validate([
-                'so_gio_lam' => [
-                    'required',
-                    'numeric',
-                    'min:0',
-                    'max:24',
-                ],
+            $validated = $request->validated();
 
-                'vao_muon' => [
-                    'required',
-                    'boolean',
-                ],
+            $updated = DB::transaction(function () use ($cham_cong, $validated) {
+                $attendance = DB::table('cham_cong')
+                    ->where('ma_cc', $cham_cong)
+                    ->lockForUpdate()
+                    ->first([
+                        'ma_cc',
+                        'ma_nv',
+                        'ngay_lam',
+                        'so_gio_lam',
+                        'vao_muon',
+                        've_som',
+                    ]);
 
-                've_som' => [
-                    'required',
-                    'boolean',
-                ],
-            ]);
+                if (! $attendance) {
+                    return null;
+                }
 
-            /*
-             * Frontend chỉ gửi:
-             *
-             * so_gio_lam
-             * vao_muon
-             * ve_som
-             *
-             * Nhưng SP cần thêm:
-             *
-             * ma_nv
-             * ngay_lam
-             *
-             * => lấy record hiện tại trước.
-             */
-            $attendance = DB::table('cham_cong')
-                ->where(
-                    'ma_cc',
-                    $cham_cong
-                )
-                ->first();
+                DB::table('cham_cong')
+                    ->where('ma_cc', $cham_cong)
+                    ->update([
+                        'so_gio_lam' => $validated['so_gio_lam'],
+                        'vao_muon' => (int) $validated['vao_muon'],
+                        've_som' => (int) $validated['ve_som'],
+                    ]);
 
-            if (! $attendance) {
+                return DB::table('cham_cong')
+                    ->where('ma_cc', $cham_cong)
+                    ->first([
+                        'ma_cc',
+                        'ma_nv',
+                        'ngay_lam',
+                        'so_gio_lam',
+                        'vao_muon',
+                        've_som',
+                    ]);
+            });
+
+            if ($updated === null) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Không tìm thấy dữ liệu chấm công.',
                 ], 404);
             }
 
-            DB::statement(
-                '
-                CALL sp_cham_cong_cap_nhat(
-                    ?, ?, ?, ?, ?, ?
-                )
-                ',
-                [
-                    $cham_cong,
-
-                    $attendance->ma_nv,
-
-                    $attendance->ngay_lam,
-
-                    $validated['so_gio_lam'],
-
-                    (int) $validated['vao_muon'],
-
-                    (int) $validated['ve_som'],
-                ]
-            );
-
-            /*
-             * Lấy lại record sau update.
-             */
-            $updated = DB::table('cham_cong')
-                ->where(
-                    'ma_cc',
-                    $cham_cong
-                )
-                ->first();
-
             return response()->json([
                 'success' => true,
-
                 'message' => 'Cập nhật chấm công thành công.',
-
                 'data' => $updated,
             ]);
-
-        } catch (QueryException $exception) {
-
-            return $this->queryError(
-                $exception,
-                'Không thể cập nhật chấm công.'
-            );
-
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (\Throwable $exception) {
@@ -480,6 +447,8 @@ class ChamCongController extends Controller
             );
 
         } catch (QueryException $exception) {
+            report($exception);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể xuất dữ liệu chấm công.',
@@ -490,7 +459,7 @@ class ChamCongController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi khi xuất file.',
+                'message' => 'Không thể xuất dữ liệu chấm công.',
             ], 500);
         }
     }
@@ -507,7 +476,7 @@ class ChamCongController extends Controller
      *
      * Định dạng CSV:
      * ma_nv,ngay_lam,so_gio_lam,vao_muon,ve_som
-     * NV001,2026-08-01,8,0,0
+     * 00001,01/08/2026,8,0,0
      */
     public function import(Request $request, ChamCongImportService $importService): JsonResponse
     {
@@ -536,7 +505,7 @@ class ChamCongController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi khi nhập file: ' . $exception->getMessage(),
+                'message' => 'Không thể nhập file chấm công.',
                 'data' => [],
                 'errors' => [],
             ], 500);
@@ -548,18 +517,18 @@ class ChamCongController extends Controller
      * XUẤT FILE TEMPLATE NHẬP BẢNG CHẤM CÔNG
      * =========================================================
      *
-     * GET /api/v1/cham-cong/import-template
+     * GET /api/v1/cham-cong/template
      *
      * Query parameters:
      * - format: xlsx|csv
      *
      * Ví dụ:
-     * GET /api/v1/cham-cong/import-template?format=xlsx
+     * GET /api/v1/cham-cong/template?format=xlsx
      *
      * Template:
      * ma_nv,ngay_lam,so_gio_lam,vao_muon,ve_som
      *
-     * NV001,2026-08-01,8,0,0
+     * 00001,01/08/2026,8,0,0
      */
     public function exportImportTemplate(
         Request $request,
@@ -607,9 +576,7 @@ class ChamCongController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' =>
-                    'Lỗi khi tạo file template: '
-                    . $exception->getMessage(),
+                'message' => 'Không thể tạo file mẫu chấm công.',
                 'data' => [],
                 'errors' => [],
             ], 500);
@@ -655,14 +622,14 @@ class ChamCongController extends Controller
     /**
      * Trả message SIGNAL của MariaDB/MySQL.
      */
-    private function queryError(QueryException $exception, string $fallback): JsonResponse
+    private function queryError(QueryException $exception, string $fallback, int $status = 422): JsonResponse
     {
         report($exception);
 
         return response()->json([
             'success' => false,
             'message' => $fallback,
-        ], 422);
+        ], $status);
     }
 
 
@@ -685,9 +652,11 @@ class ChamCongController extends Controller
 
             return response()->json($result);
         } catch (\Throwable $exception) {
+            report($exception);
+
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage(),
+                'message' => 'Không thể xóa dữ liệu chấm công.',
             ], 500);
         }
     }

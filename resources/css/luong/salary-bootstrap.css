@@ -28,10 +28,6 @@
     color: var(--salary-fg);
 }
 
-.salary-page.hr-page {
-    max-width: 1440px;
-}
-
 .salary-page .page-title {
     letter-spacing: -0.02em;
 }

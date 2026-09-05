@@ -1128,9 +1128,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     canUpdateOwnLeave()
                         ? `
                                                 <button
-                                                    class="btn btn-outline-secondary btn-sm leave-log-edit-btn"
+                                                    class="btn btn-outline-secondary btn-icon-action leave-log-edit-btn"
                                                     type="button"
                                                     data-edit-leave-id="${escapeHtml(leave.ma_np)}"
+                                                    aria-label="Sửa đơn nghỉ phép"
                                                     title="Sửa đơn nghỉ phép"
                                                 >
                                                     <svg
@@ -1147,7 +1148,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                                         <path d="M10.8 2.2 13.8 5.2"></path>
                                                         <path d="M3 13l1-3.5 7.5-7.5 3 3L7 12.5 3 13Z"></path>
                                                     </svg>
-                                                    Sửa
                                                 </button>
                                             `
                         : ''
@@ -1157,9 +1157,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     canDeleteOwnLeave()
                         ? `
                                                 <button
-                                                    class="btn btn-outline-danger btn-sm leave-log-delete-btn"
+                                                    class="btn btn-outline-danger btn-icon-action leave-log-delete-btn"
                                                     type="button"
                                                     data-delete-leave-id="${escapeHtml(leave.ma_np)}"
+                                                    aria-label="Xóa đơn nghỉ phép"
                                                     title="Xóa đơn nghỉ phép"
                                                 >
                                                     <svg
@@ -1178,7 +1179,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                                         <path d="M5 4.5l.5 9h5l.5-9"></path>
                                                         <path d="M7 7v4M9 7v4"></path>
                                                     </svg>
-                                                    Xóa
                                                 </button>
                                             `
                         : ''

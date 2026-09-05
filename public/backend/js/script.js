@@ -1,6 +1,27 @@
 (function() {
             'use strict';
 
+            // Shared backend display-date contract for inline widgets.
+            const qlns = window.qlns = window.qlns || {};
+            qlns.formatDisplayDate = function (value) {
+                const match = typeof value === 'string'
+                    ? /^(\d{4})-(\d{2})-(\d{2})(?:$|T|\s)/.exec(value.trim())
+                    : null;
+                if (!match) return '';
+
+                const year = Number(match[1]);
+                const month = Number(match[2]);
+                const day = Number(match[3]);
+                const date = new Date(Date.UTC(year, month - 1, day));
+                if (date.getUTCFullYear() !== year
+                    || date.getUTCMonth() !== month - 1
+                    || date.getUTCDate() !== day) {
+                    return '';
+                }
+
+                return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${String(year).padStart(4, '0')}`;
+            };
+
             // ===== DOM ELEMENTS =====
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('toggleSidebar');
@@ -311,14 +332,16 @@
 
             // ===== SEARCH INPUT =====
             const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    const query = this.value.trim();
-                    if (query) {
-                        console.log('Searching for:', query);
-                        alert('🔍 Đang tìm kiếm: "' + query + '"');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function(e) {
+                    if (e.key === 'Enter') {
+                        const query = this.value.trim();
+                        if (query) {
+                            console.log('Searching for:', query);
+                            alert('🔍 Đang tìm kiếm: "' + query + '"');
+                        }
                     }
-                }
-            });
+                });
+            }
 
         })();

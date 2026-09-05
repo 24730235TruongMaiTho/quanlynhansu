@@ -3,6 +3,10 @@ import {
     loadAuthContext,
     guard,
 } from './luongPermissions.js';
+import {
+    formatDisplayDate,
+    toIsoDate,
+} from '../shared/date-field.js';
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -347,6 +351,9 @@ document.addEventListener(
             elements.employeeName.value =
                 state.employeeName ||
                 '';
+
+            elements.from.removeAttribute?.('aria-invalid');
+            elements.to.removeAttribute?.('aria-invalid');
         }
 
         function setMode(
@@ -439,23 +446,13 @@ document.addEventListener(
                     item.he_so_luong ??
                     '';
 
-                elements.from.value =
-                    String(
-                        item.tu_ngay ||
-                        ''
-                    ).substring(
-                        0,
-                        10
-                    );
+                elements.from.value = formatDisplayDate(
+                    String(item.tu_ngay || '').substring(0, 10),
+                );
 
-                elements.to.value =
-                    String(
-                        item.den_ngay ||
-                        ''
-                    ).substring(
-                        0,
-                        10
-                    );
+                elements.to.value = formatDisplayDate(
+                    String(item.den_ngay || '').substring(0, 10),
+                );
             } catch (error) {
                 console.error(
                     'Load coefficient failed:',
@@ -621,6 +618,28 @@ document.addEventListener(
                 clearModalError();
                 clearListError();
 
+                const fromIso = toIsoDate(elements.from.value);
+                const toIso = elements.to.value
+                    ? toIsoDate(elements.to.value)
+                    : null;
+
+                if (!fromIso) {
+                    elements.from.setAttribute?.('aria-invalid', 'true');
+                    showModalError('Từ ngày phải có định dạng dd/mm/yyyy hợp lệ.');
+                    return;
+                }
+
+                if (!toIso) {
+                    if (elements.to.value) {
+                        elements.to.setAttribute?.('aria-invalid', 'true');
+                        showModalError('Đến ngày phải có định dạng dd/mm/yyyy hợp lệ.');
+                        return;
+                    }
+                }
+
+                elements.from.removeAttribute?.('aria-invalid');
+                elements.to.removeAttribute?.('aria-invalid');
+
                 const payload = {
                     ma_nv:
                     elements.employeeCode
@@ -632,14 +651,9 @@ document.addEventListener(
                                 .value
                         ),
 
-                    tu_ngay:
-                    elements.from
-                        .value,
+                    tu_ngay: fromIso,
 
-                    den_ngay:
-                        elements.to
-                            .value ||
-                        null,
+                    den_ngay: toIso,
                 };
 
                 const oldLabel =

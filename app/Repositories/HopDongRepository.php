@@ -35,6 +35,13 @@ final class HopDongRepository implements HopDongRepositoryContract
             ->first(['ma_hd', 'ma_nv', 'ma_lhd', 'ngay_ky', 'ngay_het_han', 'luong_co_ban']);
     }
 
+    public function findType(int $maLhd): ?object
+    {
+        return $this->database->connection()->table('loai_hop_dong')
+            ->where('ma_lhd', $maLhd)
+            ->first(['ma_lhd', 'ten_lhd']);
+    }
+
     public function employees(): array
     {
         return $this->database->connection()->table('nhan_vien')->orderBy('ma_nv')->get(['ma_nv', 'ho_ten'])->all();

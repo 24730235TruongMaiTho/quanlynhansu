@@ -4,30 +4,23 @@
 
 @section('content')
     <main class="container-fluid container-xxl py-4 leave-create-page" aria-labelledby="page-title">
-        <section class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-4">
-            <div>
-                <div class="d-flex align-items-center gap-2 mb-1 small text-secondary">
-                    <a href="{{ url('/user/nghi-phep') }}" class="text-secondary text-decoration-none">Nghỉ phép</a>
-                    <span>/</span>
-                    <span>Tạo đơn</span>
-                </div>
-
-                <h1 class="h3 fw-semibold mb-1" id="page-title">Đơn xin nghỉ phép</h1>
-                <p class="text-secondary mb-0">
-                    Tạo yêu cầu nghỉ phép cho tài khoản đang đăng nhập.
-                </p>
-            </div>
-
-            <a href="{{ url('/user/nghi-phep') }}"
-               class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2">
-                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16"
-                     fill="none" stroke="currentColor" stroke-width="1.5"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.5 3.5 6 8l4.5 4.5"/>
-                </svg>
-                Quay lại
-            </a>
-        </section>
+        <x-backend.page-header
+            title="Đơn xin nghỉ phép"
+            title-id="page-title"
+            icon="bi-calendar-plus"
+            description="Tạo yêu cầu nghỉ phép cho tài khoản đang đăng nhập."
+            :breadcrumbs="[
+                ['label' => 'Nghỉ phép', 'url' => route('backend.nghiphep.index')],
+                ['label' => 'Tạo đơn'],
+            ]"
+        >
+            <x-slot:actions>
+                <a href="{{ route('backend.nghiphep.index') }}"
+                   class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-left button-icon" aria-hidden="true"></i>Quay lại
+                </a>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         <section class="alert alert-light border shadow-sm mb-3" id="leave-create-auth-loading">
             <div class="d-flex align-items-center gap-2">
@@ -184,10 +177,14 @@
 
                                         <input class="form-control"
                                                id="leave-from-date"
-                                               type="date"
+                                               type="text"
+                                               placeholder="dd/mm/yyyy"
+                                               inputmode="numeric"
+                                               maxlength="10"
+                                               aria-describedby="leave-from-date-error"
                                                required>
 
-                                        <div class="invalid-feedback">
+                                        <div class="invalid-feedback" id="leave-from-date-error" role="alert">
                                             Vui lòng chọn ngày bắt đầu.
                                         </div>
                                     </div>
@@ -201,10 +198,14 @@
 
                                         <input class="form-control"
                                                id="leave-to-date"
-                                               type="date"
+                                               type="text"
+                                               placeholder="dd/mm/yyyy"
+                                               inputmode="numeric"
+                                               maxlength="10"
+                                               aria-describedby="leave-to-date-error"
                                                required>
 
-                                        <div class="invalid-feedback">
+                                        <div class="invalid-feedback" id="leave-to-date-error" role="alert">
                                             Vui lòng chọn ngày kết thúc.
                                         </div>
                                     </div>
@@ -227,21 +228,14 @@
                             id="leave-create-clear"
                             type="button"
                         >
-                            Làm mới
+                            <i class="bi bi-arrow-clockwise button-icon" aria-hidden="true"></i>Làm mới
                         </button>
 
                         <button class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
                                 id="leave-create-submit"
                                 type="submit">
-                            <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16"
-                                 fill="none" stroke="currentColor" stroke-width="1.5"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m3 8 3 3 7-7"/>
-                            </svg>
-
-                            <span id="leave-create-submit-label">
-                            Gửi đơn nghỉ phép
-                        </span>
+                            <i class="bi bi-send button-icon" aria-hidden="true"></i>
+                            <span id="leave-create-submit-label">Gửi đơn nghỉ phép</span>
                         </button>
                     </div>
                 </div>
@@ -269,7 +263,7 @@
                     </div>
 
                     <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2">
-                        <span class="badge text-bg-light border fw-normal"
+                        <span class="identifier-text"
                               id="leave-create-log-employee">
                             —
                         </span>
@@ -283,9 +277,14 @@
                                 <input
                                     class="form-control"
                                     id="leave-log-from-date"
-                                    type="date"
+                                    type="text"
+                                    placeholder="dd/mm/yyyy"
+                                    inputmode="numeric"
+                                    maxlength="10"
+                                    aria-describedby="leave-log-from-date-error"
                                     aria-label="Lọc từ ngày"
                                 >
+                                <div class="invalid-feedback" id="leave-log-from-date-error" role="alert"></div>
                             </div>
 
                             <div class="input-group input-group-sm">
@@ -296,9 +295,14 @@
                                 <input
                                     class="form-control"
                                     id="leave-log-to-date"
-                                    type="date"
+                                    type="text"
+                                    placeholder="dd/mm/yyyy"
+                                    inputmode="numeric"
+                                    maxlength="10"
+                                    aria-describedby="leave-log-to-date-error"
                                     aria-label="Lọc đến ngày"
                                 >
+                                <div class="invalid-feedback" id="leave-log-to-date-error" role="alert"></div>
                             </div>
 
                             <button
@@ -306,7 +310,7 @@
                                 id="leave-log-clear-filter"
                                 type="button"
                             >
-                                Xóa lọc
+                                <i class="bi bi-arrow-counterclockwise button-icon" aria-hidden="true"></i>Xóa lọc
                             </button>
                         </div>
                     </div>
@@ -374,7 +378,7 @@
                 <button class="btn btn-outline-secondary btn-sm"
                         id="leave-create-log-refresh"
                         type="button">
-                    Làm mới
+                    <i class="bi bi-arrow-clockwise button-icon" aria-hidden="true"></i>Làm mới
                 </button>
             </div>
         </section>
@@ -383,8 +387,6 @@
 
     <style>
         .leave-create-page .leave-create-card {
-            max-width: 1040px;
-            margin: 0 auto;
             border-color: #d8dee4;
             border-radius: 12px;
             overflow: hidden;
@@ -454,17 +456,7 @@
             border-top-color: #eaeef2;
         }
 
-        @media (max-width: 991.98px) {
-            .leave-create-page .leave-create-card {
-                max-width: 760px;
-            }
-        }
-
-
         .leave-create-page .leave-create-log-card {
-            max-width: 1040px;
-            margin-left: auto;
-            margin-right: auto;
             border-color: #d8dee4;
             border-radius: 12px;
             overflow: hidden;

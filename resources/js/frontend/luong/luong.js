@@ -7,6 +7,8 @@ import {
     can,
     guard,
 } from './luongPermissions.js';
+import { formatDisplayDate } from '../shared/date-field.js';
+import { renderSharedPagination } from '../shared/pagination.js';
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -206,10 +208,9 @@ document.addEventListener(
                     }
                 );
 
-            const day =
-                date.toLocaleDateString(
-                    'vi-VN'
-                );
+            const day = formatDisplayDate(
+                date.toISOString().slice(0, 10),
+            );
 
             return `${time}, ${day}`;
         }
@@ -490,7 +491,7 @@ document.addEventListener(
             ) {
                 actions.push(`
                     <button
-                        class="btn salary-icon-action"
+                        class="btn salary-icon-action btn-icon-action"
                         type="button"
                         data-salary-action="view"
                         data-id="${escapeHtml(salaryId)}"
@@ -509,7 +510,7 @@ document.addEventListener(
             ) {
                 actions.push(`
                     <button
-                        class="btn salary-icon-action"
+                        class="btn salary-icon-action btn-icon-action"
                         type="button"
                         data-salary-action="coefficient"
                         data-employee-code="${escapeHtml(employeeCode)}"
@@ -528,7 +529,7 @@ document.addEventListener(
             ) {
                 actions.push(`
                     <button
-                        class="btn salary-icon-action"
+                        class="btn salary-icon-action btn-icon-action"
                         type="button"
                         data-salary-action="edit"
                         data-id="${escapeHtml(salaryId)}"
@@ -546,7 +547,7 @@ document.addEventListener(
             ) {
                 actions.push(`
                     <button
-                        class="btn salary-icon-action"
+                        class="btn salary-icon-action btn-icon-action"
                         type="button"
                         data-salary-action="delete"
                         data-id="${escapeHtml(salaryId)}"
@@ -565,7 +566,7 @@ document.addEventListener(
             ) {
                 actions.push(`
                     <button
-                        class="btn salary-icon-action"
+                        class="btn salary-row-create-action"
                         type="button"
                         data-salary-action="create-for-employee"
                         data-employee-code="${escapeHtml(employeeCode)}"
@@ -573,7 +574,7 @@ document.addEventListener(
                         title="Tạo thông tin lương"
                         aria-label="Tạo thông tin lương cho ${escapeHtml(employeeName)}"
                     >
-                        ${iconCreate()}
+                        ${iconCreate()}Tạo thông tin lương
                     </button>
                 `);
             }
@@ -816,114 +817,14 @@ document.addEventListener(
                 });
         }
 
-        function renderPagination(
-            meta
-        ) {
+        function renderPagination(meta) {
             if (!elements.pagination) {
                 return;
             }
 
-            elements.pagination.innerHTML =
-                '';
-
-            const current =
-                Number(
-                    meta.current_page ||
-                    1
-                );
-
-            const last =
-                Number(
-                    meta.last_page ||
-                    1
-                );
-
-            if (last <= 1) {
-                return;
-            }
-
-            const group =
-                document.createElement(
-                    'div'
-                );
-
-            group.className =
-                'btn-group btn-group-sm';
-
-            function append(
-                label,
-                page,
-                disabled,
-                active = false
-            ) {
-                const button =
-                    document.createElement(
-                        'button'
-                    );
-
-                button.type =
-                    'button';
-
-                button.className =
-                    active
-                        ? 'btn btn-primary'
-                        : 'btn btn-outline-secondary';
-
-                button.textContent =
-                    label;
-
-                button.dataset.page =
-                    String(page);
-
-                button.disabled =
-                    disabled;
-
-                group.appendChild(
-                    button
-                );
-            }
-
-            append(
-                '‹',
-                current - 1,
-                current <= 1
-            );
-
-            for (
-                let page = 1;
-                page <= last;
-                page++
-            ) {
-                if (
-                    last > 7 &&
-                    page !== 1 &&
-                    page !== last &&
-                    Math.abs(
-                        page -
-                        current
-                    ) > 1
-                ) {
-                    continue;
-                }
-
-                append(
-                    String(page),
-                    page,
-                    false,
-                    page === current
-                );
-            }
-
-            append(
-                '›',
-                current + 1,
-                current >= last
-            );
-
-            elements.pagination
-                .appendChild(
-                    group
-                );
+            renderSharedPagination(elements.pagination, meta, {
+                pageAttribute: 'page',
+            });
         }
 
         function renderPaginationInfo(

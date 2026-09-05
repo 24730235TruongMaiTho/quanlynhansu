@@ -6,11 +6,11 @@ use App\Contracts\NhanVienServiceContract;
 use App\Http\Requests\StoreNghiPhepRequest;
 use App\Http\Requests\UpdateNghiPhepRequest;
 use App\Services\NghiPhepService;
+use App\Support\JsonPaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\DB;
 
 class NghiPhepController extends Controller
 {
@@ -25,7 +25,20 @@ class NghiPhepController extends Controller
 
     public function index(Request $request)
     {
-        $filters = $request->only(['ma_nv', 'trang_thai_duyet', 'tu_ngay', 'den_ngay']);
+        $validated = $request->validate([
+            'ma_nv' => ['nullable', 'string', 'max:50'],
+            'trang_thai_duyet' => ['nullable', 'integer', 'in:0,1,2'],
+            'tu_ngay' => ['nullable', 'date_format:Y-m-d'],
+            'den_ngay' => ['nullable', 'date_format:Y-m-d'],
+            'tab' => ['nullable', 'in:pending,history'],
+        ]);
+        $filters = [
+            'ma_nv' => $validated['ma_nv'] ?? null,
+            'trang_thai_duyet' => $validated['trang_thai_duyet'] ?? null,
+            'tu_ngay' => $validated['tu_ngay'] ?? null,
+            'den_ngay' => $validated['den_ngay'] ?? null,
+            'tab' => $validated['tab'] ?? null,
+        ];
         $result = $this->service->getAll($filters);
 
         if (!$result['success']) {
@@ -243,63 +256,62 @@ class NghiPhepController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $data,
+            'data' => JsonPaginator::from($data),
         ]);
     }
     public function phongBan()
     {
         try {
-            $rows = DB::select('SELECT ma_pb, ten_pb FROM phong_ban ORDER BY ma_pb');
+            $rows = $this->service->getPhongBan();
             return response()->json(['success' => true, 'data' => $rows]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        } catch (\Throwable) {
+            return response()->json(['success' => false, 'message' => 'Không thể tải danh sách phòng ban.'], 500);
         }
     }
 
     public function chucVu()
     {
         try {
-            $rows = DB::select('SELECT ma_cv, ten_cv FROM chuc_vu ORDER BY ma_cv');
+            $rows = $this->service->getChucVu();
             return response()->json(['success' => true, 'data' => $rows]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        } catch (\Throwable) {
+            return response()->json(['success' => false, 'message' => 'Không thể tải danh sách chức vụ.'], 500);
         }
     }
 
     public function loaiPhep()
     {
         try {
-            $rows = DB::select('SELECT ma_lp, ten_lp FROM loai_phep ORDER BY ma_lp');
+            $rows = $this->service->getLoaiPhep();
             return response()->json(['success' => true, 'data' => $rows]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        } catch (\Throwable) {
+            return response()->json(['success' => false, 'message' => 'Không thể tải danh sách loại phép.'], 500);
         }
     }
 
     /**
-     * Duyệt (approve/deny) nghỉ phép dùng stored procedure sp_nghi_phep_duyet_phep
-     * PATCH /api/v1/nghi-phep/{ma_np}/duyet
-     * Body: { ma_nv: string, trang_thai_duyet: int }
+     * Duyệt hoặc từ chối một đơn trong phòng ban của Trưởng phòng.
      */
-    public function duyet(Request $request, $ma_np)
+    public function duyet(Request $request, $ma_np): JsonResponse
     {
-        $ma_nv = $request->input('ma_nv');
-        $trang_thai = $request->input('trang_thai_duyet', 1);
+        $validated = $request->validate([
+            'trang_thai_duyet' => ['required', 'integer', 'in:1,2'],
+        ]);
+        $department = auth()->user()->ma_pb;
 
-        if (empty($ma_nv)) {
-            return response()->json(['success' => false, 'message' => 'ma_nv is required'], 400);
+        if ($department === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tài khoản chưa được phân công phòng ban phụ trách.',
+            ], 403);
         }
 
-        try {
-            DB::statement('CALL sp_nghi_phep_duyet_phep(?, ?, ?)', [
-                (int) $ma_np,
-                $ma_nv,
-                (int) $trang_thai,
-            ]);
+        $data = $this->service->duyet((int) $ma_np, (int) $validated['trang_thai_duyet'], $department);
 
-            return response()->json(['success' => true, 'message' => 'Cập nhật trạng thái duyệt thành công']);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        if (! $data['success']) {
+            return response()->json($data, isset($data['code']) ? 409 : 404);
         }
+
+        return response()->json($data);
     }
 }

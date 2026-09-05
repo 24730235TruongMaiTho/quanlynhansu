@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\NhanVienRole;
 use App\Enums\NhanVienStatus;
+use App\Enums\NghiPhepPermission;
+use App\Models\NhanVien;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +17,41 @@ use Illuminate\Support\Facades\Log;
  */
 class DashboardService
 {
+    /**
+     * Đếm các đơn nghỉ phép đang chờ duyệt trong phòng ban của Trưởng phòng.
+     *
+     * Trả về null khi người gọi không phải Trưởng phòng đủ phạm vi, để
+     * dashboard không vô tình tiết lộ dữ liệu duyệt nghỉ phép.
+     */
+    public function getPendingDepartmentLeaveCount(NhanVien $manager): ?int
+    {
+        if ((int) $manager->ma_vt !== NhanVienRole::DepartmentManager->value
+            || $manager->ma_pb === null
+        ) {
+            return null;
+        }
+
+        $permissionService = app(PermissionService::class);
+        if (! $permissionService->allows($manager, NghiPhepPermission::Xem)
+            && ! $permissionService->allows($manager, NghiPhepPermission::Sua)
+        ) {
+            return null;
+        }
+
+        try {
+            return (int) DB::table('nghi_phep as np')
+                ->join('nhan_vien as nv', 'nv.ma_nv', '=', 'np.ma_nv')
+                ->where('nv.ma_pb', $manager->ma_pb)
+                ->where('np.trang_thai_duyet', 0)
+                ->whereNotIn('nv.ma_tt', NhanVienStatus::terminalValues())
+                ->count();
+        } catch (\Throwable $e) {
+            Log::warning('[DashboardService] Không thể lấy số đơn nghỉ phép chờ duyệt: ' . $e->getMessage());
+
+            return null;
+        }
+    }
+
     /**
      * Lấy tất cả dữ liệu cho Dashboard
      *
@@ -27,6 +65,7 @@ class DashboardService
             'hop_dong_sap_het_han' => $this->getExpiringContracts(),
             'bao_cao_cham_cong' => $this->getAttendanceReport(),
             'bao_cao_luong' => $this->getSalaryReport(),
+            'pending_department_leave_count' => null,
         ];
     }
 

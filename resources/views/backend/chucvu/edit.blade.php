@@ -9,11 +9,17 @@
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="position-edit-title">
-        <div class="mb-4">
-            <div class="small text-secondary mb-1"><a href="{{ $backUrl }}">Chức vụ</a> / Chỉnh sửa</div>
-            <h1 class="h3 fw-semibold mb-1" id="position-edit-title">Sửa chức vụ</h1>
-            <p class="text-secondary mb-0">Cập nhật chức vụ #{{ $position->ma_cv }}.</p>
-        </div>
+        <x-backend.page-header
+            title="Sửa chức vụ"
+            title-id="position-edit-title"
+            icon="bi-person-badge"
+            description="Cập nhật chức vụ #{{ $position->ma_cv }}."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Chức vụ', 'url' => $backUrl],
+                ['label' => 'Chỉnh sửa'],
+            ]"
+        />
 
         @if ($errors->has('chuc_vu'))
             <div class="alert alert-danger" role="alert">{{ $errors->first('chuc_vu') }}</div>
@@ -23,7 +29,7 @@
             <div class="card-body">
                 @include('backend.chucvu.partials.edit-form')
                 <div class="mt-3">
-                    <a class="btn btn-outline-secondary" href="{{ $backUrl }}">Hủy</a>
+                    <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ $backUrl }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
                 </div>
             </div>
         </section>

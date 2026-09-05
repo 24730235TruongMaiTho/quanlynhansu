@@ -91,6 +91,9 @@ class BatchSaveChamCongRequest extends FormRequest
             'rows.*.ngay_lam.distinct' =>
                 'Danh sách có ngày chấm công bị trùng.',
 
+            'rows.*.ngay_lam.date_format' =>
+                'Ngày làm phải có định dạng YYYY-MM-DD.',
+
             'rows.*.so_gio_lam.min' =>
                 'Số giờ làm tối thiểu là -1.',
 

@@ -6,54 +6,45 @@
           data-nghi-phep-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Tao->value) ? '1' : '0' }}"
           data-nghi-phep-can-update="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value) ? '1' : '0' }}"
           data-nghi-phep-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Xoa->value) ? '1' : '0' }}">
-        <section class="d-flex flex-column flex-lg-row align-items-lg-start justify-content-between gap-3 mb-4">
-            <div>
-                <div class="d-flex align-items-center gap-2 mb-1 small text-secondary">
-                    <a href="#" class="text-secondary text-decoration-none">Thời gian làm việc</a>
-                    <span>/</span>
-                    <span>Nghỉ phép</span>
-                </div>
-                <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
-                    <h1 class="h3 fw-semibold mb-0" id="page-title">Nghỉ phép</h1>
-                    <span class="badge rounded-pill text-bg-light border fw-normal"
-                          id="leave-readonly-badge"
-                          hidden>
-                        Chế độ chỉ xem
-                    </span>
-                </div>
-                <p class="text-secondary mb-0">Quản lý nhân viên, đơn nghỉ phép và quy trình phê duyệt.</p>
-            </div>
-
-            <div class="d-flex flex-wrap gap-2">
+        <x-backend.page-header
+            title="Nghỉ phép"
+            title-id="page-title"
+            icon="bi-calendar-x"
+            description="Quản lý nhân viên, đơn nghỉ phép và quy trình phê duyệt."
+            :breadcrumbs="[
+                ['label' => 'Thời gian làm việc', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Nghỉ phép'],
+            ]"
+        >
+            <x-slot:titleSuffix>
+                <span class="badge rounded-pill text-bg-light border fw-normal" id="leave-readonly-badge" hidden>Chế độ chỉ xem</span>
+            </x-slot:titleSuffix>
+            <x-slot:actions>
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
                     id="calendar-btn"
                     type="button"
                     data-leave-permission="NghiPhep.Read"
                     hidden
                 >
-                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16"
-                         fill="none" stroke="currentColor" stroke-width="1.5"
-                         stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2.5" y="3.5" width="11" height="10" rx="1.5"></rect>
-                        <path d="M5 2v3M11 2v3M2.5 6.5h11"></path>
-                    </svg>
+                    <i class="bi bi-calendar3" aria-hidden="true"></i>
                     Lịch nghỉ
                 </button>
 
                 <button
-                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-primary d-inline-flex align-items-center gap-2"
                     id="create-btn"
                     type="button"
                     data-create-url="{{ url('/user/nghi-phep/create') }}"
                     data-leave-permission="NghiPhep.Insert"
+                    aria-label="Thêm nghỉ phép"
+                    title="Thêm nghỉ phép"
                     hidden
                 >
-                    <span aria-hidden="true">+</span>
-                    Thêm nghỉ phép
+                    <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm nghỉ phép
                 </button>
-            </div>
-        </section>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         <section class="alert alert-light border shadow-sm mb-3"
                  id="leave-auth-loading">
@@ -85,10 +76,12 @@
                  aria-label="Bộ lọc nhân viên"
                  data-leave-permission="NghiPhep.Read"
                  hidden>
+            <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0">Bộ lọc nghỉ phép</h2></div>
             <div class="card-body py-3">
-                <div class="row g-2 align-items-center">
-                    <div class="col-12 col-lg-4">
-                        <div class="input-group input-group-sm">
+                <form id="leave-filter-form" class="filter-bar">
+                <div class="filter-bar__fields">
+                    <div class="filter-bar__field">
+                        <div class="input-group">
                         <span class="input-group-text bg-white">
                             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"
                                  fill="none" stroke="currentColor" stroke-width="1.5"
@@ -102,14 +95,14 @@
                         </div>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-lg-3">
-                        <select class="form-select form-select-sm" id="department-filter" aria-label="Phòng ban">
+                    <div class="filter-bar__field">
+                        <select class="form-select" id="department-filter" aria-label="Phòng ban">
                             <option value="">-- Tất cả phòng ban --</option>
                         </select>
                     </div>
 
-                    <div class="col-12 col-sm-6 col-lg-3">
-                        <select class="form-select form-select-sm" id="position-filter" aria-label="Chức vụ">
+                    <div class="filter-bar__field">
+                        <select class="form-select" id="position-filter" aria-label="Chức vụ">
                             <option value="">-- Tất cả chức vụ --</option>
                         </select>
                     </div>
@@ -122,12 +115,12 @@
                         <option value="rejected">Từ chối</option>
                     </select>
 
-                    <div class="col-12 col-lg-2 text-lg-end">
-                        <button class="btn btn-outline-secondary btn-sm w-100" id="clear-filter-btn" type="button">
-                            Xóa lọc
-                        </button>
-                    </div>
                 </div>
+                <div class="filter-bar__actions">
+                    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
+                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa lọc</button>
+                </div>
+                </form>
             </div>
         </section>
 
@@ -142,7 +135,7 @@
                         Chọn một nhân viên để xem và xử lý dữ liệu nghỉ phép.
                     </p>
                 </div>
-                <span class="badge text-bg-light border fw-normal" id="selected-employee-badge">
+                <span class="identifier-text" id="selected-employee-badge">
                 Chưa chọn nhân viên
             </span>
             </div>
@@ -172,9 +165,9 @@
                 </table>
             </div>
 
-            <div class="card-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
-                <span class="small text-secondary" id="employee-page-info">Hiển thị 0 trên 0 nhân viên</span>
-                <nav class="pagination mb-0" id="employee-pagination" aria-label="Phân trang nhân viên"></nav>
+            <div class="card-footer pagination-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
+                <span class="pagination-footer__meta small text-secondary" id="employee-page-info">Hiển thị 0 trên 0 nhân viên</span>
+                <nav class="backend-pagination pagination mb-0" id="employee-pagination" aria-label="Phân trang nhân viên"></nav>
             </div>
         </section>
 
@@ -200,12 +193,7 @@
                             data-leave-permission="NghiPhep.Update"
                             hidden
                         >
-                            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"
-                                 fill="none" stroke="currentColor" stroke-width="1.5"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M10.8 2.2 13.8 5.2"></path>
-                                <path d="M3 13l1-3.5 7.5-7.5 3 3L7 12.5 3 13Z"></path>
-                            </svg>
+                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
                             Sửa
                         </button>
 
@@ -217,14 +205,7 @@
                             data-leave-permission="NghiPhep.Delete"
                             hidden
                         >
-                            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"
-                                 fill="none" stroke="currentColor" stroke-width="1.5"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 4.5h10"></path>
-                                <path d="M6 2.5h4"></path>
-                                <path d="M5 4.5l.5 9h5l.5-9"></path>
-                                <path d="M7 7v4M9 7v4"></path>
-                            </svg>
+                            <i class="bi bi-trash" aria-hidden="true"></i>
                             Xóa
                         </button>
 
@@ -237,11 +218,7 @@
                             data-pending-only="true"
                             hidden
                         >
-                            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"
-                                 fill="none" stroke="currentColor" stroke-width="1.6"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m3 8 3 3 7-7"></path>
-                            </svg>
+                            <i class="bi bi-check2" aria-hidden="true"></i>
                             Duyệt
                         </button>
                     </div>
@@ -297,8 +274,8 @@
                 </table>
             </div>
 
-            <div class="card-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
-                <div class="d-flex align-items-center flex-wrap gap-3">
+            <div class="card-footer pagination-footer bg-white d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 py-3">
+                <div class="pagination-footer__meta d-flex align-items-center flex-wrap gap-3">
                     <span class="small text-secondary" id="page-info">
                         Hiển thị 0 trên 0 yêu cầu
                     </span>
@@ -324,7 +301,7 @@
                     </div>
                 </div>
 
-                <nav class="pagination mb-0"
+                <nav class="backend-pagination pagination mb-0"
                      id="pagination"
                      aria-label="Phân trang nghỉ phép"></nav>
             </div>
@@ -490,7 +467,7 @@
                     id="leave-modal-cancel"
                     type="button"
                 >
-                    Hủy
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>Hủy
                 </button>
 
                 <button
@@ -498,7 +475,7 @@
                     id="leave-modal-submit"
                     type="submit"
                 >
-                    Lưu thay đổi
+                    <i class="bi bi-check2" aria-hidden="true"></i>Lưu thay đổi
                 </button>
             </div>
         </form>

@@ -115,13 +115,14 @@ class ChucVuFeatureTest extends TestCase
             ->assertSee('name="ten_cv"', false)
             ->assertSee('option value="5" selected', false)
             ->assertSee('Hiển thị 6-6 / 11 chức vụ')
-            ->assertSee('data-row-action-select', false)
-            ->assertSee('Sửa')
-            ->assertSee('Xóa')
+            ->assertDontSee('data-row-action-select', false)
+            ->assertSee('btn-icon-action', false)
+            ->assertSee('aria-label="Sửa Trưởng khoa"', false)
+            ->assertSee('title="Sửa Trưởng khoa"', false)
+            ->assertSee('aria-label="Xóa Trưởng khoa"', false)
             ->assertSee('«')
             ->assertSee('Trang cuối')
-            ->assertSee('data-confirm-message=', false)
-            ->assertSee('<noscript>', false)
+            ->assertSee('onsubmit="return confirm(', false)
             ->assertSee('data-action="modal"', false);
     }
 
@@ -138,7 +139,7 @@ class ChucVuFeatureTest extends TestCase
             ->assertSee('data-simple-edit-modal', false)
             ->assertSee('data-action="modal"', false)
             ->assertSee('data-modal-url="'.e($editUrl).'"', false)
-            ->assertSee('value="'.$editUrl.'"', false);
+            ->assertSee('href="'.e($editUrl).'"', false);
     }
 
     public function test_modal_edit_returns_a_partial_and_ajax_update_returns_safe_json(): void
@@ -187,7 +188,7 @@ class ChucVuFeatureTest extends TestCase
         $this->get('/chuc-vu?ten_cv=Gi%C3%A1m%20%C4%91%E1%BB%91c&page=2&so_dong=5')
             ->assertOk()
             ->assertSee('data-action="modal"', false)
-            ->assertSee('<noscript>', false);
+            ->assertSee('btn-icon-action', false);
 
         $backUrl = route('backend.chucvu.index', [
             'ten_cv' => 'Giám đốc',

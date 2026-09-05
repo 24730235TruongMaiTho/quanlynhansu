@@ -3,7 +3,7 @@
 @section('title', 'Quản lý vai trò')
 
 @section('content')
-    <main class="content-area" aria-labelledby="role-page-title"
+    <main class="container-fluid container-xxl py-4" aria-labelledby="role-page-title"
         data-role-data-url="{{ route('backend.vaitro.data') }}"
         data-role-search-url="{{ route('backend.vaitro.search') }}"
         data-role-store-url="{{ route('backend.vaitro.store') }}"
@@ -11,35 +11,41 @@
         data-role-can-edit="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\VaiTroPermission::Sua->value) ? '1' : '0' }}"
         data-role-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\VaiTroPermission::Xoa->value) ? '1' : '0' }}"
         data-role-can-permission="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\PhanQuyenPermission::Xem->value) ? '1' : '0' }}">
-        <div class="page-header">
-            <div class="left">
-                <div>
-                    <h1 id="role-page-title">
-                        <i class="bi bi-shield-lock-fill text-danger me-2"></i>
-                        Danh sách vai trò
-                    </h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ route('backend.tongquan.index') }}">Trang chủ</a></li>
-                            <li class="breadcrumb-item"><a href="{{ route('backend.vaitro.index') }}">Vai trò</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Danh sách vai trò</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <div class="d-flex flex-column flex-sm-row gap-2">
-                <form class="d-flex gap-2" id="role-search-form" role="search">
-                    <label class="visually-hidden" for="role-search">Tìm theo tên vai trò</label>
-                    <input class="form-control" id="role-search" name="ten_vt" type="search" placeholder="Tìm vai trò...">
-                    <button class="btn btn-outline-secondary" type="submit" aria-label="Tìm kiếm">
-                        <i class="bi bi-search" aria-hidden="true"></i>
+        <x-backend.page-header
+            title="Danh sách vai trò"
+            title-id="role-page-title"
+            icon="bi-shield-lock"
+            :breadcrumbs="[
+                ['label' => 'Hệ thống', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Vai trò'],
+            ]"
+        >
+            <x-slot:actions>
+                @can(\App\Enums\VaiTroPermission::Tao->value)
+                    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" data-role-create aria-label="Thêm vai trò" title="Thêm vai trò">
+                        <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm vai trò
                     </button>
+                @endcan
+            </x-slot:actions>
+        </x-backend.page-header>
+
+        <section class="card shadow-sm mb-3 filter-card" aria-labelledby="role-filter-title">
+            <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0" id="role-filter-title">Bộ lọc vai trò</h2></div>
+            <div class="card-body">
+                <form class="filter-bar" id="role-search-form" role="search">
+                    <div class="filter-bar__fields">
+                        <div class="filter-bar__field">
+                            <label class="form-label" for="role-search">Tìm theo tên vai trò</label>
+                            <input class="form-control" id="role-search" name="ten_vt" type="search" placeholder="Tìm vai trò...">
+                        </div>
+                    </div>
+                    <div class="filter-bar__actions">
+                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-search" aria-hidden="true"></i>Tìm kiếm</button>
+                        <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="reset"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
+                    </div>
                 </form>
-                @can(\App\Enums\VaiTroPermission::Tao->value)<button class="btn btn-primary" type="button" data-role-create>
-                    <i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Thêm vai trò
-                </button>@endcan
             </div>
-        </div>
+        </section>
 
         <div id="role-feedback" aria-live="polite"></div>
 
@@ -73,10 +79,10 @@
                     </tbody>
                 </table>
             </div>
-            <div class="card-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 py-3">
-                <small class="text-secondary" id="role-pagination-summary" aria-live="polite"></small>
-                <nav aria-label="Phân trang danh sách vai trò">
-                    <ul class="pagination pagination-sm mb-0" id="role-pagination"></ul>
+            <div class="card-footer pagination-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 py-3">
+                <small class="pagination-footer__meta text-secondary" id="role-pagination-summary" aria-live="polite"></small>
+                <nav class="backend-pagination" id="role-pagination" aria-label="Phân trang danh sách vai trò">
+                    <ul class="pagination pagination-sm mb-0"></ul>
                 </nav>
             </div>
         </section>
@@ -101,8 +107,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Hủy</button>
-                    <button class="btn btn-primary" type="submit" id="role-submit">Lưu vai trò</button>
+                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" data-bs-dismiss="modal"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</button>
+                    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit" id="role-submit"><i class="bi bi-check2" aria-hidden="true"></i>Lưu vai trò</button>
                 </div>
             </form>
         </div>
@@ -111,58 +117,4 @@
 
 @push('scripts')
     @vite('resources/js/frontend/vaitro/vaitro.js')
-@endpush
-
-@push('styles')
-    <style>
-        #role-pagination {
-            gap: 8px;
-        }
-
-        #role-pagination .page-item + .page-item {
-            margin-left: 0;
-        }
-
-        #role-pagination .page-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 44px;
-            height: 44px;
-            padding: 0;
-            border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            color: #495057;
-            background: #fff;
-            box-shadow: none;
-        }
-
-        #role-pagination .page-link:hover,
-        #role-pagination .page-link:focus {
-            color: #e94560;
-            border-color: #e94560;
-            background: #fff;
-            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.1);
-        }
-
-        #role-pagination .page-item.active .page-link {
-            color: #fff;
-            border-color: #e94560;
-            background: #e94560;
-        }
-
-        #role-pagination .page-item.disabled .page-link {
-            color: #adb5bd;
-            border-color: #e9ecef;
-            background: #fff;
-            pointer-events: none;
-        }
-
-        @media (max-width: 575.98px) {
-            #role-pagination .page-link {
-                width: 40px;
-                height: 40px;
-            }
-        }
-    </style>
 @endpush

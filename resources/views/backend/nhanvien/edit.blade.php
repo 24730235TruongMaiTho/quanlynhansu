@@ -21,50 +21,29 @@
     @endphp
 
     <main class="employee-page container container-xl py-4" aria-labelledby="page-title">
-        <nav class="mb-3" aria-label="Đường dẫn trang">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item">Nhân sự</li>
-                <li class="breadcrumb-item"><a href="{{ route('backend.nhanvien.index', $backQuery) }}">Danh sách nhân viên</a></li>
-                <li class="breadcrumb-item"><a href="{{ $backUrl }}">{{ $employee->ma_nv }}</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Cập nhật</li>
-            </ol>
-        </nav>
-
-        <header class="d-flex flex-column flex-sm-row align-items-sm-start justify-content-between gap-3 mb-4">
-            <div>
-                <h1 class="h3 fw-semibold mb-1" id="page-title">Cập nhật hồ sơ nhân viên</h1>
-                <p class="text-secondary mb-0" id="edit-form-help">Chỉnh sửa hồ sơ và địa chỉ; mã, vai trò và mật khẩu được hệ thống giữ nguyên.</p>
-            </div>
-            <a class="btn btn-outline-secondary" href="{{ $backUrl }}">
+        <x-backend.page-header
+            title="Cập nhật hồ sơ nhân viên"
+            title-id="page-title"
+            icon="bi-person-gear"
+            description="Chỉnh sửa hồ sơ và địa chỉ; mã, vai trò và mật khẩu được hệ thống giữ nguyên."
+            description-id="edit-form-help"
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Danh sách nhân viên', 'url' => route('backend.nhanvien.index', $backQuery)],
+                ['label' => $employee->ma_nv, 'url' => $backUrl],
+                ['label' => 'Cập nhật'],
+            ]"
+        >
+            <x-slot:actions>
+            <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ $backUrl }}">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 Quay lại hồ sơ
             </a>
-        </header>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         @include('backend.nhanvien.partials.flash')
-        @php
-            $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);
-            $destroyDialogId = 'employee-destroy-' . $dialogKey;
-        @endphp
-        @can(\App\Enums\NhanVienPermission::Xoa->value)
-            @if ((string) auth()->id() !== (string) $employee->ma_nv)
-            <div class="employee-action-dialogs d-inline-flex flex-wrap gap-2 mt-2" data-action-dialogs>
-                <button class="btn btn-sm btn-outline-danger" type="button" data-dialog-open="{{ $destroyDialogId }}" aria-controls="{{ $destroyDialogId }}">Xóa hoặc kết thúc</button>
-                <dialog class="employee-action-dialog" id="{{ $destroyDialogId }}" data-action-dialog aria-labelledby="{{ $destroyDialogId }}-title">
-                    <form method="POST" action="{{ route('backend.nhanvien.destroy', ['ma_nv' => $employee->ma_nv]) }}" data-dialog-form data-confirm-message="Xác nhận xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.">
-                        @csrf
-                        @method('DELETE')
-                        <h2 class="h5" id="{{ $destroyDialogId }}-title">Xóa hoặc kết thúc hồ sơ</h2>
-                        <p>Xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hệ thống chỉ kết thúc hồ sơ và giữ lại lịch sử liên quan.</p>
-                        <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-outline-secondary" data-dialog-cancel>Hủy</button>
-                            <button type="submit" class="btn btn-danger" data-dialog-submit>Xác nhận thao tác</button>
-                        </div>
-                    </form>
-                </dialog>
-            </div>
-            @endif
-        @endcan
+        @include('backend.nhanvien.partials.action-dialogs', ['employee' => $employee])
         @if ($lookupError)
             <div class="alert alert-danger" role="alert">
                 <p class="fw-semibold mb-1">Không tải được dữ liệu danh mục</p>

@@ -25,21 +25,24 @@
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="page-title">
-        <section class="mb-4">
-            <div class="d-flex align-items-center gap-2 mb-1 small text-secondary" aria-label="Đường dẫn trang">
-                <span>Nhân sự</span>
-                <span aria-hidden="true">/</span>
-                <span>Danh sách nhân viên</span>
-            </div>
-            <h1 class="h3 fw-semibold mb-1" id="page-title">Danh sách nhân viên</h1>
-            <p class="text-secondary mb-0">Tra cứu thông tin nhân viên theo phòng ban, chức vụ và trạng thái làm việc.</p>
+        <x-backend.page-header
+            title="Danh sách nhân viên"
+            title-id="page-title"
+            icon="bi-people"
+            description="Tra cứu thông tin nhân viên theo phòng ban, chức vụ và trạng thái làm việc."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Danh sách nhân viên'],
+            ]"
+        >
+            <x-slot:actions>
             @if ($canCreate)
-                <a class="btn btn-primary mt-3" href="{{ route('backend.nhanvien.create') }}">
-                    <i class="bi bi-person-plus" aria-hidden="true"></i>
-                    Thêm nhân viên
+                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm nhân viên" title="Thêm nhân viên" href="{{ route('backend.nhanvien.create') }}">
+                    <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm nhân viên
                 </a>
             @endif
-        </section>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         @if (session('success'))
             <div class="alert alert-success" role="status">
@@ -65,14 +68,14 @@
             </div>
         @endif
 
-        <section class="card shadow-sm mb-3" aria-labelledby="employee-filter-title">
+        <section class="card shadow-sm mb-3 filter-card" aria-labelledby="employee-filter-title">
             <div class="card-header bg-white py-3">
                 <h2 class="h6 fw-semibold mb-0" id="employee-filter-title">Bộ lọc nhân viên</h2>
             </div>
             <div class="card-body">
-                <form method="GET" action="{{ route('backend.nhanvien.index') }}" aria-busy="false" data-employee-filter>
-                    <div class="row g-3 align-items-end">
-                        <div class="col-12 col-lg-4">
+                <form method="GET" action="{{ route('backend.nhanvien.index') }}" aria-busy="false" data-employee-filter class="filter-bar">
+                    <div class="filter-bar__fields">
+                        <div class="filter-bar__field">
                             <label class="form-label" for="tu_khoa">Từ khóa</label>
                             <input
                                 class="form-control @error('tu_khoa') is-invalid @enderror"
@@ -88,7 +91,7 @@
                             @enderror
                         </div>
 
-                        <div class="col-12 col-sm-6 col-lg-2">
+                        <div class="filter-bar__field">
                             <label class="form-label" for="ma_pb">Phòng ban</label>
                             <select class="form-select @error('ma_pb') is-invalid @enderror" id="ma_pb" name="ma_pb">
                                 <option value="">Tất cả phòng ban</option>
@@ -103,7 +106,7 @@
                             @enderror
                         </div>
 
-                        <div class="col-12 col-sm-6 col-lg-2">
+                        <div class="filter-bar__field">
                             <label class="form-label" for="ma_cv">Chức vụ</label>
                             <select class="form-select @error('ma_cv') is-invalid @enderror" id="ma_cv" name="ma_cv">
                                 <option value="">Tất cả chức vụ</option>
@@ -118,7 +121,7 @@
                             @enderror
                         </div>
 
-                        <div class="col-12 col-sm-6 col-lg-2">
+                        <div class="filter-bar__field">
                             <label class="form-label" for="ma_tt">Trạng thái</label>
                             <select class="form-select @error('ma_tt') is-invalid @enderror" id="ma_tt" name="ma_tt">
                                 <option value="">Tất cả trạng thái</option>
@@ -133,7 +136,7 @@
                             @enderror
                         </div>
 
-                        <div class="col-12 col-sm-6 col-lg-2">
+                        <div class="filter-bar__field">
                             <label class="form-label" for="so_dong">Số dòng</label>
                             <select class="form-select" id="so_dong" name="so_dong">
                                 @foreach ([5, 10, 20, 50, 100] as $pageSize)
@@ -142,20 +145,21 @@
                             </select>
                         </div>
 
-                        <div class="col-12 d-flex flex-wrap gap-2">
+                    </div>
+                    <div class="filter-bar__actions">
                             <button
-                                class="btn btn-success"
+                                class="btn btn-primary d-inline-flex align-items-center gap-2"
                                 type="submit"
                                 aria-disabled="false"
                                 data-disable-on-submit
                                 data-submitting-text="Đang lọc..."
                             >
+                                <i class="bi bi-funnel" aria-hidden="true"></i>
                                 Áp dụng bộ lọc
                             </button>
                             @if ($hasFilters)
-                                <a class="btn btn-outline-secondary" href="{{ route('backend.nhanvien.index') }}">Xóa bộ lọc</a>
+                                <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.nhanvien.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa bộ lọc</a>
                             @endif
-                        </div>
                     </div>
                 </form>
             </div>
@@ -222,7 +226,17 @@
                                             $editUrl = route('backend.nhanvien.edit', ['ma_nv' => $employee->ma_nv] + $listQuery);
                                         @endphp
                                         <label class="visually-hidden" for="employee-action-{{ $dialogKey }}">Thao tác với {{ $employee->ho_ten }}</label>
-                                        <select class="form-select form-select-sm" id="employee-action-{{ $dialogKey }}" data-row-action-select>
+                                        <div class="table-actions employee-table-actions flex-nowrap gap-1" data-action-buttons>
+                                            <a class="btn btn-outline-primary" href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" aria-label="Xem {{ $employee->ho_ten }}" title="Xem {{ $employee->ho_ten }}"><i class="bi bi-eye button-icon" aria-hidden="true"></i>Xem</a>
+                                            @if ($canEdit)
+                                                <a class="btn btn-outline-secondary btn-icon-action" href="{{ $editUrl }}" aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}"><i class="bi bi-pencil-square button-icon" aria-hidden="true"></i></a>
+                                            @endif
+                                            @if ($canDestroy && (string) auth()->id() !== (string) $employee->ma_nv)
+                                                <button class="btn btn-outline-danger btn-icon-action" type="button" data-dialog-open="{{ $destroyDialogId }}" aria-controls="{{ $destroyDialogId }}" aria-label="Xóa {{ $employee->ho_ten }}" title="Xóa {{ $employee->ho_ten }}"><i class="bi bi-trash button-icon" aria-hidden="true"></i></button>
+                                            @endif
+                                            @include('backend.nhanvien.partials.action-dialogs', ['employee' => $employee, 'wrapActions' => false])
+                                        </div>
+                                        <select class="form-select form-select-sm visually-hidden" id="employee-action-{{ $dialogKey }}" data-row-action-select tabindex="-1" aria-hidden="true">
                                             <option value="">Chọn thao tác</option>
                                             <option value="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" data-action="navigate">Xem</option>
                                             @if ($canEdit)
@@ -238,22 +252,6 @@
                                                 <a href="{{ $editUrl }}">Chỉnh sửa</a>
                                             @endif
                                         </noscript>
-                                        @if ($canDestroy && (string) auth()->id() !== (string) $employee->ma_nv)
-                                            <div class="employee-action-dialogs" data-action-dialogs>
-                                                <dialog class="employee-action-dialog" id="{{ $destroyDialogId }}" data-action-dialog aria-labelledby="{{ $destroyDialogId }}-title">
-                                                    <form method="POST" action="{{ route('backend.nhanvien.destroy', ['ma_nv' => $employee->ma_nv]) }}" data-dialog-form data-confirm-message="Xác nhận xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <h2 class="h5" id="{{ $destroyDialogId }}-title">Xóa hoặc kết thúc hồ sơ</h2>
-                                                        <p>Xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hồ sơ sẽ được kết thúc theo lịch sử.</p>
-                                                        <div class="d-flex justify-content-end gap-2">
-                                                            <button type="button" class="btn btn-outline-secondary" data-dialog-cancel>Hủy</button>
-                                                            <button type="submit" class="btn btn-danger" data-dialog-submit>Xác nhận thao tác</button>
-                                                        </div>
-                                                    </form>
-                                                </dialog>
-                                            </div>
-                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -273,7 +271,7 @@
                             nhưng trang {{ $employees->currentPage() }} không chứa dòng nào.
                         @endif
                     </p>
-                    <a class="btn btn-outline-secondary" href="{{ $employees->url(1) }}">Về trang đầu tiên</a>
+                    <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ $employees->url(1) }}"><i class="bi bi-arrow-left" aria-hidden="true"></i>Về trang đầu tiên</a>
                 </div>
             @elseif (! $employeeError)
                 <div class="card-body text-center py-5" role="status">
@@ -289,7 +287,7 @@
             @endif
 
             @if ($employees->hasPages())
-                <div class="card-footer bg-white d-flex justify-content-center py-3">
+                <div class="card-footer pagination-footer bg-white d-flex justify-content-center py-3">
                     @include('backend.partials.pagination', ['paginator' => $employees, 'label' => 'nhân viên'])
                 </div>
             @endif

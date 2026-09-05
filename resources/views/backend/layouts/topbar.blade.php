@@ -15,19 +15,16 @@
                         <div class="avatar">{{ mb_strtoupper(mb_substr($authUser->ho_ten ?: $authUser->getAuthIdentifier(), 0, 2)) }}</div>
                         <div class="user-info">
                             <div class="name">{{ $authUser->ho_ten ?: $authUser->getAuthIdentifier() }}</div>
-                            <div class="role">Quản trị viên</div>
+                        <div class="role">{{ $authUser->ten_vt ?? 'Tài khoản' }}</div>
                         </div>
                         <i class="bi bi-chevron-down dropdown-arrow"></i>
                     </button>
                     <ul class="dropdown-menu-custom" id="userDropdown" style="list-style: none; padding: 8px; margin: 0;">
-                        <li><a class="dropdown-item" href="#">
-                            <i class="bi bi-person-circle"></i> Hồ sơ cá nhân
+                        <li><a class="dropdown-item" href="{{ route('backend.profile.edit') }}">
+                            <i class="bi bi-person-circle" aria-hidden="true"></i> Hồ sơ cá nhân
                         </a></li>
-                        <li><a class="dropdown-item" href="#">
-                            <i class="bi bi-gear"></i> Cài đặt tài khoản
-                        </a></li>
-                        <li><a class="dropdown-item" href="#">
-                            <i class="bi bi-shield-lock"></i> Bảo mật
+                        <li><a class="dropdown-item" href="{{ route('backend.profile.password.edit') }}">
+                            <i class="bi bi-key" aria-hidden="true"></i> Đổi mật khẩu
                         </a></li>
                         <li><div class="dropdown-divider"></div></li>
                         <li>

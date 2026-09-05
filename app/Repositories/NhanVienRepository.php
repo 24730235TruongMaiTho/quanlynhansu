@@ -239,6 +239,27 @@ final class NhanVienRepository implements NhanVienRepositoryContract
         });
     }
 
+    public function resetPassword(string $maNv, string $passwordHash): void
+    {
+        $this->databaseOperation(function () use ($maNv, $passwordHash): void {
+            $this->transactionIfNeeded(function () use ($maNv, $passwordHash): void {
+                $target = $this->connection()->table('nhan_vien')
+                    ->select(['ma_nv', 'ma_tt'])
+                    ->where('ma_nv', $maNv)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($target === null || NhanVienStatus::isTerminalValue((int) $target->ma_tt)) {
+                    throw new NhanVienDomainException('Không tìm thấy nhân viên.', 'NV_NOT_FOUND');
+                }
+
+                $this->connection()->table('nhan_vien')
+                    ->where('ma_nv', $maNv)
+                    ->update(['mat_khau' => $passwordHash]);
+            });
+        });
+    }
+
     public function replaceAvatarPath(string $maNv, ?string $newPath): ?string
     {
         return $this->databaseOperation(function () use ($maNv, $newPath): ?string {
@@ -349,7 +370,11 @@ final class NhanVienRepository implements NhanVienRepositoryContract
     {
         return $this->databaseOperation(function () use ($identifier): ?NhanVien {
             $row = $this->connection()->table('nhan_vien as nv')
-                ->select(['nv.ma_nv', 'nv.ho_ten', 'nv.email', 'nv.mat_khau', 'nv.ma_vt', 'nv.ma_pb', 'nv.ma_tt'])
+                ->leftJoin('vai_tro as vt', 'vt.ma_vt', '=', 'nv.ma_vt')
+                ->select([
+                    'nv.ma_nv', 'nv.ho_ten', 'nv.email', 'nv.mat_khau', 'nv.ma_vt', 'nv.ma_pb', 'nv.ma_tt',
+                    'vt.ten_vt',
+                ])
                 ->where(function (Builder $query) use ($identifier): void {
                     $query->where('nv.ma_nv', $identifier)
                         ->orWhereRaw('LOWER(TRIM(nv.email)) = ?', [strtolower(trim($identifier))]);

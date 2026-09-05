@@ -62,7 +62,7 @@ final class ContentFourManagementTest extends TestCase
             'backend.hopdong.update' => 'can:HopDong.Update', 'backend.hopdong.destroy' => 'can:HopDong.Delete',
             'backend.vaitro.index' => 'can:VaiTro.Read', 'backend.vaitro.store' => 'can:VaiTro.Insert',
             'backend.vaitro.permissions.update' => 'can:PhanQuyen.Update',
-            'backend.taikhoan.index' => 'can:PhanQuyen.Read', 'backend.taikhoan.assign-role' => 'can:PhanQuyen.Update',
+            'backend.taikhoan.index' => 'can:PhanQuyen.Read', 'backend.taikhoan.assign-roles' => 'can:PhanQuyen.Update',
         ];
 
         foreach ($expected as $name => $permission) {
@@ -187,6 +187,6 @@ final class ContentFourManagementTest extends TestCase
 
         $this->view('backend.layouts.sidebar')
             ->assertDontSee('Danh sách vai trò')
-            ->assertSee('Gán vai trò tài khoản');
+            ->assertSee('Phân Quyền');
     }
 }

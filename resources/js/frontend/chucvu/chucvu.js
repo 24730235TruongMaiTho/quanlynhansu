@@ -1,4 +1,3 @@
-import { bindRowActionSelects } from '../shared/row-action-select.js';
 import { initializeListFilters } from '../shared/list-filter.js';
 import { initializeSimpleEditModal } from '../shared/edit-modal.js';
 
@@ -21,11 +20,14 @@ function disableSubmit(form) {
 if (typeof document !== 'undefined') {
     initializeListFilters(document, '[data-position-filter]');
     const editModal = initializeSimpleEditModal(document, window);
-    bindRowActionSelects(document, window, window.location, {
-        modal: (option, select) => editModal?.open(
-            select,
-            option.dataset.modalUrl || option.value,
-        ),
+    document.addEventListener('click', (event) => {
+        const trigger = event.target?.closest?.('[data-action="modal"]');
+        if (!trigger || !editModal) {
+            return;
+        }
+
+        event.preventDefault();
+        editModal.open(trigger, trigger.dataset.modalUrl || trigger.href);
     });
 
     document.querySelectorAll('[data-chuc-vu-form]').forEach((form) => {

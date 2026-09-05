@@ -13,6 +13,7 @@ use App\Http\Controllers\Backend\LuongHeSoLuongController;
 use App\Enums\ChamCongPermission;
 use App\Enums\NghiPhepPermission;
 use App\Enums\LuongPermission;
+use App\Enums\HeSoLuongPermission;
 
 Route::middleware('api')
     ->prefix('v1')
@@ -42,7 +43,7 @@ Route::middleware('api')
                 Route::get(
                     'nhan-vien',
                     [ChamCongController::class, 'employees']
-                )->middleware(['auth'])
+                )->middleware(['auth', 'can:'.ChamCongPermission::Xem->value])
                 ->name(
                     'api.v1.cham-cong.nhan-vien'
                 );
@@ -50,7 +51,7 @@ Route::middleware('api')
                 Route::get(
                     'phong-ban',
                     [ChamCongController::class, 'phongBan']
-                )->middleware(['auth'])
+                )->middleware(['auth', 'can:'.ChamCongPermission::Xem->value])
                 ->name(
                     'api.v1.cham-cong.phong-ban'
                 );
@@ -132,6 +133,7 @@ Route::middleware('api')
         ])->middleware([
             'web',
             'auth',
+            'can:'.ChamCongPermission::Xem->value,
         ]);
 
         Route::apiResource(
@@ -139,14 +141,30 @@ Route::middleware('api')
             ChamCongController::class
         )
             ->only([
-                'index',
                 'store',
-                'update',
-                'destroy',
             ])->middleware([
                 'web',
                 'auth',
+                'can:'.ChamCongPermission::Tao->value,
             ]);
+
+        Route::apiResource(
+            'cham-cong',
+            ChamCongController::class
+        )->only(['update'])->middleware([
+            'web',
+            'auth',
+            'can:'.ChamCongPermission::Sua->value,
+        ]);
+
+        Route::apiResource(
+            'cham-cong',
+            ChamCongController::class
+        )->only(['destroy'])->middleware([
+            'web',
+            'auth',
+            'can:'.ChamCongPermission::Xoa->value,
+        ]);
 
 
         /*
@@ -164,43 +182,76 @@ Route::middleware('api')
 
                 Route::get(
                     'nhan-vien',
-                    [NghiPhepController::class, 'employeesV2']
-                )->middleware(['auth']);
+                    [NghiPhepController::class, 'employees']
+                )->name('api.v1.nghi-phep.nhan-vien')
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value]);
 
                 Route::get(
                     'phe-duyet',
                     [NghiPhepController::class, 'approvalList']
-                )->middleware(['auth']);
+                )->name('api.v1.nghi-phep.phe-duyet')
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value, 'can:department-manager']);
 
                 Route::get(
                     'phong-ban',
                     [NghiPhepController::class, 'phongBan']
-                )->middleware(['auth']);
+                )->name('api.v1.nghi-phep.phong-ban')
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value]);
 
                 Route::get(
                     'chuc-vu',
                     [NghiPhepController::class, 'chucVu']
-                )->middleware(['auth']);
+                )->name('api.v1.nghi-phep.chuc-vu')
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value]);
 
                 Route::get(
                     'loai-phep',
                     [NghiPhepController::class, 'loaiPhep']
-                )->middleware(['auth']);
+                )->name('api.v1.nghi-phep.loai-phep')
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value]);
 
                 Route::patch(
                     '{ma_np}/duyet',
                     [NghiPhepController::class, 'duyet']
                 )->name(
                     'api.v1.nghi-phep.duyet'
-                )->middleware(['auth']);
+                )->middleware(['auth', 'can:'.NghiPhepPermission::Sua->value, 'can:department-manager']);
             });
 
         Route::apiResource(
             'nghi-phep',
             NghiPhepController::class
-        )->middleware([
+        )->only(['index', 'show'])->middleware([
             'web',
             'auth',
+            'can:'.NghiPhepPermission::Xem->value,
+        ]);
+
+        Route::apiResource(
+            'nghi-phep',
+            NghiPhepController::class
+        )->only(['store'])->middleware([
+            'web',
+            'auth',
+            'can:'.NghiPhepPermission::Tao->value,
+        ]);
+
+        Route::apiResource(
+            'nghi-phep',
+            NghiPhepController::class
+        )->only(['update'])->middleware([
+            'web',
+            'auth',
+            'can:'.NghiPhepPermission::Sua->value,
+        ]);
+
+        Route::apiResource(
+            'nghi-phep',
+            NghiPhepController::class
+        )->only(['destroy'])->middleware([
+            'web',
+            'auth',
+            'can:'.NghiPhepPermission::Xoa->value,
         ]);
 
 
@@ -243,21 +294,21 @@ Route::middleware('api')
                     [LuongHeSoLuongController::class, 'index']
                 )->name(
                     'api.v1.luong.he-so-luong'
-                )->middleware(['auth']);
+                )->middleware(['auth', 'can:'.LuongPermission::Xem->value]);
 
                 Route::post(
                     'he-so-luong',
                     [LuongHeSoLuongController::class, 'store']
                 )->name(
                     'api.v1.luong.he-so-luong.store'
-                );
+                )->middleware(['auth', 'can:'.LuongPermission::Tao->value]);
 
                 Route::get(
                     'he-so-luong/{ma_ls}',
                     [LuongHeSoLuongController::class, 'show']
                 )->name(
                     'api.v1.luong.he-so-luong.show'
-                );
+                )->whereNumber('ma_ls')->middleware(['auth', 'can:'.LuongPermission::Xem->value]);
 
                 Route::match(
                     ['PUT', 'PATCH'],
@@ -265,15 +316,49 @@ Route::middleware('api')
                     [LuongHeSoLuongController::class, 'update']
                 )->name(
                     'api.v1.luong.he-so-luong.update'
-                );
+                )->whereNumber('ma_ls')->middleware(['auth', 'can:'.LuongPermission::Sua->value]);
+
+                Route::delete('he-so-luong/{ma_ls}',
+                    [LuongHeSoLuongController::class, 'destroy']
+                )->name(
+                    'api.v1.luong.he-so-luong.destroy'
+                )->whereNumber('ma_ls')->middleware(['auth', 'can:'.HeSoLuongPermission::Xoa->value]);
             });
 
         Route::apiResource(
             'luong',
             LuongController::class
-        )->middleware([
+        )->only(['index', 'show'])->middleware([
             'web',
             'auth',
+            'can:'.LuongPermission::Xem->value,
+        ]);
+
+        Route::apiResource(
+            'luong',
+            LuongController::class
+        )->only(['store'])->middleware([
+            'web',
+            'auth',
+            'can:'.LuongPermission::Tao->value,
+        ]);
+
+        Route::apiResource(
+            'luong',
+            LuongController::class
+        )->only(['update'])->middleware([
+            'web',
+            'auth',
+            'can:'.LuongPermission::Sua->value,
+        ]);
+
+        Route::apiResource(
+            'luong',
+            LuongController::class
+        )->only(['destroy'])->middleware([
+            'web',
+            'auth',
+            'can:'.LuongPermission::Xoa->value,
         ]);
     });
 

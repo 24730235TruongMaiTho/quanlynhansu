@@ -6,78 +6,44 @@
         class="container-fluid container-xxl py-4 salary-page hr-page"
         aria-labelledby="page-title"
     >
-        <section
-            class="page-heading d-flex flex-column flex-lg-row
-               align-items-lg-start justify-content-between gap-3 mb-3"
+        <x-backend.page-header
+            title="Bảng lương"
+            title-id="page-title"
+            icon="bi-cash-stack"
+            description="Theo dõi và xử lý bảng lương trong phạm vi quyền được cấp."
+            :breadcrumbs="[
+                ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
+                ['label' => 'Lương'],
+            ]"
         >
-            <div>
-                <nav
-                    class="crumb d-flex align-items-center gap-2 mb-1
-                       small text-secondary"
-                    aria-label="Breadcrumb"
-                >
-                    <a href="#" class="text-secondary text-decoration-none">
-                        Nhân sự
-                    </a>
-                    <span>/</span>
-                    <span>Lương</span>
-                </nav>
-
-                <div class="d-flex align-items-center flex-wrap gap-2">
-                    <h1 class="h3 fw-semibold mb-0" id="page-title">
-                        Bảng lương
-                    </h1>
-
-                    <span
-                        class="badge rounded-pill text-bg-light border"
-                        id="salary-readonly-badge"
-                        hidden
-                    >
-                    Chế độ chỉ xem
-                </span>
-                </div>
-
-                <p class="text-secondary mt-1 mb-0">
-                    Theo dõi và xử lý bảng lương trong phạm vi quyền được cấp.
-                </p>
-            </div>
-
-            <div class="d-flex flex-wrap align-items-center gap-2">
+            <x-slot:titleSuffix>
+                <span class="badge rounded-pill text-bg-light border" id="salary-readonly-badge" hidden>Chế độ chỉ xem</span>
+            </x-slot:titleSuffix>
+            <x-slot:actions>
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex
-                       align-items-center gap-2"
+                    class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
                     id="export-btn"
                     type="button"
                     data-salary-permission="Luong.Read"
                     hidden
                 >
-                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16"
-                         fill="none" stroke="currentColor" stroke-width="1.5"
-                         stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M8 2v8"/>
-                        <path d="m4.8 7.2 3.2 3.2 3.2-3.2"/>
-                        <path d="M3 14h10"/>
-                    </svg>
+                    <i class="bi bi-download" aria-hidden="true"></i>
                     Xuất báo cáo
                 </button>
 
                 <button
-                    class="btn btn-success btn-sm d-inline-flex
-                       align-items-center gap-2"
+                    class="btn btn-success d-inline-flex align-items-center gap-2"
                     id="create-salary-btn"
                     type="button"
                     data-salary-permission="Luong.Insert"
+                    aria-label="Thêm thông tin lương"
+                    title="Thêm thông tin lương"
                     hidden
                 >
-                    <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16"
-                         fill="none" stroke="currentColor" stroke-width="1.5"
-                         stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M8 3v10M3 8h10"/>
-                    </svg>
-                    Thêm thông tin lương
+                    <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm thông tin lương
                 </button>
-            </div>
-        </section>
+            </x-slot:actions>
+        </x-backend.page-header>
 
         {{-- Auth loading --}}
         <section
@@ -119,15 +85,17 @@
             </section>
 
             {{-- Filters --}}
-            <section class="card shadow-sm mb-3 filter-card">
+            <section class="card shadow-sm mb-3 filter-card" aria-labelledby="salary-filter-title">
+                <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0" id="salary-filter-title">Bộ lọc lương</h2></div>
                 <div class="card-body py-3">
-                    <div class="row g-2 align-items-center">
-                        <div
-                            class="col-12 col-lg-4 col-xl-3"
+                    <form id="salary-filter-form" class="filter-bar">
+                    <div class="filter-bar__fields">
+                        <div class="filter-bar__field"
                             data-salary-permission="Luong.Read"
                             hidden
                         >
-                            <div class="input-group input-group-sm">
+                            <label class="form-label" for="search-field">Tìm kiếm nhân viên</label>
+                            <div class="input-group">
                             <span class="input-group-text bg-white">
                                 <svg aria-hidden="true" width="16" height="16"
                                      viewBox="0 0 16 16" fill="none"
@@ -147,49 +115,43 @@
                             </div>
                         </div>
 
-                        <div
-                            class="col-12 col-sm-6 col-lg-2"
+                        <div class="filter-bar__field"
                             data-salary-permission="Luong.Read"
                             hidden
                         >
+                            <label class="form-label" for="department-filter">Phòng ban</label>
                             <select
-                                class="form-select form-select-sm"
+                                class="form-select"
                                 id="department-filter"
                             >
                                 <option value="">-- Tất cả phòng ban --</option>
                             </select>
                         </div>
 
-                        <div
-                            class="col-12 col-sm-6 col-lg-2"
+                        <div class="filter-bar__field"
                             data-salary-permission="Luong.Read"
                             hidden
                         >
+                            <label class="form-label" for="position-filter">Chức vụ</label>
                             <select
-                                class="form-select form-select-sm"
+                                class="form-select"
                                 id="position-filter"
                             >
                                 <option value="">-- Tất cả chức vụ --</option>
                             </select>
                         </div>
 
-                        <div class="col-12 col-lg-auto">
-                            <div class="salary-period-picker d-flex align-items-center gap-2 flex-nowrap">
-                                <label
-                                    class="text-secondary fw-semibold mb-0 text-nowrap"
-                                    for="salary-month-select"
-                                >
-                                    Kỳ lương
-                                </label>
-
+                        <div class="filter-bar__field filter-bar__field--period">
+                            <label class="form-label" id="salary-period-label" for="salary-month-select">Kỳ lương</label>
+                            <div class="filter-period-controls salary-period-picker" role="group" aria-labelledby="salary-period-label">
                                 <select
-                                    class="form-select form-select-sm salary-month-select"
+                                    class="form-select salary-month-select"
                                     id="salary-month-select"
                                     aria-label="Tháng lương"
                                 ></select>
 
                                 <input
-                                    class="form-control form-control-sm salary-year-input"
+                                    class="form-control salary-year-input"
                                     id="salary-year-input"
                                     type="search"
                                     inputmode="numeric"
@@ -200,20 +162,12 @@
                             </div>
                         </div>
 
-                        <div
-                            class="col-12 col-sm-auto ms-lg-auto"
-                            data-salary-permission="Luong.Read"
-                            hidden
-                        >
-                            <button
-                                class="btn btn-outline-secondary btn-sm w-100"
-                                id="clear-filter-btn"
-                                type="button"
-                            >
-                                Xóa lọc
-                            </button>
-                        </div>
                     </div>
+                    <div class="filter-bar__actions">
+                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
+                        <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
+                    </div>
+                    </form>
                 </div>
             </section>
 
@@ -239,22 +193,23 @@
 
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0 salary-data-table">
+                        <caption class="visually-hidden">Danh sách bảng lương</caption>
                         <thead class="table-light">
                         <tr>
-                            <th class="salary-col-employee">Nhân viên</th>
-                            <th class="salary-col-position">Phòng ban / Chức vụ</th>
-                            <th class="text-end salary-col-period">Kỳ lương</th>
-                            <th class="text-end">Thưởng</th>
-                            <th class="text-end">Phạt</th>
-                            <th class="text-end">Bảo hiểm</th>
-                            <th class="text-end">Thuế</th>
-                            <th class="text-end">Hệ số phụ cấp</th>
-                            <th class="text-end">Thực nhận</th>
-                            <th class="text-end">Ngày công</th>
-                            <th class="text-end">Vào muộn</th>
-                            <th class="text-end">Về sớm</th>
-                            <th class="salary-col-status">Trạng thái</th>
-                            <th class="text-end salary-col-actions">Thao tác</th>
+                            <th scope="col" class="salary-col-employee">Nhân viên</th>
+                            <th scope="col" class="salary-col-position">Phòng ban / Chức vụ</th>
+                            <th scope="col" class="text-end salary-col-period">Kỳ lương</th>
+                            <th scope="col" class="text-end">Thưởng</th>
+                            <th scope="col" class="text-end">Phạt</th>
+                            <th scope="col" class="text-end">Bảo hiểm</th>
+                            <th scope="col" class="text-end">Thuế</th>
+                            <th scope="col" class="text-end">Hệ số phụ cấp</th>
+                            <th scope="col" class="text-end">Thực nhận</th>
+                            <th scope="col" class="text-end">Ngày công</th>
+                            <th scope="col" class="text-end">Vào muộn</th>
+                            <th scope="col" class="text-end">Về sớm</th>
+                            <th scope="col" class="salary-col-status">Trạng thái</th>
+                            <th scope="col" class="text-end salary-col-actions">Thao tác</th>
                         </tr>
                         </thead>
 
@@ -269,10 +224,10 @@
                 </div>
 
                 <div
-                    class="card-footer bg-white d-flex flex-column flex-sm-row
+                    class="card-footer pagination-footer bg-white d-flex flex-column flex-sm-row
                        align-items-sm-center justify-content-between gap-2 py-3"
                 >
-                    <div class="d-flex align-items-center flex-wrap gap-3">
+                    <div class="pagination-footer__meta d-flex align-items-center flex-wrap gap-3">
                     <span class="small text-secondary" id="page-info">
                         Hiển thị 0 trên 0 nhân viên
                     </span>
@@ -289,6 +244,7 @@
                             >
                                 <option value="5">5</option>
                                 <option value="10">10</option>
+                                <option value="20">20</option>
                                 <option value="15" selected>15</option>
                                 <option value="25">25</option>
                                 <option value="50">50</option>
@@ -298,7 +254,7 @@
                         </div>
                     </div>
 
-                    <nav id="pagination" aria-label="Phân trang bảng lương"></nav>
+                    <nav class="backend-pagination" id="pagination" aria-label="Phân trang bảng lương"></nav>
                 </div>
             </section>
 
@@ -328,21 +284,23 @@
 
                     <div class="d-flex flex-wrap align-items-center gap-2">
                     <span
-                        class="badge text-bg-light border"
+                        class="identifier-text"
                         id="coefficient-selected-employee"
                     >
                         Chưa chọn nhân viên
                     </span>
 
                         <button
-                            class="btn btn-success btn-sm"
+                            class="btn btn-success d-inline-flex align-items-center gap-2"
                             id="add-coefficient-btn"
                             type="button"
                             disabled
                             data-salary-permission="HeSoLuong.Insert"
+                            aria-label="Thêm hệ số lương"
+                            title="Thêm hệ số lương"
                             hidden
                         >
-                            + Thêm hệ số
+                            <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm hệ số lương
                         </button>
                     </div>
                 </div>
@@ -406,36 +364,15 @@
                 </div>
 
                 <div
-                    class="card-footer bg-white d-flex flex-column flex-sm-row
+                    class="card-footer pagination-footer bg-white d-flex flex-column flex-sm-row
                        align-items-sm-center justify-content-between gap-2 py-3"
                 >
-                <span class="small text-secondary" id="coefficient-info">
+                <span class="pagination-footer__meta small text-secondary" id="coefficient-info">
                     Hiển thị 0 bản ghi
                 </span>
 
-                    {{--                    <div class="d-flex align-items-center gap-2">--}}
-                    {{--                        <button--}}
-                    {{--                            class="btn btn-outline-secondary btn-sm"--}}
-                    {{--                            id="edit-coefficient-btn"--}}
-                    {{--                            type="button"--}}
-                    {{--                            disabled--}}
-                    {{--                            data-salary-permission="HeSoLuong.Update"--}}
-                    {{--                            hidden--}}
-                    {{--                        >--}}
-                    {{--                            Sửa hệ số--}}
-                    {{--                        </button>--}}
+                <nav class="backend-pagination" id="coefficient-pagination" aria-label="Phân trang hệ số lương"></nav>
 
-                    {{--                        <button--}}
-                    {{--                            class="btn btn-outline-danger btn-sm"--}}
-                    {{--                            id="delete-coefficient-btn"--}}
-                    {{--                            type="button"--}}
-                    {{--                            disabled--}}
-                    {{--                            data-salary-permission="HeSoLuong.Delete"--}}
-                    {{--                            hidden--}}
-                    {{--                        >--}}
-                    {{--                            Xóa hệ số--}}
-                    {{--                        </button>--}}
-                    {{--                    </div>--}}
                 </div>
             </section>
         </div>
@@ -544,7 +481,7 @@
                     id="salary-modal-cancel"
                     type="button"
                 >
-                    Hủy
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>Hủy
                 </button>
 
                 <button
@@ -552,7 +489,7 @@
                     id="salary-modal-submit"
                     type="submit"
                 >
-                    Lưu thông tin
+                    <i class="bi bi-check2" aria-hidden="true"></i>Lưu thông tin
                 </button>
             </footer>
         </form>
@@ -641,26 +578,44 @@
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <label class="form-label fw-semibold" for="coefficient-from-date">
-                        Từ ngày
-                    </label>
-                    <input
-                        class="form-control form-control-sm"
-                        id="coefficient-from-date"
-                        type="date"
-                        required
-                    >
+                    <div class="date-field">
+                        <label class="form-label fw-semibold" for="coefficient-from-date">
+                            Từ ngày
+                        </label>
+                        <input
+                            class="form-control form-control-sm"
+                            id="coefficient-from-date"
+                            type="text"
+                            placeholder="dd/mm/yyyy"
+                            inputmode="numeric"
+                            maxlength="10"
+                            aria-describedby="coefficient-from-date-error"
+                            required
+                        >
+                        <div class="invalid-feedback" id="coefficient-from-date-error" role="alert">
+                            Vui lòng nhập ngày bắt đầu theo định dạng dd/mm/yyyy.
+                        </div>
+                    </div>
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <label class="form-label fw-semibold" for="coefficient-to-date">
-                        Đến ngày
-                    </label>
-                    <input
-                        class="form-control form-control-sm"
-                        id="coefficient-to-date"
-                        type="date"
-                    >
+                    <div class="date-field">
+                        <label class="form-label fw-semibold" for="coefficient-to-date">
+                            Đến ngày
+                        </label>
+                        <input
+                            class="form-control form-control-sm"
+                            id="coefficient-to-date"
+                            type="text"
+                            placeholder="dd/mm/yyyy"
+                            inputmode="numeric"
+                            maxlength="10"
+                            aria-describedby="coefficient-to-date-error"
+                        >
+                        <div class="invalid-feedback" id="coefficient-to-date-error" role="alert">
+                            Vui lòng nhập ngày kết thúc theo định dạng dd/mm/yyyy.
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -670,7 +625,7 @@
                     id="coefficient-modal-cancel"
                     type="button"
                 >
-                    Hủy
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>Hủy
                 </button>
 
                 <button
@@ -678,7 +633,7 @@
                     id="coefficient-modal-submit"
                     type="submit"
                 >
-                    Lưu hệ số
+                    <i class="bi bi-check2" aria-hidden="true"></i>Lưu hệ số
                 </button>
             </footer>
         </form>
@@ -693,79 +648,6 @@
             --salary-action-bg: #fff;
             --salary-action-hover: #f6f8fa;
             --salary-sticky-bg: #fff;
-        }
-
-        /* ----- Filter / kỳ lương ----- */
-        .salary-page .salary-period-picker {
-            min-height: 38px;
-            padding: 4px 6px 4px 10px;
-            border: 1px solid #d0d7de;
-            border-radius: 8px;
-            background: #fff;
-        }
-
-        .salary-page .salary-period-picker > label {
-            margin-right: 4px;
-
-            color: #656d76;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .salary-page .salary-month-select {
-            width: 108px !important;
-            min-width: 108px !important;
-            height: 32px;
-
-            padding: 4px 36px 4px 10px !important;
-
-            background-position:
-                right 10px center !important;
-
-            background-size:
-                12px 12px !important;
-
-            border: 0 !important;
-            box-shadow: none !important;
-
-            font-size: 13px;
-            font-weight: 600;
-
-            cursor: pointer;
-        }
-
-        .salary-page .salary-year-input {
-            width: 76px !important;
-            min-width: 76px !important;
-            height: 32px;
-
-            padding: 4px 8px;
-
-            border: 0 !important;
-            border-left: 1px solid #d8dee4 !important;
-            border-radius: 0 !important;
-
-            box-shadow: none !important;
-
-            text-align: center;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .salary-page .salary-period-picker {
-            display: inline-flex;
-            align-items: center;
-
-            min-height: 38px;
-
-            padding: 3px 5px 3px 10px;
-
-            border: 1px solid #d0d7de;
-            border-radius: 8px;
-
-            background: #fff;
-
-            white-space: nowrap;
         }
 
         /* ----- Table sizing ----- */
@@ -905,9 +787,10 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 30px;
-            height: 30px;
-            min-width: 30px;
+            width: 2.375rem;
+            height: 2.375rem;
+            min-width: 2.375rem;
+            min-height: 2.375rem;
             padding: 0 !important;
             border: 0 !important;
             border-radius: 7px !important;
@@ -955,6 +838,16 @@
             pointer-events: none;
         }
 
+        .salary-page .salary-row-create-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            height: 2.375rem;
+            min-height: 2.375rem;
+            white-space: nowrap;
+        }
+
         .salary-page .salary-row-selected > *,
         .salary-page .coefficient-row-selected > * {
             background: rgba(9,105,218,.06) !important;
@@ -964,21 +857,6 @@
         @media (max-width: 1199.98px) {
             .salary-page .salary-data-table {
                 min-width: 1500px;
-            }
-        }
-
-        @media (max-width: 767.98px) {
-            .salary-page .salary-period-picker {
-                width: 100%;
-            }
-
-            .salary-page .salary-month-select {
-                flex: 1 1 96px;
-                width: auto !important;
-            }
-
-            .salary-page .salary-year-input {
-                flex: 0 0 82px;
             }
         }
 

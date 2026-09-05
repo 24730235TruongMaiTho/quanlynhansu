@@ -3,6 +3,8 @@ import {
     loadAuthContext,
     can,
 } from './luongPermissions.js';
+import { formatDisplayDate } from '../shared/date-field.js';
+import { renderSharedPagination } from '../shared/pagination.js';
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -20,6 +22,16 @@ document.addEventListener(
         const tbody =
             document.getElementById(
                 'salary-coefficient-tbody'
+            );
+
+        const pagination =
+            document.getElementById(
+                'coefficient-pagination'
+            );
+
+        const pageInfo =
+            document.getElementById(
+                'coefficient-info'
             );
 
         if (
@@ -41,6 +53,12 @@ document.addEventListener(
 
             selectedId:
                 null,
+
+            coefficientPage:
+                1,
+
+            coefficientPerPage:
+                10,
         };
 
         function escapeHtml(value) {
@@ -91,10 +109,12 @@ document.addEventListener(
 
             result.push(`
                 <button
-                    class="btn btn-outline-secondary coefficient-icon-action"
+                    class="btn btn-outline-secondary coefficient-icon-action btn-icon-action"
+                    type="button"
                     data-coefficient-action="view"
                     data-id="${escapeHtml(item.ma_ls)}"
-                    title="Xem"
+                    aria-label="Xem hệ số lương ${escapeHtml(item.ma_ls)}"
+                    title="Xem hệ số lương ${escapeHtml(item.ma_ls)}"
                 >
                     ${iconEye()}
                 </button>
@@ -107,10 +127,12 @@ document.addEventListener(
             ) {
                 result.push(`
                     <button
-                        class="btn btn-outline-primary coefficient-icon-action"
+                        class="btn btn-outline-primary coefficient-icon-action btn-icon-action"
+                        type="button"
                         data-coefficient-action="edit"
                         data-id="${escapeHtml(item.ma_ls)}"
-                        title="Sửa"
+                        aria-label="Sửa hệ số lương ${escapeHtml(item.ma_ls)}"
+                        title="Sửa hệ số lương ${escapeHtml(item.ma_ls)}"
                     >
                         ${iconEdit()}
                     </button>
@@ -124,10 +146,12 @@ document.addEventListener(
             ) {
                 result.push(`
                     <button
-                        class="btn btn-outline-danger coefficient-icon-action"
+                        class="btn btn-outline-danger coefficient-icon-action btn-icon-action"
+                        type="button"
                         data-coefficient-action="delete"
                         data-id="${escapeHtml(item.ma_ls)}"
-                        title="Xóa"
+                        aria-label="Xóa hệ số lương ${escapeHtml(item.ma_ls)}"
+                        title="Xóa hệ số lương ${escapeHtml(item.ma_ls)}"
                     >
                         ${iconDelete()}
                     </button>
@@ -148,14 +172,7 @@ document.addEventListener(
                 return 'Không thời hạn';
             }
 
-            const match =
-                String(value).match(
-                    /^(\d{4})-(\d{2})-(\d{2})/
-                );
-
-            return match
-                ? `${match[3]}/${match[2]}/${match[1]}`
-                : value;
+            return formatDisplayDate(String(value).substring(0, 10)) || value;
         }
 
         function render(
@@ -225,13 +242,17 @@ document.addEventListener(
 
         async function load(
             employeeCode,
-            employeeName
+            employeeName,
+            page = 1
         ) {
             state.employeeCode =
                 employeeCode;
 
             state.employeeName =
                 employeeName;
+
+            state.coefficientPage =
+                Math.max(Number(page) || 1, 1);
 
             const badge =
                 document.getElementById(
@@ -245,7 +266,7 @@ document.addEventListener(
 
             const response =
                 await fetch(
-                    `${API}?ma_nv=${encodeURIComponent(employeeCode)}`,
+                    `${API}?ma_nv=${encodeURIComponent(employeeCode)}&page=${state.coefficientPage}&per_page=${state.coefficientPerPage}`,
                     {
                         headers: {
                             Accept:
@@ -260,16 +281,36 @@ document.addEventListener(
             const result =
                 await response.json();
 
-            const rows =
-                Array.isArray(
-                    result.data
-                )
+            const paginator =
+                result.data && !Array.isArray(result.data)
                     ? result.data
-                    : [];
+                    : {
+                        data: Array.isArray(result.data) ? result.data : [],
+                        current_page: 1,
+                        last_page: 1,
+                        total: Array.isArray(result.data) ? result.data.length : 0,
+                        from: Array.isArray(result.data) && result.data.length ? 1 : 0,
+                        to: Array.isArray(result.data) ? result.data.length : 0,
+                    };
+
+            const rows = Array.isArray(paginator.data)
+                ? paginator.data
+                : [];
 
             render(
                 rows
             );
+
+            if (pageInfo) {
+                const total = Number(paginator.total || 0);
+                pageInfo.textContent = total > 0
+                    ? `Hiển thị ${paginator.from ?? 0}–${paginator.to ?? 0} trên ${total} bản ghi`
+                    : 'Hiển thị 0 bản ghi';
+            }
+
+            renderSharedPagination(pagination, paginator, {
+                pageAttribute: 'coefficientPage',
+            });
 
             const addButton =
                 document.getElementById(
@@ -350,6 +391,29 @@ document.addEventListener(
                             },
                         }
                     )
+                );
+            }
+        );
+
+        pagination?.addEventListener(
+            'click',
+            (event) => {
+                const button = event.target.closest(
+                    'button[data-coefficient-page]'
+                );
+
+                if (
+                    !button ||
+                    button.disabled ||
+                    !state.employeeCode
+                ) {
+                    return;
+                }
+
+                load(
+                    state.employeeCode,
+                    state.employeeName,
+                    button.dataset.coefficientPage
                 );
             }
         );

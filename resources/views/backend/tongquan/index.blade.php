@@ -3,22 +3,18 @@
 
 @section('content')
 <div class="content-area">
-    <div class="page-header">
-        <div class="left">
-            <div>   
-                <h1>
-                    <i class="bi bi-house-fill text-danger me-2"></i>
-                    Tổng quan
-                </h1>
-                
-            </div>
-        </div>
-        <div class="right">
+    <x-backend.page-header
+        title="Tổng quan"
+        title-id="dashboard-page-title"
+        icon="bi-speedometer2"
+        :breadcrumbs="[['label' => 'Tổng quan']]"
+    >
+        <x-slot:actions>
             <button class="btn btn-primary" id="refreshDashboard">
-                <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i> Làm mới
             </button>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-backend.page-header>
 
     <!-- Loading -->
     <div id="dashboardLoading" class="text-center py-5" style="display: none;">
@@ -32,7 +28,7 @@
     <div id="dashboardContent">
 
         <!-- ===== HÀNG 1: THỐNG KÊ NHANH (5 CARD) ===== -->
-        <div class="row g-4 mb-4" id="statCards">
+        <div class="row g-4 mb-4" id="statsCards">
             <div class="col-12 col-sm-6 col-lg-3">
                 <div class="card h-100 shadow-sm border-0 rounded-3">
                     <div class="card-body">
@@ -49,6 +45,24 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-3">
+                <a class="card h-100 shadow-sm border-0 rounded-3 text-decoration-none" href="{{ route('backend.nghiphep.duyet-nghi-phep') }}" aria-label="Mở danh sách nghỉ phép chờ duyệt">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="bg-danger bg-opacity-10 rounded-3 p-3">
+                                    <i class="bi bi-calendar-check fs-1 text-danger" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="text-muted mb-1">Nghỉ phép chờ duyệt</h6>
+                                <h2 class="mb-0 fw-bold" id="pendingDepartmentLeaveCount">—</h2>
+                                <small class="text-muted">Phòng ban của bạn</small>
+                            </div>
+                        </div>
+                    </div>
+                </a>
             </div>
             <div class="col-12 col-sm-6 col-lg-3">
                 <div class="card h-100 shadow-sm border-0 rounded-3">
@@ -310,18 +324,18 @@
     .page-header h1 { font-size: 1.75rem; font-weight: 600; }
     .breadcrumb { background: none; padding: 0; margin: 0; }
     .breadcrumb-item a { text-decoration: none; color: var(--bs-primary); }
-    #statCards .card {
+    #statsCards .card {
         transition: transform 0.2s ease;
         border: none;
         border-radius: 12px;
     }
-    #statCards .card:hover { transform: translateY(-5px); }
+    #statsCards .card:hover { transform: translateY(-5px); }
     .table-responsive { max-height: 300px; overflow-y: auto; }
     .bg-opacity-10 { --bs-bg-opacity: 0.1; }
     @media (max-width: 576px) {
         .page-header h1 { font-size: 1.3rem; }
         .content-area { padding: 0.75rem; }
-        #statCards .card h2 { font-size: 1.5rem; }
+        #statsCards .card h2 { font-size: 1.5rem; }
     }
     @media (max-width: 768px) {
         .page-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
@@ -389,6 +403,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const contracts = data.hop_dong_sap_het_han || [];
         document.getElementById('expiringContracts').textContent = contracts.length;
+
+        const pendingLeaveCount = data.pending_department_leave_count;
+        document.getElementById('pendingDepartmentLeaveCount').textContent = pendingLeaveCount === null || pendingLeaveCount === undefined
+            ? '—'
+            : pendingLeaveCount;
 
         // Báo cáo chấm công
         renderAttendanceReport(data.bao_cao_cham_cong || {});
@@ -545,6 +564,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function escapeHtml(value) {
+        const element = document.createElement('div');
+        element.textContent = value == null ? '' : String(value);
+        return element.innerHTML;
+    }
+
+    function formatDisplayDate(value) {
+        return window.qlns && typeof window.qlns.formatDisplayDate === 'function'
+            ? window.qlns.formatDisplayDate(value)
+            : '';
+    }
+
     function renderContractsTable(contracts) {
         const tbody = document.getElementById('contractsTableBody');
         
@@ -561,12 +592,15 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (daysLeft <= 7) { badgeClass = 'bg-danger'; badgeText = `⚠️ ${daysLeft} ngày`; }
             else if (daysLeft <= 15) { badgeClass = 'bg-warning text-dark'; badgeText = `📅 ${daysLeft} ngày`; }
 
+            const startDate = formatDisplayDate(contract.ngay_bat_dau) || '-';
+            const endDate = formatDisplayDate(contract.ngay_ket_thuc) || '-';
+
             html += `<tr>
                 <td class="ps-3">${index + 1}</td>
-                <td><strong>${contract.ho_ten || 'Chưa cập nhật'}</strong></td>
-                <td>${contract.ten_loai_hop_dong || 'Chưa xác định'}</td>
-                <td>${contract.ngay_ket_thuc || '-'}</td>
-                <td><span class="badge ${badgeClass} px-3 py-2">${badgeText}</span></td>
+                <td><strong>${escapeHtml(contract.ho_ten || 'Chưa cập nhật')}</strong></td>
+                <td>${escapeHtml(contract.ten_loai_hop_dong || 'Chưa xác định')}</td>
+                <td>${escapeHtml(startDate)} – ${escapeHtml(endDate)}</td>
+                <td><span class="badge ${badgeClass} px-3 py-2">${escapeHtml(badgeText)}</span></td>
             </tr>`;
         });
 
