@@ -199,11 +199,40 @@ body {
             margin: 0;
             overflow: hidden;
             max-height: 0;
-            transition: max-height 0.3s ease;
+            visibility: hidden;
+            transition: max-height 0.3s ease, visibility 0s linear 0.3s;
         }
 
-        .sub-menu.open {
-            max-height: 2000px;
+        .sub-menu[data-submenu-ready] {
+            visibility: hidden;
+            transition: max-height 0.3s ease, visibility 0s linear 0.3s;
+        }
+
+        .sub-menu.open[data-submenu-ready] {
+            max-height: var(--submenu-height, 0px);
+            visibility: visible;
+            transition: max-height 0.3s ease, visibility 0s linear 0s;
+        }
+
+        /* Active routes are visible in the server-rendered first paint. */
+        .sub-menu.open[data-submenu-ready="initial"] {
+            max-height: none;
+            visibility: visible;
+            transition: none;
+        }
+
+        /* Session-restored state is applied before the first interactive frame. */
+        .sub-menu[data-submenu-no-animation],
+        .sub-menu[data-submenu-no-animation].open {
+            transition: none !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .sub-menu,
+            .sub-menu[data-submenu-ready],
+            .sub-menu.open[data-submenu-ready] {
+                transition: none;
+            }
         }
 
         .sub-menu .nav-item {
@@ -887,7 +916,7 @@ body {
             }
 
             .sidebar.mobile-open .sub-menu.open {
-                max-height: 2000px !important;
+                max-height: var(--submenu-height, 0px) !important;
             }
 
             /* Top Bar Mobile */

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\JsonPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -21,11 +22,36 @@ class NghiPhepService
         try {
             $query = $this->baseLeaveQuery();
 
+            $page = max((int) ($filters['page'] ?? 1), 1);
+            $requestedPerPage = (int) ($filters['per_page'] ?? 10);
+            $perPage = in_array($requestedPerPage, [10, 20, 50], true)
+                ? $requestedPerPage
+                : 10;
+
             if (! empty($filters['ma_nv'])) {
                 $query->where(
                     'np.ma_nv',
                     $filters['ma_nv']
                 );
+            }
+
+            if (trim((string) ($filters['tu_khoa'] ?? '')) !== '') {
+                $keyword = trim((string) $filters['tu_khoa']);
+                $query->where(function ($builder) use ($keyword): void {
+                    $like = '%'.$keyword.'%';
+                    $builder->where('np.ma_nv', 'like', $like)
+                        ->orWhere('nv.ho_ten', 'like', $like)
+                        ->orWhere('pb.ten_pb', 'like', $like)
+                        ->orWhere('cv.ten_cv', 'like', $like);
+                });
+            }
+
+            if (array_key_exists('ma_pb', $filters) && $filters['ma_pb'] !== null) {
+                $query->where('nv.ma_pb', (int) $filters['ma_pb']);
+            }
+
+            if (array_key_exists('ma_cv', $filters) && $filters['ma_cv'] !== null) {
+                $query->where('nv.ma_cv', (int) $filters['ma_cv']);
             }
 
             /*
@@ -51,12 +77,8 @@ class NghiPhepService
             }
 
             $tab = $filters['tab'] ?? null;
-            if (($filters['tab'] ?? null) === 'pending') {
-                $query->where('np.trang_thai_duyet', 0);
-            } elseif (($filters['tab'] ?? null) === 'history') {
-                $query->whereIn('np.trang_thai_duyet', [1, 2]);
-            } elseif (
-                array_key_exists('trang_thai_duyet', $filters)
+            if (! in_array($tab, ['pending', 'history'], true)
+                && array_key_exists('trang_thai_duyet', $filters)
                 && $filters['trang_thai_duyet'] !== null
                 && $filters['trang_thai_duyet'] !== ''
             ) {
@@ -66,16 +88,25 @@ class NghiPhepService
                 );
             }
 
+            $countsQuery = clone $query;
+            if ($tab === 'pending') {
+                $query->where('np.trang_thai_duyet', 0);
+            } elseif ($tab === 'history') {
+                $query->whereIn('np.trang_thai_duyet', [1, 2]);
+            }
             $counts = [
-                'pending' => (clone $query)->where('np.trang_thai_duyet', 0)->count(),
-                'history' => (clone $query)->whereIn('np.trang_thai_duyet', [1, 2])->count(),
+                'pending' => (clone $countsQuery)->where('np.trang_thai_duyet', 0)->count(),
+                'history' => (clone $countsQuery)->whereIn('np.trang_thai_duyet', [1, 2])->count(),
             ];
+
+            $paginator = $query
+                ->orderByDesc('np.ma_np')
+                ->paginate($perPage, ['*'], 'page', $page)
+                ->withQueryString();
 
             return [
                 'success' => true,
-                'data' => $query
-                    ->orderByDesc('np.ma_np')
-                    ->get(),
+                'data' => JsonPaginator::from($paginator),
                 'counts' => $counts,
             ];
         } catch (\Throwable $e) {
@@ -230,30 +261,56 @@ class NghiPhepService
     ): array {
         try {
             /*
-             * 1. Validate khoảng ngày.
+             * Generic edits are deliberately allowlisted. Approval status is
+             * owned exclusively by duyet(), even when this service is called
+             * directly and no FormRequest has run.
              */
-            if (
-                isset(
-                    $data['tu_ngay'],
-                    $data['den_ngay']
-                )
-                && $data['tu_ngay'] > $data['den_ngay']
-            ) {
+            $editable = array_intersect_key(
+                $data,
+                array_flip([
+                    'ma_nv',
+                    'tu_ngay',
+                    'den_ngay',
+                    'ma_lp',
+                    'ly_do',
+                ])
+            );
+
+            if (! array_key_exists('ma_nv', $editable)) {
                 return [
                     'success' => false,
-                    'message' =>
-                        'Từ ngày phải nhỏ hơn hoặc bằng đến ngày.',
+                    'message' => 'Mã nhân viên không được để trống.',
+                ];
+            }
+
+            $leave = DB::table('nghi_phep')
+                ->where('ma_np', $id)
+                ->first();
+
+            if (! $leave) {
+                return [
+                    'success' => false,
+                    'message' => 'Không tìm thấy đơn nghỉ phép.',
+                ];
+            }
+
+            $maNv = $editable['ma_nv'];
+
+            /*
+             * Đơn không được chuyển sang nhân viên khác trong generic edit.
+             */
+            if ((string) $leave->ma_nv !== (string) $maNv) {
+                return [
+                    'success' => false,
+                    'message' => 'Đơn nghỉ phép của nhân viên không tồn tại.',
                 ];
             }
 
             /*
-             * 2. Nhân viên phải tồn tại.
+             * Nhân viên phải tồn tại.
              */
             $employeeExists = DB::table('nhan_vien')
-                ->where(
-                    'ma_nv',
-                    $data['ma_nv']
-                )
+                ->where('ma_nv', $maNv)
                 ->exists();
 
             if (! $employeeExists) {
@@ -265,59 +322,40 @@ class NghiPhepService
             }
 
             /*
-             * 3. Đơn phải thuộc đúng nhân viên.
+             * Validate khoảng ngày trên giá trị mới hoặc giá trị hiện tại.
              */
-            $leaveExists = DB::table('nghi_phep')
-                ->where(
-                    'ma_np',
-                    $id
-                )
-                ->where(
-                    'ma_nv',
-                    $data['ma_nv']
-                )
-                ->exists();
-
-            if (! $leaveExists) {
+            $tuNgay = $editable['tu_ngay'] ?? $leave->tu_ngay;
+            $denNgay = $editable['den_ngay'] ?? $leave->den_ngay;
+            if ($tuNgay > $denNgay) {
                 return [
                     'success' => false,
-                    'message' =>
-                        'Đơn nghỉ phép của nhân viên không tồn tại.',
+                    'message' => 'Từ ngày phải nhỏ hơn hoặc bằng đến ngày.',
                 ];
             }
 
             /*
-             * 4. Update giống Stored Procedure cũ.
+             * Update only editable fields; trang_thai_duyet is never written.
              */
-            DB::table('nghi_phep')
-                ->where(
-                    'ma_np',
-                    $id
-                )
-                ->where(
-                    'ma_nv',
-                    $data['ma_nv']
-                )
-                ->update([
-                    'tu_ngay' =>
-                        $data['tu_ngay'],
+            $updates = [];
+            if (array_key_exists('tu_ngay', $editable)) {
+                $updates['tu_ngay'] = $tuNgay;
+            }
+            if (array_key_exists('den_ngay', $editable)) {
+                $updates['den_ngay'] = $denNgay;
+            }
+            if (array_key_exists('ly_do', $editable)) {
+                $updates['ly_do'] = $editable['ly_do'] ?? '';
+            }
+            if (array_key_exists('ma_lp', $editable)) {
+                $updates['ma_lp'] = (int) $editable['ma_lp'];
+            }
 
-                    'den_ngay' =>
-                        $data['den_ngay'],
-
-                    'ly_do' =>
-                        $data['ly_do'] ?? '',
-
-                    'ma_lp' =>
-                        (int) $data['ma_lp'],
-
-                    'trang_thai_duyet' =>
-                        (int) (
-                            $data[
-                            'trang_thai_duyet'
-                            ] ?? 0
-                        ),
-                ]);
+            if ($updates !== []) {
+                DB::table('nghi_phep')
+                    ->where('ma_np', $id)
+                    ->where('ma_nv', $maNv)
+                    ->update($updates);
+            }
 
             /*
              * 5. Đọc lại bằng Query Builder.
@@ -504,6 +542,26 @@ class NghiPhepService
                 'page',
                 $page
             );
+    }
+
+    /**
+     * Đếm đơn chờ duyệt trong đúng phòng ban được cấp cho Trưởng phòng.
+     *
+     * Đây là contract dùng chung cho badge trên bảng nghỉ phép và Dashboard.
+     * Không nhận mã nhân viên từ client và cố ý không áp thêm policy trạng
+     * thái nhân viên; bảng danh sách cũng dùng cùng semantics này.
+     */
+    public function countPendingForDepartment(int $maPb): int
+    {
+        if ($maPb < 1) {
+            throw new \InvalidArgumentException('Thiếu phòng ban phụ trách của Trưởng phòng.');
+        }
+
+        return (int) DB::table('nghi_phep as np')
+            ->join('nhan_vien as nv', 'nv.ma_nv', '=', 'np.ma_nv')
+            ->where('nv.ma_pb', $maPb)
+            ->where('np.trang_thai_duyet', 0)
+            ->count();
     }
 
     /**
@@ -730,6 +788,13 @@ class NghiPhepService
         int $trangThai,
         int $maPb
     ): array {
+        if ($maPb < 1) {
+            return [
+                'success' => false,
+                'message' => 'Không tìm thấy đơn nghỉ phép thuộc phòng ban phụ trách.',
+            ];
+        }
+
         try {
             if (! in_array(
                 $trangThai,
@@ -743,99 +808,68 @@ class NghiPhepService
                 ];
             }
 
-            /*
-             * Kiểm tra đơn nằm trong phòng ban
-             * Trưởng phòng đang phụ trách.
-             */
-            $leave = DB::table('nghi_phep as np')
-                ->join(
-                    'nhan_vien as nv',
-                    'nv.ma_nv',
-                    '=',
-                    'np.ma_nv'
-                )
-                ->where(
-                    'np.ma_np',
-                    $maNp
-                )
-                ->where(
-                    'nv.ma_pb',
-                    $maPb
-                )
-                ->select([
-                    'np.ma_np',
-                    'np.ma_nv',
-                    'np.trang_thai_duyet',
-                ])
-                ->lockForUpdate()
-                ->first();
+            return DB::transaction(function () use ($maNp, $trangThai, $maPb): array {
+                /*
+                 * The lock and the conditional update must share one
+                 * transaction so two managers cannot process the same row.
+                 */
+                $leave = DB::table('nghi_phep as np')
+                    ->join('nhan_vien as nv', 'nv.ma_nv', '=', 'np.ma_nv')
+                    ->where('np.ma_np', $maNp)
+                    ->where('nv.ma_pb', $maPb)
+                    ->select([
+                        'np.ma_np',
+                        'np.ma_nv',
+                        'np.trang_thai_duyet',
+                    ])
+                    ->lockForUpdate()
+                    ->first();
 
-            if (! $leave) {
+                if (! $leave) {
+                    return [
+                        'success' => false,
+                        'message' => 'Không tìm thấy đơn nghỉ phép thuộc phòng ban phụ trách.',
+                    ];
+                }
+
+                if ((int) $leave->trang_thai_duyet !== 0) {
+                    return [
+                        'success' => false,
+                        'code' => 'NGHI_PHEP_ALREADY_PROCESSED',
+                        'message' => 'Đơn nghỉ phép đã được xử lý trước đó.',
+                    ];
+                }
+
+                $updated = DB::table('nghi_phep')
+                    ->where('ma_np', $maNp)
+                    ->where('trang_thai_duyet', 0)
+                    ->update(['trang_thai_duyet' => $trangThai]);
+
+                if ($updated === 0) {
+                    return [
+                        'success' => false,
+                        'message' => 'Không thể cập nhật trạng thái đơn nghỉ phép.',
+                    ];
+                }
+
+                $record = $this->baseLeaveQuery()
+                    ->where('np.ma_np', $maNp)
+                    ->first();
+
                 return [
-                    'success' => false,
-                    'message' =>
-                        'Không tìm thấy đơn nghỉ phép thuộc phòng ban phụ trách.',
-                ];
-            }
-
-            if (
-                (int) $leave->trang_thai_duyet !== 0
-            ) {
-                return [
-                    'success' => false,
-                    'code' => 'NGHI_PHEP_ALREADY_PROCESSED',
-                    'message' =>
-                        'Đơn nghỉ phép đã được xử lý trước đó.',
-                ];
-            }
-
-            /*
-             * WHERE trang_thai_duyet = 0
-             * giúp tránh update lần hai nếu có race condition.
-             */
-            $updated = DB::table('nghi_phep')
-                ->where(
-                    'ma_np',
-                    $maNp
-                )
-                ->where(
-                    'trang_thai_duyet',
-                    0
-                )
-                ->update([
-                    'trang_thai_duyet' =>
-                        $trangThai,
-                ]);
-
-            if ($updated === 0) {
-                return [
-                    'success' => false,
-                    'message' =>
-                        'Không thể cập nhật trạng thái đơn nghỉ phép.',
-                ];
-            }
-
-            $record = $this->baseLeaveQuery()
-                ->where(
-                    'np.ma_np',
-                    $maNp
-                )
-                ->first();
-
-            return [
-                'success' => true,
-                'message' =>
-                    $trangThai === 1
+                    'success' => true,
+                    'message' => $trangThai === 1
                         ? 'Phê duyệt nghỉ phép thành công'
                         : 'Từ chối nghỉ phép thành công',
-                'data' => $record,
-            ];
+                    'data' => $record,
+                ];
+            });
         } catch (\Throwable $e) {
             report($e);
 
             return [
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Không thể cập nhật trạng thái đơn nghỉ phép.',
             ];
         }
     }

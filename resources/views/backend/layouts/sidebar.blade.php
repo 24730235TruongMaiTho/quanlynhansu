@@ -44,7 +44,7 @@
                         <span class="nav-title">Quản lý nhân viên</span>
                         <i class="bi bi-chevron-down menu-arrow {{ $employeeGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                     </a>
-                    <ul class="sub-menu {{ $employeeGroupActive ? 'open' : '' }}">
+                    <ul class="sub-menu {{ $employeeGroupActive ? 'open' : '' }}" @if ($employeeGroupActive) data-submenu-ready="initial" @endif>
                         <li class="nav-item">
                             <a href="{{ route('backend.nhanvien.index') }}" class="nav-link {{ request()->routeIs('backend.nhanvien.index') ? 'active' : '' }}"
                                 @if (request()->routeIs('backend.nhanvien.index')) aria-current="page" @endif>
@@ -63,7 +63,7 @@
                         <span class="nav-title">Quản lý phòng ban</span>
                         <i class="bi bi-chevron-down menu-arrow {{ $departmentGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                     </a>
-                    <ul class="sub-menu {{ $departmentGroupActive ? 'open' : '' }}">
+                    <ul class="sub-menu {{ $departmentGroupActive ? 'open' : '' }}" @if ($departmentGroupActive) data-submenu-ready="initial" @endif>
                         <li class="nav-item">
                             <a href="{{ route('backend.phongban.index') }}" class="nav-link {{ request()->routeIs('backend.phongban.index') ? 'active' : '' }}"
                                 @if (request()->routeIs('backend.phongban.index')) aria-current="page" @endif>
@@ -82,7 +82,7 @@
                         <span class="nav-title">Quản lý chức vụ</span>
                         <i class="bi bi-chevron-down menu-arrow {{ $positionGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                     </a>
-                    <ul class="sub-menu {{ $positionGroupActive ? 'open' : '' }}">
+                    <ul class="sub-menu {{ $positionGroupActive ? 'open' : '' }}" @if ($positionGroupActive) data-submenu-ready="initial" @endif>
                         <li class="nav-item">
                                 <a href="{{ route('backend.chucvu.index') }}" class="nav-link {{ request()->routeIs('backend.chucvu.index') ? 'active' : '' }}"
                                     @if (request()->routeIs('backend.chucvu.index')) aria-current="page" @endif>
@@ -111,7 +111,7 @@
                     <span class="nav-title">Quản lý hợp đồng</span>
                     <i class="bi bi-chevron-down menu-arrow {{ $contractGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                 </a>
-                <ul class="sub-menu {{ $contractGroupActive ? 'open' : '' }}">
+                <ul class="sub-menu {{ $contractGroupActive ? 'open' : '' }}" @if ($contractGroupActive) data-submenu-ready="initial" @endif>
                     <li class="nav-item"><a href="{{ route('backend.hopdong.index') }}" class="nav-link {{ request()->routeIs('backend.hopdong.index') ? 'active' : '' }}" @if (request()->routeIs('backend.hopdong.index')) aria-current="page" @endif><i class="bi bi-file-earmark-text"></i><span class="nav-title">Danh sách hợp đồng</span></a></li>
                 </ul>
             </li>
@@ -125,7 +125,7 @@
                     <span class="nav-title">Quản lý chấm công</span>
                     <i class="bi bi-chevron-down menu-arrow {{ $attendanceGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                 </a>
-                <ul class="sub-menu {{ $attendanceGroupActive ? 'open' : '' }}">
+                <ul class="sub-menu {{ $attendanceGroupActive ? 'open' : '' }}" @if ($attendanceGroupActive) data-submenu-ready="initial" @endif>
                     <li class="nav-item"><a href="{{ route('backend.chamcong.index') }}" class="nav-link {{ request()->routeIs('backend.chamcong.index') ? 'active' : '' }}" @if (request()->routeIs('backend.chamcong.index')) aria-current="page" @endif><i class="bi bi-calendar3"></i><span class="nav-title">Danh sách chấm công</span></a></li>
                 </ul>
             </li>
@@ -139,16 +139,11 @@
                     <span class="nav-title">Quản lý nghỉ phép</span>
                     <i class="bi bi-chevron-down menu-arrow {{ $leaveGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                 </a>
-                <ul class="sub-menu {{ $leaveGroupActive ? 'open' : '' }}">
+                <ul class="sub-menu {{ $leaveGroupActive ? 'open' : '' }}" @if ($leaveGroupActive) data-submenu-ready="initial" @endif>
                     @if (app(\App\Services\PermissionService::class)->allows($sidebarUser, \App\Enums\NghiPhepPermission::Tao->value))
                         <li class="nav-item"><a href="{{ route('backend.nghiphep.create') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.create') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.create')) aria-current="page" @endif><i class="bi bi-calendar-plus"></i><span class="nav-title">Tạo nghỉ phép</span></a></li>
                     @endif
                     <li class="nav-item"><a href="{{ route('backend.nghiphep.index') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.index') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.index')) aria-current="page" @endif><i class="bi bi-calendar3"></i><span class="nav-title">Danh sách nghỉ phép</span></a></li>
-                    @can('department-manager')
-                        @can(\App\Enums\NghiPhepPermission::Sua->value)
-                            <li class="nav-item"><a href="{{ route('backend.nghiphep.duyet-nghi-phep') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.duyet-nghi-phep') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.duyet-nghi-phep')) aria-current="page" @endif><i class="bi bi-check2-square"></i><span class="nav-title">Duyệt nghỉ phép</span></a></li>
-                        @endcan
-                    @endcan
                 </ul>
             </li>
             @endif
@@ -167,7 +162,7 @@
                             <span class="nav-title">Quản lý lương</span>
                             <i class="bi bi-chevron-down menu-arrow {{ $salaryGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                         </a>
-                        <ul class="sub-menu {{ $salaryGroupActive ? 'open' : '' }}">
+                        <ul class="sub-menu {{ $salaryGroupActive ? 'open' : '' }}" @if ($salaryGroupActive) data-submenu-ready="initial" @endif>
                             @if ($canSeeSalary)
                                 <li class="nav-item"><a href="{{ route('backend.luong.index') }}" class="nav-link {{ request()->routeIs('backend.luong.index') ? 'active' : '' }}" @if (request()->routeIs('backend.luong.index')) aria-current="page" @endif><i class="bi bi-cash-coin"></i><span class="nav-title">Danh sách lương</span></a></li>
                             @endif
@@ -187,7 +182,7 @@
                     <span class="nav-title">Vai trò và phân quyền</span>
                     <i class="bi bi-chevron-down menu-arrow {{ $authorizationGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                 </a>
-                <ul class="sub-menu {{ $authorizationGroupActive ? 'open' : '' }}">
+                <ul class="sub-menu {{ $authorizationGroupActive ? 'open' : '' }}" @if ($authorizationGroupActive) data-submenu-ready="initial" @endif>
                     @if (app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'VaiTro'))
                     <li class="nav-item"><a href="{{ route('backend.vaitro.index') }}" class="nav-link {{ request()->routeIs('backend.vaitro.*') ? 'active' : '' }}" @if (request()->routeIs('backend.vaitro.*')) aria-current="page" @endif><i class="bi bi-person-gear"></i><span class="nav-title">Danh sách vai trò</span></a></li>
                     @endif

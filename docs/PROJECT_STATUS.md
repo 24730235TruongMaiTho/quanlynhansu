@@ -1,5 +1,61 @@
 # Trạng thái dự án
 
+## Full module/role audit mới nhất — 2026-09-06
+
+Audit toàn bộ route web/API trong phạm vi đã giao được đối chiếu với năm role
+seed active trên HEAD `074d65eba9f8653aa2c849d58746f056518da068`, branch
+`main`. Đã sửa middleware authorization thiếu ở các endpoint Chấm công/Lương
+và các contract date, filter/pagination/delete, approval của các module
+prototype; không mutation database live, không thêm procedure/view. Tài liệu
+chi tiết và ma trận quyền: [FULL_MODULE_ROLE_AUDIT_2026-09-05.md](FULL_MODULE_ROLE_AUDIT_2026-09-05.md).
+
+Evidence hiện tại: full Laravel `470 passed, 3758 assertions`; toàn bộ
+frontend `112/112` và package `npm run test:frontend` `55/55`; Vite build pass
+`31 modules transformed`; route inventory `98` với duplicate name/signature
+`0`; Composer, PHP lint và `git diff --check` pass.
+Chrome/CUA fresh desktop read-only đã smoke đủ 5 role, các route ngoài quyền
+trả 403 và console quan sát được không có lỗi; `/luong`, `/cham-cong`,
+`/nghi-phep`, `/hop-dong` đã re-open bằng loading/visibility thật. Mobile
+representative `375x812` tại `/duyet-nghi-phep` là snapshot lịch sử trước khi
+canonical hóa route; không còn là route hiện hành. Network waterfall và browser
+mutation vẫn unverified vì chưa có evidence/disposable browser DB guard.
+
+SQL active được đọc theo thứ tự ba file nguồn và hiện có 15 bảng, 42 quyền,
+12 routine. Live DB read-only cho thấy 6 role (một role legacy ngoài fresh
+matrix) và `db:show --counts` bị chặn bởi thiếu
+`performance_schema.session_status`; không dùng live DB để sửa hoặc tạo routine.
+Các giới hạn này thay thế số liệu lịch sử bên dưới, không xóa lịch sử.
+Ma trận quyền tách riêng `Luong.*` và `HeSoLuong.*`: role Kế toán có
+`Luong.Read` nhưng không có `HeSoLuong.Read`; Quản trị và Nhân sự mới có các
+quyền hệ số lương active. Batch Chấm công yêu cầu đồng thời Insert, Update và
+Delete vì `so_gio_lam=-1` có semantics xóa.
+
+## Cập nhật canonical Nghỉ phép/sidebar — 2026-09-06
+
+Trang chuẩn của luồng duyệt là `/nghi-phep#leave-table-card`; card Dashboard
+chỉ hiện cho actor đủ `NghiPhep.Read`, `NghiPhep.Update` và Gate
+`department-manager`. Route web `/duyet-nghi-phep` và navigation item riêng đã
+được gỡ. Nút Duyệt không render cho admin/HR chỉ có `NghiPhep.Update`; PATCH
+không nhận `ma_nv`/`ma_pb` từ client và server scope theo `ma_pb` của actor,
+chỉ xử lý đơn pending cùng phòng ban.
+
+`DashboardService` gọi count contract chung của `NghiPhepService`, còn badge
+tab dùng tổng `counts.pending` từ API (có fallback paginator), nên count không
+bị giới hạn bởi số dòng trang hiện tại. Sidebar active/restored submenu được
+hiển thị ngay first paint, không replay animation khi reload; click accordion
+vẫn animate. Browser CUA read-only xác nhận card Trưởng phòng `0` khớp badge
+pending `0`, click tới section đang visible, submenu active mở sẵn và console
+sạch; Nhân viên không thấy card nhưng Dashboard vẫn tải không lỗi. Mobile
+`375x812` tại route canonical không document overflow và bảng tự cuộn ngang.
+Không chạy browser mutation hoặc database production.
+
+Generic leave update đã bị khóa status bằng validation `prohibited` và service
+allowlist; edit đơn đã xử lý không thể mở lại pending. Dedicated approval là
+đường duy nhất đổi status, với row lock + conditional update trong transaction.
+Pending/history loaders gửi tab cố định, nên refresh từ History vẫn giữ đúng
+pending badge. Fragment anchor được restore lại sau khi employee/leave data
+render xong để tránh layout shift đẩy section khỏi viewport.
+
 ## Bằng chứng hòa giải/UI mới nhất — 2026-09-05
 
 HEAD hiện tại là `ce22524ef245ea24e4365ef830d822a1a247d9a6`. Fresh full Laravel `456 passed, 3655 assertions`; targeted PHP root rerun `19 tests, 249 assertions` pass; shared pagination Node `4/4` pass; `npm run test:frontend`: `38/38` pass; `npm run build`: `29 modules transformed`; route inventory `96`, duplicate signature/name `0`; `composer validate --no-check-publish`, PHP lint và `git diff --check` pass.

@@ -6,10 +6,10 @@ use App\Contracts\NhanVienServiceContract;
 use App\Http\Requests\StoreNghiPhepRequest;
 use App\Http\Requests\UpdateNghiPhepRequest;
 use App\Services\NghiPhepService;
+use App\Support\NhanVienScope;
 use App\Support\JsonPaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 
 class NghiPhepController extends Controller
@@ -19,6 +19,7 @@ class NghiPhepController extends Controller
     public function __construct(
         NghiPhepService $service,
         private NhanVienServiceContract $nhanVienService,
+        private NhanVienScope $employeeScope,
     ) {
         $this->service = $service;
     }
@@ -31,15 +32,33 @@ class NghiPhepController extends Controller
             'tu_ngay' => ['nullable', 'date_format:Y-m-d'],
             'den_ngay' => ['nullable', 'date_format:Y-m-d'],
             'tab' => ['nullable', 'in:pending,history'],
+            'tu_khoa' => ['nullable', 'string', 'max:100'],
+            'ma_pb' => ['nullable', 'integer', 'min:1'],
+            'ma_cv' => ['nullable', 'integer', 'min:1'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'in:10,20,50'],
         ]);
+        $actor = $request->user();
         $filters = [
             'ma_nv' => $validated['ma_nv'] ?? null,
             'trang_thai_duyet' => $validated['trang_thai_duyet'] ?? null,
             'tu_ngay' => $validated['tu_ngay'] ?? null,
             'den_ngay' => $validated['den_ngay'] ?? null,
             'tab' => $validated['tab'] ?? null,
+            'tu_khoa' => $validated['tu_khoa'] ?? null,
+            'ma_pb' => isset($validated['ma_pb']) ? (int) $validated['ma_pb'] : null,
+            'ma_cv' => isset($validated['ma_cv']) ? (int) $validated['ma_cv'] : null,
+            'page' => (int) ($validated['page'] ?? 1),
+            'per_page' => (int) ($validated['per_page'] ?? 10),
         ];
-        $result = $this->service->getAll($filters);
+        $scopedFilters = $this->employeeScope->filtersFor($actor, $filters);
+        if ($scopedFilters === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tài khoản chưa được phân công phòng ban phụ trách.',
+            ], 403);
+        }
+        $result = $this->service->getAll($scopedFilters);
 
         if (!$result['success']) {
             return response()->json($result, 500);
@@ -299,14 +318,14 @@ class NghiPhepController extends Controller
         ]);
         $department = auth()->user()->ma_pb;
 
-        if ($department === null) {
+        if (! is_numeric($department) || (int) $department < 1) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tài khoản chưa được phân công phòng ban phụ trách.',
             ], 403);
         }
 
-        $data = $this->service->duyet((int) $ma_np, (int) $validated['trang_thai_duyet'], $department);
+        $data = $this->service->duyet((int) $ma_np, (int) $validated['trang_thai_duyet'], (int) $department);
 
         if (! $data['success']) {
             return response()->json($data, isset($data['code']) ? 409 : 404);

@@ -46,8 +46,11 @@
                     </div>
                 </div>
             </div>
+            @if (\Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Xem->value)
+                && \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value)
+                && \Illuminate\Support\Facades\Gate::allows('department-manager'))
             <div class="col-12 col-sm-6 col-lg-3">
-                <a class="card h-100 shadow-sm border-0 rounded-3 text-decoration-none" href="{{ route('backend.nghiphep.duyet-nghi-phep') }}" aria-label="Mở danh sách nghỉ phép chờ duyệt">
+                <a class="card h-100 shadow-sm border-0 rounded-3 text-decoration-none" href="{{ route('backend.nghiphep.index') . '#leave-table-card' }}" aria-label="Mở danh sách nghỉ phép chờ duyệt">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="flex-shrink-0">
@@ -64,6 +67,7 @@
                     </div>
                 </a>
             </div>
+            @endif
             <div class="col-12 col-sm-6 col-lg-3">
                 <div class="card h-100 shadow-sm border-0 rounded-3">
                     <div class="card-body">
@@ -405,9 +409,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('expiringContracts').textContent = contracts.length;
 
         const pendingLeaveCount = data.pending_department_leave_count;
-        document.getElementById('pendingDepartmentLeaveCount').textContent = pendingLeaveCount === null || pendingLeaveCount === undefined
-            ? '—'
-            : pendingLeaveCount;
+        const pendingLeaveCountElement = document.getElementById('pendingDepartmentLeaveCount');
+        if (pendingLeaveCountElement) {
+            pendingLeaveCountElement.textContent = pendingLeaveCount === null || pendingLeaveCount === undefined
+                ? '—'
+                : pendingLeaveCount;
+        }
 
         // Báo cáo chấm công
         renderAttendanceReport(data.bao_cao_cham_cong || {});

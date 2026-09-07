@@ -553,6 +553,10 @@ document.addEventListener(
                         return;
                     }
 
+                    const button = [...document.querySelectorAll('[data-coefficient-action="delete"]')]
+                        .find((candidate) => String(candidate.dataset.id) === String(coefficientId));
+                    if (button) button.disabled = true;
+
                     try {
                         await requestJson(
                             `${API}/${encodeURIComponent(
@@ -580,6 +584,8 @@ document.addEventListener(
                         showCoefficientError(
                             error
                         );
+                    } finally {
+                        if (button) button.disabled = false;
                     }
                 }
             }

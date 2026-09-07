@@ -1,4 +1,6 @@
 import { renderSharedPagination } from '../shared/pagination.js';
+import { createDeleteAction } from '../shared/delete-action.js';
+import { formatDisplayDate } from '../shared/date-field.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
@@ -7,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const CHAM_CONG_BATCH_API_URL = '/api/v1/cham-cong/batch';
     const CHAM_CONG_EXPORT_API_URL = '/api/v1/cham-cong/export';
     const CHAM_CONG_IMPORT_API_URL = '/api/v1/cham-cong/import';
-    const CHAM_CONG_IMPORT_TEMPLATE_API_URL = '/api/v1/cham-cong/import-template';
+    const CHAM_CONG_IMPORT_TEMPLATE_API_URL = '/api/v1/cham-cong/template';
     const NHAN_VIEN_API_URL = '/api/v1/cham-cong/nhan-vien';
     const PHONG_BAN_API_URL = '/api/v1/cham-cong/phong-ban';
 
@@ -196,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('attendance-no-read-notice'),
 
         search: document.getElementById('search-field'),
+        filterForm: document.getElementById('attendance-filter-form'),
         month: document.getElementById('month-filter'),
         year: document.getElementById('year-filter'),
         department: document.getElementById('department-filter'),
@@ -332,8 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedImportFile: null,
     };
 
-    let searchTimer = null;
-
     function escapeHtml(value) {
         return String(value ?? '')
             .replaceAll('&', '&amp;')
@@ -356,10 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatDate(value) {
         if (!value) return '—';
 
-        const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (!match) return escapeHtml(value);
-
-        return `${match[3]}-${match[2]}-${match[1]}`;
+        const display = formatDisplayDate(String(value).slice(0, 10));
+        return display || escapeHtml(value);
     }
 
     function weekday(value) {
@@ -1727,62 +1726,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const deleteAttendanceAction = createDeleteAction({
+        button: elements.deleteButton,
+        getSelection: () => ({
+            id: state.selectedAttendanceId,
+            persisted: Boolean(state.selectedAttendanceRow?._persisted),
+            canDelete: can(PERMISSION_CODES.DELETE),
+        }),
+        confirmAction: () => window.confirm(
+            'Bạn có chắc muốn xóa bản ghi chấm công đã chọn không?'
+        ),
+        requestDelete: (id) => requestJson(
+            `${CHAM_CONG_API_URL}/${encodeURIComponent(id)}`,
+            { method: 'DELETE' },
+        ),
+        onSuccess: () => Promise.all([
+            loadAttendance(state.attendancePage),
+            loadEmployees(state.employeePage),
+        ]),
+        onError: (error) => {
+            console.error(error);
+            window.alert(error.message);
+        },
+        sync: syncAttendanceUpdateButton,
+        busyLabel: 'Đang xóa...',
+    });
+
     async function deleteSelectedAttendance() {
-        if (
-            !guard(
-                PERMISSION_CODES.DELETE,
-                'xóa chấm công'
-            )
-        ) {
+        if (!can(PERMISSION_CODES.DELETE)) {
+            notifyDenied('xóa chấm công');
             return;
         }
 
         if (!state.selectedAttendanceId) {
-            window.alert(
-                'Bản ghi chấm công chưa được lưu nên không thể xóa.'
-            );
+            window.alert('Bản ghi chấm công chưa được lưu nên không thể xóa.');
             return;
         }
 
-        const confirmed = window.confirm(
-            'Bạn có chắc muốn xóa bản ghi chấm công đã chọn không?'
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        const oldLabel =
-            elements.deleteButton?.textContent ||
-            'Xóa chấm công';
-
-        if (elements.deleteButton) {
-            elements.deleteButton.disabled = true;
-            elements.deleteButton.textContent = 'Đang xóa...';
-        }
-
-        try {
-            await requestJson(
-                `${CHAM_CONG_API_URL}/${encodeURIComponent(
-                    state.selectedAttendanceId
-                )}`,
-                {
-                    method: 'DELETE',
-                }
-            );
-
-            await Promise.all([
-                loadAttendance(state.attendancePage),
-                loadEmployees(state.employeePage),
-            ]);
-        } catch (error) {
-            console.error(error);
-            window.alert(error.message);
-        } finally {
-            if (elements.deleteButton) {
-                elements.deleteButton.textContent = oldLabel;
-            }
-        }
+        await deleteAttendanceAction();
     }
 
     function applyFilters() {
@@ -1803,8 +1784,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearFilters() {
-        clearTimeout(searchTimer);
-
         if (elements.search) elements.search.value = '';
         if (elements.department) elements.department.value = '';
 
@@ -3019,22 +2998,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    elements.search?.addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(applyFilters, 350);
-    });
-
-    elements.search?.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter') return;
-
+    elements.filterForm?.addEventListener('submit', (event) => {
         event.preventDefault();
-        clearTimeout(searchTimer);
         applyFilters();
     });
-
-    elements.month?.addEventListener('change', applyFilters);
-    elements.year?.addEventListener('change', applyFilters);
-    elements.department?.addEventListener('change', applyFilters);
     elements.clearFilterButton?.addEventListener('click', clearFilters);
     elements.updateButton?.addEventListener(
         'click',

@@ -108,9 +108,9 @@
                                     <th scope="row"><span class="identifier-text">{{ $contract->ma_hd }}</span></th>
                                     <td><span class="fw-semibold">{{ $contract->ho_ten }}</span><small class="d-block text-secondary">{{ $contract->ma_nv }}</small></td>
                                     <td>{{ $contract->ten_lhd }}</td>
-                                    <td>{{ $contract->ngay_ky }}</td>
+                                    <td>{{ \App\Support\DisplayDateFormatter::format($contract->ngay_ky) }}</td>
                                     <td>
-                                        {{ $contract->ngay_het_han ?? 'Không thời hạn' }}
+                                        {{ $contract->ngay_het_han ? \App\Support\DisplayDateFormatter::format($contract->ngay_het_han) : 'Không thời hạn' }}
                                         @if ($contract->sap_het_han)<span class="badge text-bg-warning ms-1">Sắp hết hạn</span>@endif
                                     </td>
                                     @if ($canEdit || $canDelete)

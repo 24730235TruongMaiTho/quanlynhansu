@@ -88,7 +88,7 @@
             <section class="card shadow-sm mb-3 filter-card" aria-labelledby="salary-filter-title">
                 <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0" id="salary-filter-title">Bộ lọc lương</h2></div>
                 <div class="card-body py-3">
-                    <form id="salary-filter-form" class="filter-bar">
+                    <form class="filter-bar" id="salary-filter-form">
                     <div class="filter-bar__fields">
                         <div class="filter-bar__field"
                             data-salary-permission="Luong.Read"
@@ -242,11 +242,8 @@
                                 id="salary-per-page"
                                 style="width:84px"
                             >
-                                <option value="5">5</option>
-                                <option value="10">10</option>
+                                <option value="10" selected>10</option>
                                 <option value="20">20</option>
-                                <option value="15" selected>15</option>
-                                <option value="25">25</option>
                                 <option value="50">50</option>
                             </select>
 
@@ -262,6 +259,7 @@
             <section
                 class="card shadow-sm mt-3 overflow-hidden"
                 id="salary-coefficient-card"
+                tabindex="-1"
                 data-salary-permission="HeSoLuong.Read"
                 hidden
             >
@@ -336,7 +334,7 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                         <tr>
-                            <th style="width:42px;">
+                            <th scope="col" style="width:42px;">
                                 <input
                                     class="form-check-input"
                                     id="coefficient-check-all"
@@ -344,12 +342,12 @@
                                     disabled
                                 >
                             </th>
-                            <th>Mã lịch sử</th>
-                            <th class="text-end">Hệ số lương</th>
-                            <th>Từ ngày</th>
-                            <th>Đến ngày</th>
-                            <th>Trạng thái</th>
-                            <th class="text-end">Thao tác</th>
+                            <th scope="col">Mã lịch sử</th>
+                            <th scope="col" class="text-end">Hệ số lương</th>
+                            <th scope="col">Từ ngày</th>
+                            <th scope="col">Đến ngày</th>
+                            <th scope="col">Trạng thái</th>
+                            <th scope="col" class="text-end">Thao tác</th>
                         </tr>
                         </thead>
 

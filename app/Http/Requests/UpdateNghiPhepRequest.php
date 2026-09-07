@@ -32,7 +32,8 @@ class UpdateNghiPhepRequest extends FormRequest
             'den_ngay' => ['sometimes', 'required', 'date_format:Y-m-d', 'after_or_equal:tu_ngay'],
             'ma_lp' => 'sometimes|required|integer',
             'ly_do' => 'nullable|string|max:255',
-            'trang_thai_duyet' => 'nullable|integer|in:0,1,2',
+            // Approval status has one dedicated, manager-scoped endpoint.
+            'trang_thai_duyet' => ['prohibited'],
         ];
     }
 
@@ -45,6 +46,7 @@ class UpdateNghiPhepRequest extends FormRequest
             'tu_ngay.date_format' => 'Từ ngày phải có định dạng dd/mm/yyyy.',
             'den_ngay.date_format' => 'Đến ngày phải có định dạng dd/mm/yyyy.',
             'den_ngay.after_or_equal' => 'Đến ngày phải sau hoặc bằng Từ ngày.',
+            'trang_thai_duyet.prohibited' => 'Trạng thái duyệt chỉ được thay đổi qua luồng phê duyệt.',
         ];
     }
 

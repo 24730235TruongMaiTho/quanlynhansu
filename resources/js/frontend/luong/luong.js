@@ -9,6 +9,7 @@ import {
 } from './luongPermissions.js';
 import { formatDisplayDate } from '../shared/date-field.js';
 import { renderSharedPagination } from '../shared/pagination.js';
+import { normalizePaginator } from '../shared/json-paginator.js';
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -34,6 +35,11 @@ document.addEventListener(
             search:
                 document.getElementById(
                     'search-field'
+                ),
+
+            filterForm:
+                document.getElementById(
+                    'salary-filter-form'
                 ),
 
             department:
@@ -118,8 +124,6 @@ document.addEventListener(
                 ma_cv: null,
             },
         };
-
-        let searchTimeout = null;
 
         function toNumber(value) {
             const number =
@@ -209,70 +213,30 @@ document.addEventListener(
                 );
 
             const day = formatDisplayDate(
-                date.toISOString().slice(0, 10),
+                date.toISOString().substring(0, 10),
             );
 
             return `${time}, ${day}`;
         }
 
         function iconEye() {
-            return `
-                <svg viewBox="0 0 16 16" fill="none"
-                     stroke="currentColor" stroke-width="1.5"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M1.5 8s2.2-4 6.5-4 6.5 4 6.5 4-2.2 4-6.5 4S1.5 8 1.5 8Z"/>
-                    <circle cx="8" cy="8" r="1.8"/>
-                </svg>
-            `;
+            return '<i class="bi bi-eye" aria-hidden="true"></i>';
         }
 
         function iconEdit() {
-            return `
-                <svg viewBox="0 0 16 16" fill="none"
-                     stroke="currentColor" stroke-width="1.5"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.8 2.2 13.8 5.2"/>
-                    <path d="M3 13l1-3.5 7.5-7.5 3 3L7 12.5 3 13Z"/>
-                </svg>
-            `;
+            return '<i class="bi bi-pencil-square" aria-hidden="true"></i>';
         }
 
         function iconDelete() {
-            return `
-                <svg viewBox="0 0 16 16" fill="none"
-                     stroke="currentColor" stroke-width="1.5"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 4.5h10"/>
-                    <path d="M6 2.5h4"/>
-                    <path d="M5 4.5l.5 9h5l.5-9"/>
-                    <path d="M7 7v4M9 7v4"/>
-                </svg>
-            `;
+            return '<i class="bi bi-trash" aria-hidden="true"></i>';
         }
 
         function iconCoefficient() {
-            return `
-                <svg viewBox="0 0 16 16" fill="none"
-                     stroke="currentColor" stroke-width="1.5"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 4h10"/>
-                    <path d="M3 8h10"/>
-                    <path d="M3 12h10"/>
-                    <circle cx="6" cy="4" r="1.2" fill="currentColor" stroke="none"/>
-                    <circle cx="10" cy="8" r="1.2" fill="currentColor" stroke="none"/>
-                    <circle cx="7.5" cy="12" r="1.2" fill="currentColor" stroke="none"/>
-                </svg>
-            `;
+            return '<i class="bi bi-sliders" aria-hidden="true"></i>';
         }
 
         function iconCreate() {
-            return `
-                <svg viewBox="0 0 16 16" fill="none"
-                     stroke="currentColor" stroke-width="1.5"
-                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M8 3v10M3 8h10"/>
-                </svg>
-            `;
+            return '<i class="bi bi-plus-circle" aria-hidden="true"></i>';
         }
 
         function loadSalaryPeriods() {
@@ -1041,7 +1005,7 @@ document.addEventListener(
                 }
 
                 const paginator =
-                    result.data;
+                    normalizePaginator(result.data);
 
                 const rows =
                     Array.isArray(
@@ -1121,36 +1085,10 @@ document.addEventListener(
             }
         }
 
-        elements.search
-            ?.addEventListener(
-                'input',
-                () => {
-                    clearTimeout(
-                        searchTimeout
-                    );
-
-                    searchTimeout =
-                        setTimeout(
-                            applyFilters,
-                            350
-                        );
-                }
-            );
-
-        [
-            elements.department,
-            elements.position,
-            elements.month,
-            elements.year,
-        ].forEach(
-            (element) => {
-                element
-                    ?.addEventListener(
-                        'change',
-                        applyFilters
-                    );
-            }
-        );
+        elements.filterForm?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            applyFilters();
+        });
 
         elements.clearFilterButton
             ?.addEventListener(
@@ -1467,6 +1405,14 @@ document.addEventListener(
             await loadFilterOptions();
             syncFiltersFromUI();
             await loadSalaryData(1);
+        }
+
+        if (window.location.hash === '#salary-coefficient-card') {
+            const coefficientCard = document.getElementById('salary-coefficient-card');
+            if (coefficientCard && !coefficientCard.hidden) {
+                coefficientCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                coefficientCard.focus({ preventScroll: true });
+            }
         }
     }
 );

@@ -151,7 +151,7 @@
                 </div>
                 <div class="filter-bar__actions">
                     <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
-                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa lọc</button>
+                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
                 </div>
                 </form>
             </div>
@@ -178,19 +178,20 @@
 
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 attendance-employee-table">
+                    <caption class="visually-hidden">Danh sách nhân viên chấm công</caption>
                     <thead class="table-light">
                     <tr>
-                        <th style="width:42px;"></th>
-                        <th>Mã nhân viên</th>
-                        <th>Họ tên</th>
-                        <th>Giới tính</th>
-                        <th>Số điện thoại</th>
-                        <th>Email</th>
-                        <th>Phòng ban</th>
-                        <th>Chức vụ</th>
-                        <th class="text-end">Vào muộn</th>
-                        <th class="text-end">Về sớm</th>
-                        <th class="text-end">Ngày công</th>
+                        <th scope="col" style="width:42px;"></th>
+                        <th scope="col">Mã nhân viên</th>
+                        <th scope="col">Họ tên</th>
+                        <th scope="col">Giới tính</th>
+                        <th scope="col">Số điện thoại</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Phòng ban</th>
+                        <th scope="col">Chức vụ</th>
+                        <th scope="col" class="text-end">Vào muộn</th>
+                        <th scope="col" class="text-end">Về sớm</th>
+                        <th scope="col" class="text-end">Ngày công</th>
                     </tr>
                     </thead>
                     <tbody id="employee-tbody">
@@ -205,8 +206,7 @@
                     <div class="d-flex align-items-center gap-2">
                         <label class="small text-secondary mb-0 text-nowrap" for="employee-per-page">Số dòng</label>
                         <select class="form-select form-select-sm" id="employee-per-page" style="width:82px;">
-                            <option value="5">5</option><option value="10">10</option>
-                            <option value="15" selected>15</option><option value="25">25</option><option value="50">50</option>
+                            <option value="10" selected>10</option><option value="20">20</option><option value="50">50</option>
                         </select>
                         <span class="small text-secondary text-nowrap">/ trang</span>
                     </div>
@@ -239,18 +239,19 @@
 
             <div class="table-responsive table-scroll">
                 <table class="table table-hover align-middle mb-0 data-table attendance-detail-table">
+                    <caption class="visually-hidden">Chi tiết chấm công theo ngày</caption>
                     <thead class="table-light">
                     <tr>
-                        <th style="width:42px;"></th>
-                        <th>Mã chấm công</th>
-                        <th>Mã nhân viên</th>
-                        <th>Ngày</th>
-                        <th>Thứ</th>
-                        <th class="text-end">Số giờ làm</th>
-                        <th class="text-center">Vào muộn</th>
-                        <th class="text-center">Về sớm</th>
-                        <th class="text-end">Ngày công</th>
-                        <th>Đánh giá</th>
+                        <th scope="col" style="width:42px;"></th>
+                        <th scope="col">Mã chấm công</th>
+                        <th scope="col">Mã nhân viên</th>
+                        <th scope="col">Ngày</th>
+                        <th scope="col">Thứ</th>
+                        <th scope="col" class="text-end">Số giờ làm</th>
+                        <th scope="col" class="text-center">Vào muộn</th>
+                        <th scope="col" class="text-center">Về sớm</th>
+                        <th scope="col" class="text-end">Ngày công</th>
+                        <th scope="col">Đánh giá</th>
                     </tr>
                     </thead>
                     <tbody id="attendance-tbody">
@@ -265,8 +266,7 @@
                     <div class="d-flex align-items-center gap-2">
                         <label class="small text-secondary mb-0 text-nowrap" for="attendance-per-page">Số dòng</label>
                         <select class="form-select form-select-sm" id="attendance-per-page" style="width:82px;">
-                            <option value="5">5</option><option value="10">10</option>
-                            <option value="15" selected>15</option><option value="25">25</option><option value="50">50</option>
+                            <option value="10" selected>10</option><option value="20">20</option><option value="50">50</option>
                         </select>
                         <span class="small text-secondary text-nowrap">/ trang</span>
                     </div>

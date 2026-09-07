@@ -5,6 +5,8 @@ import {
     normalizeEmployee,
 } from './employee-response.js';
 import { renderSharedPagination } from '../shared/pagination.js';
+import { createDeleteAction } from '../shared/delete-action.js';
+import { formatDisplayDate, toIsoDate } from '../shared/date-field.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
@@ -36,6 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return permissions.some(
             (permission) => can(permission)
         );
+    }
+
+    function canApproveLeaves() {
+        return can(PERMISSION_CODES.UPDATE)
+            && document.querySelector('.leave-page')?.dataset.nghiPhepCanApprove === '1';
     }
 
     function normalizeAuthResult(result) {
@@ -236,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('calendar-btn'),
 
         search: document.getElementById('search-field'),
+        filterForm: document.getElementById('leave-filter-form'),
         department: document.getElementById('department-filter'),
         position: document.getElementById('position-filter'),
         clearFilterButton: document.getElementById('clear-filter-btn'),
@@ -274,6 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
         leaveEmployeeCode: document.getElementById('leave-employee-code'),
         leaveFromDate: document.getElementById('leave-from-date'),
         leaveToDate: document.getElementById('leave-to-date'),
+        leaveFromDateError: document.getElementById('leave-from-date-error'),
+        leaveToDateError: document.getElementById('leave-to-date-error'),
         leaveType: document.getElementById('leave-type'),
         leaveReason: document.getElementById('leave-reason'),
     };
@@ -301,6 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         pendingRows: [],
         historyRows: [],
+        pendingPaginator: null,
+        historyPaginator: null,
+        counts: { pending: null, history: null },
 
         activeTab: 'pending',
         selectedLeaveId: null,
@@ -318,8 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modalMode: 'edit',
     };
 
-    let searchTimeout = null;
-
     function escapeHtml(value) {
         return String(value ?? '')
             .replaceAll('&', '&amp;')
@@ -331,11 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatDate(value) {
         if (!value) return '—';
-
-        const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (!match) return escapeHtml(value);
-
-        return `${match[3]}/${match[2]}/${match[1]}`;
+        return formatDisplayDate(String(value).substring(0, 10)) || escapeHtml(value);
     }
 
     function normalizeLeave(leave) {
@@ -725,6 +732,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function restoreLeaveTableAnchor() {
+        if (window.location.hash !== '#leave-table-card') return;
+
+        const target = document.getElementById('leave-table-card');
+        if (!target || target.hidden || typeof target.scrollIntoView !== 'function') return;
+
+        window.requestAnimationFrame(() => {
+            target.scrollIntoView({ behavior: 'auto', block: 'start' });
+        });
+    }
+
     /**
      * Render dòng:
      * Hiển thị 1–15 trên 128 nhân viên
@@ -989,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.createButton.disabled = !can(PERMISSION_CODES.INSERT);
         elements.editButton.disabled = true;
         elements.deleteButton.disabled = true;
-        elements.approveButton.disabled = true;
+        if (elements.approveButton) elements.approveButton.disabled = true;
 
         elements.employeeTbody
             .querySelectorAll('[data-employee-row]')
@@ -1045,14 +1063,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateLeaveCounts() {
+        const pendingTotal = Number(state.counts?.pending);
+        const pendingFallback = Number(state.pendingPaginator?.total);
+        const historyTotal = Number(state.counts?.history);
+        const historyFallback = Number(state.historyPaginator?.total);
+
         if (elements.pendingCount) {
             elements.pendingCount.textContent =
-                String(state.pendingRows.length);
+                String(Number.isFinite(pendingTotal) && pendingTotal >= 0
+                    ? pendingTotal
+                    : Number.isFinite(pendingFallback) && pendingFallback >= 0
+                        ? pendingFallback
+                        : state.pendingRows.length);
         }
 
         if (elements.historyCount) {
             elements.historyCount.textContent =
-                String(state.historyRows.length);
+                String(Number.isFinite(historyTotal) && historyTotal >= 0
+                    ? historyTotal
+                    : Number.isFinite(historyFallback) && historyFallback >= 0
+                        ? historyFallback
+                        : state.historyRows.length);
         }
 
         const approved = state.historyRows.filter(
@@ -1068,28 +1099,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function leavePaginator() {
-        const rows = rowsForActiveTab();
-        const total = rows.length;
-        const perPage = Math.max(Number(state.leavePerPage) || 10, 1);
-        const lastPage = Math.max(Math.ceil(total / perPage), 1);
-
-        state.leavePage = Math.min(
-            Math.max(Number(state.leavePage) || 1, 1),
-            lastPage
-        );
-
-        const fromIndex = (state.leavePage - 1) * perPage;
-        const toIndex = Math.min(fromIndex + perPage, total);
-
-        return {
-            current_page: state.leavePage,
-            last_page: lastPage,
-            per_page: perPage,
-            total,
-            from: total > 0 ? fromIndex + 1 : 0,
-            to: toIndex,
-            data: rows.slice(fromIndex, toIndex),
-        };
+        return state.activeTab === 'pending'
+            ? state.pendingPaginator
+            : state.historyPaginator;
     }
 
     function renderLeavePagination(paginator) {
@@ -1104,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.selectedLeaveId = null;
         elements.editButton.disabled = true;
         elements.deleteButton.disabled = true;
-        elements.approveButton.disabled = true;
+        if (elements.approveButton) elements.approveButton.disabled = true;
         syncApproveButtonVisibility();
 
         if (
@@ -1124,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const paginator = leavePaginator();
-        const rows = paginator.data;
+        const rows = rowsForActiveTab();
 
         if (!rows.length) {
             elements.leaveTbody.innerHTML = `
@@ -1181,10 +1193,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>
         `).join('');
 
-        elements.pageInfo.textContent =
-            `Hiển thị ${paginator.from}–${paginator.to} trên ${paginator.total} yêu cầu`;
+        elements.pageInfo.textContent = paginator
+            ? `Hiển thị ${paginator.from ?? 0}–${paginator.to ?? 0} trên ${paginator.total ?? rows.length} yêu cầu`
+            : `Hiển thị ${rows.length} yêu cầu`;
 
-        renderLeavePagination(paginator);
+        if (paginator) renderLeavePagination(paginator);
     }
 
     function renderLeaveLoading(message = 'Đang tải dữ liệu nghỉ phép...') {
@@ -1211,6 +1224,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const url = new URL(NGHI_PHEP_API_URL, window.location.origin);
             url.searchParams.set('trang_thai_duyet', '0');
+            url.searchParams.set('page', String(state.leavePage));
+            url.searchParams.set('per_page', String(state.leavePerPage));
+            url.searchParams.set('tab', 'pending');
+            const filters = state.employeeFilters;
+            if (filters.tu_khoa) url.searchParams.set('tu_khoa', filters.tu_khoa);
+            if (filters.ma_pb) url.searchParams.set('ma_pb', filters.ma_pb);
+            if (filters.ma_cv) url.searchParams.set('ma_cv', filters.ma_cv);
 
             const response = await fetch(url.toString(), {
                 headers: {
@@ -1231,6 +1251,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(result.message || 'Không thể tải danh sách chờ duyệt.');
             }
 
+            state.pendingPaginator = result.data && !Array.isArray(result.data)
+                ? result.data
+                : null;
+            state.counts = result.counts || state.counts;
             state.pendingRows = extractData(result)
                 .map(normalizeLeave)
                 .filter((item) => item.trang_thai_duyet === 0);
@@ -1284,6 +1308,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const url = new URL(NGHI_PHEP_API_URL, window.location.origin);
             url.searchParams.set('ma_nv', state.selectedEmployee.ma_nv);
+            url.searchParams.set('page', String(state.leavePage));
+            url.searchParams.set('per_page', String(state.leavePerPage));
+            url.searchParams.set('tab', 'history');
 
             const response = await fetch(url.toString(), {
                 headers: {
@@ -1304,6 +1331,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(result.message || 'Không thể tải lịch sử nghỉ phép.');
             }
 
+            state.historyPaginator = result.data && !Array.isArray(result.data)
+                ? result.data
+                : null;
+            state.counts = result.counts || state.counts;
             state.historyRows = extractData(result)
                 .map(normalizeLeave)
                 .filter((item) =>
@@ -1409,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.activeTab === 'pending' &&
                 !!leave &&
                 leave.trang_thai_duyet === 0 &&
-                can(PERMISSION_CODES.UPDATE);
+                canApproveLeaves();
 
             elements.approveButton.disabled =
                 !canApprove;
@@ -1424,7 +1455,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const shouldShow =
-            can(PERMISSION_CODES.UPDATE) &&
+            canApproveLeaves() &&
             state.activeTab === 'pending';
 
         elements.approveButton.hidden =
@@ -1478,7 +1509,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         syncApproveButtonVisibility();
-        renderLeaves();
+        if (tab === 'pending') {
+            loadPendingLeaves();
+        } else {
+            loadProcessedLeavesForEmployee();
+        }
     }
 
     function showModalMessage(message) {
@@ -1564,19 +1599,30 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             ma_nv:
                 elements.leaveEmployeeCode.value.trim(),
-            tu_ngay:
-            elements.leaveFromDate.value,
-            den_ngay:
-            elements.leaveToDate.value,
+            tu_ngay: toIsoDate(elements.leaveFromDate.value) || null,
+            den_ngay: toIsoDate(elements.leaveToDate.value) || null,
             ma_lp:
                 elements.leaveType.value || null,
             ly_do:
                 elements.leaveReason.value.trim() || null,
-            trang_thai_duyet: 0,
         };
     }
 
     function validateLeavePayload(payload) {
+        const fromRaw = elements.leaveFromDate?.value || '';
+        const toRaw = elements.leaveToDate?.value || '';
+        const fromIso = fromRaw ? toIsoDate(fromRaw) : null;
+        const toIso = toRaw ? toIsoDate(toRaw) : null;
+        if (elements.leaveFromDateError) elements.leaveFromDateError.textContent = '';
+        if (elements.leaveToDateError) elements.leaveToDateError.textContent = '';
+        if (fromRaw && !fromIso) {
+            if (elements.leaveFromDateError) elements.leaveFromDateError.textContent = 'Từ ngày phải có định dạng dd/mm/yyyy hợp lệ.';
+            return 'Từ ngày không hợp lệ.';
+        }
+        if (toRaw && !toIso) {
+            if (elements.leaveToDateError) elements.leaveToDateError.textContent = 'Đến ngày phải có định dạng dd/mm/yyyy hợp lệ.';
+            return 'Đến ngày không hợp lệ.';
+        }
         if (!payload.ma_nv) return 'Thiếu mã nhân viên.';
         if (!payload.tu_ngay) return 'Từ ngày không được để trống.';
         if (!payload.den_ngay) return 'Đến ngày không được để trống.';
@@ -1648,50 +1694,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function deleteSelectedLeave() {
-        if (
-            !guard(
-                PERMISSION_CODES.DELETE,
-                'xóa đơn nghỉ phép'
-            )
-        ) {
-            return;
-        }
-
-        if (!state.selectedLeaveId) {
-            return;
-        }
-
-        if (
-            !window.confirm(
-                'Bạn có chắc muốn xóa đơn nghỉ phép này không?'
-            )
-        ) {
-            return;
-        }
-
-        try {
-            await requestJson(
-                `${NGHI_PHEP_API_URL}/${encodeURIComponent(
-                    state.selectedLeaveId
-                )}`,
-                { method: 'DELETE' }
-            );
-
+    const deleteLeaveAction = createDeleteAction({
+        button: elements.deleteButton,
+        getSelection: () => ({
+            id: state.selectedLeaveId,
+            persisted: Boolean(state.selectedLeaveId),
+            canDelete: can(PERMISSION_CODES.DELETE),
+        }),
+        confirmAction: () => window.confirm('Bạn có chắc muốn xóa đơn nghỉ phép này không?'),
+        requestDelete: (id) => requestJson(
+            `${NGHI_PHEP_API_URL}/${encodeURIComponent(id)}`,
+            { method: 'DELETE' },
+        ),
+        onSuccess: async () => {
+            state.selectedLeaveId = null;
             await refreshLeaveData();
-        } catch (error) {
+        },
+        onError: (error) => {
             console.error(error);
             window.alert(error.message);
+        },
+        sync: () => {
+            const selected = selectedLeave();
+            if (elements.deleteButton) {
+                elements.deleteButton.disabled = !selected || !can(PERMISSION_CODES.DELETE);
+            }
+        },
+        busyLabel: 'Đang xóa...',
+    });
+
+    async function deleteSelectedLeave() {
+        if (!can(PERMISSION_CODES.DELETE)) {
+            notifyDenied('xóa đơn nghỉ phép');
+            return;
         }
+        await deleteLeaveAction();
     }
 
     async function approveSelectedLeave() {
-        if (
-            !guard(
-                PERMISSION_CODES.UPDATE,
-                'duyệt nghỉ phép'
-            )
-        ) {
+        if (!canApproveLeaves()) {
+            notifyDenied('duyệt nghỉ phép');
             return;
         }
 
@@ -1718,8 +1760,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 {
                     method: 'PATCH',
                     body: JSON.stringify({
-                        // Pending là global nên lấy ma_nv từ chính đơn.
-                        ma_nv: leave.ma_nv,
                         trang_thai_duyet: 1,
                     }),
                 }
@@ -1738,8 +1778,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ) {
             return;
         }
-
-        clearTimeout(searchTimeout);
 
         if (elements.search) {
             elements.search.value = '';
@@ -1792,56 +1830,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     );
 
-    /*
-     * Search server-side có debounce.
-     */
-    elements.search?.addEventListener(
-        'input',
-        () => {
-            clearTimeout(searchTimeout);
-
-            searchTimeout = setTimeout(
-                applyEmployeeFilters,
-                350
-            );
-        }
-    );
-
-    /*
-     * Enter => search ngay.
-     */
-    elements.search?.addEventListener(
-        'keydown',
-        (event) => {
-            if (
-                event.key !== 'Enter'
-            ) {
-                return;
-            }
-
-            event.preventDefault();
-
-            clearTimeout(
-                searchTimeout
-            );
-
-            applyEmployeeFilters();
-        }
-    );
-
-    /*
-     * Filter phòng ban / chức vụ
-     * đều server-side và quay về page 1.
-     */
-    elements.department?.addEventListener(
-        'change',
-        applyEmployeeFilters
-    );
-
-    elements.position?.addEventListener(
-        'change',
-        applyEmployeeFilters
-    );
+    elements.filterForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        applyEmployeeFilters();
+    });
 
     elements.clearFilterButton?.addEventListener(
         'click',
@@ -1903,7 +1895,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             state.leavePage = page;
-            renderLeaves();
+            if (state.activeTab === 'pending') {
+                loadPendingLeaves();
+            } else {
+                loadProcessedLeavesForEmployee();
+            }
         }
     );
 
@@ -1920,7 +1916,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             state.leavePerPage = value;
             state.leavePage = 1;
-            renderLeaves();
+            if (state.activeTab === 'pending') {
+                loadPendingLeaves();
+            } else {
+                loadProcessedLeavesForEmployee();
+            }
         }
     );
 
@@ -2048,6 +2048,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             applyPermissionVisibility();
             syncApproveButtonVisibility();
+            restoreLeaveTableAnchor();
 
             const readOnly =
                 can(PERMISSION_CODES.READ) &&
@@ -2080,6 +2081,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadEmployees(1),
                 loadPendingLeaves(),
             ]);
+
+            // Bảng nhân viên có thể thay đổi chiều cao sau khi fragment đã được reveal.
+            // Cuộn lại sau khi dữ liệu đã render để anchor landing đúng vị trí.
+            restoreLeaveTableAnchor();
         } catch (error) {
             console.error(
                 'Initialize leave module failed:',

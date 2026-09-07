@@ -38,8 +38,23 @@ test('leave list uses server-side tab-aware pagination for every page', () => {
     assert.match(js, /state\.activeTab/);
     assert.match(js, /url\.searchParams\.set\(\s*['"]page['"]\s*,\s*String\(state\.leavePage\)/);
     assert.match(js, /url\.searchParams\.set\(\s*['"]per_page['"]\s*,\s*String\(state\.leavePerPage\)/);
-    assert.match(js, /url\.searchParams\.set\(\s*['"]tab['"]\s*,\s*state\.activeTab/);
+    assert.match(js, /url\.searchParams\.set\(\s*['"]tab['"]\s*,\s*['"]pending['"]\s*\)/);
+    assert.match(js, /url\.searchParams\.set\(\s*['"]tab['"]\s*,\s*['"]history['"]\s*\)/);
     assert.doesNotMatch(js, /per_page['"]\s*,\s*['"]50['"]/);
     assert.doesNotMatch(js, /filterLeavesForActiveTab\([\s\S]*?\.slice\(/);
     assert.match(js, /result\.counts/);
+});
+
+test('refresh while history is active still refreshes the pending badge from pending data', () => {
+    const pendingStart = js.indexOf('async function loadPendingLeaves');
+    const pendingEnd = js.indexOf('async function loadProcessedLeavesForEmployee', pendingStart);
+    const historyStart = js.indexOf('async function loadProcessedLeavesForEmployee');
+    const historyEnd = js.indexOf('async function refreshLeaveData', historyStart);
+    const refreshStart = historyEnd;
+    const refreshEnd = js.indexOf('function selectLeave', refreshStart);
+
+    assert.match(js.slice(pendingStart, pendingEnd), /set\('tab', 'pending'\)/);
+    assert.match(js.slice(historyStart, historyEnd), /set\('tab', 'history'\)/);
+    assert.match(js.slice(refreshStart, refreshEnd), /loadPendingLeaves\(/);
+    assert.match(js.slice(refreshStart, refreshEnd), /loadProcessedLeavesForEmployee\(/);
 });

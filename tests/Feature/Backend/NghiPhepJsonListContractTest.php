@@ -13,8 +13,10 @@ class NghiPhepJsonListContractTest extends TestCase
 
         self::assertIsString($controller);
         self::assertIsString($service);
-        self::assertStringContainsString("'tab' => ['nullable', 'in:pending,history']", $controller);
+        self::assertStringContainsString("'tu_khoa' => ['nullable', 'string', 'max:100']", $controller);
+        self::assertStringContainsString("'per_page' => ['nullable', 'integer', 'in:10,20,50']", $controller);
         self::assertStringContainsString("'tab' => \$validated['tab'] ?? null", $controller);
+        self::assertStringContainsString('JsonPaginator::from($paginator)', $service);
         self::assertStringContainsString("'counts' =>", $service);
         self::assertStringContainsString("whereIn('np.trang_thai_duyet', [1, 2])", $service);
         self::assertStringContainsString("'message' => 'Không thể tải danh sách nghỉ phép.'", $service);
@@ -29,8 +31,8 @@ class NghiPhepJsonListContractTest extends TestCase
 
         self::assertIsString($service);
         self::assertIsString($getAll);
-        self::assertStringContainsString("if ((\$filters['tab'] ?? null) === 'pending')", $getAll);
-        self::assertStringContainsString("elseif ((\$filters['tab'] ?? null) === 'history')", $getAll);
+        self::assertStringContainsString("if (\$tab === 'pending')", $getAll);
+        self::assertStringContainsString("elseif (\$tab === 'history')", $getAll);
         self::assertStringNotContainsString("\$filters['tab'] ?? 'pending'", $getAll);
     }
 
@@ -56,6 +58,6 @@ class NghiPhepJsonListContractTest extends TestCase
         self::assertIsString($getAll);
         self::assertStringContainsString("'tab' => \$validated['tab'] ?? null", $controller);
         self::assertStringNotContainsString("'tab' => \$validated['tab'] ?? 'pending'", $controller);
-        self::assertStringContainsString("elseif (\n                array_key_exists('trang_thai_duyet', \$filters)", $getAll);
+        self::assertStringContainsString("if (! in_array(\$tab, ['pending', 'history'], true)", $getAll);
     }
 }

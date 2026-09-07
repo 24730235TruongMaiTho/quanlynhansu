@@ -31,6 +31,9 @@ class LuongHeSoLuongTask12BContractTest extends TestCase
 
         self::assertIsString($routes);
         self::assertStringContainsString("use App\\Enums\\HeSoLuongPermission;", $routes);
+        self::assertStringContainsString("HeSoLuongPermission::Xem->value", $routes);
+        self::assertStringContainsString("HeSoLuongPermission::Tao->value", $routes);
+        self::assertStringContainsString("HeSoLuongPermission::Sua->value", $routes);
         self::assertStringContainsString("Route::delete('he-so-luong/{ma_ls}'", $routes);
         self::assertStringContainsString("HeSoLuongPermission::Xoa->value", $routes);
         self::assertStringNotContainsString("LuongPermission::Xem->value)->name('api.v1.luong.he-so-luong'", $routes);
@@ -81,6 +84,8 @@ class LuongHeSoLuongTask12BContractTest extends TestCase
         self::assertIsString($seed);
         self::assertStringContainsString('(1, 38),(1, 39),(1, 40),(1, 41),(1, 42)', $seed);
         self::assertStringContainsString('(2, 38),(2, 39),(2, 40),(2, 41),(2, 42)', $seed);
+        self::assertStringContainsString('(3, 33)', $seed);
+        self::assertStringNotContainsString('(3, 38)', $seed);
         self::assertStringContainsString('ALTER TABLE quyen AUTO_INCREMENT = 43;', $seed);
     }
 

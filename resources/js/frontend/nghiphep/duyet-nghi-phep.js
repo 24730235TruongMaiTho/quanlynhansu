@@ -1,4 +1,5 @@
 import { renderSharedPagination } from '../shared/pagination.js';
+import { formatDisplayDate, toIsoDate, daysBetweenIsoDates } from '../shared/date-field.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         from: document.getElementById('leave-filter-from'),
         to: document.getElementById('leave-filter-to'),
         reset: document.getElementById('leave-filter-reset'),
+        apply: document.getElementById('leave-filter-apply'),
         pendingTab: document.getElementById('leave-tab-pending'),
         processedTab: document.getElementById('leave-tab-processed'),
         tbody: document.getElementById('leave-approval-tbody'),
@@ -51,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
         paginator: null,
         selectedId: null,
         actionLoading: false,
-        searchTimer: null,
     };
 
     const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || null;
@@ -64,8 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatDate(value) {
         if (!value) return '—';
-        const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-        return match ? `${match[2]}/${match[3]}/${match[1]}` : String(value);
+        return formatDisplayDate(String(value).substring(0, 10)) || escapeHtml(value);
     }
 
     function statusText(status) {
@@ -100,6 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
         if (!response.ok || result.success === false) {
             const validation = result?.errors ? Object.values(result.errors).flat().join(' ') : null;
+            if (response.status === 403) throw new Error('Bạn không có quyền xử lý đơn nghỉ phép.');
+            if (response.status === 404) throw new Error('Không tìm thấy đơn nghỉ phép.');
+            if (response.status === 409) throw new Error('Đơn nghỉ phép đã được xử lý hoặc có xung đột dữ liệu.');
             throw new Error(validation || result?.message || `Request thất bại. HTTP ${response.status}`);
         }
         return result;
@@ -165,10 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function daysBetween(from, to) {
         if (!from || !to) return 0;
-        const a = new Date(`${String(from).slice(0,10)}T00:00:00`);
-        const b = new Date(`${String(to).slice(0,10)}T00:00:00`);
-        if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
-        return Math.floor((b - a) / 86400000) + 1;
+        return daysBetweenIsoDates(String(from).substring(0, 10), String(to).substring(0, 10));
     }
 
     function normalizeLeave(item) {
@@ -197,13 +197,36 @@ document.addEventListener('DOMContentLoaded', () => {
         url.searchParams.set('per_page', String(state.perPage));
         if (el.keyword.value.trim()) url.searchParams.set('tu_khoa', el.keyword.value.trim());
         if (el.type.value) url.searchParams.set('ma_lp', el.type.value);
-        if (el.from.value) url.searchParams.set('tu_ngay', el.from.value);
-        if (el.to.value) url.searchParams.set('den_ngay', el.to.value);
+        const fromIso = toIsoDate(el.from.value);
+        const toIso = toIsoDate(el.to.value);
+        if (fromIso) url.searchParams.set('tu_ngay', fromIso);
+        if (toIso) url.searchParams.set('den_ngay', toIso);
         return url.toString();
     }
 
     function validateRange() {
-        if (el.from.value && el.to.value && el.to.value < el.from.value) {
+        const fromIso = el.from.value ? toIsoDate(el.from.value) : null;
+        const toIso = el.to.value ? toIsoDate(el.to.value) : null;
+        const fromError = document.getElementById('leave-filter-from-error');
+        const toError = document.getElementById('leave-filter-to-error');
+        if (fromError) fromError.textContent = '';
+        if (toError) toError.textContent = '';
+        el.from.classList.toggle('is-invalid', Boolean(el.from.value && !fromIso));
+        el.to.classList.toggle('is-invalid', Boolean(el.to.value && !toIso));
+        if (el.from.value && !fromIso) {
+            if (fromError) fromError.textContent = 'Từ ngày phải có định dạng dd/mm/yyyy hợp lệ.';
+            el.error.textContent = 'Vui lòng kiểm tra Từ ngày.';
+            el.error.hidden = false;
+            return false;
+        }
+        if (el.to.value && !toIso) {
+            if (toError) toError.textContent = 'Đến ngày phải có định dạng dd/mm/yyyy hợp lệ.';
+            el.error.textContent = 'Vui lòng kiểm tra Đến ngày.';
+            el.error.hidden = false;
+            return false;
+        }
+        if (fromIso && toIso && toIso < fromIso) {
+            if (toError) toError.textContent = 'Đến ngày không được nhỏ hơn Từ ngày.';
             el.error.textContent = 'Đến ngày không được nhỏ hơn Từ ngày.';
             el.error.hidden = false;
             return false;
@@ -310,17 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
         el.reject.disabled = !enabled;
     }
 
-    function updatePayload(item, status) {
-        return {
-            ma_nv: item.ma_nv,
-            tu_ngay: String(item.tu_ngay).slice(0, 10),
-            den_ngay: String(item.den_ngay).slice(0, 10),
-            ma_lp: item.ma_lp,
-            ly_do: item.ly_do || '',
-            trang_thai_duyet: status,
-        };
-    }
-
     async function processLeave(status) {
         const item = selectedLeave();
         if (!item) return showActionError('Vui lòng chọn một đơn nghỉ phép.');
@@ -332,8 +344,8 @@ document.addEventListener('DOMContentLoaded', () => {
         syncActions(item);
         clearActionMessages();
         try {
-            const result = await requestJson(`${NGHI_PHEP_API_URL}/${encodeURIComponent(item.ma_np)}`, {
-                method: 'PUT', body: JSON.stringify(updatePayload(item, status)),
+            const result = await requestJson(`${NGHI_PHEP_API_URL}/${encodeURIComponent(item.ma_np)}/duyet`, {
+                method: 'PATCH', body: JSON.stringify({ trang_thai_duyet: status }),
             });
             showActionSuccess(result.message || (status === 1 ? 'Phê duyệt thành công.' : 'Từ chối thành công.'));
             await loadList();
@@ -376,9 +388,11 @@ document.addEventListener('DOMContentLoaded', () => {
         loadList();
     }
 
-    function scheduleSearch() {
-        clearTimeout(state.searchTimer);
-        state.searchTimer = setTimeout(() => { state.page = 1; loadList(); }, 350);
+    function applyFilters(event) {
+        event?.preventDefault?.();
+        if (!validateRange()) return;
+        state.page = 1;
+        loadList();
     }
 
     async function initialize() {
@@ -396,13 +410,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    el.keyword?.addEventListener('input', scheduleSearch);
-    el.type?.addEventListener('change', () => { state.page = 1; loadList(); });
-    el.from?.addEventListener('change', () => {
-        if (el.from.value) el.to.min = el.from.value; else el.to.removeAttribute('min');
-        state.page = 1; loadList();
+    el.apply?.addEventListener('click', applyFilters);
+    el.keyword?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') applyFilters(event);
     });
-    el.to?.addEventListener('change', () => { state.page = 1; loadList(); });
     el.reset?.addEventListener('click', resetFilters);
     el.pendingTab?.addEventListener('click', () => switchTab('pending'));
     el.processedTab?.addEventListener('click', () => switchTab('processed'));

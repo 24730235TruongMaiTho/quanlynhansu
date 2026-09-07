@@ -108,16 +108,17 @@
 
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 leave-approval-table">
+                            <caption class="visually-hidden">Danh sách đơn nghỉ phép chờ phê duyệt</caption>
                             <thead class="table-light">
                             <tr>
-                                <th style="width:38px"></th>
-                                <th>Mã đơn</th>
-                                <th>Nhân viên</th>
-                                <th>Loại nghỉ</th>
-                                <th>Từ ngày</th>
-                                <th>Đến ngày</th>
-                                <th class="text-center">Số ngày</th>
-                                <th>Trạng thái</th>
+                                <th scope="col" style="width:38px"></th>
+                                <th scope="col">Mã đơn</th>
+                                <th scope="col">Nhân viên</th>
+                                <th scope="col">Loại nghỉ</th>
+                                <th scope="col">Từ ngày</th>
+                                <th scope="col">Đến ngày</th>
+                                <th scope="col" class="text-center">Số ngày</th>
+                                <th scope="col">Trạng thái</th>
                             </tr>
                             </thead>
                             <tbody id="leave-approval-tbody">

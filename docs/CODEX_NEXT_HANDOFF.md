@@ -1,5 +1,76 @@
 # Handoff tiếp tục `quanlynhansu`
 
+## Full module/role audit handoff — 2026-09-06
+
+Đã hoàn tất audit các module/routes được giao trên HEAD
+`074d65eba9f8653aa2c849d58746f056518da068` (branch `main`), giữ nguyên file
+untracked người dùng và không commit/push/fetch/merge/rebase. Đã sửa exact
+middleware cho API Chấm công (export/template/import/batch) và Lương
+(phòng-ban/chức-vụ/export), đồng thời sửa contract date, filter explicit
+submit, paginator/delete, leave approval PATCH và sidebar state. Regression
+tests hiện có bao phủ các behavior này; route permission map được mở rộng
+trong `ContentFourManagementTest`.
+
+Verification mới nhất: `php artisan test` `470 passed, 3758 assertions`; all
+frontend tests `112/112`; `npm run test:frontend` `55/55`; `npm run build` pass
+với 31 modules transformed; route `98`, duplicate name/signature `0`; Composer,
+PHP lint và `git diff --check` pass. Browser CUA fresh desktop read-only đã
+smoke đủ role `00001` Quản trị, `00004` Nhân sự, `00006` Kế toán, `00005`
+Trưởng phòng, `00007` Nhân viên; allow/deny và console đã được kiểm tra.
+Mobile representative `375x812` tại `/duyet-nghi-phep` là snapshot lịch sử
+trước khi canonical hóa route; không còn là route hiện hành. Network waterfall
+và browser mutation vẫn `unverified`; mutation không chạy để tránh ghi DB hiện
+hữu.
+
+DB evidence: ba SQL active theo thứ tự `tao_bang.sql` → `du_lieu_mau.sql` →
+`quyen_vai_tro.sql` có contract 15 bảng/42 quyền/12 routine. Live DB được đọc
+role/permission metadata; có 6 role do legacy drift và
+`php artisan db:show --counts` bị thiếu `performance_schema.session_status`.
+Không thêm routine/view và chưa có MariaDB disposable guard để chạy mutation.
+Xem [FULL_MODULE_ROLE_AUDIT_2026-09-05.md](FULL_MODULE_ROLE_AUDIT_2026-09-05.md)
+cho role matrix, issue severity/root cause, browser evidence và giới hạn.
+Lưu ý authorization: `Luong.*` chỉ bảo vệ lương; các route hệ số dùng
+`HeSoLuong.Read/Insert/Update/Delete`. Kế toán chỉ có `Luong.Read`, không có
+`HeSoLuong.Read`. Batch Chấm công yêu cầu thêm `ChamCong.Delete` vì giá trị
+`so_gio_lam=-1` xóa bản ghi.
+
+## Canonical nghỉ phép và sidebar — 2026-09-06
+
+Luồng duyệt nghỉ phép hiện dùng bảng trong `/nghi-phep`, section ổn định
+`#leave-table-card`; card Dashboard của Trưởng phòng đủ `NghiPhep.Read` và
+`NghiPhep.Update` trỏ tới anchor này. Route web độc lập
+`/duyet-nghi-phep` và item sidebar riêng đã bị gỡ khỏi route/navigation
+canonical; view/JS legacy vẫn giữ để không mở rộng phạm vi xóa.
+
+Approval action chỉ render cho Gate `department-manager` (role 4 có `ma_pb`)
+và `NghiPhep.Update`; PATCH nhận duy nhất `trang_thai_duyet`, còn controller
+lấy phòng ban từ actor và service khóa đơn pending cùng phòng ban. Listing
+manager ép scope server-side và trả 403 khi thiếu phòng ban hợp lệ. Dashboard
+dùng `NghiPhepService::countPendingForDepartment()` cùng semantics pending của
+bảng, không lọc terminal riêng; badge bảng dùng `counts.pending` server-side
+thay vì số dòng của trang hiện tại.
+
+Generic PUT/PATCH không còn nhận `trang_thai_duyet`: request dùng rule
+`prohibited`, service chỉ allowlist các field chỉnh sửa và không bao giờ ghi
+trạng thái. Trạng thái chỉ đổi qua PATCH `/{ma_np}/duyet`; select
+`lockForUpdate()` và conditional update chạy chung trong transaction. Luồng
+refresh khi đang xem History vẫn tải pending bằng `tab=pending` riêng để badge
+không bị lệch theo tab hiện tại; anchor được cuộn lại sau khi dữ liệu làm đầy
+bảng.
+
+Sidebar active server-render có `data-submenu-ready="initial"`; state session
+được áp dụng instant trước frame đầu, chỉ click accordion của người dùng mới
+animate. Fragment `#leave-table-card` được khôi phục sau khi section được
+reveal bởi auth/permission.
+
+Browser CUA fresh read-only đã xác nhận Trưởng phòng nhìn thấy card count `0`,
+click tới đúng `/nghi-phep#leave-table-card`, badge pending cũng `0`, section
+nằm trong viewport, nút Duyệt hiện và submenu Nghỉ phép mở sẵn; console sạch.
+Nhân viên không thấy card/pending-count element nhưng Dashboard vẫn tải `20`
+nhân viên, không alert hoặc console error. Viewport `375x812` tại route
+canonical không overflow document; table giữ horizontal scroll trong card.
+Không chạy approval mutation trên database hiện hữu.
+
 ## Handoff hòa giải/UI 2026-09-05
 
 Đã hòa giải các tính năng incoming và hồi quy UI trên HEAD `ce22524ef245ea24e4365ef830d822a1a247d9a6` mà không đổi route/controller nghiệp vụ ngoài phạm vi cần thiết, không tạo procedure/view và không mutation DB. Employee attendance lookup dùng `NhanVienServiceContract::paginateForAttendance` với Query Builder active, lọc `so_dong` và lỗi public an toàn; import/date, Hợp đồng, Lương, Dashboard, Vai trò, pagination/shared UI, action trực tiếp CV/PB/HĐ, date-field hệ số, guard script, auth role hydration và dashboard display dates đã có targeted contract xanh.

@@ -73,7 +73,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('department-manager', static function (mixed $actor): bool {
             return $actor instanceof NhanVien
                 && (int) $actor->ma_vt === NhanVienRole::DepartmentManager->value
-                && $actor->ma_pb !== null;
+                && is_numeric($actor->ma_pb)
+                && (int) $actor->ma_pb > 0;
         });
 
         Auth::provider('nhan-vien', function (Application $app, array $config): NhanVienUserProvider {

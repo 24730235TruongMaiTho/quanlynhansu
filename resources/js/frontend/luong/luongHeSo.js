@@ -5,6 +5,7 @@ import {
 } from './luongPermissions.js';
 import { formatDisplayDate } from '../shared/date-field.js';
 import { renderSharedPagination } from '../shared/pagination.js';
+import { normalizePaginator } from '../shared/json-paginator.js';
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -71,34 +72,15 @@ document.addEventListener(
         }
 
         function iconEye() {
-            return `
-                <svg viewBox="0 0 16 16" fill="none"
-                     stroke="currentColor" stroke-width="1.5">
-                    <path d="M1.5 8s2.2-4 6.5-4 6.5 4 6.5 4-2.2 4-6.5 4S1.5 8 1.5 8Z"/>
-                    <circle cx="8" cy="8" r="1.8"/>
-                </svg>
-            `;
+            return '<i class="bi bi-eye" aria-hidden="true"></i>';
         }
 
         function iconEdit() {
-            return `
-                <svg viewBox="0 0 16 16" fill="none"
-                     stroke="currentColor" stroke-width="1.5">
-                    <path d="M10.8 2.2 13.8 5.2"/>
-                    <path d="M3 13l1-3.5 7.5-7.5 3 3L7 12.5 3 13Z"/>
-                </svg>
-            `;
+            return '<i class="bi bi-pencil-square" aria-hidden="true"></i>';
         }
 
         function iconDelete() {
-            return `
-                <svg viewBox="0 0 16 16" fill="none"
-                     stroke="currentColor" stroke-width="1.5">
-                    <path d="M3 4.5h10"/>
-                    <path d="M6 2.5h4"/>
-                    <path d="M5 4.5l.5 9h5l.5-9"/>
-                </svg>
-            `;
+            return '<i class="bi bi-trash" aria-hidden="true"></i>';
         }
 
         function actions(
@@ -110,8 +92,8 @@ document.addEventListener(
             result.push(`
                 <button
                     class="btn btn-outline-secondary coefficient-icon-action btn-icon-action"
-                    type="button"
                     data-coefficient-action="view"
+                    type="button"
                     data-id="${escapeHtml(item.ma_ls)}"
                     aria-label="Xem hệ số lương ${escapeHtml(item.ma_ls)}"
                     title="Xem hệ số lương ${escapeHtml(item.ma_ls)}"
@@ -128,8 +110,8 @@ document.addEventListener(
                 result.push(`
                     <button
                         class="btn btn-outline-primary coefficient-icon-action btn-icon-action"
-                        type="button"
                         data-coefficient-action="edit"
+                        type="button"
                         data-id="${escapeHtml(item.ma_ls)}"
                         aria-label="Sửa hệ số lương ${escapeHtml(item.ma_ls)}"
                         title="Sửa hệ số lương ${escapeHtml(item.ma_ls)}"
@@ -147,8 +129,8 @@ document.addEventListener(
                 result.push(`
                     <button
                         class="btn btn-outline-danger coefficient-icon-action btn-icon-action"
-                        type="button"
                         data-coefficient-action="delete"
+                        type="button"
                         data-id="${escapeHtml(item.ma_ls)}"
                         aria-label="Xóa hệ số lương ${escapeHtml(item.ma_ls)}"
                         title="Xóa hệ số lương ${escapeHtml(item.ma_ls)}"
@@ -281,17 +263,7 @@ document.addEventListener(
             const result =
                 await response.json();
 
-            const paginator =
-                result.data && !Array.isArray(result.data)
-                    ? result.data
-                    : {
-                        data: Array.isArray(result.data) ? result.data : [],
-                        current_page: 1,
-                        last_page: 1,
-                        total: Array.isArray(result.data) ? result.data.length : 0,
-                        from: Array.isArray(result.data) && result.data.length ? 1 : 0,
-                        to: Array.isArray(result.data) ? result.data.length : 0,
-                    };
+            const paginator = normalizePaginator(result.data);
 
             const rows = Array.isArray(paginator.data)
                 ? paginator.data

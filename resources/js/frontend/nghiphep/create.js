@@ -1,3 +1,5 @@
+import { formatDisplayDate, toIsoDate } from '../shared/date-field.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL =
         '/api/v1/auth/me';
@@ -106,6 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById(
                 'leave-to-date'
             ),
+
+        fromDateError: document.getElementById('leave-from-date-error'),
+        toDateError: document.getElementById('leave-to-date-error'),
 
         submit:
             document.getElementById(
@@ -786,15 +791,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     ''
                 ),
 
-            tu_ngay:
-                elements.fromDate
-                    ?.value ||
-                null,
+            tu_ngay: toIsoDate(elements.fromDate?.value || '') || null,
 
-            den_ngay:
-                elements.toDate
-                    ?.value ||
-                null,
+            den_ngay: toIsoDate(elements.toDate?.value || '') || null,
 
             ma_lp:
                 elements.leaveType
@@ -813,6 +812,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function validatePayload(payload) {
+        const fromRaw = elements.fromDate?.value || '';
+        const toRaw = elements.toDate?.value || '';
+        const fromIso = fromRaw ? toIsoDate(fromRaw) : null;
+        const toIso = toRaw ? toIsoDate(toRaw) : null;
+        if (elements.fromDateError) elements.fromDateError.textContent = '';
+        if (elements.toDateError) elements.toDateError.textContent = '';
+        elements.fromDate?.classList?.toggle('is-invalid', Boolean(fromRaw && !fromIso));
+        elements.toDate?.classList?.toggle('is-invalid', Boolean(toRaw && !toIso));
+        if (fromRaw && !fromIso) {
+            if (elements.fromDateError) elements.fromDateError.textContent = 'Ngày bắt đầu phải có định dạng dd/mm/yyyy hợp lệ.';
+            return 'Ngày bắt đầu không hợp lệ.';
+        }
+        if (toRaw && !toIso) {
+            if (elements.toDateError) elements.toDateError.textContent = 'Ngày kết thúc phải có định dạng dd/mm/yyyy hợp lệ.';
+            return 'Ngày kết thúc không hợp lệ.';
+        }
+
         if (!payload.ma_nv) {
             return 'Không xác định được mã nhân viên hiện tại.';
         }
@@ -862,14 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatDate(value) {
         if (!value) return '—';
-
-        const match = String(value).match(
-            /^(\d{4})-(\d{2})-(\d{2})/
-        );
-
-        if (!match) return String(value);
-
-        return `${match[2]}/${match[3]}/${match[1]}`;
+        return formatDisplayDate(String(value).substring(0, 10)) || escapeHtml(value);
     }
 
     function escapeHtml(value) {
@@ -1134,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                     aria-label="Sửa đơn nghỉ phép"
                                                     title="Sửa đơn nghỉ phép"
                                                 >
-                                                    <svg
+                                                    <svg class="bi bi-pencil-square"
                                                         aria-hidden="true"
                                                         width="13"
                                                         height="13"
@@ -1163,7 +1172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                     aria-label="Xóa đơn nghỉ phép"
                                                     title="Xóa đơn nghỉ phép"
                                                 >
-                                                    <svg
+                                                    <svg class="bi bi-trash"
                                                         aria-hidden="true"
                                                         width="13"
                                                         height="13"

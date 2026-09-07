@@ -62,6 +62,37 @@ final class DashboardManagerCountTest extends TestCase
         self::assertNull(app(DashboardService::class)->getPendingDepartmentLeaveCount($this->actor(['ma_vt' => 4, 'ma_pb' => null])));
     }
 
+    public function test_count_uses_the_same_pending_scope_even_for_terminal_employee_rows(): void
+    {
+        $manager = $this->actor(['ma_vt' => 4, 'ma_pb' => 2]);
+        DB::table('nhan_vien')->insert([
+            'ma_nv' => '00004',
+            'ho_ten' => 'Đã nghỉ việc',
+            'ma_vt' => 5,
+            'ma_pb' => 2,
+            'ma_tt' => 4,
+        ]);
+        DB::table('nghi_phep')->insert([
+            'ma_nv' => '00004',
+            'trang_thai_duyet' => 0,
+        ]);
+        $this->allowManagerPermissions();
+
+        self::assertSame(1, app(DashboardService::class)->getPendingDepartmentLeaveCount($manager));
+    }
+
+    public function test_manager_without_read_or_update_cannot_receive_pending_count(): void
+    {
+        $this->mock(PermissionService::class, function ($mock): void {
+            $mock->shouldReceive('allows')
+                ->andReturnUsing(static fn (NhanVien $actor, NghiPhepPermission|string $permission): bool => (
+                    $permission instanceof NghiPhepPermission ? $permission->value : $permission
+                ) === NghiPhepPermission::Xem->value);
+        });
+
+        self::assertNull(app(DashboardService::class)->getPendingDepartmentLeaveCount($this->actor(['ma_vt' => 4, 'ma_pb' => 2])));
+    }
+
     private function allowManagerPermissions(): void
     {
         $this->mock(PermissionService::class, function ($mock): void {

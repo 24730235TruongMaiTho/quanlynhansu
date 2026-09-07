@@ -5,6 +5,7 @@
     <main class="container-fluid container-xxl py-4 hr-page leave-page" aria-labelledby="page-title"
           data-nghi-phep-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Tao->value) ? '1' : '0' }}"
           data-nghi-phep-can-update="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value) ? '1' : '0' }}"
+          data-nghi-phep-can-approve="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value) && \Illuminate\Support\Facades\Gate::allows('department-manager') ? '1' : '0' }}"
           data-nghi-phep-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Xoa->value) ? '1' : '0' }}">
         <x-backend.page-header
             title="Nghỉ phép"
@@ -78,7 +79,7 @@
                  hidden>
             <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0">Bộ lọc nghỉ phép</h2></div>
             <div class="card-body py-3">
-                <form id="leave-filter-form" class="filter-bar">
+                <form class="filter-bar" id="leave-filter-form">
                 <div class="filter-bar__fields">
                     <div class="filter-bar__field">
                         <div class="input-group">
@@ -118,7 +119,7 @@
                 </div>
                 <div class="filter-bar__actions">
                     <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
-                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa lọc</button>
+                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
                 </div>
                 </form>
             </div>
@@ -142,17 +143,18 @@
 
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" style="min-width:1120px;">
+                    <caption class="visually-hidden">Danh sách nhân viên nghỉ phép</caption>
                     <thead class="table-light">
                     <tr>
-                        <th style="width:42px;"></th>
-                        <th>Mã NV</th>
-                        <th>Họ tên</th>
-                        <th>Giới tính</th>
-                        <th>Số điện thoại</th>
-                        <th>Email</th>
-                        <th>Phòng ban</th>
-                        <th>Chức vụ</th>
-                        <th>Trạng thái</th>
+                        <th scope="col" style="width:42px;"></th>
+                        <th scope="col">Mã NV</th>
+                        <th scope="col">Họ tên</th>
+                        <th scope="col">Giới tính</th>
+                        <th scope="col">Số điện thoại</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Phòng ban</th>
+                        <th scope="col">Chức vụ</th>
+                        <th scope="col">Trạng thái</th>
                     </tr>
                     </thead>
                     <tbody id="employee-tbody">
@@ -172,6 +174,7 @@
         </section>
 
         <section class="card shadow-sm overflow-hidden table-card"
+                 id="leave-table-card"
                  aria-labelledby="leave-table-title"
                  data-leave-permission="NghiPhep.Read"
                  hidden>
@@ -209,6 +212,8 @@
                             Xóa
                         </button>
 
+                        @if (\Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value)
+                            && \Illuminate\Support\Facades\Gate::allows('department-manager'))
                         <button
                             class="btn btn-success btn-sm d-inline-flex align-items-center gap-2"
                             id="approve-leave-btn"
@@ -221,6 +226,7 @@
                             <i class="bi bi-check2" aria-hidden="true"></i>
                             Duyệt
                         </button>
+                        @endif
                     </div>
                 </div>
 
@@ -252,16 +258,17 @@
 
             <div class="table-responsive table-scroll">
                 <table class="table table-hover align-middle mb-0 data-table" style="min-width:980px;">
+                    <caption class="visually-hidden">Danh sách đơn nghỉ phép</caption>
                     <thead class="table-light">
                     <tr>
-                        <th style="width:42px;"></th>
-                        <th>Mã nhân viên</th>
-                        <th>Họ tên</th>
-                        <th>Từ ngày</th>
-                        <th>Đến ngày</th>
-                        <th>Loại phép</th>
-                        <th>Lý do</th>
-                        <th>Trạng thái duyệt</th>
+                        <th scope="col" style="width:42px;"></th>
+                        <th scope="col">Mã nhân viên</th>
+                        <th scope="col">Họ tên</th>
+                        <th scope="col">Từ ngày</th>
+                        <th scope="col">Đến ngày</th>
+                        <th scope="col">Loại phép</th>
+                        <th scope="col">Lý do</th>
+                        <th scope="col">Trạng thái duyệt</th>
                     </tr>
                     </thead>
                     <tbody id="leave-tbody">
@@ -289,10 +296,9 @@
                         <select class="form-select form-select-sm"
                                 id="leave-per-page"
                                 style="width:84px;">
-                            <option value="5">5</option>
                             <option value="10" selected>10</option>
-                            <option value="15">15</option>
-                            <option value="25">25</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
                         </select>
 
                         <span class="small text-secondary text-nowrap">

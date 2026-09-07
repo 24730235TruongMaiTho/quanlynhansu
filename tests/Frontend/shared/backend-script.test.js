@@ -53,9 +53,34 @@ test('sidebar clears the persisted group when a submenu closes or no group is op
 });
 
 test('active route wins and submenu aria state stays synchronized', () => {
-    assert.match(source, /data-route-active/);
+    assert.match(source, /qlnsSidebarState\?\.findActiveSubmenu\(document\)/);
     assert.match(source, /setAttribute\(['"]aria-expanded['"]/);
     assert.match(source, /requestAnimationFrame/);
+    assert.match(source, /link\.setAttribute\(['"]aria-expanded['"]/);
+    assert.match(source, /savedGroup\.querySelector\('\[data-toggle="submenu"\]'\)/);
+});
+
+test('server-active and session-restored submenus skip initialization animation', () => {
+    assert.match(source, /setSubmenuState\(activeSubmenu,\s*true,\s*true\)/);
+    assert.match(source, /setSubmenuState\(savedSubmenu,\s*true,\s*true\)/);
+    assert.match(source, /submenuNoAnimation/);
+    assert.match(styleSource, /data-submenu-no-animation/);
+    assert.match(styleSource, /data-submenu-ready="initial"/);
+});
+
+test('manual submenu clicks use the animated path after the initial marker is cleared', () => {
+    const stateStart = source.indexOf('function setSubmenuState');
+    const stateEnd = source.indexOf('function setDropdownExpanded', stateStart);
+    const toggleStart = source.indexOf('function toggleSubMenu');
+    const toggleEnd = source.indexOf("document.querySelectorAll('[data-toggle=\"submenu\"]')", toggleStart);
+    const stateBlock = source.slice(stateStart, stateEnd);
+    const toggleBlock = source.slice(toggleStart, toggleEnd);
+
+    assert.match(stateBlock, /dataset\.submenuReady === 'initial'/);
+    assert.match(stateBlock, /subMenu\.dataset\.submenuReady = '1'/);
+    assert.match(stateBlock, /delete subMenu\.dataset\.submenuNoAnimation/);
+    assert.match(toggleBlock, /setSubmenuState\(subMenu, expanded\);/);
+    assert.doesNotMatch(toggleBlock, /setSubmenuState\(subMenu, expanded, true\)/);
 });
 
 test('sidebar measures each submenu and animates without a fixed max-height cap', () => {

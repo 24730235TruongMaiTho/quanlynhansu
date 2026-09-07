@@ -217,7 +217,7 @@ final class ProfileFeatureTest extends TestCase
         self::assertStringContainsString("route('backend.chucvu.create')", $source);
         self::assertStringContainsString("route('backend.nghiphep.create')", $source);
         self::assertStringContainsString("route('backend.nghiphep.index')", $source);
-        self::assertStringContainsString("NghiPhepPermission::Sua->value", $source);
+        self::assertStringNotContainsString("backend.nghiphep.duyet-nghi-phep", $source);
         self::assertStringContainsString("#salary-coefficient-card", $source);
     }
 

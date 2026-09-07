@@ -97,6 +97,25 @@ final class NghiPhepManagerApprovalTest extends TestCase
         self::assertSame(1, DB::table('nghi_phep')->where('ma_np', 1)->value('trang_thai_duyet'));
     }
 
+    public function test_generic_update_cannot_reopen_a_processed_leave(): void
+    {
+        $this->insertEmployee('00001', 2);
+        $this->insertLeave('00001', 1);
+
+        $result = app(NghiPhepService::class)->update(1, [
+            'ma_nv' => '00001',
+            'tu_ngay' => '2026-09-02',
+            'den_ngay' => '2026-09-03',
+            'ma_lp' => 1,
+            'ly_do' => 'Đổi lý do',
+            'trang_thai_duyet' => 0,
+        ]);
+
+        self::assertTrue($result['success']);
+        self::assertSame(1, DB::table('nghi_phep')->where('ma_np', 1)->value('trang_thai_duyet'));
+        self::assertSame('Đổi lý do', DB::table('nghi_phep')->where('ma_np', 1)->value('ly_do'));
+    }
+
     public function test_approval_list_uses_sqlite_date_expression_and_department_scope(): void
     {
         $this->insertEmployee('00001', 2);
@@ -115,6 +134,36 @@ final class NghiPhepManagerApprovalTest extends TestCase
         self::assertCount(1, $paginator->items());
         self::assertSame('00001', $paginator->items()[0]->ma_nv);
         self::assertSame(3, (int) $paginator->items()[0]->so_ngay);
+    }
+
+    public function test_pending_count_matches_scoped_list_total_beyond_first_page(): void
+    {
+        for ($index = 1; $index <= 11; $index++) {
+            $maNv = sprintf('%05d', $index);
+            $this->insertEmployee($maNv, 2);
+            $this->insertLeave($maNv, 0);
+        }
+
+        $this->insertEmployee('00020', 1);
+        $this->insertLeave('00020', 0);
+        $this->insertEmployee('00021', 2);
+        $this->insertLeave('00021', 1);
+
+        $service = app(NghiPhepService::class);
+        $pendingCount = $service->countPendingForDepartment(2);
+        $result = $service->getAll([
+            'ma_pb' => 2,
+            'tab' => 'pending',
+            'page' => 1,
+            'per_page' => 10,
+        ]);
+
+        self::assertTrue($result['success']);
+        self::assertSame(11, $pendingCount);
+        self::assertSame($pendingCount, $result['counts']['pending']);
+        self::assertSame($pendingCount, $result['data']['total']);
+        self::assertSame(2, $result['data']['last_page']);
+        self::assertCount(10, $result['data']['data']);
     }
 
     private function insertEmployee(string $maNv, int $maPb): void

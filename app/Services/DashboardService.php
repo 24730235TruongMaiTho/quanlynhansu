@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Enums\NhanVienRole;
-use App\Enums\NhanVienStatus;
 use App\Enums\NghiPhepPermission;
+use App\Enums\NhanVienStatus;
 use App\Models\NhanVien;
+use App\Services\NghiPhepService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,26 +25,19 @@ class DashboardService
      */
     public function getPendingDepartmentLeaveCount(NhanVien $manager): ?int
     {
-        if ((int) $manager->ma_vt !== NhanVienRole::DepartmentManager->value
-            || $manager->ma_pb === null
-        ) {
+        if (! \Illuminate\Support\Facades\Gate::forUser($manager)->allows('department-manager')) {
             return null;
         }
 
         $permissionService = app(PermissionService::class);
         if (! $permissionService->allows($manager, NghiPhepPermission::Xem)
-            && ! $permissionService->allows($manager, NghiPhepPermission::Sua)
+            || ! $permissionService->allows($manager, NghiPhepPermission::Sua)
         ) {
             return null;
         }
 
         try {
-            return (int) DB::table('nghi_phep as np')
-                ->join('nhan_vien as nv', 'nv.ma_nv', '=', 'np.ma_nv')
-                ->where('nv.ma_pb', $manager->ma_pb)
-                ->where('np.trang_thai_duyet', 0)
-                ->whereNotIn('nv.ma_tt', NhanVienStatus::terminalValues())
-                ->count();
+            return app(NghiPhepService::class)->countPendingForDepartment((int) $manager->ma_pb);
         } catch (\Throwable $e) {
             Log::warning('[DashboardService] Không thể lấy số đơn nghỉ phép chờ duyệt: ' . $e->getMessage());
 

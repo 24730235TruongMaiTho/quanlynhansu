@@ -17,7 +17,7 @@
             ]"
         />
 
-        <form class="card shadow-sm overflow-hidden" method="post" action="{{ $isEdit ? route('backend.hopdong.update', $contract->ma_hd) : route('backend.hopdong.store') }}">
+        <form class="card shadow-sm overflow-hidden" method="post" action="{{ $isEdit ? route('backend.hopdong.update', $contract->ma_hd) : route('backend.hopdong.store') }}" data-contract-form>
             @csrf
             @if ($isEdit) @method('PUT') @endif
             <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0">Thông tin hợp đồng</h2></div>
@@ -37,26 +37,26 @@
                         <label class="form-label" for="ma_lhd">Loại hợp đồng <span class="text-danger">*</span></label>
                         <select class="form-select" id="ma_lhd" name="ma_lhd" required>
                             @foreach ($types as $type)
-                                <option value="{{ $type->ma_lhd }}" @selected((string) old('ma_lhd', $contract->ma_lhd ?? '') === (string) $type->ma_lhd)>{{ $type->ten_lhd }}</option>
+                                <option value="{{ $type->ma_lhd }}" data-contract-term="{{ (int) $type->ma_lhd === 1 ? 'indefinite' : 'finite' }}" @selected((string) old('ma_lhd', $contract->ma_lhd ?? '') === (string) $type->ma_lhd)>{{ $type->ten_lhd }}</option>
                             @endforeach
                         </select>
                         @error('ma_lhd')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="ngay_ky">Ngày ký <span class="text-danger">*</span></label>
-                        <input class="form-control" type="date" id="ngay_ky" name="ngay_ky" value="{{ old('ngay_ky', $contract->ngay_ky ?? '') }}" required>
+                        <input class="form-control" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" id="ngay_ky" name="ngay_ky" value="{{ old('ngay_ky', \App\Support\DisplayDateFormatter::format($contract->ngay_ky ?? '')) }}" required>
                         @error('ngay_ky')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="ngay_het_han">Ngày hết hạn</label>
-                        <input class="form-control" type="date" id="ngay_het_han" name="ngay_het_han" value="{{ old('ngay_het_han', $contract->ngay_het_han ?? '') }}">
-                        <div class="form-text">Để trống đối với hợp đồng không xác định thời hạn.</div>
+                        <input class="form-control" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" id="ngay_het_han" name="ngay_het_han" value="{{ old('ngay_het_han', \App\Support\DisplayDateFormatter::format($contract->ngay_het_han ?? '')) }}">
+                        <div class="form-text" data-expiry-required-marker>Để trống đối với hợp đồng không xác định thời hạn.</div>
                         @error('ngay_het_han')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="luong_co_ban">Lương cơ bản <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input class="form-control" type="number" min="0" id="luong_co_ban" name="luong_co_ban" value="{{ old('luong_co_ban', $contract->luong_co_ban ?? '') }}" required>
+                            <input class="form-control" type="text" inputmode="numeric" id="luong_co_ban" name="luong_co_ban" value="{{ old('luong_co_ban', $contract->luong_co_ban ?? '') }}" required>
                             <span class="input-group-text">VNĐ</span>
                         </div>
                         @error('luong_co_ban')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror

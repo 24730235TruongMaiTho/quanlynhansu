@@ -80,7 +80,7 @@ Route::middleware('api')
                     ]
                 )->name(
                     'api.v1.cham-cong.export'
-                );
+                )->middleware(['auth', 'can:'.ChamCongPermission::Xem->value]);
 
 
                 /*
@@ -97,7 +97,7 @@ Route::middleware('api')
                     ]
                 )->name(
                     'api.v1.cham-cong.template'
-                );
+                )->middleware(['auth', 'can:'.ChamCongPermission::Tao->value]);
 
 
                 /*
@@ -116,12 +116,18 @@ Route::middleware('api')
                     ]
                 )->name(
                     'api.v1.cham-cong.import'
-                );
+                )->middleware(['auth', 'can:'.ChamCongPermission::Tao->value]);
 
                 Route::put(
                     'batch',
                     [ChamCongController::class, 'batchSave']
-                )->name('api.v1.cham-cong.batch');
+                )->name('api.v1.cham-cong.batch')
+                    ->middleware([
+                        'auth',
+                        'can:'.ChamCongPermission::Tao->value,
+                        'can:'.ChamCongPermission::Sua->value,
+                        'can:'.ChamCongPermission::Xoa->value,
+                    ]);
 
             });
 
@@ -273,42 +279,42 @@ Route::middleware('api')
                     [LuongPhongBanController::class, 'index']
                 )->name(
                     'api.v1.luong.phong-ban'
-                )->middleware(['auth']);
+                )->middleware(['auth', 'can:'.LuongPermission::Xem->value]);
 
                 Route::get(
                     'chuc-vu',
                     [LuongChucVuController::class, 'index']
                 )->name(
                     'api.v1.luong.chuc-vu'
-                )->middleware(['auth']);
+                )->middleware(['auth', 'can:'.LuongPermission::Xem->value]);
 
                 Route::get(
                     'export',
                     [LuongController::class, 'export']
                 )->name(
                     'api.v1.luong.export'
-                )->middleware(['auth']);
+                )->middleware(['auth', 'can:'.LuongPermission::Xem->value]);
 
                 Route::get(
                     'he-so-luong',
                     [LuongHeSoLuongController::class, 'index']
                 )->name(
                     'api.v1.luong.he-so-luong'
-                )->middleware(['auth', 'can:'.LuongPermission::Xem->value]);
+                )->middleware(['auth', 'can:'.HeSoLuongPermission::Xem->value]);
 
                 Route::post(
                     'he-so-luong',
                     [LuongHeSoLuongController::class, 'store']
                 )->name(
                     'api.v1.luong.he-so-luong.store'
-                )->middleware(['auth', 'can:'.LuongPermission::Tao->value]);
+                )->middleware(['auth', 'can:'.HeSoLuongPermission::Tao->value]);
 
                 Route::get(
                     'he-so-luong/{ma_ls}',
                     [LuongHeSoLuongController::class, 'show']
                 )->name(
                     'api.v1.luong.he-so-luong.show'
-                )->whereNumber('ma_ls')->middleware(['auth', 'can:'.LuongPermission::Xem->value]);
+                )->whereNumber('ma_ls')->middleware(['auth', 'can:'.HeSoLuongPermission::Xem->value]);
 
                 Route::match(
                     ['PUT', 'PATCH'],
@@ -316,7 +322,7 @@ Route::middleware('api')
                     [LuongHeSoLuongController::class, 'update']
                 )->name(
                     'api.v1.luong.he-so-luong.update'
-                )->whereNumber('ma_ls')->middleware(['auth', 'can:'.LuongPermission::Sua->value]);
+                )->whereNumber('ma_ls')->middleware(['auth', 'can:'.HeSoLuongPermission::Sua->value]);
 
                 Route::delete('he-so-luong/{ma_ls}',
                     [LuongHeSoLuongController::class, 'destroy']

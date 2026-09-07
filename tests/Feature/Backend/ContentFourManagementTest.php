@@ -15,6 +15,7 @@ use App\Enums\VaiTroPermission;
 use App\Enums\NghiPhepPermission;
 use App\Enums\ChamCongPermission;
 use App\Enums\LuongPermission;
+use App\Enums\HeSoLuongPermission;
 use App\Repositories\HopDongRepository;
 use App\Repositories\PhanQuyenRepository;
 use App\Repositories\VaiTroRepository;
@@ -37,11 +38,13 @@ final class ContentFourManagementTest extends TestCase
         $this->assertSame([25, 26, 27, 28], array_map(fn ($permission) => $permission->id(), NghiPhepPermission::cases()));
         $this->assertSame([29, 30, 31, 32], array_map(fn ($permission) => $permission->id(), ChamCongPermission::cases()));
         $this->assertSame([33, 34, 35, 36], array_map(fn ($permission) => $permission->id(), LuongPermission::cases()));
+        $this->assertSame([38, 39, 40, 41], array_map(fn ($permission) => $permission->id(), HeSoLuongPermission::cases()));
         $this->assertSame(21, $registry->forAbility('HopDong.Read')?->id());
         $this->assertSame(3, $registry->forAbility('VaiTro.Update')?->id());
         $this->assertSame(25, $registry->forAbility('NghiPhep.Read')?->id());
         $this->assertSame(29, $registry->forAbility('ChamCong.Read')?->id());
         $this->assertSame(33, $registry->forAbility('Luong.Read')?->id());
+        $this->assertSame(38, $registry->forAbility('HeSoLuong.Read')?->id());
         $this->assertSame(30, config('hopdong.expiring_warning_days'));
     }
 
@@ -82,6 +85,10 @@ final class ContentFourManagementTest extends TestCase
             'backend.luong.index' => ['auth', 'can:Luong.Read'],
             'api.v1.cham-cong.nhan-vien' => ['auth', 'can:ChamCong.Read'],
             'api.v1.cham-cong.phong-ban' => ['auth', 'can:ChamCong.Read'],
+            'api.v1.cham-cong.export' => ['auth', 'can:ChamCong.Read'],
+            'api.v1.cham-cong.template' => ['auth', 'can:ChamCong.Insert'],
+            'api.v1.cham-cong.import' => ['auth', 'can:ChamCong.Insert'],
+            'api.v1.cham-cong.batch' => ['auth', 'can:ChamCong.Insert', 'can:ChamCong.Update', 'can:ChamCong.Delete'],
             'cham-cong.index' => ['auth', 'can:ChamCong.Read'],
             'cham-cong.update' => ['auth', 'can:ChamCong.Update'],
             'api.v1.nghi-phep.nhan-vien' => ['auth', 'can:NghiPhep.Read'],
@@ -99,10 +106,14 @@ final class ContentFourManagementTest extends TestCase
             'luong.store' => ['auth', 'can:Luong.Insert'],
             'luong.update' => ['auth', 'can:Luong.Update'],
             'luong.destroy' => ['auth', 'can:Luong.Delete'],
-            'api.v1.luong.he-so-luong' => ['auth', 'can:Luong.Read'],
-            'api.v1.luong.he-so-luong.store' => ['auth', 'can:Luong.Insert'],
-            'api.v1.luong.he-so-luong.show' => ['auth', 'can:Luong.Read'],
-            'api.v1.luong.he-so-luong.update' => ['auth', 'can:Luong.Update'],
+            'api.v1.luong.he-so-luong' => ['auth', 'can:HeSoLuong.Read'],
+            'api.v1.luong.phong-ban' => ['auth', 'can:Luong.Read'],
+            'api.v1.luong.chuc-vu' => ['auth', 'can:Luong.Read'],
+            'api.v1.luong.export' => ['auth', 'can:Luong.Read'],
+            'api.v1.luong.he-so-luong.store' => ['auth', 'can:HeSoLuong.Insert'],
+            'api.v1.luong.he-so-luong.show' => ['auth', 'can:HeSoLuong.Read'],
+            'api.v1.luong.he-so-luong.update' => ['auth', 'can:HeSoLuong.Update'],
+            'api.v1.luong.he-so-luong.destroy' => ['auth', 'can:HeSoLuong.Delete'],
         ];
 
         foreach ($expected as $name => $middleware) {
