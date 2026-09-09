@@ -49,11 +49,13 @@ final class NhanVienResetPasswordTest extends TestCase
         $sql = File::get(base_path('database/sql/du_lieu_mau.sql'));
         self::assertMatchesRegularExpression('/\(37,\s*N\x27HeThong\.Config.*?\),\s*\R\s*\(38,/s', $sql);
         self::assertStringContainsString("(42, N'NhanVien.ResetPassword', N'Đặt lại mật khẩu', N'NhanVien')", $sql);
-        self::assertStringContainsString('ALTER TABLE quyen AUTO_INCREMENT = 43;', $sql);
-        foreach (range(1, 42) as $permissionId) {
+        self::assertStringContainsString('ALTER TABLE quyen AUTO_INCREMENT = 44;', $sql);
+        self::assertStringContainsString("(43, N'NghiPhep.Approve', N'Duyệt nghỉ phép', N'NghiPhep')", $sql);
+        foreach (range(1, 43) as $permissionId) {
             self::assertStringContainsString("(1, {$permissionId})", $sql);
         }
         self::assertStringContainsString('(2, 42)', $sql);
+        self::assertStringContainsString('(4, 43)', $sql);
     }
 
     public function test_unauthorized_actor_cannot_reset(): void

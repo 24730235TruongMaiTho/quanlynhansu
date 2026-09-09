@@ -321,7 +321,7 @@ npm run test:frontend
 
 - [ ] **Step 1: RED optional address tests**
 
-Create/update without all four address fields must pass and preserve unrelated fields; crafted protected fields remain rejected.
+Create/update without optional `quan_huyen` must pass when the three visible core address fields are complete and preserve unrelated fields; the three core fields remain all-or-none and crafted protected fields remain rejected.
 
 - [ ] **Step 2: Remove required attributes/rules and normalize blanks**
 

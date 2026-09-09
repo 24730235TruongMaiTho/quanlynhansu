@@ -115,9 +115,24 @@ contains exactly `42` permission rows with contiguous IDs `1..42`, including
 | --- | --- |
 | Branch/HEAD | `main`, `5e19a5100de48b33fcda4dcc3e598c2f9128d7a0` (`5e19a51`, `origin/main`) |
 | Dirty worktree trước Task 1 | Các file đã modified: `AGENTS.md`, `routes/web.php`, 6 Blade/view, 2 shared/module JS, 4 Backend feature test và 2 Frontend test; untracked `AIAssistantInput-…chatInput`, design spec và implementation plan. Các thay đổi này thuộc worktree có sẵn và được giữ nguyên. |
-| SQL contract | `database/sql/tao_bang.sql` có 15 `CREATE TABLE`; `database/sql/du_lieu_mau.sql` seed 19 nhân viên và 42 quyền với ID `1..42` (gồm `NhanVien.ResetPassword=42`); `database/sql/quyen_vai_tro.sql` có 12 procedure RBAC. Đây là static/source evidence, không import hoặc mutate DB trong Task 1. |
+| SQL contract (historical Task 1 baseline) | `database/sql/tao_bang.sql` có 15 `CREATE TABLE`; `database/sql/du_lieu_mau.sql` seed 19 nhân viên và 42 quyền với ID `1..42` (gồm `NhanVien.ResetPassword=42`); `database/sql/quyen_vai_tro.sql` có 12 procedure RBAC. Đây là static/source evidence, không import hoặc mutate DB trong Task 1. |
 | Design source | [`docs/superpowers/specs/2026-09-03-hr-system-consistency-design.md`](superpowers/specs/2026-09-03-hr-system-consistency-design.md) |
 | Task boundary | Chỉ inventory, matrix, cập nhật status và report; không sửa code nghiệp vụ, không tạo bảng/cột, không sửa/xóa dữ liệu, không commit/push. |
+
+## Current canonical SQL contract — 2026-09-09
+
+Phần baseline phía trên giữ nguyên số liệu lịch sử của Task 1/Final 2026-09-04.
+Contract fresh hiện hành dùng đúng bốn nguồn theo thứ tự:
+
+1. `database/sql/tao_bang.sql`
+2. `database/sql/du_lieu_mau.sql`
+3. `database/sql/quyen_vai_tro.sql`
+4. `database/sql/salary/2026_09_09_001_luong_functions.sql`
+
+Bốn nguồn tạo 15 bảng, 43 quyền, 12 thủ tục RBAC và 4 hàm lương. Snapshot
+`quan_ly_nhan_vien_session_update.sql` là disposable/destructive; database đã
+có dữ liệu chỉ chạy script RBAC additive và salary routine rerunnable riêng,
+không re-import snapshot.
 
 ## Baseline commands (lịch sử)
 
@@ -191,7 +206,7 @@ Evidence links name the exact current route/view/file/test. A source match is no
 | --- | --- | --- | --- | --- |
 | NAV-01 | Chức vụ là group có submenu `Danh sách chức vụ`. | Sidebar hiện render Chức vụ như một link đơn tới `backend.chucvu.index` trong `resources/views/backend/layouts/sidebar.blade.php`. | `RED` | Sidebar route/visibility test. |
 | NAV-02 | Nghỉ phép có submenu tạo/danh sách/duyệt; duyệt chỉ hiện actor phù hợp và Trưởng phòng. | Sidebar có tạo/danh sách nhưng không có duyệt; route `/duyet-nghi-phep` không có `auth`/permission trong route list. | `RED` | Exact manager policy + menu test. |
-| NAV-03 | Hệ số lương trỏ section `#salary-coefficient-card`, không `href="#"`. | Sidebar `Danh sách hệ số lương` còn `href="#"`; view salary đã có `id="salary-coefficient-card"` ở `resources/views/backend/luong/index.blade.php`. | `RED` | Link/hash behavior test. |
+| NAV-03 | Hệ số lương dùng section `#salary-coefficient-card`, không có một entry sidebar placeholder. | Sidebar hiện chỉ expose route danh sách lương canonical; card hệ số vẫn có `id="salary-coefficient-card"` ở `resources/views/backend/luong/index.blade.php`, còn entry `Danh sách hệ số lương` độc lập đã được bỏ. | `GREEN automated` | Browser/hash evidence cho salary workflow. |
 | NAV-04 | Topbar lấy tên vai trò thật, không hard-code. | `resources/views/backend/layouts/topbar.blade.php` còn text `Quản trị viên`. | `RED` | Topbar actor projection test. |
 | NAV-05 | Account dropdown có Hồ sơ cá nhân, Đổi mật khẩu, Đăng xuất. | Topbar có placeholder `href="#"` cho Hồ sơ, Cài đặt tài khoản, Bảo mật; chỉ logout có route thật. | `RED` | Profile/password routes and view test. |
 | PROF-01 | Hồ sơ cá nhân sửa allowlist, khóa mã/phòng/chức vụ/vai trò/trạng thái; email/CCCD unique. | Không có `ProfileController`, `UpdateProfileRequest`, `backend.profile.*` route hoặc `resources/views/backend/profile/*` trong inventory. | `planned` | Task 6 RED/GREEN + auth role checks. |
@@ -207,7 +222,7 @@ Evidence links name the exact current route/view/file/test. A source match is no
 
 | ID | Requirement | Exact current evidence | Status | Next gate |
 | --- | --- | --- | --- | --- |
-| EMP-01 | Bốn địa chỉ nullable ở create/update, không đổi schema. | `StoreNhanVienRequest.php:70-73` đã dùng nullable; automated `NhanVienValidationTest::test_all_four_address_parts_may_be_omitted_together` và `test_update_requires_all_address_parts_or_none` không nằm trong 12 failure của full baseline. | `GREEN automated` | Re-run focused after each implementation task. |
+| EMP-01 | Ba trường địa chỉ hiển thị (`dia_chi_cu_the`, `phuong_xa`, `tinh_thanh`) phải cùng có hoặc cùng bỏ; `quan_huyen` nullable và tùy chọn ở create/update, không đổi schema. | `StoreNhanVienRequest::after()` chỉ kiểm tra ba trường core; automated `NhanVienValidationTest::test_store_accepts_three_visible_address_parts_without_optional_district`, `test_three_visible_address_parts_are_required_after_trimming`, `test_three_visible_address_parts_may_be_omitted_together` và `test_update_requires_three_visible_address_parts_or_none`; `NhanVienStoreTest::test_modal_address_payload_without_optional_district` xác nhận service không nhận key district. | `GREEN automated` | Re-run focused after each implementation task. |
 | EMP-02 | Bỏ border khối `Bước 1: Hồ sơ liên hệ`, giữ heading/khoảng cách. | `create.blade.php:89` và `partials/edit-form.blade.php:33` dùng `fieldset ... border-0`; chưa có test assertion riêng cho border contract. | `planned` | Add explicit Blade/CSS contract test. |
 | EMP-03 | Dialog xóa căn giữa, focus trap, Escape/cancel và khôi phục focus. | `tests/Frontend/nhanvien/confirm-actions.test.js` pass các flow Escape/cancel/duplicate submit; responsive test pass centered dialog cho employee/shared CSS. | `GREEN automated` | Browser keyboard/focus evidence. |
 | DEPT-01 | Phòng ban không badge/background cho mã và số nhân viên. | `resources/views/backend/phongban/index.blade.php:117,119` còn `badge bg-primary`/`badge bg-info`. | `RED` | Task 8 markup test. |
@@ -218,7 +233,7 @@ Evidence links name the exact current route/view/file/test. A source match is no
 | ID | Requirement | Exact current evidence | Status | Next gate |
 | --- | --- | --- | --- | --- |
 | RBAC-01 | Màn quyền bỏ mã kỹ thuật màu xám; giữ nhãn Đọc/Thêm/Sửa/Xóa/Reset mật khẩu. | `resources/views/backend/vaitro/permissions.blade.php` vẫn render `<small>{{ $permission->ky_hieu_quyen }}</small>`; active catalog hiện không có Reset mật khẩu. | `RED` | Permission view contract test. |
-| RBAC-02 | Bổ sung `NhanVien.ResetPassword` từ active catalog, không đoán ID lịch sử. | Historical baseline recorded 37 permissions and no Reset symbol; current active seed has 42 rows with `NhanVien.ResetPassword` at verified ID `42`, covered by current registry/seed tests and live alignment evidence. | `GREEN automated` | Keep seed and enum IDs aligned; current live count is `quyen_count=42`. |
+| RBAC-02 | Bổ sung `NhanVien.ResetPassword` từ active catalog, không đoán ID lịch sử. | Historical baseline recorded 37 permissions and no Reset symbol; current active seed has 43 rows with `NhanVien.ResetPassword` at verified ID `42` and `NghiPhep.Approve` at ID `43`, covered by current registry/seed tests. | `GREEN automated` | Keep seed and enum IDs aligned; live alignment remains a separate runtime check. |
 | RBAC-03 | Reset chỉ actor có quyền; chặn self-reset và target đặc quyền ngoài policy. | Không có route `backend.nhanvien.reset-password`, request hoặc service method trong inventory. | `planned` | Security RED/GREEN tests. |
 | RBAC-04 | Mật khẩu reset `nhom3@{year(config timezone)}`, hash server-side, response chỉ nêu quy ước. | Chưa có reset flow; không có runtime evidence. | `planned` | Service + no-secret response test. |
 | RBAC-05 | Đổi tên màn `Gán vai trò tài khoản` thành `Phân Quyền`. | `resources/views/backend/taikhoan/index.blade.php` title/breadcrumb/header và sidebar vẫn `Gán vai trò tài khoản`; `ContentFourFeedbackUiTest` còn assert copy cũ. | `RED` | Copy + navigation test. |
@@ -244,7 +259,7 @@ Evidence links name the exact current route/view/file/test. A source match is no
 | MOD-03 | Hợp đồng: list/form và date/salary business rules. | `backend.hopdong.index/create/edit` routes and scaffold tests exist; contract rules remain RED/planned above. | `planned` | Task 9. |
 | MOD-04 | Chấm công: apply filter, paginator/table/action/date, giữ kỳ tháng/năm. | `backend.chamcong.index`, API `api.v1.cham-cong.*`, view/JS exist; baseline has 8 Chấm công lookup/security failures and missing active procedure caller contract. | `blocked` | Task 12 active Query Builder + security tests. |
 | MOD-05 | Nghỉ phép: create/list/approve, submenu, filter/pagination/table/date, department scope. | `backend.nghiphep.index/create`, approval route currently double-prefixed/unguarded; baseline frontend and compatibility failures; approval mutation calls missing active procedure. | `blocked` | Task 7/12 with approved DB/browser gates. |
-| MOD-06 | Lương/Hệ số lương: action/filter/pagination/table/date, coefficient section and working route/CSRF. | `backend.luong.index`, API salary/coefficient routes and JS exist; view has coefficient card but sidebar href is `#`; `LuongRepository@all` missing active procedure contract. | `blocked` | Task 12 direct Query Builder + coefficient DELETE/CSRF. |
+| MOD-06 | Lương/Hệ số lương: action/filter/pagination/table/date, coefficient section and working route/CSRF. | `backend.luong.index`, API salary/coefficient routes and JS exist; `LuongRepository@all` uses direct Query Builder and the four functions from the canonical salary source. The sidebar exposes the canonical salary list route; there is no standalone coefficient `href="#"` entry. | `prototype` | Salary workflow/browser/DB acceptance and coefficient DELETE/CSRF evidence. |
 | MOD-07 | Vai trò/Phân quyền: actions, human labels, reset, bulk assignment, pagination. | `backend.vaitro.index`, `backend.vaitro.permissions.edit`, `backend.taikhoan.index`; narrow catalog/middleware tests exist, UI mutation remains RED/planned. | `planned` | Tasks 10–11. |
 | GATE-01 | Mỗi phase phải có RED trước sửa và GREEN sau sửa; không xóa assertion để xanh. | Task 1 only records existing baseline; no new implementation phase started and no assertion removed. | `planned` | Apply per Task 2–12. |
 | GATE-02 | Route, full Laravel, frontend, build, Composer, PHP lint và diff check đều phải pass cuối cùng. | Current route/build/diff check pass; Laravel/frontend fail as baseline; Composer/PHP lint not part of Task 1 command set and not run here. | `RED` | Re-run full gate after all tasks. |

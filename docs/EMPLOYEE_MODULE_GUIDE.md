@@ -1,18 +1,24 @@
 # Hướng dẫn module Nhân viên
 
-> Cập nhật 2026-08-27. Đây là guide cho code hiện tại trên `main`; code/route/test/database live được ưu tiên hơn snapshot. Module chỉ được gọi **verified hẹp**, chưa production-ready và browser chưa được kiểm chứng trong phiên hiện tại.
+> Cập nhật 2026-09-09. Đây là guide cho code hiện tại trên `main`; code/route/test/database live được ưu tiên hơn snapshot. Module chỉ được gọi **verified hẹp**, chưa production-ready và browser chưa được kiểm chứng trong phiên hiện tại.
 
 ## Hợp đồng dữ liệu
 
-Dựng database fresh theo thứ tự:
+Dựng database fresh theo snapshot `quan_ly_nhan_vien_session_update.sql` (destructive,
+chỉ dùng trên database rỗng/disposable đã được phê duyệt), hoặc theo thứ tự nguồn:
 
 ```text
 database/sql/tao_bang.sql
 database/sql/du_lieu_mau.sql
 database/sql/quyen_vai_tro.sql
+database/sql/salary/2026_09_09_001_luong_functions.sql
 ```
 
-Ba file tạo 15 bảng, 19 nhân viên, 37 quyền và 12 thủ tục RBAC trên database rỗng/disposable. `nhan_vien` chứa trực tiếp các cột địa chỉ, avatar và `ngay_nghi_viec`; mã nhân viên là chuỗi 5 chữ số. `quan_ly_nhan_su.session.sql`, `LocalDemoSeeder` và script employee cũ là lịch sử, không phải setup path.
+Các nguồn tạo 15 bảng, 19 nhân viên, 43 quyền, 12 thủ tục RBAC và 4 hàm
+lương trên database rỗng/disposable. `nhan_vien` chứa trực tiếp các cột địa
+chỉ, avatar và `ngay_nghi_viec`; mã nhân viên là chuỗi 5 chữ số.
+`quan_ly_nhan_su.session.sql`, `LocalDemoSeeder` và script employee cũ là lịch
+sử, không phải setup path.
 
 Không chạy dump trên database cần giữ dữ liệu: SQL fresh có `USE quan_ly_nhan_su` và setup phải được backup/preflight/approval riêng. Không chạy `php artisan db:seed` theo quán tính vì seeder mặc định không phải identity provider hiện tại.
 
@@ -94,9 +100,10 @@ Không claim MariaDB/production/browser gate nếu command tương ứng chưa t
 Task Nhân viên không sửa Dashboard, Lương, Chấm công, Nghỉ phép, Hợp đồng, Vai trò/Phân quyền/RBAC hoặc API của họ. Các blocker đã audit:
 
 - Dashboard: auth/thiếu quyền và dữ liệu riêng cần task Dashboard.
-- Lương: gọi `sp_luong_tim_kiem_phan_trang` nhưng procedure không có trong ba SQL active.
-- Chấm công: lookup gọi `sp_phong_ban_danh_sach`, update gọi `sp_cham_cong_cap_nhat`; cả hai không có trong ba SQL active.
-- Nghỉ phép: approve gọi `sp_nghi_phep_duyet_phep`; procedure không có trong ba SQL active.
+- Lương: source salary portable đã cung cấp 4 function cần cho danh sách; workflow
+  lương vẫn ngoài ownership và chưa có đầy đủ browser/production evidence.
+- Chấm công: lookup gọi `sp_phong_ban_danh_sach`, update gọi `sp_cham_cong_cap_nhat`; cả hai không có trong active SQL sources.
+- Nghỉ phép: approval hiện dùng Query Builder active; không gọi `sp_nghi_phep_duyet_phep`.
 - Model/validation/API/exception legacy của module ngoài ownership còn drift; Hợp đồng/RBAC quản trị mới chỉ verified hẹp hoặc thiếu mutation/browser evidence.
 
 Chỉ xử lý các mục trên khi có task giao rõ và có owner/contract riêng.

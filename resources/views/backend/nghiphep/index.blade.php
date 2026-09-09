@@ -2,10 +2,15 @@
 @section('title', 'Quản lý nghỉ phép')
 
 @section('content')
+    @php
+        $historyFrom = request('tu_ngay', now()->subMonths(3)->format('Y-m-d'));
+        $historyTo = request('den_ngay', now()->format('Y-m-d'));
+    @endphp
+
     <main class="container-fluid container-xxl py-4 hr-page leave-page" aria-labelledby="page-title"
           data-nghi-phep-can-create="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Tao->value) ? '1' : '0' }}"
           data-nghi-phep-can-update="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value) ? '1' : '0' }}"
-          data-nghi-phep-can-approve="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value) && \Illuminate\Support\Facades\Gate::allows('department-manager') ? '1' : '0' }}"
+          data-nghi-phep-can-approve="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Duyet->value) ? '1' : '0' }}"
           data-nghi-phep-can-delete="{{ \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Xoa->value) ? '1' : '0' }}">
         <x-backend.page-header
             title="Nghỉ phép"
@@ -20,31 +25,6 @@
             <x-slot:titleSuffix>
                 <span class="badge rounded-pill text-bg-light border fw-normal" id="leave-readonly-badge" hidden>Chế độ chỉ xem</span>
             </x-slot:titleSuffix>
-            <x-slot:actions>
-                <button
-                    class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
-                    id="calendar-btn"
-                    type="button"
-                    data-leave-permission="NghiPhep.Read"
-                    hidden
-                >
-                    <i class="bi bi-calendar3" aria-hidden="true"></i>
-                    Lịch nghỉ
-                </button>
-
-                <button
-                    class="btn btn-primary d-inline-flex align-items-center gap-2"
-                    id="create-btn"
-                    type="button"
-                    data-create-url="{{ url('/user/nghi-phep/create') }}"
-                    data-leave-permission="NghiPhep.Insert"
-                    aria-label="Thêm nghỉ phép"
-                    title="Thêm nghỉ phép"
-                    hidden
-                >
-                    <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm nghỉ phép
-                </button>
-            </x-slot:actions>
         </x-backend.page-header>
 
         <section class="alert alert-light border shadow-sm mb-3"
@@ -82,18 +62,8 @@
                 <form class="filter-bar" id="leave-filter-form">
                 <div class="filter-bar__fields">
                     <div class="filter-bar__field">
-                        <div class="input-group">
-                        <span class="input-group-text bg-white">
-                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"
-                                 fill="none" stroke="currentColor" stroke-width="1.5"
-                                 stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="7" cy="7" r="4.5"></circle>
-                                <path d="M10.5 10.5 14 14"></path>
-                            </svg>
-                        </span>
-                            <input class="form-control" type="search" id="search-field"
-                                   placeholder="Tìm mã hoặc tên nhân viên..." aria-label="Tìm nhân viên">
-                        </div>
+                        <input class="form-control" type="search" id="search-field"
+                               placeholder="Tìm mã hoặc tên nhân viên..." aria-label="Tìm nhân viên">
                     </div>
 
                     <div class="filter-bar__field">
@@ -183,51 +153,10 @@
                     <div>
                         <h2 class="h6 fw-semibold mb-1" id="leave-table-title">Danh sách nghỉ phép</h2>
                         <p class="small text-secondary mb-0" id="leave-table-description">
-                            Chờ duyệt hiển thị toàn bộ đơn. Chọn nhân viên để xem lịch sử nghỉ phép đã xử lý.
+                            Chờ duyệt hiển thị toàn bộ đơn; lịch sử dùng khoảng ngày bên dưới và có thể lọc theo nhân viên.
                         </p>
                     </div>
 
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <button
-                            class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
-                            id="edit-leave-btn"
-                            type="button"
-                            disabled
-                            data-leave-permission="NghiPhep.Update"
-                            hidden
-                        >
-                            <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                            Sửa
-                        </button>
-
-                        <button
-                            class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-2"
-                            id="delete-leave-btn"
-                            type="button"
-                            disabled
-                            data-leave-permission="NghiPhep.Delete"
-                            hidden
-                        >
-                            <i class="bi bi-trash" aria-hidden="true"></i>
-                            Xóa
-                        </button>
-
-                        @if (\Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value)
-                            && \Illuminate\Support\Facades\Gate::allows('department-manager'))
-                        <button
-                            class="btn btn-success btn-sm d-inline-flex align-items-center gap-2"
-                            id="approve-leave-btn"
-                            type="button"
-                            disabled
-                            data-leave-permission="NghiPhep.Update"
-                            data-pending-only="true"
-                            hidden
-                        >
-                            <i class="bi bi-check2" aria-hidden="true"></i>
-                            Duyệt
-                        </button>
-                        @endif
-                    </div>
                 </div>
 
                 <div class="mt-3">
@@ -248,6 +177,43 @@
                         </li>
                     </ul>
 
+                    <form class="filter-bar mt-3" id="leave-history-filter-form" hidden novalidate>
+                        <div class="filter-bar__fields">
+                            <div class="filter-bar__field">
+                                <label class="form-label" for="history-from-date">Từ ngày</label>
+                                <input
+                                    class="form-control"
+                                    id="history-from-date"
+                                    name="tu_ngay"
+                                    type="date"
+                                    value="{{ $historyFrom }}"
+                                    aria-describedby="history-from-date-error"
+                                >
+                                <div class="invalid-feedback" id="history-from-date-error" role="alert"></div>
+                            </div>
+                            <div class="filter-bar__field">
+                                <label class="form-label" for="history-to-date">Đến ngày</label>
+                                <input
+                                    class="form-control"
+                                    id="history-to-date"
+                                    name="den_ngay"
+                                    type="date"
+                                    value="{{ $historyTo }}"
+                                    aria-describedby="history-to-date-error"
+                                >
+                                <div class="invalid-feedback" id="history-to-date-error" role="alert"></div>
+                            </div>
+                        </div>
+                        <div class="filter-bar__actions">
+                            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit">
+                                <i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng
+                            </button>
+                            <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="all-leaves-btn" type="button">
+                                <i class="bi bi-people" aria-hidden="true"></i>Xem tất cả lịch nghỉ
+                            </button>
+                        </div>
+                    </form>
+
                     <span id="approved-count" hidden>0</span>
                     <span id="approved-days" hidden></span>
                     <span id="today-count" hidden>0</span>
@@ -261,7 +227,6 @@
                     <caption class="visually-hidden">Danh sách đơn nghỉ phép</caption>
                     <thead class="table-light">
                     <tr>
-                        <th scope="col" style="width:42px;"></th>
                         <th scope="col">Mã nhân viên</th>
                         <th scope="col">Họ tên</th>
                         <th scope="col">Từ ngày</th>
@@ -269,6 +234,7 @@
                         <th scope="col">Loại phép</th>
                         <th scope="col">Lý do</th>
                         <th scope="col">Trạng thái duyệt</th>
+                        <th scope="col">Thao tác</th>
                     </tr>
                     </thead>
                     <tbody id="leave-tbody">
@@ -403,7 +369,7 @@
                     <input
                         class="form-control form-control-sm"
                         id="leave-from-date"
-                        type="text"
+                        type="date"
                         required
                     >
                 </div>
@@ -421,7 +387,7 @@
                     <input
                         class="form-control form-control-sm"
                         id="leave-to-date"
-                        type="text"
+                        type="date"
                         required
                     >
                 </div>
@@ -469,7 +435,7 @@
             {{-- Footer --}}
             <div class="d-flex justify-content-end gap-2 px-4 py-3 border-top bg-light">
                 <button
-                    class="btn btn-outline-secondary btn-sm"
+                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
                     id="leave-modal-cancel"
                     type="button"
                 >
@@ -477,7 +443,7 @@
                 </button>
 
                 <button
-                    class="btn btn-primary btn-sm"
+                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
                     id="leave-modal-submit"
                     type="submit"
                 >
@@ -522,8 +488,7 @@
             vertical-align: middle;
         }
 
-        .leave-page [data-employee-row],
-        .leave-page [data-leave-row] {
+        .leave-page [data-employee-row] {
             cursor: pointer;
         }
 

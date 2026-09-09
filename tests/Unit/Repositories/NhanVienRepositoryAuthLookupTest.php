@@ -33,6 +33,7 @@ final class NhanVienRepositoryAuthLookupTest extends TestCase
             $table->unsignedInteger('ma_vt');
             $table->unsignedInteger('ma_pb')->nullable();
             $table->unsignedInteger('ma_tt');
+            $table->string('anh_dai_dien', 255)->nullable();
         });
 
         $this->repository = new NhanVienRepository(
@@ -67,5 +68,25 @@ final class NhanVienRepositoryAuthLookupTest extends TestCase
         self::assertNotNull($account);
         self::assertSame(42, (int) $account->ma_vt);
         self::assertSame('Quản trị hệ thống', $account->ten_vt);
+    }
+
+    public function test_account_lookup_hydrates_avatar_path_for_authenticated_topbar(): void
+    {
+        DB::table('vai_tro')->insert(['ma_vt' => 42, 'ten_vt' => 'Quản trị hệ thống']);
+        DB::table('nhan_vien')->insert([
+            'ma_nv' => '00001',
+            'ho_ten' => 'Nguyễn An',
+            'email' => 'an@example.test',
+            'mat_khau' => 'hash',
+            'ma_vt' => 42,
+            'ma_pb' => null,
+            'ma_tt' => 1,
+            'anh_dai_dien' => 'nhan-vien/avatars/an.jpg',
+        ]);
+
+        $account = $this->repository->findAccountByIdentifier('00001');
+
+        self::assertNotNull($account);
+        self::assertSame('nhan-vien/avatars/an.jpg', $account->anh_dai_dien);
     }
 }

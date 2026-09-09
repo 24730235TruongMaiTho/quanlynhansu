@@ -35,13 +35,14 @@ final class ContentFourManagementTest extends TestCase
         $registry = app(PermissionRegistry::class);
         $this->assertSame([21, 22, 23, 24], array_map(fn ($permission) => $permission->id(), HopDongPermission::cases()));
         $this->assertSame([5, 6, 7, 8], array_map(fn ($permission) => $permission->id(), PhanQuyenPermission::cases()));
-        $this->assertSame([25, 26, 27, 28], array_map(fn ($permission) => $permission->id(), NghiPhepPermission::cases()));
+        $this->assertSame([25, 26, 27, 28, 43], array_map(fn ($permission) => $permission->id(), NghiPhepPermission::cases()));
         $this->assertSame([29, 30, 31, 32], array_map(fn ($permission) => $permission->id(), ChamCongPermission::cases()));
         $this->assertSame([33, 34, 35, 36], array_map(fn ($permission) => $permission->id(), LuongPermission::cases()));
         $this->assertSame([38, 39, 40, 41], array_map(fn ($permission) => $permission->id(), HeSoLuongPermission::cases()));
         $this->assertSame(21, $registry->forAbility('HopDong.Read')?->id());
         $this->assertSame(3, $registry->forAbility('VaiTro.Update')?->id());
         $this->assertSame(25, $registry->forAbility('NghiPhep.Read')?->id());
+        $this->assertSame(43, $registry->forAbility('NghiPhep.Approve')?->id());
         $this->assertSame(29, $registry->forAbility('ChamCong.Read')?->id());
         $this->assertSame(33, $registry->forAbility('Luong.Read')?->id());
         $this->assertSame(38, $registry->forAbility('HeSoLuong.Read')?->id());
@@ -100,7 +101,8 @@ final class ContentFourManagementTest extends TestCase
             'nghi-phep.store' => ['auth', 'can:NghiPhep.Insert'],
             'nghi-phep.update' => ['auth', 'can:NghiPhep.Update'],
             'nghi-phep.destroy' => ['auth', 'can:NghiPhep.Delete'],
-            'api.v1.nghi-phep.duyet' => ['auth', 'can:NghiPhep.Update'],
+            'api.v1.nghi-phep.phe-duyet' => ['auth', 'can:NghiPhep.Read', 'can:NghiPhep.Approve'],
+            'api.v1.nghi-phep.duyet' => ['auth', 'can:NghiPhep.Approve'],
             'luong.index' => ['auth', 'can:Luong.Read'],
             'luong.show' => ['auth', 'can:Luong.Read'],
             'luong.store' => ['auth', 'can:Luong.Insert'],

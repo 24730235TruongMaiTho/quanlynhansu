@@ -52,9 +52,6 @@ document.addEventListener(
             employeeName:
                 null,
 
-            selectedId:
-                null,
-
             coefficientPage:
                 1,
 
@@ -227,11 +224,18 @@ document.addEventListener(
             employeeName,
             page = 1
         ) {
+            const normalizedEmployeeCode =
+                String(employeeCode ?? '').trim();
+
+            if (!normalizedEmployeeCode) {
+                return;
+            }
+
             state.employeeCode =
-                employeeCode;
+                normalizedEmployeeCode;
 
             state.employeeName =
-                employeeName;
+                String(employeeName ?? '');
 
             state.coefficientPage =
                 Math.max(Number(page) || 1, 1);
@@ -243,12 +247,12 @@ document.addEventListener(
 
             if (badge) {
                 badge.textContent =
-                    `${employeeCode} · ${employeeName || ''}`;
+                    `${state.employeeCode} · ${state.employeeName}`;
             }
 
             const response =
                 await fetch(
-                    `${API}?ma_nv=${encodeURIComponent(employeeCode)}&page=${state.coefficientPage}&per_page=${state.coefficientPerPage}`,
+                    `${API}?ma_nv=${encodeURIComponent(state.employeeCode)}&page=${state.coefficientPage}&per_page=${state.coefficientPerPage}`,
                     {
                         headers: {
                             Accept:
@@ -297,39 +301,76 @@ document.addEventListener(
             }
         }
 
-        salaryTbody.addEventListener(
-            'click',
-            (event) => {
-                const button =
-                    event.target.closest(
-                        '[data-salary-action="coefficient"]'
-                    );
+        function isNonRowInteractiveTarget(target) {
+            return target instanceof Element && target.closest(
+                'button, a, input, select, textarea, label, [role="button"]'
+            );
+        }
 
-                if (!button) {
-                    return;
-                }
+        function setSelectedEmployeeRow(row) {
+            salaryTbody.querySelectorAll('[data-salary-row]').forEach((candidate) => {
+                const selected = candidate === row;
+                candidate.classList.toggle('salary-row-selected', selected);
+                candidate.setAttribute('aria-selected', selected ? 'true' : 'false');
+            });
+        }
 
-                load(
-                    button.dataset
-                        .employeeCode,
-
-                    button.dataset
-                        .employeeName
-                );
-
-                document
-                    .getElementById(
-                        'salary-coefficient-card'
-                    )
-                    ?.scrollIntoView({
-                        behavior:
-                            'smooth',
-
-                        block:
-                            'start',
-                    });
+        function selectEmployeeRow(row) {
+            const employeeCode = String(row.dataset.employeeCode ?? '').trim();
+            if (!employeeCode) {
+                return;
             }
-        );
+
+            const employeeName = row.dataset.employeeName ?? '';
+            setSelectedEmployeeRow(row);
+
+            document.dispatchEvent(
+                new CustomEvent('salary:employee-selected', {
+                    detail: {
+                        employeeCode,
+                        employeeName,
+                    },
+                })
+            );
+
+            void load(employeeCode, employeeName);
+
+            document
+                .getElementById('salary-coefficient-card')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function rowFromEvent(event) {
+            const target = event.target instanceof Element
+                ? event.target
+                : null;
+
+            if (!target || isNonRowInteractiveTarget(target)) {
+                return null;
+            }
+
+            const row = target.closest('[data-salary-row]');
+            return row && salaryTbody.contains(row) ? row : null;
+        }
+
+        salaryTbody.addEventListener('click', (event) => {
+            const row = rowFromEvent(event);
+            if (row) selectEmployeeRow(row);
+        });
+
+        salaryTbody.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') {
+                return;
+            }
+
+            const row = rowFromEvent(event);
+            if (!row) {
+                return;
+            }
+
+            event.preventDefault();
+            selectEmployeeRow(row);
+        });
 
         tbody.addEventListener(
             'click',

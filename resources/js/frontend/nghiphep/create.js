@@ -821,11 +821,11 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.fromDate?.classList?.toggle('is-invalid', Boolean(fromRaw && !fromIso));
         elements.toDate?.classList?.toggle('is-invalid', Boolean(toRaw && !toIso));
         if (fromRaw && !fromIso) {
-            if (elements.fromDateError) elements.fromDateError.textContent = 'Ngày bắt đầu phải có định dạng dd/mm/yyyy hợp lệ.';
+            if (elements.fromDateError) elements.fromDateError.textContent = 'Ngày bắt đầu không hợp lệ.';
             return 'Ngày bắt đầu không hợp lệ.';
         }
         if (toRaw && !toIso) {
-            if (elements.toDateError) elements.toDateError.textContent = 'Ngày kết thúc phải có định dạng dd/mm/yyyy hợp lệ.';
+            if (elements.toDateError) elements.toDateError.textContent = 'Ngày kết thúc không hợp lệ.';
             return 'Ngày kết thúc không hợp lệ.';
         }
 
@@ -1137,26 +1137,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     canUpdateOwnLeave()
                         ? `
                                                 <button
-                                                    class="btn btn-outline-secondary btn-icon-action leave-log-edit-btn"
+                                                    class="btn btn-outline-primary btn-icon-action leave-log-edit-btn"
                                                     type="button"
                                                     data-edit-leave-id="${escapeHtml(leave.ma_np)}"
                                                     aria-label="Sửa đơn nghỉ phép"
                                                     title="Sửa đơn nghỉ phép"
                                                 >
-                                                    <svg class="bi bi-pencil-square"
-                                                        aria-hidden="true"
-                                                        width="13"
-                                                        height="13"
-                                                        viewBox="0 0 16 16"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        stroke-width="1.5"
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                    >
-                                                        <path d="M10.8 2.2 13.8 5.2"></path>
-                                                        <path d="M3 13l1-3.5 7.5-7.5 3 3L7 12.5 3 13Z"></path>
-                                                    </svg>
+                                                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
                                                 </button>
                                             `
                         : ''

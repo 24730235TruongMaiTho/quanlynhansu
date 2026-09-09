@@ -73,6 +73,19 @@ final class DateFieldBoundaryTest extends TestCase
         }
     }
 
+    public function test_contract_store_and_update_accept_canonical_iso_dates_for_form_and_json_requests(): void
+    {
+        foreach (['post', 'put', 'postJson', 'putJson'] as $method) {
+            $this->{$method}('/_tests/date-contract/hopdong', $this->contractPayload([
+                'ngay_ky' => '2026-09-03',
+                'ngay_het_han' => '2027-09-03',
+            ]))
+                ->assertOk()
+                ->assertJsonPath('ngay_ky', '2026-09-03')
+                ->assertJsonPath('ngay_het_han', '2027-09-03');
+        }
+    }
+
     public function test_leave_store_and_update_normalize_display_dates_to_iso(): void
     {
         foreach (['post', 'put'] as $method) {
@@ -83,10 +96,10 @@ final class DateFieldBoundaryTest extends TestCase
         }
     }
 
-    public function test_contract_and_leave_reject_iso_impossible_and_ambiguous_dates_with_labels(): void
+    public function test_contract_and_leave_reject_impossible_and_ambiguous_dates_with_labels(): void
     {
         foreach ([
-            ['/_tests/date-contract/hopdong', 'ngay_ky', 'Ngày ký', $this->contractPayload(['ngay_ky' => '2026-09-03'])],
+            ['/_tests/date-contract/hopdong', 'ngay_ky', 'Ngày ký', $this->contractPayload(['ngay_ky' => '2026-02-30'])],
             ['/_tests/date-contract/hopdong', 'ngay_ky', 'Ngày ký', $this->contractPayload(['ngay_ky' => '31/02/2026'])],
             ['/_tests/date-contract/hopdong', 'ngay_ky', 'Ngày ký', $this->contractPayload(['ngay_ky' => '3/9/26'])],
             ['/_tests/date-contract/nghi-phep', 'tu_ngay', 'Từ ngày', $this->leavePayload(['tu_ngay' => '2026-09-03'])],

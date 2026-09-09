@@ -38,9 +38,9 @@ final class DashboardManagerCountTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_count_is_scoped_to_eligible_manager_department(): void
+    public function test_count_is_companywide_for_any_actor_with_read_and_approve(): void
     {
-        $manager = $this->actor(['ma_vt' => 4, 'ma_pb' => 2]);
+        $manager = $this->actor(['ma_vt' => 5, 'ma_pb' => null]);
         DB::table('nhan_vien')->insert([
             ['ma_nv' => '00002', 'ho_ten' => 'Cùng phòng', 'ma_vt' => 5, 'ma_pb' => 2, 'ma_tt' => 1],
             ['ma_nv' => '00003', 'ho_ten' => 'Khác phòng', 'ma_vt' => 5, 'ma_pb' => 1, 'ma_tt' => 1],
@@ -52,14 +52,18 @@ final class DashboardManagerCountTest extends TestCase
         ]);
         $this->allowManagerPermissions();
 
-        self::assertSame(1, app(DashboardService::class)->getPendingDepartmentLeaveCount($manager));
+        self::assertSame(2, app(DashboardService::class)->getPendingLeaveCount($manager));
     }
 
-    public function test_non_manager_or_missing_department_returns_null(): void
+    public function test_actor_without_approve_returns_null(): void
     {
-        $this->allowManagerPermissions();
-        self::assertNull(app(DashboardService::class)->getPendingDepartmentLeaveCount($this->actor(['ma_vt' => 5, 'ma_pb' => 2])));
-        self::assertNull(app(DashboardService::class)->getPendingDepartmentLeaveCount($this->actor(['ma_vt' => 4, 'ma_pb' => null])));
+        $this->mock(PermissionService::class, function ($mock): void {
+            $mock->shouldReceive('allows')
+                ->andReturnUsing(static fn (NhanVien $actor, NghiPhepPermission|string $permission): bool => (
+                    $permission instanceof NghiPhepPermission ? $permission->value : $permission
+                ) === NghiPhepPermission::Xem->value);
+        });
+        self::assertNull(app(DashboardService::class)->getPendingLeaveCount($this->actor(['ma_vt' => 5, 'ma_pb' => null])));
     }
 
     public function test_count_uses_the_same_pending_scope_even_for_terminal_employee_rows(): void
@@ -78,19 +82,19 @@ final class DashboardManagerCountTest extends TestCase
         ]);
         $this->allowManagerPermissions();
 
-        self::assertSame(1, app(DashboardService::class)->getPendingDepartmentLeaveCount($manager));
+        self::assertSame(1, app(DashboardService::class)->getPendingLeaveCount($manager));
     }
 
-    public function test_manager_without_read_or_update_cannot_receive_pending_count(): void
+    public function test_actor_without_read_cannot_receive_pending_count(): void
     {
         $this->mock(PermissionService::class, function ($mock): void {
             $mock->shouldReceive('allows')
                 ->andReturnUsing(static fn (NhanVien $actor, NghiPhepPermission|string $permission): bool => (
                     $permission instanceof NghiPhepPermission ? $permission->value : $permission
-                ) === NghiPhepPermission::Xem->value);
+                ) === NghiPhepPermission::Duyet->value);
         });
 
-        self::assertNull(app(DashboardService::class)->getPendingDepartmentLeaveCount($this->actor(['ma_vt' => 4, 'ma_pb' => 2])));
+        self::assertNull(app(DashboardService::class)->getPendingLeaveCount($this->actor(['ma_vt' => 5, 'ma_pb' => null])));
     }
 
     private function allowManagerPermissions(): void
@@ -99,7 +103,7 @@ final class DashboardManagerCountTest extends TestCase
             $mock->shouldReceive('allows')
                 ->andReturnUsing(static fn (NhanVien $actor, NghiPhepPermission|string $permission): bool => in_array(
                     $permission instanceof NghiPhepPermission ? $permission->value : $permission,
-                    [NghiPhepPermission::Xem->value, NghiPhepPermission::Sua->value],
+                    [NghiPhepPermission::Xem->value, NghiPhepPermission::Duyet->value],
                     true,
                 ));
         });

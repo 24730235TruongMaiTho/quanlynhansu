@@ -1,6 +1,6 @@
 import { initializeEmployeeWizards } from './wizard.js';
 
-const LOAD_ERROR_MESSAGE = 'Không tải được biểu mẫu chỉnh sửa. Bạn có thể mở trang đầy đủ để tiếp tục.';
+const LOAD_ERROR_MESSAGE = 'Không tải được biểu mẫu chỉnh sửa. Vui lòng đóng popup và thử lại sau.';
 const UPDATE_ERROR_MESSAGE = 'Không thể cập nhật nhân viên lúc này. Vui lòng thử lại sau.';
 const FORM_ERROR_FALLBACK = 'Không thể cập nhật hồ sơ. Vui lòng kiểm tra lại thông tin hoặc thử lại sau.';
 
@@ -151,24 +151,19 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
 
     let opener = null;
     let activeUrl = null;
+    let modalMode = 'edit';
     let loadingState = null;
     let loadGeneration = 0;
     let submitting = false;
 
-    const resetRecovery = () => {
+    const resetError = () => {
         setHidden(ui.error, true);
-        setHidden(ui.fallback, true);
-        setHidden(ui.retry, true);
-        setHidden(ui.recovery, true);
         if (ui.error) ui.error.textContent = '';
     };
 
-    const showRecovery = (message, showRetry = true) => {
+    const showError = (message) => {
         if (ui.error) ui.error.textContent = message;
         setHidden(ui.error, false);
-        setHidden(ui.fallback, false);
-        setHidden(ui.retry, !showRetry);
-        setHidden(ui.recovery, false);
     };
 
     const setLoading = (loading) => {
@@ -185,6 +180,12 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
 
         ui.close.disabled = disabled;
         ui.close.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    };
+
+    const setModalTitle = () => {
+        if (!ui.title) return;
+        const title = ui.title.getAttribute?.(modalMode === 'create' ? 'data-create-title' : 'data-edit-title');
+        if (title) ui.title.textContent = title;
     };
 
     const restoreFocus = () => {
@@ -207,6 +208,7 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
 
         loadGeneration += 1;
         activeUrl = null;
+        modalMode = 'edit';
         loadingState = null;
         submitting = false;
         setCloseDisabled(false);
@@ -218,7 +220,7 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
     const load = async () => {
         if (!activeUrl || !fetchImpl) {
             setLoading(false);
-            showRecovery(LOAD_ERROR_MESSAGE, false);
+            showError(LOAD_ERROR_MESSAGE);
             return;
         }
 
@@ -228,19 +230,21 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
 
         const generation = ++loadGeneration;
         setLoading(true);
-        resetRecovery();
+        resetError();
         if (ui.content) {
             ui.content.innerHTML = '';
         }
 
         const promise = (async () => {
             try {
-                const response = await fetchImpl(activeUrl, {
-                    headers: {
+                const headers = {
                         Accept: 'text/html',
                         'X-Requested-With': 'XMLHttpRequest',
-                        'X-Employee-Edit-Modal': '1',
-                    },
+                        'X-Form-Modal': modalMode,
+                    };
+                headers[modalMode === 'create' ? 'X-Employee-Create-Modal' : 'X-Employee-Edit-Modal'] = '1';
+                const response = await fetchImpl(activeUrl, {
+                    headers,
                     credentials: 'same-origin',
                 });
                 const html = await response.text();
@@ -256,7 +260,7 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
             } catch {
                 if (generation === loadGeneration) {
                     setLoading(false);
-                    showRecovery(LOAD_ERROR_MESSAGE);
+                    showError(LOAD_ERROR_MESSAGE);
                 }
             } finally {
                 if (loadingState?.promise === promise) {
@@ -292,7 +296,7 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
         const action = formAction(form);
         if (!action || !fetchImpl) {
             event.preventDefault?.();
-            showRecovery(UPDATE_ERROR_MESSAGE, false);
+            showError(UPDATE_ERROR_MESSAGE);
             return null;
         }
 
@@ -309,9 +313,15 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
         });
 
         try {
+            const body = createFormData(form);
+            const preservedDistrict = form?.dataset?.preservedDistrict;
+            if (preservedDistrict && typeof body?.append === 'function') {
+                body.append('quan_huyen', preservedDistrict);
+            }
+
             const response = await fetchImpl(action, {
                 method: formMethod(form),
-                body: createFormData(form),
+                body,
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
@@ -327,7 +337,7 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
             }
 
             if (!response.ok || payload?.success !== true) {
-                showRecovery(UPDATE_ERROR_MESSAGE, false);
+                showError(UPDATE_ERROR_MESSAGE);
                 finishSubmit(form);
                 return payload;
             }
@@ -336,16 +346,12 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
             navigation?.reload?.();
             return payload;
         } catch {
-            showRecovery(UPDATE_ERROR_MESSAGE, false);
+            showError(UPDATE_ERROR_MESSAGE);
             finishSubmit(form);
             return null;
         }
     };
 
-    ui.retry?.addEventListener?.('click', (event) => {
-        event.preventDefault?.();
-        load();
-    });
     ui.close?.addEventListener?.('click', (event) => {
         event.preventDefault?.();
         close();
@@ -375,17 +381,16 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
         close();
     }
 
-    async function open(nextOpener, url) {
+    async function open(nextOpener, url, requestedMode = null) {
         if (!url || submitting) {
             return null;
         }
 
         opener = nextOpener;
         activeUrl = url;
-        if (ui.fallback) {
-            ui.fallback.href = url;
-        }
-        resetRecovery();
+        modalMode = requestedMode || nextOpener?.dataset?.employeeModalMode || nextOpener?.dataset?.modalMode || 'edit';
+        setModalTitle();
+        resetError();
         setLoading(true);
         if (typeof ui.dialog?.showModal === 'function' && !ui.dialog.open) {
             ui.dialog.showModal();
@@ -411,7 +416,7 @@ export function initializeEmployeeEditModal(
     root = typeof document !== 'undefined' ? document : null,
     browser = typeof window !== 'undefined' ? window : {},
 ) {
-    const dialog = root?.querySelector?.('[data-employee-edit-modal]');
+    const dialog = root?.querySelector?.('[data-employee-modal], [data-employee-edit-modal]');
     if (!dialog) {
         return null;
     }
@@ -421,10 +426,8 @@ export function initializeEmployeeEditModal(
         content: dialog.querySelector('[data-employee-edit-content]'),
         loading: dialog.querySelector('[data-employee-edit-loading]'),
         error: dialog.querySelector('[data-employee-edit-error]'),
-        recovery: dialog.querySelector('[data-employee-edit-recovery]'),
-        fallback: dialog.querySelector('[data-employee-edit-fallback]'),
-        retry: dialog.querySelector('[data-employee-edit-retry]'),
         close: dialog.querySelector('[data-employee-edit-close]'),
+        title: dialog.querySelector('[data-employee-edit-title]'),
     }, {
         fetch: typeof browser.fetch === 'function' ? browser.fetch.bind(browser) : undefined,
         navigation: browser.location || (typeof window !== 'undefined' ? window.location : null),

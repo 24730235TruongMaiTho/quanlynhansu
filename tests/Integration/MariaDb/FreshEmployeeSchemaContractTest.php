@@ -12,6 +12,7 @@ use App\Repositories\PhongBanRepository;
 use App\Support\DisposableMariaDbGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use PDO;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 use Tests\Support\SqlScriptRunner;
@@ -41,7 +42,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
 
         self::assertSame(0, (int) DB::table('information_schema.VIEWS')
             ->where('TABLE_SCHEMA', DB::raw('DATABASE()'))->count());
-        self::assertSame(12, (int) DB::table('information_schema.ROUTINES')
+        self::assertSame(16, (int) DB::table('information_schema.ROUTINES')
             ->where('ROUTINE_SCHEMA', DB::raw('DATABASE()'))->count());
         self::assertSame(0, (int) DB::table('information_schema.TRIGGERS')
             ->where('TRIGGER_SCHEMA', DB::raw('DATABASE()'))->count());
@@ -59,7 +60,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertSame('A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', $admin->mat_khau);
         $permissionCatalog = DB::table('quyen')->orderBy('ma_quyen')->pluck('ma_quyen')
             ->map(static fn ($id): int => (int) $id)->all();
-        $expectedCatalog = range(1, 37);
+        $expectedCatalog = range(1, 43);
         self::assertSame($expectedCatalog, $permissionCatalog);
 
         $rolePermissions = DB::table('vai_tro_quyen')->where('ma_vt', 1)
@@ -75,6 +76,62 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertSame([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], $employeeContract->pluck('ma_tt')->map(static fn ($id): int => (int) $id)->all());
         self::assertCount(19, $employeeContract->whereNull('anh_dai_dien'));
         self::assertSame(19, $employeeContract->whereNull('ngay_nghi_viec')->count());
+    }
+
+    public function test_fresh_pair_exposes_callable_salary_functions_without_legacy_view_objects(): void
+    {
+        $this->runFreshPair();
+
+        self::assertSame([
+            'fn_so_ngay_cong_chuan',
+            'fn_so_ngay_cong_thuc_te',
+            'fn_thong_bao_tinh_luong',
+            'fn_tinh_luong_thuc_nhan',
+        ], $this->pdo()->query(
+            "SELECT ROUTINE_NAME
+             FROM information_schema.ROUTINES
+             WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_TYPE = 'FUNCTION'
+             ORDER BY ROUTINE_NAME"
+        )->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(0, (int) $this->pdo()->query(
+            "SELECT fn_so_ngay_cong_chuan('00001', '2026-05-01')"
+        )->fetchColumn());
+        self::assertSame(0.0, (float) $this->pdo()->query(
+            "SELECT fn_so_ngay_cong_thuc_te('00001', '2026-05-01')"
+        )->fetchColumn());
+        self::assertSame(0, (int) $this->pdo()->query(
+            "SELECT fn_tinh_luong_thuc_nhan('00001', '2026-05-01')"
+        )->fetchColumn());
+        self::assertSame('Chưa có dữ liệu chấm công trong kỳ', (string) $this->pdo()->query(
+            "SELECT fn_thong_bao_tinh_luong('00001', '2026-05-01')"
+        )->fetchColumn());
+        self::assertSame(0, (int) $this->pdo()->query(
+            "SELECT COUNT(*) FROM information_schema.VIEWS WHERE TABLE_SCHEMA = DATABASE()"
+        )->fetchColumn());
+    }
+
+    public function test_nghiphep_approve_upgrade_is_additive_and_idempotent_on_disposable_schema(): void
+    {
+        $this->runFreshPair();
+        $this->pdo()->exec('DELETE FROM vai_tro_quyen WHERE ma_quyen = 43');
+        $this->pdo()->exec('DELETE FROM quyen WHERE ma_quyen = 43');
+
+        $this->runFreshSource('database/sql/rbac/2026_09_09_001_add_nghiphep_approve_permission.sql', 1);
+        $this->runFreshSource('database/sql/rbac/2026_09_09_001_add_nghiphep_approve_permission.sql', 1);
+
+        self::assertSame(1, (int) $this->pdo()->query(
+            "SELECT COUNT(*) FROM quyen WHERE ma_quyen = 43 AND ky_hieu_quyen = 'NghiPhep.Approve'"
+        )->fetchColumn());
+        self::assertSame(1, (int) $this->pdo()->query(
+            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 1 AND ma_quyen = 43'
+        )->fetchColumn());
+        self::assertSame(1, (int) $this->pdo()->query(
+            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 4 AND ma_quyen = 43'
+        )->fetchColumn());
+        self::assertSame(0, (int) $this->pdo()->query(
+            "SELECT COUNT(*) FROM information_schema.ROUTINES
+             WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_upgrade_nghiphep_approve_permission'"
+        )->fetchColumn());
     }
 
     public function test_repository_writes_direct_address_avatar_and_counter_contract(): void
@@ -308,21 +365,21 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertCount(5, $result->fetchAll());
         $result->closeCursor();
         $result = $pdo->query('CALL sp_quyen_danh_sach()');
-        self::assertCount(37, $result->fetchAll());
+        self::assertCount(43, $result->fetchAll());
         $result->closeCursor();
         $result = $pdo->query("CALL sp_quyen_lay_theo_ma_nhan_vien('00001')");
-        self::assertCount(37, $result->fetchAll());
+        self::assertCount(43, $result->fetchAll());
         $result->closeCursor();
         $pdo->exec("CALL sp_vai_tro_them('Vai trò thử nghiệm', 'Mô tả thử nghiệm')");
         self::assertSame(6, (int) $pdo->query("SELECT MAX(ma_vt) FROM vai_tro")->fetchColumn());
         $pdo->exec("CALL sp_quyen_them('Test.Read', 'Đọc thử nghiệm', 'Test')");
-        self::assertSame(38, (int) $pdo->query("SELECT MAX(ma_quyen) FROM quyen")->fetchColumn());
-        $pdo->exec('CALL sp_vai_tro_quyen_them(6, 38)');
+        self::assertSame(44, (int) $pdo->query("SELECT MAX(ma_quyen) FROM quyen")->fetchColumn());
+        $pdo->exec('CALL sp_vai_tro_quyen_them(6, 44)');
         self::assertSame(1, (int) $pdo->query(
-            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 6 AND ma_quyen = 38'
+            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 6 AND ma_quyen = 44'
         )->fetchColumn());
         $result = $pdo->query('CALL sp_vai_tro_quyen_lay_quyen_theo_vai_tro(6)');
-        self::assertSame(38, (int) $result->fetchColumn());
+        self::assertSame(44, (int) $result->fetchColumn());
         $result->closeCursor();
         $pdo->exec('CALL sp_vai_tro_quyen_xoa(6)');
         self::assertSame(0, (int) $pdo->query(
@@ -427,7 +484,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
 
         $repository->delete(6);
         self::assertNull($repository->find(6));
-        self::assertSame(12, (int) $this->pdo()->query(
+        self::assertSame(16, (int) $this->pdo()->query(
             "SELECT COUNT(*) FROM information_schema.ROUTINES
              WHERE ROUTINE_SCHEMA = DATABASE()"
         )->fetchColumn());
@@ -480,7 +537,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
 
         $repository->delete(7);
         self::assertNull($repository->find(7));
-        self::assertSame(12, (int) $this->pdo()->query(
+        self::assertSame(16, (int) $this->pdo()->query(
             "SELECT COUNT(*) FROM information_schema.ROUTINES
              WHERE ROUTINE_SCHEMA = DATABASE()"
         )->fetchColumn());
@@ -491,6 +548,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         $this->runFreshSource('database/sql/tao_bang.sql', 1);
         $this->runFreshSource('database/sql/du_lieu_mau.sql', 1);
         $this->runFreshSource('database/sql/quyen_vai_tro.sql', 1);
+        $this->runFreshSource('database/sql/salary/2026_09_09_001_luong_functions.sql', 1);
     }
 
     private function runFreshSource(string $relativePath, int $expectedUseCount): void

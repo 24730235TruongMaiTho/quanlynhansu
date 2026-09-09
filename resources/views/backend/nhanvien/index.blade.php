@@ -37,7 +37,7 @@
         >
             <x-slot:actions>
             @if ($canCreate)
-                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm nhân viên" title="Thêm nhân viên" href="{{ route('backend.nhanvien.create') }}">
+                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm nhân viên" title="Thêm nhân viên" href="{{ route('backend.nhanvien.create') }}" data-employee-create-trigger data-employee-modal-mode="create">
                     <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm nhân viên
                 </a>
             @endif
@@ -229,7 +229,7 @@
                                         <div class="table-actions employee-table-actions flex-nowrap gap-1" data-action-buttons>
                                             <a class="btn btn-outline-primary" href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" aria-label="Xem {{ $employee->ho_ten }}" title="Xem {{ $employee->ho_ten }}"><i class="bi bi-eye button-icon" aria-hidden="true"></i>Xem</a>
                                             @if ($canEdit)
-                                                <a class="btn btn-outline-secondary btn-icon-action" href="{{ $editUrl }}" aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}"><i class="bi bi-pencil-square button-icon" aria-hidden="true"></i></a>
+                                                <a class="btn btn-outline-primary btn-icon-action" href="{{ $editUrl }}" data-employee-edit-trigger data-employee-modal-mode="edit" aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}"><i class="bi bi-pencil-square button-icon" aria-hidden="true"></i></a>
                                             @endif
                                             @if ($canDestroy && (string) auth()->id() !== (string) $employee->ma_nv)
                                                 <button class="btn btn-outline-danger btn-icon-action" type="button" data-dialog-open="{{ $destroyDialogId }}" aria-controls="{{ $destroyDialogId }}" aria-label="Xóa {{ $employee->ho_ten }}" title="Xóa {{ $employee->ho_ten }}"><i class="bi bi-trash button-icon" aria-hidden="true"></i></button>
@@ -249,7 +249,7 @@
                                         <noscript>
                                             <a href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}">Xem</a>
                                             @if ($canEdit)
-                                                <a href="{{ $editUrl }}">Chỉnh sửa</a>
+                                                <a class="btn btn-outline-primary btn-sm" href="{{ $editUrl }}" aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}"><i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa</a>
                                             @endif
                                         </noscript>
                                     </td>
@@ -293,7 +293,7 @@
             @endif
         </section>
 
-        @if ($canEdit)
+        @if ($canCreate || $canEdit)
             @include('backend.nhanvien.partials.edit-modal')
         @endif
     </main>

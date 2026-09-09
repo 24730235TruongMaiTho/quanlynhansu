@@ -1,4 +1,4 @@
-const LOAD_ERROR_MESSAGE = 'Không tải được biểu mẫu chỉnh sửa. Bạn có thể mở trang đầy đủ để tiếp tục.';
+const LOAD_ERROR_MESSAGE = 'Không tải được biểu mẫu. Vui lòng đóng popup và thử lại sau.';
 const UPDATE_ERROR_MESSAGE = 'Không thể cập nhật lúc này. Vui lòng thử lại sau.';
 const FORM_ERROR_FALLBACK = 'Không thể cập nhật. Vui lòng kiểm tra lại thông tin hoặc thử lại sau.';
 
@@ -129,24 +129,19 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
 
     let opener = null;
     let activeUrl = null;
+    let modalMode = 'edit';
     let loadingState = null;
     let loadGeneration = 0;
     let submitting = false;
 
-    const resetRecovery = () => {
+    const resetError = () => {
         setHidden(ui.error, true);
-        setHidden(ui.fallback, true);
-        setHidden(ui.retry, true);
-        setHidden(ui.recovery, true);
         if (ui.error) ui.error.textContent = '';
     };
 
-    const showRecovery = (message, allowRetry = true) => {
+    const showError = (message) => {
         if (ui.error) ui.error.textContent = message;
         setHidden(ui.error, false);
-        setHidden(ui.fallback, false);
-        setHidden(ui.retry, !allowRetry);
-        setHidden(ui.recovery, false);
     };
 
     const setLoading = (loading) => {
@@ -158,6 +153,12 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
         if (!ui.close) return;
         ui.close.disabled = disabled;
         ui.close.setAttribute?.('aria-disabled', disabled ? 'true' : 'false');
+    };
+
+    const setModalTitle = () => {
+        if (!ui.title) return;
+        const title = ui.title.getAttribute?.(modalMode === 'create' ? 'data-create-title' : 'data-edit-title');
+        if (title) ui.title.textContent = title;
     };
 
     const restoreFocus = () => {
@@ -178,6 +179,7 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
 
         loadGeneration += 1;
         activeUrl = null;
+        modalMode = 'edit';
         loadingState = null;
         submitting = false;
         setCloseDisabled(false);
@@ -189,28 +191,34 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
     const load = async () => {
         if (!activeUrl || !fetchImpl) {
             setLoading(false);
-            showRecovery(LOAD_ERROR_MESSAGE, false);
+            showError(LOAD_ERROR_MESSAGE);
             return;
         }
         if (loadingState?.url === activeUrl) return loadingState.promise;
 
         const generation = ++loadGeneration;
         setLoading(true);
-        resetRecovery();
+        resetError();
         if (ui.content) ui.content.innerHTML = '';
 
         const promise = (async () => {
             try {
-                const response = await fetchImpl(activeUrl, {
-                    headers: {
+                const headers = {
                         Accept: 'text/html',
                         'X-Requested-With': 'XMLHttpRequest',
-                        'X-Edit-Modal': '1',
-                    },
+                        'X-Form-Modal': modalMode,
+                    };
+                headers[modalMode === 'create' ? 'X-Create-Modal' : 'X-Edit-Modal'] = '1';
+                const response = await fetchImpl(activeUrl, {
+                    headers,
                     credentials: 'same-origin',
                 });
                 const html = await response.text();
-                if (!response.ok || !html.includes('data-simple-edit-form') || generation !== loadGeneration) {
+                if (
+                    !response.ok
+                    || (!html.includes('data-simple-edit-form') && !html.includes('data-simple-modal-form'))
+                    || generation !== loadGeneration
+                ) {
                     throw new Error('simple-edit-modal-load-failed');
                 }
                 ui.content.innerHTML = html;
@@ -219,7 +227,7 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
             } catch {
                 if (generation === loadGeneration) {
                     setLoading(false);
-                    showRecovery(LOAD_ERROR_MESSAGE);
+                    showError(LOAD_ERROR_MESSAGE);
                 }
             } finally {
                 if (loadingState?.promise === promise) loadingState = null;
@@ -233,7 +241,7 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
         submitting = false;
         setCloseDisabled(false);
         form?.removeAttribute?.('aria-busy');
-        form?.querySelectorAll?.('[data-submit-edit]').forEach((button) => {
+        form?.querySelectorAll?.('[data-submit-edit], [data-submit]').forEach((button) => {
             button.disabled = false;
             button.setAttribute?.('aria-disabled', 'false');
             if (button.dataset.previousText !== undefined) {
@@ -251,7 +259,7 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
         const action = formAction(form);
         if (!action || !fetchImpl) {
             event.preventDefault?.();
-            showRecovery(UPDATE_ERROR_MESSAGE, false);
+            showError(UPDATE_ERROR_MESSAGE);
             return null;
         }
         event.preventDefault?.();
@@ -259,7 +267,7 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
         setCloseDisabled(true);
         clearValidationErrors(form);
         form.setAttribute?.('aria-busy', 'true');
-        form.querySelectorAll?.('[data-submit-edit]').forEach((button) => {
+        form.querySelectorAll?.('[data-submit-edit], [data-submit]').forEach((button) => {
             button.disabled = true;
             button.setAttribute?.('aria-disabled', 'true');
             button.dataset.previousText ??= button.textContent;
@@ -283,7 +291,7 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
                 return payload;
             }
             if (!response.ok || payload?.success !== true) {
-                showRecovery(UPDATE_ERROR_MESSAGE, false);
+                showError(UPDATE_ERROR_MESSAGE);
                 finishSubmit(form);
                 return payload;
             }
@@ -291,16 +299,12 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
             navigation?.reload?.();
             return payload;
         } catch {
-            showRecovery(UPDATE_ERROR_MESSAGE, false);
+            showError(UPDATE_ERROR_MESSAGE);
             finishSubmit(form);
             return null;
         }
     };
 
-    ui.retry?.addEventListener?.('click', (event) => {
-        event.preventDefault?.();
-        load();
-    });
     ui.close?.addEventListener?.('click', (event) => {
         event.preventDefault?.();
         close();
@@ -318,12 +322,13 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
         submit(event.target, event);
     });
 
-    async function open(nextOpener, url) {
+    async function open(nextOpener, url, requestedMode = null) {
         if (!url || submitting) return null;
         opener = nextOpener;
         activeUrl = url;
-        if (ui.fallback) ui.fallback.href = url;
-        resetRecovery();
+        modalMode = requestedMode || nextOpener?.dataset?.modalMode || 'edit';
+        setModalTitle();
+        resetError();
         setLoading(true);
         if (typeof ui.dialog?.showModal === 'function' && !ui.dialog.open) {
             ui.dialog.showModal();
@@ -354,10 +359,8 @@ export function initializeSimpleEditModal(
         content: dialog.querySelector('[data-edit-modal-content]'),
         loading: dialog.querySelector('[data-edit-modal-loading]'),
         error: dialog.querySelector('[data-edit-modal-error]'),
-        recovery: dialog.querySelector('[data-edit-modal-recovery]'),
-        fallback: dialog.querySelector('[data-edit-modal-fallback]'),
-        retry: dialog.querySelector('[data-edit-modal-retry]'),
         close: dialog.querySelector('[data-edit-modal-close]'),
+        title: dialog.querySelector('[data-edit-modal-title]'),
     }, {
         fetch: typeof browser.fetch === 'function' ? browser.fetch.bind(browser) : undefined,
         navigation: browser.location || (typeof window !== 'undefined' ? window.location : null),

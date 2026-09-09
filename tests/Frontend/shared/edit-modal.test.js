@@ -139,9 +139,6 @@ function createHarness(fetchImpl) {
         content: new FakeContent(form),
         loading: new FakeElement(),
         error: new FakeElement(),
-        recovery: new FakeElement(),
-        fallback: new FakeElement(),
-        retry: new FakeElement(),
         close: new FakeElement(),
     };
     const navigation = { reloads: 0, reload() { this.reloads += 1; } };
@@ -156,8 +153,10 @@ function createHarness(fetchImpl) {
 
 test('loads a simple edit form on demand and restores the trigger after success', async () => {
     let requestCount = 0;
-    const { controller, form, ui, navigation } = createHarness(async () => {
+    const calls = [];
+    const { controller, form, ui, navigation } = createHarness(async (url, options) => {
         requestCount += 1;
+        calls.push({ url, options });
         return requestCount === 1
             ? response({ html: '<form data-simple-edit-form></form>' })
             : response({ json: { success: true, message: 'Đã cập nhật phòng ban.' } });
@@ -168,9 +167,35 @@ test('loads a simple edit form on demand and restores the trigger after success'
     await controller.submit(form, {});
 
     assert.equal(requestCount, 2);
+    assert.equal(calls[0].url, '/phong-ban/1/edit');
+    assert.equal(calls[0].options.headers['X-Edit-Modal'], '1');
+    assert.equal(calls[0].options.headers['X-Form-Modal'], 'edit');
     assert.equal(ui.dialog.open, false);
     assert.equal(navigation.reloads, 1);
     assert.equal(opener.focused, true);
+});
+
+test('loads a create form with create headers while trigger fallback remains outside the popup', async () => {
+    let requestCount = 0;
+    const calls = [];
+    const { controller, form, navigation } = createHarness(async (url, options) => {
+        requestCount += 1;
+        calls.push({ url, options });
+        return requestCount === 1
+            ? response({ html: '<form data-simple-modal-form></form>' })
+            : response({ json: { success: true, message: 'Đã thêm phòng ban.' } });
+    });
+    const opener = new FakeElement();
+    opener.dataset.modalMode = 'create';
+
+    await controller.open(opener, '/phong-ban/create');
+    await controller.submit(form, {});
+
+    assert.equal(calls[0].options.headers['X-Create-Modal'], '1');
+    assert.equal(calls[0].options.headers['X-Form-Modal'], 'create');
+    assert.equal(calls[1].options.method, 'POST');
+    assert.deepEqual(calls[1].options.body, { department: 1 });
+    assert.equal(navigation.reloads, 1);
 });
 
 test('renders form-level 422 errors and permits retry after validation failure', async () => {
@@ -192,6 +217,19 @@ test('renders form-level 422 errors and permits retry after validation failure',
     assert.equal(form.formError.textContent, 'Tên phòng ban đã tồn tại.');
     assert.equal(form.button.disabled, false);
     assert.equal(ui.dialog.open, true);
+});
+
+test('shows a safe load error and closes without popup recovery controls', async () => {
+    const { controller, ui } = createHarness(async () => response({ status: 503 }));
+
+    await controller.open(new FakeElement(), '/phong-ban/1/edit');
+
+    assert.equal(ui.error.hidden, false);
+    assert.match(ui.error.textContent, /Không tải được biểu mẫu/);
+    assert.match(ui.error.textContent, /đóng popup/i);
+    assert.doesNotMatch(ui.error.textContent, /mở trang đầy đủ/i);
+    assert.equal(controller.close(), true);
+    assert.equal(ui.dialog.open, false);
 });
 
 test('blocks close, cancel, Escape and opening another row while update is pending', async () => {

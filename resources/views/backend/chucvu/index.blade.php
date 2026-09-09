@@ -28,7 +28,7 @@
         >
             <x-slot:actions>
             @if ($canCreate)
-                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm chức vụ" title="Thêm chức vụ" href="{{ route('backend.chucvu.create') }}">
+                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm chức vụ" title="Thêm chức vụ" href="{{ route('backend.chucvu.create') }}" data-action="modal" data-modal-mode="create" data-modal-url="{{ route('backend.chucvu.create') }}">
                     <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm chức vụ
                 </a>
             @endif
@@ -167,10 +167,11 @@
             @endif
         </section>
 
-        @if ($canEdit)
+        @if ($canCreate || $canEdit)
             @include('backend.partials.simple-edit-modal', [
                 'modalId' => 'chuc-vu-edit-modal',
                 'title' => 'Chỉnh sửa chức vụ',
+                'createTitle' => 'Thêm chức vụ',
             ])
         @endif
     </main>

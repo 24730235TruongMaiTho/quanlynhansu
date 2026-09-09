@@ -23,7 +23,9 @@ test('parses a strict display date into date parts', () => {
 
 test('converts valid display dates to ISO without accepting impossible dates', () => {
     assert.equal(toIsoDate('03/09/2026'), '2026-09-03');
+    assert.equal(toIsoDate('2026-09-03'), '2026-09-03');
     assert.equal(toIsoDate('31/02/2026'), null);
+    assert.equal(toIsoDate('2026-02-31'), null);
 });
 
 test('requires the complete DD/MM/YYYY display format', () => {

@@ -17,6 +17,17 @@ function fieldValue(field) {
     return field.value.trim();
 }
 
+export function formatReviewDate(value, format = '') {
+    const normalized = String(value ?? '').trim();
+
+    if (format !== 'date-dmy' || !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+        return normalized;
+    }
+
+    const [year, month, day] = normalized.split('-');
+    return `${day}/${month}/${year}`;
+}
+
 function initializeWizard(form) {
     const page = form.closest('.employee-page');
     const steps = [...form.querySelectorAll('[data-wizard-step]')];
@@ -38,8 +49,9 @@ function initializeWizard(form) {
     const updateReview = () => {
         form.querySelectorAll('[data-review-output]').forEach((output) => {
             const source = form.elements.namedItem(output.dataset.reviewOutput);
-            output.textContent = source instanceof HTMLElement && fieldValue(source)
-                ? fieldValue(source)
+            const value = source instanceof HTMLElement ? fieldValue(source) : '';
+            output.textContent = value
+                ? formatReviewDate(value, output.dataset.reviewFormat)
                 : 'Chưa nhập';
         });
     };

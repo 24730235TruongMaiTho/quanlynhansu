@@ -1,11 +1,11 @@
--- Snapshot cập nhật toàn bộ DB canonical (generated at HEAD a96860e, 2026-08-31).
--- Canonical fresh sources (in this exact order):
+-- Canonical fresh database snapshot (generated; do not hand-edit).
+-- Sources are concatenated in this exact order:
 --   database/sql/tao_bang.sql
 --   database/sql/du_lieu_mau.sql
 --   database/sql/quyen_vai_tro.sql
--- CẢNH BÁO / WARNING: DESTRUCTIVE. Chỉ chạy trên DB rỗng/disposable hoặc DB đã backup và được phê duyệt.
--- Đây là artifact SQL tự chứa, KHÔNG phải live/production database dump.
--- Không chứa SQL supplemental/legacy; ba file database/sql ở trên vẫn là source of truth.
+--   database/sql/salary/2026_09_09_001_luong_functions.sql
+-- WARNING: DESTRUCTIVE. Chỉ chạy trên DB rỗng/disposable hoặc DB đã backup và được phê duyệt.
+-- This artifact is self-contained; the four source files remain the source of truth.
 DROP DATABASE IF EXISTS quan_ly_nhan_su;
 CREATE DATABASE quan_ly_nhan_su CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE quan_ly_nhan_su;
@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS luong (
     CONSTRAINT fk_luong_nhan_vien FOREIGN KEY (ma_nv) REFERENCES nhan_vien (ma_nv)
 ) ENGINE = InnoDB;
 -- ===== END ACTIVE SOURCE 1: database/sql/tao_bang.sql =====
+
 -- ===== BEGIN ACTIVE SOURCE 2: database/sql/du_lieu_mau.sql =====
 -- Dữ liệu mẫu active cho hợp đồng 15 bảng hiện hành.
 -- Chạy sau database/sql/tao_bang.sql và trước database/sql/quyen_vai_tro.sql
@@ -276,22 +277,24 @@ INSERT INTO quyen (ma_quyen, ky_hieu_quyen, ten_quyen, module) VALUES
 (34, N'Luong.Insert', N'Thêm', N'Luong'),
 (35, N'Luong.Update', N'Sửa', N'Luong'),
 (36, N'Luong.Delete', N'Xóa', N'Luong'),
-(37, N'HeThong.Config', N'Cấu hình', N'HeThong');
+(37, N'HeThong.Config', N'Cấu hình', N'HeThong'),
 (38, N'HeSoLuong.Read', N'Đọc', N'HeSoLuong'),
 (39, N'HeSoLuong.Insert', N'Thêm', N'HeSoLuong'),
 (40, N'HeSoLuong.Update', N'Sửa', N'HeSoLuong'),
-(41, N'HeSoLuong.Delete', N'Xóa', N'HeSoLuong')
-ALTER TABLE quyen AUTO_INCREMENT = 42;
+(41, N'HeSoLuong.Delete', N'Xóa', N'HeSoLuong'),
+(42, N'NhanVien.ResetPassword', N'Đặt lại mật khẩu', N'NhanVien'),
+(43, N'NghiPhep.Approve', N'Duyệt nghỉ phép', N'NghiPhep');
+ALTER TABLE quyen AUTO_INCREMENT = 44;
 
 -- ==================== 7. VaiTroQuyen ====================
 INSERT INTO vai_tro_quyen (ma_vt, ma_quyen) VALUES
 (1, 1),(1, 2),(1, 3),(1, 4),(1, 5),(1, 6),(1, 7),(1, 8),(1, 9),(1, 10),(1, 11),(1, 12),(1, 13),(1, 14),(1, 15),
 (1, 16),(1, 17),(1, 18),(1, 19),(1, 20),(1, 21),(1, 22),(1, 23),(1, 24),(1, 25),(1, 26),(1, 27),(1, 28),(1, 29),(1, 30),(1, 31),(1, 32),(1, 33),(1, 34),(1, 35),
-(1, 36),(1, 37),
+(1, 36),(1, 37),(1, 38),(1, 39),(1, 40),(1, 41),(1, 42),(1, 43),
 (2, 9),(2, 10),(2, 11),(2, 12),(2, 13),(2, 14),(2, 15),(2, 16),(2, 17),(2, 18),(2, 19),(2, 20),(2, 21),(2, 22),(2, 23),(2, 24),(2, 25),(2, 26),
-(2, 28),(2, 29),(2, 30),(2, 31),(2, 32),(2, 33),(2, 34),(2, 35),(2, 36),
+(2, 28),(2, 29),(2, 30),(2, 31),(2, 32),(2, 33),(2, 34),(2, 35),(2, 36),(2, 38),(2, 39),(2, 40),(2, 41),(2, 42),
 (3, 17),(3, 21),(3, 25),(3, 29),(3, 33),
-(4, 17),(4, 21),(4, 25),(4, 27),(4, 29);
+(4, 17),(4, 21),(4, 25),(4, 27),(4, 29),(4, 43);
 
 -- ==================== 8. LoaiHopDong ====================
 INSERT INTO loai_hop_dong (ma_lhd, ten_lhd) VALUES
@@ -395,6 +398,7 @@ ALTER TABLE luong AUTO_INCREMENT = 20;
 -- Bật lại kiểm tra khóa ngoại
 SET FOREIGN_KEY_CHECKS = 1;
 -- ===== END ACTIVE SOURCE 2: database/sql/du_lieu_mau.sql =====
+
 -- ===== BEGIN ACTIVE SOURCE 3: database/sql/quyen_vai_tro.sql =====
 -- Các thủ tục nghiệp vụ cho vai trò, quyền và gán vai trò nội bộ.
 -- Lược đồ hiện hành dùng mã số tường minh; không có cột ky_hieu trong vai_tro.
@@ -672,3 +676,258 @@ END//
 
 DELIMITER ;
 -- ===== END ACTIVE SOURCE 3: database/sql/quyen_vai_tro.sql =====
+
+-- ===== BEGIN ACTIVE SOURCE 4: database/sql/salary/2026_09_09_001_luong_functions.sql =====
+-- Canonical salary compatibility functions for the active 15-table contract.
+-- Run after tao_bang.sql, du_lieu_mau.sql and quyen_vai_tro.sql.
+--
+-- This focused source contains functions only. It intentionally creates no
+-- view or procedure, so the active salary repository can use the same
+-- 15-table schema on a fresh disposable database and on an approved existing
+-- database. Routine DDL implicitly commits in MariaDB/MySQL; verify the
+-- target and take an approved backup before replacing routines on an existing
+-- database.
+
+USE quan_ly_nhan_su;
+
+DELIMITER //
+
+DROP FUNCTION IF EXISTS fn_so_ngay_cong_chuan//
+
+CREATE FUNCTION fn_so_ngay_cong_chuan(
+    p_ma_nv VARCHAR(5),
+    p_ky_luong DATE
+)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE v_ky DATE;
+    DECLARE v_ngay_dau_thang DATE;
+    DECLARE v_ngay_cuoi_thang DATE;
+    DECLARE v_so_ngay_cong_chuan INT DEFAULT 0;
+
+    IF p_ma_nv IS NULL OR TRIM(p_ma_nv) = '' OR p_ky_luong IS NULL THEN
+        RETURN 0;
+    END IF;
+
+    SET v_ky = DATE_FORMAT(p_ky_luong, '%Y-%m-01');
+    SET v_ngay_dau_thang = v_ky;
+    SET v_ngay_cuoi_thang = LAST_DAY(v_ky);
+
+    SELECT COUNT(*) INTO v_so_ngay_cong_chuan
+    FROM cham_cong
+    WHERE ma_nv = p_ma_nv
+      AND ngay_lam BETWEEN v_ngay_dau_thang AND v_ngay_cuoi_thang
+      AND so_gio_lam > 0;
+
+    RETURN IFNULL(v_so_ngay_cong_chuan, 0);
+END//
+
+DROP FUNCTION IF EXISTS fn_so_ngay_cong_thuc_te//
+
+CREATE FUNCTION fn_so_ngay_cong_thuc_te(
+    p_ma_nv VARCHAR(5),
+    p_ky_luong DATE
+)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    DECLARE v_ky DATE;
+    DECLARE v_ngay_dau_thang DATE;
+    DECLARE v_ngay_cuoi_thang DATE;
+    DECLARE v_so_ngay_cong_thuc_te DECIMAL(10,2) DEFAULT 0;
+
+    IF p_ma_nv IS NULL OR TRIM(p_ma_nv) = '' OR p_ky_luong IS NULL THEN
+        RETURN 0;
+    END IF;
+
+    SET v_ky = DATE_FORMAT(p_ky_luong, '%Y-%m-01');
+    SET v_ngay_dau_thang = v_ky;
+    SET v_ngay_cuoi_thang = LAST_DAY(v_ky);
+
+    SELECT SUM(
+        CASE
+            WHEN so_gio_lam >= 8 THEN 1.0
+            WHEN so_gio_lam >= 4 THEN 0.5
+            ELSE 0
+        END
+    ) INTO v_so_ngay_cong_thuc_te
+    FROM cham_cong
+    WHERE ma_nv = p_ma_nv
+      AND ngay_lam BETWEEN v_ngay_dau_thang AND v_ngay_cuoi_thang;
+
+    RETURN IFNULL(v_so_ngay_cong_thuc_te, 0);
+END//
+
+DROP FUNCTION IF EXISTS fn_tinh_luong_thuc_nhan//
+
+CREATE FUNCTION fn_tinh_luong_thuc_nhan(
+    p_ma_nv VARCHAR(5),
+    p_ky_luong DATE
+)
+RETURNS DECIMAL(18,0)
+DETERMINISTIC
+BEGIN
+    DECLARE v_luong_co_ban DECIMAL(18,2);
+    DECLARE v_ky DATE;
+    DECLARE v_he_so_luong DECIMAL(18,2);
+    DECLARE v_so_ngay_cong_chuan INT DEFAULT 0;
+    DECLARE v_so_ngay_cong_thuc_te DECIMAL(10,2) DEFAULT 0;
+    DECLARE v_phu_cap_chuc_vu DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_thuong DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_phat DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_bao_hiem DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_thue DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_luong_theo_ngay_cong DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_thuc_nhan DECIMAL(18,0) DEFAULT 0;
+
+    IF p_ma_nv IS NULL OR TRIM(p_ma_nv) = '' OR p_ky_luong IS NULL THEN
+        RETURN 0;
+    END IF;
+
+    SET v_ky = DATE_FORMAT(p_ky_luong, '%Y-%m-01');
+
+    -- Pick the latest effective contract, matching the historical salary rule.
+    SELECT (
+        SELECT hd.luong_co_ban
+        FROM hop_dong AS hd
+        WHERE hd.ma_nv = p_ma_nv
+          AND p_ky_luong BETWEEN hd.ngay_ky AND IFNULL(hd.ngay_het_han, p_ky_luong)
+        ORDER BY hd.ngay_ky DESC
+        LIMIT 1
+    ) INTO v_luong_co_ban;
+
+    -- Pick the latest effective coefficient; the active schema stores den_ngay
+    -- as NOT NULL, but IFNULL keeps this function safe for compatible fixtures.
+    SELECT (
+        SELECT ls.he_so_luong
+        FROM lich_su_he_so_luong AS ls
+        WHERE ls.ma_nv = p_ma_nv
+          AND p_ky_luong BETWEEN ls.tu_ngay AND IFNULL(ls.den_ngay, p_ky_luong)
+        ORDER BY ls.tu_ngay DESC
+        LIMIT 1
+    ) INTO v_he_so_luong;
+
+    IF v_luong_co_ban IS NULL OR v_he_so_luong IS NULL THEN
+        RETURN 0;
+    END IF;
+
+    SET v_so_ngay_cong_chuan = fn_so_ngay_cong_chuan(p_ma_nv, v_ky);
+    SET v_so_ngay_cong_thuc_te = fn_so_ngay_cong_thuc_te(p_ma_nv, v_ky);
+
+    IF v_so_ngay_cong_chuan IS NULL OR v_so_ngay_cong_chuan = 0 THEN
+        RETURN 0;
+    END IF;
+
+    SELECT COALESCE((
+        SELECT cv.he_so_phu_cap
+        FROM nhan_vien AS nv
+        INNER JOIN chuc_vu AS cv ON cv.ma_cv = nv.ma_cv
+        WHERE nv.ma_nv = p_ma_nv
+        LIMIT 1
+    ), 0) INTO v_phu_cap_chuc_vu;
+
+    SELECT
+        COALESCE((SELECT l.thuong FROM luong AS l WHERE l.ma_nv = p_ma_nv AND l.ky_luong = v_ky LIMIT 1), 0),
+        COALESCE((SELECT l.phat FROM luong AS l WHERE l.ma_nv = p_ma_nv AND l.ky_luong = v_ky LIMIT 1), 0),
+        COALESCE((SELECT l.bao_hiem FROM luong AS l WHERE l.ma_nv = p_ma_nv AND l.ky_luong = v_ky LIMIT 1), 0),
+        COALESCE((SELECT l.thue FROM luong AS l WHERE l.ma_nv = p_ma_nv AND l.ky_luong = v_ky LIMIT 1), 0)
+    INTO v_thuong, v_phat, v_bao_hiem, v_thue;
+
+    SET v_luong_theo_ngay_cong =
+        (v_luong_co_ban / v_so_ngay_cong_chuan)
+        * v_so_ngay_cong_thuc_te
+        * v_he_so_luong;
+
+    SET v_thuc_nhan =
+        v_luong_theo_ngay_cong
+        + v_phu_cap_chuc_vu * v_luong_co_ban
+        + v_thuong
+        - v_phat
+        - v_thue
+        - v_bao_hiem;
+
+    RETURN v_thuc_nhan;
+END//
+
+DROP FUNCTION IF EXISTS fn_thong_bao_tinh_luong//
+
+CREATE FUNCTION fn_thong_bao_tinh_luong(
+    p_ma_nv VARCHAR(5),
+    p_ky_luong DATE
+)
+RETURNS VARCHAR(255)
+NOT DETERMINISTIC
+READS SQL DATA
+BEGIN
+    DECLARE v_ky DATE;
+    DECLARE v_so_ngay_cong_chuan INT DEFAULT 0;
+    DECLARE v_so_ngay_cong_thuc_te DECIMAL(10,2) DEFAULT 0;
+
+    IF p_ma_nv IS NULL OR TRIM(p_ma_nv) = '' THEN
+        RETURN 'Thiếu mã nhân viên';
+    END IF;
+
+    IF p_ky_luong IS NULL THEN
+        RETURN 'Thiếu kỳ lương';
+    END IF;
+
+    SET v_ky = DATE_FORMAT(p_ky_luong, '%Y-%m-01');
+
+    IF NOT EXISTS (
+        SELECT 1 FROM nhan_vien WHERE ma_nv = p_ma_nv
+    ) THEN
+        RETURN 'Nhân viên không tồn tại';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM luong WHERE ma_nv = p_ma_nv AND ky_luong = v_ky
+    ) THEN
+        RETURN CONCAT('Chưa tạo thông tin lương kỳ ', DATE_FORMAT(v_ky, '%m/%Y'));
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM hop_dong
+        WHERE ma_nv = p_ma_nv
+          AND v_ky BETWEEN ngay_ky AND IFNULL(ngay_het_han, v_ky)
+          AND luong_co_ban > 0
+    ) THEN
+        RETURN 'Chưa có hợp đồng hoặc lương cơ bản hiệu lực';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM lich_su_he_so_luong
+        WHERE ma_nv = p_ma_nv
+          AND v_ky BETWEEN tu_ngay AND IFNULL(den_ngay, v_ky)
+          AND he_so_luong > 0
+    ) THEN
+        RETURN 'Chưa có hệ số lương hiệu lực';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM cham_cong
+        WHERE ma_nv = p_ma_nv
+          AND ngay_lam >= v_ky
+          AND ngay_lam < DATE_ADD(v_ky, INTERVAL 1 MONTH)
+    ) THEN
+        RETURN 'Chưa có dữ liệu chấm công trong kỳ';
+    END IF;
+
+    SET v_so_ngay_cong_chuan = fn_so_ngay_cong_chuan(p_ma_nv, v_ky);
+    IF IFNULL(v_so_ngay_cong_chuan, 0) = 0 THEN
+        RETURN 'Chưa có ngày công hợp lệ trong kỳ';
+    END IF;
+
+    SET v_so_ngay_cong_thuc_te = fn_so_ngay_cong_thuc_te(p_ma_nv, v_ky);
+    IF IFNULL(v_so_ngay_cong_thuc_te, 0) = 0 THEN
+        RETURN 'Số giờ làm chưa đủ để quy đổi ngày công';
+    END IF;
+
+    RETURN 'Hoàn tất tính lương';
+END//
+
+DELIMITER ;
+-- ===== END ACTIVE SOURCE 4: database/sql/salary/2026_09_09_001_luong_functions.sql =====

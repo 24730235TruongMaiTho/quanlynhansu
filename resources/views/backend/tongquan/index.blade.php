@@ -47,8 +47,7 @@
                 </div>
             </div>
             @if (\Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Xem->value)
-                && \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Sua->value)
-                && \Illuminate\Support\Facades\Gate::allows('department-manager'))
+                && \Illuminate\Support\Facades\Gate::allows(\App\Enums\NghiPhepPermission::Duyet->value))
             <div class="col-12 col-sm-6 col-lg-3">
                 <a class="card h-100 shadow-sm border-0 rounded-3 text-decoration-none" href="{{ route('backend.nghiphep.index') . '#leave-table-card' }}" aria-label="Mở danh sách nghỉ phép chờ duyệt">
                     <div class="card-body">
@@ -60,8 +59,8 @@
                             </div>
                             <div class="flex-grow-1 ms-3">
                                 <h6 class="text-muted mb-1">Nghỉ phép chờ duyệt</h6>
-                                <h2 class="mb-0 fw-bold" id="pendingDepartmentLeaveCount">—</h2>
-                                <small class="text-muted">Phòng ban của bạn</small>
+                                <h2 class="mb-0 fw-bold" id="pendingLeaveCount">—</h2>
+                                <small class="text-muted">Toàn công ty</small>
                             </div>
                         </div>
                     </div>
@@ -408,8 +407,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const contracts = data.hop_dong_sap_het_han || [];
         document.getElementById('expiringContracts').textContent = contracts.length;
 
-        const pendingLeaveCount = data.pending_department_leave_count;
-        const pendingLeaveCountElement = document.getElementById('pendingDepartmentLeaveCount');
+        const pendingLeaveCount = data.pending_leave_count;
+        const pendingLeaveCountElement = document.getElementById('pendingLeaveCount');
         if (pendingLeaveCountElement) {
             pendingLeaveCountElement.textContent = pendingLeaveCount === null || pendingLeaveCount === undefined
                 ? '—'

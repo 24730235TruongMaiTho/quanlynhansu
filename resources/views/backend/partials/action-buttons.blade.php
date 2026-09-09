@@ -37,7 +37,7 @@
         <a class="btn btn-sm btn-outline-primary" href="{{ $viewUrl }}" aria-label="{{ $viewLabel }}"><i class="bi bi-eye button-icon" aria-hidden="true"></i>{{ $viewLabel }}</a>
     @endif
     @if ($editUrl && $canEdit)
-        <a class="btn btn-sm btn-outline-secondary btn-icon-action" href="{{ $editUrl }}" aria-label="{{ $editLabel }}" title="{{ $editLabel }}"><i class="bi bi-pencil-square button-icon" aria-hidden="true"></i></a>
+        <a class="btn btn-sm btn-outline-primary btn-icon-action" href="{{ $editUrl }}" aria-label="{{ $editLabel }}" title="{{ $editLabel }}"><i class="bi bi-pencil-square button-icon" aria-hidden="true"></i></a>
     @endif
     @if ($deleteUrl && $canDelete)
         <form method="POST" action="{{ $deleteUrl }}" class="d-inline" data-confirm-action="delete" data-confirm-message="{{ $deleteConfirmMessage }}">

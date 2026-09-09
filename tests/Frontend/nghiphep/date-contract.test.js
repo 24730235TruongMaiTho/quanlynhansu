@@ -16,13 +16,28 @@ const scripts = [
     'resources/js/frontend/nghiphep/duyet-nghi-phep.js',
 ];
 
-test('all leave date inputs use the shared text/display-date contract', () => {
-    const source = blades.map(read).join('\n');
+test('all leave date inputs use the native ISO date contract', () => {
+    const expected = [
+        ['resources/views/backend/nghiphep/index.blade.php', 'leave-from-date'],
+        ['resources/views/backend/nghiphep/index.blade.php', 'leave-to-date'],
+        ['resources/views/backend/nghiphep/create.blade.php', 'leave-from-date'],
+        ['resources/views/backend/nghiphep/create.blade.php', 'leave-to-date'],
+        ['resources/views/backend/nghiphep/create.blade.php', 'leave-log-from-date'],
+        ['resources/views/backend/nghiphep/create.blade.php', 'leave-log-to-date'],
+        ['resources/views/backend/nghiphep/duyet-nghi-phep.blade.php', 'leave-filter-from'],
+        ['resources/views/backend/nghiphep/duyet-nghi-phep.blade.php', 'leave-filter-to'],
+    ];
 
-    assert.doesNotMatch(source, /type="date"/);
-    assert.ok((source.match(/placeholder="dd\/mm\/yyyy"/g) || []).length >= 6);
-    assert.ok((source.match(/inputmode="numeric"/g) || []).length >= 6);
-    assert.ok((source.match(/maxlength="10"/g) || []).length >= 6);
+    for (const [path, id] of expected) {
+        const source = read(path);
+        const input = source.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`, 's'))?.[0] || '';
+        assert.ok(input, `${path} must render #${id}`);
+        assert.match(input, /\btype="date"/);
+        assert.doesNotMatch(input, /placeholder="dd\/mm\/yyyy"|inputmode="numeric"|maxlength="10"/);
+    }
+
+    const source = blades.map(read).join('\n');
+    assert.doesNotMatch(source, /dd\/mm\/yyyy/);
 });
 
 test('leave scripts use strict shared conversion and avoid locale date parsing', () => {
@@ -58,6 +73,15 @@ test('leave invalid date feedback is field-level and blocks transport', () => {
     assert.match(admin, /leave-from-date-error/);
     assert.match(approval, /leave-filter-from-error/);
     assert.match(approval, /toIsoDate/);
+    assert.doesNotMatch(`${create}\n${admin}\n${approval}`, /dd\/mm\/yyyy/);
+});
+
+test('leave edit modal prefills native date inputs with canonical ISO values', () => {
+    const source = read('resources/js/frontend/nghiphep/nghiphep.js');
+
+    assert.match(source, /canonicalServerDate/);
+    assert.match(source, /leaveFromDate\.value\s*=\s*canonicalServerDate/);
+    assert.match(source, /leaveToDate\.value\s*=\s*canonicalServerDate/);
 });
 
 test('leave log row actions use canonical Bootstrap Icons', () => {

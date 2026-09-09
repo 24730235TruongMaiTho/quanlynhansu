@@ -185,16 +185,30 @@ class NhanVienValidationTest extends TestCase
         }
     }
 
-    public function test_all_four_address_parts_are_required_after_trimming(): void
+    public function test_three_visible_address_parts_are_required_after_trimming(): void
     {
-        foreach (['dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh'] as $field) {
+        foreach (['dia_chi_cu_the', 'phuong_xa', 'tinh_thanh'] as $field) {
             $this->postJson('/_tests/nhan-vien', $this->validPayload([$field => '   ']))
                 ->assertUnprocessable()
-                ->assertJsonValidationErrors($field);
+                ->assertJsonValidationErrors($field)
+                ->assertJsonPath(
+                    "errors.{$field}.0",
+                    'Vui lòng nhập đủ Địa chỉ cụ thể, Phường/Xã và Tỉnh/Thành phố hoặc để trống toàn bộ.',
+                );
         }
     }
 
-    public function test_all_four_address_parts_may_be_omitted_together(): void
+    public function test_store_accepts_three_visible_address_parts_without_optional_district(): void
+    {
+        $payload = $this->validPayload();
+        unset($payload['quan_huyen']);
+
+        $this->postJson('/_tests/nhan-vien', $payload)
+            ->assertOk()
+            ->assertJsonMissingPath('quan_huyen');
+    }
+
+    public function test_three_visible_address_parts_may_be_omitted_together(): void
     {
         $this->postJson('/_tests/nhan-vien', $this->validPayload([
             'dia_chi_cu_the' => null,
@@ -347,13 +361,23 @@ class NhanVienValidationTest extends TestCase
         }
     }
 
-    public function test_update_requires_all_address_parts_or_none(): void
+    public function test_update_requires_three_visible_address_parts_or_none(): void
     {
         $this->putJson('/_tests/nhan-vien/00001', $this->validPayload([
             'phuong_xa' => '   ',
         ]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('phuong_xa');
+    }
+
+    public function test_update_accepts_three_visible_address_parts_without_optional_district(): void
+    {
+        $payload = $this->validPayload();
+        unset($payload['quan_huyen']);
+
+        $this->putJson('/_tests/nhan-vien/00001', $payload)
+            ->assertOk()
+            ->assertJsonMissingPath('quan_huyen');
     }
 
     public function test_update_returns_safe_not_found_before_validation_when_route_employee_does_not_exist(): void

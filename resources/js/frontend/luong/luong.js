@@ -2,7 +2,6 @@ import '../../../css/luong/salary-bootstrap.css';
 
 import {
     PERMISSION_CODES,
-    COEFFICIENT_PERMISSION_CODES,
     initializeSalaryPermissionUI,
     can,
     guard,
@@ -117,6 +116,8 @@ document.addEventListener(
 
             abortController: null,
 
+            selectedEmployeeCode: null,
+
             filters: {
                 ma_nv: null,
                 ky_luong: null,
@@ -141,29 +142,6 @@ document.addEventListener(
                 .replaceAll('>', '&gt;')
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#039;');
-        }
-
-        function getInitials(fullName) {
-            const words =
-                String(fullName || '')
-                    .trim()
-                    .split(/\s+/)
-                    .filter(Boolean);
-
-            if (words.length === 0) {
-                return 'NV';
-            }
-
-            if (words.length === 1) {
-                return words[0]
-                    .substring(0, 2)
-                    .toUpperCase();
-            }
-
-            return (
-                words[words.length - 2][0] +
-                words[words.length - 1][0]
-            ).toUpperCase();
         }
 
         function formatMoney(value) {
@@ -229,10 +207,6 @@ document.addEventListener(
 
         function iconDelete() {
             return '<i class="bi bi-trash" aria-hidden="true"></i>';
-        }
-
-        function iconCoefficient() {
-            return '<i class="bi bi-sliders" aria-hidden="true"></i>';
         }
 
         function iconCreate() {
@@ -468,32 +442,12 @@ document.addEventListener(
             }
 
             if (
-                can(
-                    COEFFICIENT_PERMISSION_CODES.READ
-                )
-            ) {
-                actions.push(`
-                    <button
-                        class="btn salary-icon-action btn-icon-action"
-                        type="button"
-                        data-salary-action="coefficient"
-                        data-employee-code="${escapeHtml(employeeCode)}"
-                        data-employee-name="${escapeHtml(employeeName)}"
-                        title="Hệ số lương"
-                        aria-label="Xem hệ số lương của ${escapeHtml(employeeName)}"
-                    >
-                        ${iconCoefficient()}
-                    </button>
-                `);
-            }
-
-            if (
                 can(PERMISSION_CODES.UPDATE) &&
                 hasSalary
             ) {
                 actions.push(`
                     <button
-                        class="btn salary-icon-action btn-icon-action"
+                        class="btn btn-outline-primary salary-icon-action btn-icon-action"
                         type="button"
                         data-salary-action="edit"
                         data-id="${escapeHtml(salaryId)}"
@@ -526,7 +480,8 @@ document.addEventListener(
 
             if (
                 can(PERMISSION_CODES.INSERT) &&
-                !hasSalary
+                !hasSalary &&
+                employeeCode
             ) {
                 actions.push(`
                     <button
@@ -569,8 +524,9 @@ document.addEventListener(
                             'Chưa cập nhật';
 
                         const employeeCode =
-                            salary.ma_nv ||
-                            'N/A';
+                            String(salary.ma_nv ?? '').trim();
+                        const employeeCodeLabel =
+                            employeeCode || 'N/A';
 
                         const departmentName =
                             salary.ten_pb ||
@@ -637,20 +593,20 @@ document.addEventListener(
                                 </span>
                             `;
                         return `
-                            <tr data-salary-id="${escapeHtml(
+                            <tr
+                                data-salary-id="${escapeHtml(
                             salary.ma_luong ||
                             ''
-                        )}">
+                        )}"
+                                data-salary-row
+                                data-employee-code="${escapeHtml(employeeCode)}"
+                                data-employee-name="${escapeHtml(employeeName)}"
+                                tabindex="0"
+                                aria-selected="${state.selectedEmployeeCode === employeeCode ? 'true' : 'false'}"
+                                class="${state.selectedEmployeeCode === employeeCode ? 'salary-row-selected' : ''}"
+                            >
                                 <td>
                                     <div class="employee">
-                                        <div class="avatar">
-                                            ${escapeHtml(
-                            getInitials(
-                                employeeName
-                            )
-                        )}
-                                        </div>
-
                                         <div>
                                             <div class="employee-name">
                                                 ${escapeHtml(
@@ -660,7 +616,7 @@ document.addEventListener(
 
                                             <div class="meta">
                                                 ${escapeHtml(
-                            employeeCode
+                            employeeCodeLabel
                         )}
                                             </div>
                                         </div>
@@ -1358,6 +1314,14 @@ document.addEventListener(
                     oldText;
             }
         }
+
+        document.addEventListener(
+            'salary:employee-selected',
+            (event) => {
+                state.selectedEmployeeCode =
+                    String(event.detail?.employeeCode ?? '').trim() || null;
+            }
+        );
 
         document.addEventListener(
             'salary:data-changed',

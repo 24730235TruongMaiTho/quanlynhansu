@@ -1,18 +1,44 @@
 # Database và hợp đồng SQL active
 
-> Cập nhật 2026-08-27. Runtime đã kiểm chứng là MariaDB 10.4.32; chưa claim MySQL 8. Database live không phải acceptance target.
+> Cập nhật 2026-09-09. Runtime đã kiểm chứng là MariaDB 10.4.32; chưa claim MySQL 8. Database live không phải acceptance target.
 
 ## Nguồn fresh duy nhất
 
-Chạy lần lượt trên database rỗng/disposable đã được phê duyệt:
+### Snapshot fresh tự chứa
+
+`quan_ly_nhan_vien_session_update.sql` là snapshot **destructive** có `DROP
+DATABASE`; chỉ chạy trên database rỗng/disposable hoặc target đã backup và
+được phê duyệt. Snapshot được ghép theo đúng thứ tự các nguồn sau:
 
 ```text
 database/sql/tao_bang.sql
 database/sql/du_lieu_mau.sql
 database/sql/quyen_vai_tro.sql
+database/sql/salary/2026_09_09_001_luong_functions.sql
 ```
 
-Ba file active tạo đúng 15 bảng, seed 19 nhân viên, 37 quyền và 12 thủ tục RBAC. `tao_bang.sql` tạo schema; `du_lieu_mau.sql` tạo master/employee/business sample; `quyen_vai_tro.sql` tạo procedure vai trò/quyền và assignment nội bộ. Các file SQL ở root, `quan_ly_nhan_su.session.sql`, `LocalDemoSeeder` và script employee cũ chỉ là lịch sử.
+Các nguồn active tạo đúng 15 bảng, seed 19 nhân viên, 43 quyền, 12 thủ tục
+RBAC và 4 hàm lương. `tao_bang.sql` tạo schema; `du_lieu_mau.sql` tạo
+master/employee/business sample; `quyen_vai_tro.sql` tạo procedure vai trò/quyền
+và assignment nội bộ; source salary chỉ tạo 4 hàm tương thích trên 15 bảng.
+Các file SQL ở root, `quan_ly_nhan_su.session.sql`, `LocalDemoSeeder` và script
+employee cũ chỉ là lịch sử.
+
+### Database đã có dữ liệu
+
+Không import snapshot fresh vào database cần giữ dữ liệu. Sau khi xác nhận
+đúng target, preflight, backup và approval, chạy các script additive/idempotent
+riêng lẻ:
+
+```text
+database/sql/rbac/2026_09_09_001_add_nghiphep_approve_permission.sql
+database/sql/salary/2026_09_09_001_luong_functions.sql
+```
+
+Script RBAC chỉ thêm quyền `NghiPhep.Approve` khi metadata không xung đột;
+script salary chỉ replace 4 function cần cho danh sách lương, không tạo view
+hoặc procedure. Routine DDL của MariaDB/MySQL có thể implicit commit, nên vẫn
+phải dùng quy trình backup/rollout phù hợp.
 
 Không import SQL active vào database cần giữ dữ liệu. Trước mọi DDL phải xác nhận target, backup và approval; không dùng web request cho backup/restore/import/export. Không tự tạo procedure bằng phỏng đoán để làm xanh caller.
 
@@ -48,20 +74,29 @@ Auth/CRUD Nhân viên dùng explicit Query Builder trên connection mặc địn
 
 `ChucVuRepository` dùng Query Builder trực tiếp trên `chuc_vu` và `nhan_vien`, trả `ma_cv`, `ten_cv`, `he_so_phu_cap`, `so_nhan_vien`; mutation dùng transaction/row lock và mã lỗi `CV_*`. Các `sp_chuc_vu_*` cũ không phải caller active.
 
-## Procedure RBAC active
+## Procedure RBAC và function lương active
 
 `quyen_vai_tro.sql` hiện tạo 12 procedure cho vai trò, quyền và gán role nội bộ: `sp_vai_tro_them`, `sp_vai_tro_sua`, `sp_vai_tro_xoa`, `sp_vai_tro_danh_sach`, `sp_quyen_them`, `sp_quyen_danh_sach`, `sp_quyen_xoa`, `sp_quyen_lay_theo_ma_nhan_vien`, `sp_vai_tro_quyen_them`, `sp_vai_tro_quyen_xoa`, `sp_vai_tro_quyen_lay_quyen_theo_vai_tro`, `sp_nhan_vien_gan_vai_tro_noi_bo`. Không coi procedure legacy khác là active chỉ vì còn nằm trong dump lịch sử hoặc live schema cũ.
 
+`database/sql/salary/2026_09_09_001_luong_functions.sql` tạo 4 function
+`fn_so_ngay_cong_chuan`, `fn_so_ngay_cong_thuc_te`,
+`fn_tinh_luong_thuc_nhan` và `fn_thong_bao_tinh_luong`. Source này không phụ
+thuộc view legacy hay procedure lương phân trang.
+
+Quyền `NghiPhep.Approve` (id 43) là custom action, được registry kiểm tra
+theo symbol/metadata thay vì ánh xạ CRUD. Approval dùng Query Builder
+companywide; không gọi `sp_nghi_phep_duyet_phep`. Upgrade additive tương ứng
+nằm ở `database/sql/rbac/2026_09_09_001_add_nghiphep_approve_permission.sql` và
+phải chạy sau preflight/backup được phê duyệt.
+
 ## Lệch caller ngoài ownership
 
-Các procedure sau **không có trong ba SQL active** và không được ghi là có trong active/live contract:
+Các procedure sau **không có trong các SQL active** và không được ghi là có trong active/live contract:
 
 | Caller hiện tại | Procedure thiếu | Hậu quả |
 | --- | --- | --- |
-| `LuongRepository@all` | `sp_luong_tim_kiem_phan_trang` | API danh sách lương bị block |
 | `ChamCongController` lookup | `sp_phong_ban_danh_sach` | Lookup phòng ban của Chấm công lệch contract |
 | `ChamCongController` update | `sp_cham_cong_cap_nhat` | Update Chấm công không có routine active |
-| `NghiPhepController` approve | `sp_nghi_phep_duyet_phep` | Duyệt Nghỉ phép bị block |
 
 `sp_cham_cong_chi_tiet_phan_trang` cũng không thuộc active contract; chi tiết Chấm công hiện có nhánh Query Builder riêng. Model/validation/API naming/exception của module ngoài ownership còn legacy drift. Các mục này chỉ note, không sửa trong task Nhân viên/Phòng ban/Chức vụ nếu chưa được giao.
 
@@ -91,6 +126,7 @@ Wrapper phải giữ target disposable, process-scoped credential và cleanup. K
 
 - Runtime production chưa chốt DBMS ngoài MariaDB 10.4.32.
 - Không có quy trình rollout/backup/restore production đã được approval trong web.
-- Module Lương, Chấm công, Nghỉ phép còn caller procedure thiếu như bảng trên.
+- Module Chấm công còn caller procedure thiếu như bảng trên; Lương dùng 4
+  function tương thích active; Nghỉ phép approval hiện dùng Query Builder active.
 - Hợp đồng và RBAC quản trị mới chỉ verified hẹp hoặc thiếu mutation/browser evidence.
 - Không log raw SQL exception, SQLSTATE, credential, password hash hay filesystem path.

@@ -1,5 +1,233 @@
 # Trạng thái dự án
 
+## Current verified UI slice: Dọn action header Nghỉ phép và audit avatar — 2026-09-09
+
+Header `/nghi-phep` đã bỏ đúng hai action `Lịch nghỉ` (`#calendar-btn`) và
+`Thêm nghỉ phép` (`#create-btn`); không đổi tab `Lịch sử nghỉ phép`, bộ lọc
+Từ ngày/Đến ngày hoặc `Xem tất cả lịch nghỉ` (`#all-leaves-btn`).
+`nghiphep.js` đã bỏ lookup/listener tương ứng và dòng cập nhật
+`elements.createButton.disabled`; modal Sửa, quyền Insert và trang tạo
+self-service vẫn giữ nguyên.
+
+RED trước implementation: frontend leave contract `1 failed, 13 passed` vì
+DOM/JS còn hai action header. GREEN: targeted leave `30/30`, toàn bộ
+`tests/Frontend` enumeration `145/145`, `npm run test:frontend` `91/91`; full
+Laravel `506 passed, 4006 assertions`; Vite `31 modules`; route except-vendor
+`95`, duplicate name/signature `0`; Composer, PHP lint và `git diff --check`
+pass. Chrome read-only xác nhận `/nghi-phep` header chỉ còn title/description,
+không có `Lịch nghỉ`/`Thêm nghỉ phép`; tab `Lịch sử nghỉ phép` vẫn mở, filter
+Từ ngày/Đến ngày là `2026-06-09` đến `2026-09-09`, nút `Xem tất cả lịch nghỉ`
+vẫn còn. Console không có error/warning, chỉ informational Employee paging
+API log.
+
+Avatar audit read-only xác nhận DB lưu relative owned path; public disk mặc định
+URL `/storage` và hỗ trợ `PUBLIC_STORAGE_URL`; auth projection, topbar, list và
+show dùng `Storage::disk('public')->url`. Test avatar hiện có `4 passed,
+12 assertions`. Local `public/storage` là junction tới
+`storage/app/public`, không tracked. Fresh clone/pull cần chạy
+`php artisan storage:link`; nếu `.env` hoặc config cache cũ, chạy thêm
+`php artisan config:clear`. Chrome read-only avatar DOM/topbar có `src`
+`/storage/nhan-vien/avatars/8cdb3974-4702-4427-8053-118818de85d3.jpg`,
+`complete=true`, `naturalWidth=2048`, `naturalHeight=1362`. Không submit,
+mutation, upload hoặc symlink change; chưa kiểm tra multi-role, responsive và
+fresh-clone acceptance.
+
+## Current verified UI slice: Popup tạo Hợp đồng — 2026-09-09
+
+Nút `Thêm hợp đồng` trên `/hop-dong` giờ mở native popup khi JavaScript hoạt
+động, vẫn giữ `href` thật tới `/hop-dong/create` làm fallback no-JS. GET có
+header modal trả partial form đầy đủ; form dùng lại CSRF, field, ngày hiển thị
+native datepicker với value ISO `Y-m-d`, logic thời hạn và formatter lương.
+Request Hợp đồng chấp nhận cả ISO native ở POST/PUT thường và JSON lẫn legacy
+`dd/mm/yyyy`, đồng thời từ chối ngày không hợp lệ/mơ hồ. POST AJAX trả JSON
+`201`, validation `422` hoặc lỗi an toàn `500`, thành công đóng popup và reload
+danh sách. Lương lọc chữ số và nhóm dấu chấm permissive khi gõ liên tục,
+submit vẫn gửi canonical digits với giới hạn server/DB 18 chữ số. Sửa hợp đồng
+cũng mở cùng dialog với `href` thật làm fallback, partial PUT và JSON update;
+edit/delete behavior còn lại không đổi. Dialog chỉ render khi có `HopDong.Insert`
+hoặc `HopDong.Update`.
+
+RED trước implementation: regression gõ salary tuần tự và edit-modal contract
+failed (frontend `2 failed`; feature `6 failed`). GREEN sau implementation:
+focused Hợp đồng/date/modal `30 passed, 262 assertions`; toàn bộ frontend
+enumeration `144/144`; npm script `90/90`; Vite `31 modules`; full Laravel
+`506 passed, 4011 assertions`; PHP lint và `git diff --check` pass. Chrome
+read-only xác nhận create modal giữ URL `/hop-dong`; salary gõ tuần tự `1234`
+hiển thị `1.234`, thêm `5` thành `12.345`, tiếp tục đủ 18 digit thành
+`123.456.789.012.345.678`; `Hủy` đóng mà không submit, direct
+`/hop-dong/create` vẫn là full-page fallback. Edit contract 18 click từ list
+giữ URL `/hop-dong`, dialog title `Chỉnh sửa hợp đồng`, employee `00018 Hoàng
+Đức Long`, loại finite, date pickers/prefill ISO `2019-02-15` và `2028-12-21`,
+salary prefill `2.350.000`; select all gõ `1234` rồi `5` thành `12.345`, `Hủy`
+đóng dialog. Console logs `[]`; không submit/mutation DB live; chưa kiểm tra
+multi-role/responsive.
+
+## Current verified UI slice: Popup recovery controls — 2026-09-09
+
+Đã bỏ hai control popup `Mở trang đầy đủ` và `Thử lại` khỏi modal dùng chung
+Phòng ban/Chức vụ và modal Nhân viên. Controller đã dọn recovery/fallback/retry,
+nhưng vẫn giữ alert lỗi, nút Đóng và real `href` trên trigger bên ngoài popup.
+
+RED: 25 test, `22 pass / 3 fail`. Fresh verification: targeted Node `25/25`;
+targeted Laravel `72/72`, `713 assertions`; all frontend `139/139`;
+`npm run test:frontend` `90/90`; full Laravel `492/3906 assertions`; Vite
+`31 modules`. Chrome read-only xác nhận create/edit của Nhân viên, Phòng ban,
+Chức vụ giữ URL list, hai nhãn recovery không còn, form/title/close vẫn đúng,
+console errors `[]`. Không submit form/mutation DB; chưa kiểm tra multi-role/
+responsive.
+
+## Current verified UI slice: Lương — 2026-09-09
+
+Lát cắt UI Lương mới dùng `btn-primary` xanh cho Thêm hệ số lương và các nút
+Lưu; footer popup icon–chữ dùng `d-inline-flex align-items-center gap-2`.
+Bảng chi tiết kỳ lương cho phép click dòng hoặc Enter/Space để chọn nhân viên,
+không để các control action kích hoạt chọn dòng. Form tạo/sửa hệ số dùng native
+datepicker và ISO; các popup liên quan đã được rà/sửa spacing cùng kiểu.
+
+Evidence fresh: all frontend `138/138`; `npm run test:frontend` `89/89`;
+Laravel `492/3906 assertions`; Vite `31 modules`; routes `95`, duplicate
+name/signature `0`; Composer, lint và `git diff --check` pass. Chrome
+read-only xác nhận click dòng đúng `00002`, keyboard đến `00004`, old
+coefficient button count `0`, tạo lương giữ dòng đã chọn, màu add/save
+`rgb(13,110,253)`, gap `8px`, native datepicker và prefill
+`2019-05-28/2027-05-27`; console errors `[]`. Chưa submit form/mutation DB,
+chưa có browser matrix nhiều role/responsive.
+
+## Current verified UI slice: Hợp đồng, Lương và Nghỉ phép — 2026-09-09
+
+Hợp đồng đã bỏ cột `#`; header và mã hiển thị dùng mã nhân viên, giữ leading
+zero. Bảng chi tiết kỳ lương chỉ còn tên và mã nhân viên, không render
+initials/avatar trong từng dòng. Nghỉ phép đã có lịch sử companywide theo
+khoảng ngày native, bộ lọc history chỉ áp dụng cho history, bộ lọc ẩn ở tab
+Chờ duyệt, bảng 8 cột với action theo từng dòng, và quyền `NghiPhep.Approve`
+được xét độc lập khi xác định chế độ chỉ xem.
+
+Verification hiện tại: Laravel `492 passed, 3905 assertions`; toàn bộ frontend
+qua `rg --files` `133/133`; `npm run test:frontend` `85/85`; Vite `31 modules`;
+route `95`, duplicate name/signature `0`; Composer, PHP lint và
+`git diff --check` pass. Chrome read-only xác nhận `/hop-dong` không còn `#`
+và mã đầu `00021`, `/luong` không có initials/avatar ở chi tiết kỳ lương,
+`/nghi-phep` history companywide mặc định `2026-06-09..2026-09-09` trả `2`,
+lọc `2026-09-05..2026-09-09` trả `1`, và “Xem tất cả lịch nghỉ” bỏ scope nhân
+viên nhưng giữ kết quả. Nút Sửa/Xóa theo dòng hiển thị. Lần kiểm tra này không
+có dòng pending nên chưa xác nhận nút Duyệt live; contract tests đã bao phủ
+permission/status. Browser logs không có lỗi (chỉ log phân trang nhân viên ở
+Nghỉ phép; Lương không có dữ liệu). Không mutation.
+
+## Quyền duyệt Nghỉ phép và filter Lương — 2026-09-09
+
+Đã bổ sung quyền canonical `NghiPhep.Approve` (id 43, action custom
+`Duyet`) vào registry và fresh seed; role 1 và role 4 được cấp mặc định,
+các role khác chỉ nhận quyền khi quản trị viên gán trong trang phân quyền.
+Approval list dùng `NghiPhep.Read` + `NghiPhep.Approve`; PATCH chỉ dùng
+`NghiPhep.Approve`, không còn phụ
+thuộc role Trưởng phòng, `ma_pb` hay Gate `department-manager`. Danh sách,
+count pending và xử lý approval chạy companywide; generic Update vẫn cấm
+`trang_thai_duyet`, còn transaction/row lock/conflict guard được giữ nguyên.
+Dashboard dùng payload `pending_leave_count` khi actor có Read + Approve.
+
+Lát cắt này đã có test route allow/deny, registry/seed/upgrade SQL,
+companywide list/count/cross-department approval, processed-row conflict,
+Dashboard permission-only và Blade/JS control. Fresh root verification: Laravel
+`491 passed, 3902 assertions`; frontend `77/77`; Vite `31 modules`; route
+except-vendor `95`, duplicate name/signature `0`; Composer, PHP lint và
+`git diff --check` pass. Browser read-only xác nhận filter Lương không còn kính
+lúp. SQL upgrade đã chạy trên schema `quan_ly_nhan_su` bằng MariaDB `10.4.32`,
+exact execution qua MariaDB client exit `0`, không backup theo chỉ định user.
+Postcheck xác nhận `permission_count=43`, `max=43`, đúng một row canonical
+id 43/symbol/label/module, grants đúng role 1 và 4, temporary routine count `0`.
+Browser read-only xác nhận checkbox permission-43 checked ở role 1 và nút Duyệt
+xuất hiện trên `/nghi-phep`.
+
+## Đồng bộ avatar và UI dùng chung — 2026-09-08
+
+Public disk mặc định trả URL tương đối `/storage` với override
+`PUBLIC_STORAGE_URL`; auth lookup/model hydrate `anh_dai_dien`; topbar hiển thị
+ảnh qua Storage hoặc initials fallback, CSS ảnh tròn cover. README quick start
+đã nêu `php artisan storage:link`; Composer `setup` cũng gọi lệnh này, không
+thêm symlink/route/schema. Control Sửa
+trong các module đã chuẩn hóa thành `btn-outline-primary` +
+`bi-pencil-square`; sidebar bỏ Thêm chức vụ và Danh sách hệ số lương, chỉ hiện
+group Lương khi actor có `Luong.Read`. Toàn bộ ô ngày Nghỉ phép chuyển native
+`type=date` và ISO canonical (edit prefill ISO, bảng hiển thị dd/mm/yyyy); bỏ
+kính lúp tại ô tìm nhân viên của Chấm công/Nghỉ phép; header Thêm thông tin
+lương dùng `btn-primary`.
+
+RED: PHP `3 failed/4 tests`, frontend `7 failed/16 tests` trước implementation.
+GREEN/final evidence: targeted PHP `33 passed, 237 assertions`; frontend
+`76/76`; full Laravel `487 passed, 3870 assertions`; Vite `31 modules`; route
+inventory `95`; Composer, PHP lint và `git diff --check` pass. Chưa có browser
+mutation, live DB mutation hoặc file chooser/clone acceptance.
+
+## Modal CRUD Nhân viên/Phòng ban/Chức vụ — 2026-09-08
+
+Ba trang index hiện có native dialog cho cả Tạo và Sửa khi JavaScript hoạt
+động, với href thật và trang đầy đủ làm progressive fallback. Trigger/action
+được Gate Create/Edit bảo vệ; direct pencil Nhân viên có hook modal rõ ràng.
+Create/edit partial được tải bằng header modal; store/update AJAX dùng JSON
+success, lỗi validation 422 và thông báo server an toàn. Wizard Nhân viên vẫn
+giữ CSRF, FormData, method spoofing và hỗ trợ avatar; không đổi route,
+service/repository hoặc database; validation nghiệp vụ chỉ được điều chỉnh
+riêng ở contract địa chỉ bên dưới.
+
+Evidence fresh: RED trước implementation 5 targeted PHP failures; targeted
+PHP `73 passed, 711 assertions`; full Laravel `476 passed, 3808 assertions`;
+`npm run test:frontend` `57/57`; Vite `31 modules transformed`; route
+inventory `95`; Composer, PHP lint và `git diff --check` pass. Chrome/CUA
+read-only đã xác nhận sáu trigger Tạo/Sửa mở đúng dialog trên ba trang danh
+sách và giữ nguyên URL; chưa submit form, chưa kiểm tra network waterfall hoặc
+mutation database live.
+
+## Đồng bộ popup Tạo Nhân viên — 2026-09-08
+
+Popup Tạo truyền `modalOnly` vào partial form nên chỉ ẩn Quận/Huyện trong
+dialog; trang `/nhan-vien/create` đầy đủ vẫn giữ trường này làm progressive
+fallback. Review Ngày vào làm trong popup hiển thị `dd/mm/yyyy` cho cả giá trị
+old ban đầu và giá trị sau input/change; input/submission vẫn là ISO
+`yyyy-mm-dd` qua formatter frontend dùng chung. Không có reset-password trong
+create và không đổi route/controller/service/repository/DB. Request validation
+đổi riêng semantics địa chỉ: ba trường hiển thị all-or-none, `quan_huyen`
+nullable tùy chọn, không synthesize giá trị.
+
+RED gồm 2 feature tests và 1 frontend contract test; GREEN focused là PHP
+`2 tests, 18 assertions` và Node wizard `6/6`. Verification trên HEAD hiện
+tại: full Laravel `480 passed, 3847 assertions`; `npm run test:frontend`
+`60/60`; Vite `31 modules transformed`; route inventory `95`; Composer, PHP
+lint và `git diff --check` pass. Chưa browser mutation hoặc DB live write.
+
+## Contract địa chỉ cho popup Tạo — 2026-09-08
+
+`StoreNhanVienRequest::after()` chỉ kiểm tra ba trường hiển thị
+`dia_chi_cu_the`, `phuong_xa`, `tinh_thanh` theo semantics all-or-none;
+`quan_huyen` là nullable tùy chọn. Payload popup không gửi district được chấp
+nhận và service nhận address không có key district; không synthesize giá trị.
+Trang create đầy đủ vẫn render trường Quận/Huyện để progressive fallback.
+
+RED: regression store/request mới trả 422 vì callback còn đếm đủ bốn trường.
+GREEN: Store/Request focused `34 passed, 359 assertions`, gồm create và update
+không district, core thiếu trường bị từ chối và message mới được khóa. Full
+page UI focused test cũng xác nhận field Quận/Huyện vẫn hiện nhưng không còn
+`required`. Full verification hiện tại: Laravel `484 passed, 3861 assertions`; frontend `60/60`;
+Vite `31 modules transformed`; route `95`; Composer, PHP lint và
+`git diff --check` pass. Chưa browser mutation hoặc DB live write.
+
+## Tinh chỉnh popup Nhân viên — 2026-09-08
+
+Show Nhân viên không còn render reset mật khẩu ngay cả với actor có quyền
+`NhanVien.ResetPassword`; route/controller/service vẫn tồn tại, còn các vị trí
+index/edit đầy đủ không đổi. Popup edit dùng context `modalOnly` rõ ràng để ẩn
+Quận/Huyện riêng trong popup; create và full-page edit vẫn giữ trường. Review
+Ngày vào làm của popup dùng `dd/mm/yyyy`, còn input/submission vẫn
+`yyyy-mm-dd`; input/change sau khi sửa ngày cũng cập nhật review qua formatter
+frontend. Giá trị Quận/Huyện hiện có được bảo toàn trong FormData mà không
+render label/input.
+
+Evidence fresh: RED 3 test hành vi; targeted Nhân viên show/update/reset/create
+`41 passed, 427 assertions`; Node wizard/modal `17/17`; full Laravel `478
+passed, 3829 assertions`; `npm run test:frontend` `59/59`; Vite `31 modules
+transformed`; route inventory `95`; Composer, PHP lint và `git diff --check`
+pass. Chưa có browser mutation hoặc DB live write.
+
 ## Full module/role audit mới nhất — 2026-09-06
 
 Audit toàn bộ route web/API trong phạm vi đã giao được đối chiếu với năm role
@@ -20,8 +248,8 @@ representative `375x812` tại `/duyet-nghi-phep` là snapshot lịch sử trư�
 canonical hóa route; không còn là route hiện hành. Network waterfall và browser
 mutation vẫn unverified vì chưa có evidence/disposable browser DB guard.
 
-SQL active được đọc theo thứ tự ba file nguồn và hiện có 15 bảng, 42 quyền,
-12 routine. Live DB read-only cho thấy 6 role (một role legacy ngoài fresh
+SQL active được đọc theo thứ tự bốn file nguồn và hiện có 15 bảng, 43 quyền,
+12 thủ tục RBAC và 4 hàm lương. Live DB read-only cho thấy 6 role (một role legacy ngoài fresh
 matrix) và `db:show --counts` bị chặn bởi thiếu
 `performance_schema.session_status`; không dùng live DB để sửa hoặc tạo routine.
 Các giới hạn này thay thế số liệu lịch sử bên dưới, không xóa lịch sử.
@@ -30,7 +258,7 @@ Ma trận quyền tách riêng `Luong.*` và `HeSoLuong.*`: role Kế toán có
 quyền hệ số lương active. Batch Chấm công yêu cầu đồng thời Insert, Update và
 Delete vì `so_gio_lam=-1` có semantics xóa.
 
-## Cập nhật canonical Nghỉ phép/sidebar — 2026-09-06
+## Lịch sử canonical Nghỉ phép/sidebar — 2026-09-06 (trước quyền Approve)
 
 Trang chuẩn của luồng duyệt là `/nghi-phep#leave-table-card`; card Dashboard
 chỉ hiện cho actor đủ `NghiPhep.Read`, `NghiPhep.Update` và Gate
@@ -66,7 +294,7 @@ Chrome fresh read-only ngày 2026-09-05: `/vai-tro` có main `1320` và card `12
 
 ## Nguồn và phạm vi
 
-SQL fresh active phải chạy theo thứ tự `database/sql/tao_bang.sql` → `database/sql/du_lieu_mau.sql` → `database/sql/quyen_vai_tro.sql` trên database rỗng/disposable đã được phê duyệt. Hợp đồng có đúng 15 bảng, 19 nhân viên, 37 quyền và 12 thủ tục RBAC. `quan_ly_nhan_su.session.sql`, `LocalDemoSeeder` và script SQL employee cũ chỉ để đối chiếu lịch sử.
+SQL fresh active phải chạy theo thứ tự `database/sql/tao_bang.sql` → `database/sql/du_lieu_mau.sql` → `database/sql/quyen_vai_tro.sql` → `database/sql/salary/2026_09_09_001_luong_functions.sql` trên database rỗng/disposable đã được phê duyệt, hoặc dùng snapshot destructive `quan_ly_nhan_vien_session_update.sql`. Hợp đồng có đúng 15 bảng, 19 nhân viên, 43 quyền, 12 thủ tục RBAC và 4 hàm lương. `quan_ly_nhan_su.session.sql`, `LocalDemoSeeder` và script SQL employee cũ chỉ để đối chiếu lịch sử.
 
 Ownership hiện tại chỉ gồm code Nhân viên, Phòng ban và Chức vụ. Lỗi hoặc thiếu hợp đồng của Dashboard, Lương, Chấm công, Nghỉ phép, Hợp đồng, Vai trò/Phân quyền/RBAC và API của đồng nghiệp được ghi chú trong tài liệu; không sửa code ngoài scope nếu chưa được giao rõ.
 
@@ -95,9 +323,9 @@ Full suite mặc định dùng SQLite in-memory. Muốn kiểm tra DDL, foreign 
 | Phòng ban | CRUD server-rendered, action gating và lỗi an toàn | Direct Query Builder, transaction/row lock; feature/MariaDB evidence trước đó | **Verified hẹp**, code không đổi phiên này, browser chưa claim |
 | Chức vụ | CRUD server-rendered, action gating và lỗi an toàn | Direct Query Builder, transaction/row lock; feature/MariaDB evidence trước đó | **Verified hẹp**, code không đổi phiên này, browser chưa claim |
 | Dashboard | Render được, auth/permission riêng | Chưa có nghiệp vụ dữ liệu đầy đủ | **Prototype**; không sửa trong scope |
-| Lương | UI/API prototype | `LuongRepository@all` gọi `sp_luong_tim_kiem_phan_trang` thiếu trong ba SQL active | **Prototype — blocked** |
-| Chấm công | UI/API prototype | Lookup gọi `sp_phong_ban_danh_sach`; update gọi `sp_cham_cong_cap_nhat`; cả hai thiếu trong ba SQL active | **Prototype — blocked** |
-| Nghỉ phép | UI/API prototype | Approve gọi `sp_nghi_phep_duyet_phep`, thiếu trong ba SQL active | **Prototype — blocked** |
+| Lương | UI/API prototype | 4 hàm lương tương thích đã có trong nguồn fresh/additive; workflow, browser và production evidence còn thiếu | **Prototype** |
+| Chấm công | UI/API prototype | Lookup gọi `sp_phong_ban_danh_sach`; update gọi `sp_cham_cong_cap_nhat`; cả hai thiếu trong active SQL sources | **Prototype — blocked** |
+| Nghỉ phép | UI/API với approval theo quyền riêng | Query Builder companywide, transaction/row lock/conditional update; MariaDB/browser chưa chạy trong lát cắt này | **Verified hẹp** |
 | Hợp đồng | Scaffold/model/controller hạn chế | Chưa có workflow mutation và browser evidence đầy đủ | **Planned/scaffold** |
 | Vai trò/Phân quyền/RBAC | Một phần UI quản trị | Catalog và 12 procedure RBAC thuộc SQL active; mutation/UI/browser chưa được đóng toàn bộ | **Nền tảng verified hẹp** |
 
@@ -120,9 +348,13 @@ Automated tests không thay thế browser. Avatar file chooser/replacement, prod
 ## Lệch hợp đồng ngoài ownership (chỉ ghi chú)
 
 - Dashboard: vấn đề auth/thiếu quyền hoặc dữ liệu riêng cần xử lý bằng task Dashboard; không sửa ở đây.
-- Lương: `LuongRepository@all` gọi `sp_luong_tim_kiem_phan_trang`, procedure không tồn tại trong SQL active.
+- Lương: `LuongRepository@all` hiện dùng Query Builder trực tiếp và gọi bốn hàm
+  lương canonical (`fn_so_ngay_cong_chuan`, `fn_so_ngay_cong_thuc_te`,
+  `fn_tinh_luong_thuc_nhan`, `fn_thong_bao_tinh_luong`). Salary listing vẫn là
+  prototype và cần workflow/browser acceptance riêng; không còn blocker do
+  thiếu `sp_luong_tim_kiem_phan_trang`.
 - Chấm công: `ChamCongController` lookup gọi `sp_phong_ban_danh_sach`, update gọi `sp_cham_cong_cap_nhat`; các procedure không tồn tại trong SQL active. Không sửa caller trong task Phòng ban/Nhân viên.
-- Nghỉ phép: `NghiPhepController` approve gọi `sp_nghi_phep_duyet_phep`, procedure không tồn tại trong SQL active.
+- Nghỉ phép: approval hiện dùng Query Builder companywide và quyền `NghiPhep.Approve`; chưa có MariaDB/browser acceptance mới.
 - Model/validation/API/exception của các module legacy còn drift so với schema; phải audit riêng theo module.
 - Hợp đồng mới chỉ là scaffold; Vai trò/Phân quyền/RBAC có catalog và procedure nền tảng nhưng UI quản trị, mutation và browser evidence chưa đầy đủ.
 

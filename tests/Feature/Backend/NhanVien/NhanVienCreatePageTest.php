@@ -111,6 +111,25 @@ class NhanVienCreatePageTest extends TestCase
             ->assertSee('aria-disabled="true"', false);
     }
 
+    public function test_full_create_keeps_district_field_visible_but_optional(): void
+    {
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('lookups')->once()->andReturn($this->completeLookups());
+        });
+
+        $response = $this->get('/nhan-vien/create')->assertOk();
+        $content = $response->getContent();
+
+        $this->assertStringContainsString('name="quan_huyen"', $content);
+        $this->assertStringContainsString(
+            '<label class="form-label" for="quan_huyen">Quận/Huyện</label>',
+            $content,
+        );
+        preg_match('/<input\b[^>]*id="quan_huyen"[^>]*>/s', $content, $matches);
+        $this->assertNotEmpty($matches);
+        $this->assertStringNotContainsString('required', $matches[0]);
+    }
+
     public function test_lookup_failure_renders_safe_locked_form_without_internal_details(): void
     {
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
@@ -181,6 +200,69 @@ class NhanVienCreatePageTest extends TestCase
         $this->get('/admin/nhan-vien/them-nhan-vien?from=legacy')
             ->assertStatus(301)
             ->assertRedirect('/nhan-vien/create?from=legacy');
+    }
+
+    public function test_modal_create_returns_partial_without_layout(): void
+    {
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('lookups')->once()->andReturn($this->completeLookups());
+        });
+
+        $this->get('/nhan-vien/create', [
+            'X-Employee-Create-Modal' => '1',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+            ->assertOk()
+            ->assertViewIs('backend.nhanvien.partials.create-modal-content')
+            ->assertSee('data-employee-wizard', false)
+            ->assertSee('data-submit-employee', false)
+            ->assertDontSee('<html', false)
+            ->assertDontSee('/build/nhanvien.js', false);
+    }
+
+    public function test_modal_create_hides_district_but_full_create_keeps_it(): void
+    {
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('lookups')->twice()->andReturn($this->completeLookups());
+        });
+
+        $this->get('/nhan-vien/create', [
+            'X-Employee-Create-Modal' => '1',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+            ->assertOk()
+            ->assertDontSee('Quận/Huyện')
+            ->assertDontSee('name="quan_huyen"', false);
+
+        $this->get('/nhan-vien/create')
+            ->assertOk()
+            ->assertSee('Quận/Huyện')
+            ->assertSee('name="quan_huyen"', false);
+    }
+
+    public function test_modal_create_formats_initial_review_date_but_keeps_full_create_review_iso(): void
+    {
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('lookups')->twice()->andReturn($this->completeLookups());
+        });
+
+        $this->withSession(['_old_input' => ['ngay_vao_lam' => '2026-09-08']])
+            ->get('/nhan-vien/create', [
+                'X-Employee-Create-Modal' => '1',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->assertOk()
+            ->assertSee('data-review-format="date-dmy"', false)
+            ->assertSee('name="ngay_vao_lam"', false)
+            ->assertSee('type="date"', false)
+            ->assertSee('value="2026-09-08"', false)
+            ->assertSee('>08/09/2026</dd>', false)
+            ->assertDontSee('>2026-09-08</dd>', false);
+
+        $this->get('/nhan-vien/create')
+            ->assertOk()
+            ->assertDontSee('data-review-format="date-dmy"', false)
+            ->assertSee('>2026-09-08</dd>', false);
     }
 
     private function completeLookups(): array

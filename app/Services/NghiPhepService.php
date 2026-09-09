@@ -544,23 +544,11 @@ class NghiPhepService
             );
     }
 
-    /**
-     * Đếm đơn chờ duyệt trong đúng phòng ban được cấp cho Trưởng phòng.
-     *
-     * Đây là contract dùng chung cho badge trên bảng nghỉ phép và Dashboard.
-     * Không nhận mã nhân viên từ client và cố ý không áp thêm policy trạng
-     * thái nhân viên; bảng danh sách cũng dùng cùng semantics này.
-     */
-    public function countPendingForDepartment(int $maPb): int
+    /** Đếm mọi đơn nghỉ phép đang chờ duyệt trong toàn công ty. */
+    public function countPendingLeave(): int
     {
-        if ($maPb < 1) {
-            throw new \InvalidArgumentException('Thiếu phòng ban phụ trách của Trưởng phòng.');
-        }
-
-        return (int) DB::table('nghi_phep as np')
-            ->join('nhan_vien as nv', 'nv.ma_nv', '=', 'np.ma_nv')
-            ->where('nv.ma_pb', $maPb)
-            ->where('np.trang_thai_duyet', 0)
+        return (int) DB::table('nghi_phep')
+            ->where('trang_thai_duyet', 0)
             ->count();
     }
 
@@ -568,7 +556,7 @@ class NghiPhepService
      * Query Builder replacement cho:
      * sp_nghi_phep_danh_sach_phan_trang
      *
-     * Dùng cho màn Trưởng phòng duyệt nghỉ phép.
+     * Dùng cho màn duyệt nghỉ phép toàn công ty.
      */
     public function getApprovalList(
         array $filters = []
@@ -596,11 +584,6 @@ class NghiPhepService
             )
         );
 
-        $maPb =
-            isset($filters['ma_pb'])
-                ? (int) $filters['ma_pb']
-                : null;
-
         $maLp =
             isset($filters['ma_lp'])
             && $filters['ma_lp'] !== ''
@@ -615,16 +598,6 @@ class NghiPhepService
 
         $tab =
             $filters['tab'] ?? 'pending';
-
-        /*
-         * Màn approval bắt buộc phải có scope phòng ban.
-         * Không có ma_pb thì không được trả toàn bộ công ty.
-         */
-        if ($maPb === null) {
-            throw new \InvalidArgumentException(
-                'Thiếu phòng ban phụ trách của Trưởng phòng.'
-            );
-        }
 
         $query = DB::table('nghi_phep as np')
             ->join(
@@ -679,10 +652,6 @@ class NghiPhepService
                     WHEN 2 THEN 'Từ chối'
                     ELSE 'Không xác định'
                  END AS ten_trang_thai"
-            )
-            ->where(
-                'nv.ma_pb',
-                $maPb
             );
 
         /*
@@ -777,24 +746,12 @@ class NghiPhepService
      * 1 = Đã duyệt
      * 2 = Từ chối
      *
-     * Chỉ xử lý đơn:
-     * - đúng ma_np
-     * - đúng ma_nv
-     * - nhân viên thuộc ma_pb Trưởng phòng
-     * - trạng thái hiện tại = 0
+     * Chỉ xử lý đúng ma_np và trạng thái hiện tại = 0.
      */
     public function duyet(
         int $maNp,
-        int $trangThai,
-        int $maPb
+        int $trangThai
     ): array {
-        if ($maPb < 1) {
-            return [
-                'success' => false,
-                'message' => 'Không tìm thấy đơn nghỉ phép thuộc phòng ban phụ trách.',
-            ];
-        }
-
         try {
             if (! in_array(
                 $trangThai,
@@ -808,15 +765,13 @@ class NghiPhepService
                 ];
             }
 
-            return DB::transaction(function () use ($maNp, $trangThai, $maPb): array {
+            return DB::transaction(function () use ($maNp, $trangThai): array {
                 /*
                  * The lock and the conditional update must share one
                  * transaction so two managers cannot process the same row.
                  */
                 $leave = DB::table('nghi_phep as np')
-                    ->join('nhan_vien as nv', 'nv.ma_nv', '=', 'np.ma_nv')
                     ->where('np.ma_np', $maNp)
-                    ->where('nv.ma_pb', $maPb)
                     ->select([
                         'np.ma_np',
                         'np.ma_nv',
@@ -828,7 +783,7 @@ class NghiPhepService
                 if (! $leave) {
                     return [
                         'success' => false,
-                        'message' => 'Không tìm thấy đơn nghỉ phép thuộc phòng ban phụ trách.',
+                        'message' => 'Không tìm thấy đơn nghỉ phép.',
                     ];
                 }
 

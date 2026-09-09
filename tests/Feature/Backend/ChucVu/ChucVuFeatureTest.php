@@ -95,6 +95,21 @@ class ChucVuFeatureTest extends TestCase
             ->assertSee('Không thể xóa chức vụ đang có nhân viên', false);
     }
 
+    public function test_create_action_is_a_modal_trigger_with_a_real_fallback_url(): void
+    {
+        $this->mock(ChucVuServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator([], 0, 20, 1, ['pageName' => 'page']));
+        });
+
+        $createUrl = route('backend.chucvu.create');
+        $this->get('/chuc-vu')
+            ->assertOk()
+            ->assertSee('data-action="modal"', false)
+            ->assertSee('data-modal-mode="create"', false)
+            ->assertSee('data-modal-url="'.e($createUrl).'"', false)
+            ->assertSee('href="'.e($createUrl).'"', false);
+    }
+
     public function test_authenticated_list_filters_paginates_and_exposes_only_authorized_row_actions(): void
     {
         $rows = [
@@ -159,6 +174,27 @@ class ChucVuFeatureTest extends TestCase
         $this->putJson('/chuc-vu/1', ['ten_cv' => 'Trưởng phòng', 'he_so_phu_cap' => '1.25'])
             ->assertOk()
             ->assertJson(['success' => true, 'message' => 'Đã cập nhật chức vụ.'])
+            ->assertJsonMissingPath('redirect');
+    }
+
+    public function test_modal_create_returns_partial_and_ajax_store_returns_safe_json(): void
+    {
+        $this->mock(ChucVuServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('create')->once()->with('Kế toán', '1.50')->andReturnNull();
+        });
+
+        $this->get('/chuc-vu/create', [
+            'X-Create-Modal' => '1',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+            ->assertOk()
+            ->assertViewIs('backend.chucvu.partials.create-modal-content')
+            ->assertSee('data-simple-modal-form', false)
+            ->assertDontSee('<html', false);
+
+        $this->postJson('/chuc-vu', ['ten_cv' => 'Kế toán', 'he_so_phu_cap' => '1.50'])
+            ->assertCreated()
+            ->assertJson(['success' => true, 'message' => 'Đã thêm chức vụ.'])
             ->assertJsonMissingPath('redirect');
     }
 

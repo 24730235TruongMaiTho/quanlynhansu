@@ -53,16 +53,16 @@ class StoreHopDongRequest extends FormRequest
             $this->rejectNonDisplayDates($validator, [
                 'ngay_ky' => 'Ngày ký',
                 'ngay_het_han' => 'Ngày hết hạn',
-            ]);
+            ], true);
         });
     }
 
     public function messages(): array
     {
         return [
-            'ngay_ky.date_format' => 'Ngày ký phải có định dạng dd/mm/yyyy.',
+            'ngay_ky.date_format' => 'Ngày ký không hợp lệ.',
             'ngay_het_han.required' => 'Ngày hết hạn là bắt buộc với hợp đồng có thời hạn.',
-            'ngay_het_han.date_format' => 'Ngày hết hạn phải có định dạng dd/mm/yyyy.',
+            'ngay_het_han.date_format' => 'Ngày hết hạn không hợp lệ.',
             'ngay_het_han.after' => 'Ngày hết hạn phải sau Ngày ký.',
             'luong_co_ban.regex' => 'Lương cơ bản phải là số nguyên hợp lệ.',
             'luong_co_ban.integer' => 'Lương cơ bản phải là số nguyên hợp lệ.',

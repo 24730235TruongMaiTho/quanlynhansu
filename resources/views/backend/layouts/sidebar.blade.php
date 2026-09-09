@@ -90,15 +90,6 @@
                                 <span class="nav-title">Danh sách chức vụ</span>
                             </a>
                         </li>
-                        @can(\App\Enums\ChucVuPermission::Tao->value)
-                            <li class="nav-item">
-                                <a href="{{ route('backend.chucvu.create') }}" class="nav-link {{ request()->routeIs('backend.chucvu.create') ? 'active' : '' }}"
-                                    @if (request()->routeIs('backend.chucvu.create')) aria-current="page" @endif>
-                                    <i class="bi bi-plus-circle" aria-hidden="true"></i>
-                                    <span class="nav-title">Thêm chức vụ</span>
-                                </a>
-                            </li>
-                        @endcan
                     </ul>
                 </li>
             @endif
@@ -152,10 +143,8 @@
                 @php
                     $canSeeSalary = app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'Luong')
                         && app(\App\Services\PermissionService::class)->allows($sidebarUser, \App\Enums\LuongPermission::Xem->value);
-                    $canSeeSalaryCoefficients = app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'HeSoLuong')
-                        && app(\App\Services\PermissionService::class)->allows($sidebarUser, \App\Enums\HeSoLuongPermission::Xem->value);
                 @endphp
-                @if ($canSeeSalary || $canSeeSalaryCoefficients)
+                @if ($canSeeSalary)
                     <li class="nav-item" data-sidebar-group="salary" data-route-active="{{ $salaryGroupActive ? 'true' : 'false' }}">
                         <a href="#" class="nav-link" data-toggle="submenu" aria-expanded="{{ $salaryGroupActive ? 'true' : 'false' }}">
                             <i class="bi bi-cash-stack"></i>
@@ -165,9 +154,6 @@
                         <ul class="sub-menu {{ $salaryGroupActive ? 'open' : '' }}" @if ($salaryGroupActive) data-submenu-ready="initial" @endif>
                             @if ($canSeeSalary)
                                 <li class="nav-item"><a href="{{ route('backend.luong.index') }}" class="nav-link {{ request()->routeIs('backend.luong.index') ? 'active' : '' }}" @if (request()->routeIs('backend.luong.index')) aria-current="page" @endif><i class="bi bi-cash-coin"></i><span class="nav-title">Danh sách lương</span></a></li>
-                            @endif
-                            @if ($canSeeSalaryCoefficients)
-                                <li class="nav-item"><a href="{{ route('backend.luong.index') }}#salary-coefficient-card" class="nav-link {{ request()->routeIs('backend.luong.index') ? 'active' : '' }}" @if (request()->routeIs('backend.luong.index')) aria-current="page" @endif><i class="bi bi-graph-up-arrow"></i><span class="nav-title">Danh sách hệ số lương</span></a></li>
                             @endif
                         </ul>
                     </li>

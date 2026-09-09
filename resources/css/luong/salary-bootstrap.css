@@ -141,20 +141,6 @@
     min-width: 13rem;
 }
 
-.salary-page .avatar {
-    width: 2.125rem;
-    height: 2.125rem;
-    flex: 0 0 2.125rem;
-    display: grid;
-    place-items: center;
-    border: 1px solid var(--salary-border);
-    border-radius: 50%;
-    background: linear-gradient(135deg, #ddf4ff, #fbefff);
-    color: var(--salary-fg);
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
 .salary-page .employee-name {
     font-weight: 600;
 }

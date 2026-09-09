@@ -244,7 +244,7 @@ Input `p_ma_nv VARCHAR(5)`. Trả đúng một dòng hồ sơ, hoặc result r�
 - tài khoản/ảnh: `ma_vt INT`, `ky_hieu_vai_tro VARCHAR(50) NULL`, `ten_vt NVARCHAR(100)`, `anh_dai_dien VARCHAR(255) NULL`;
 - địa chỉ: `dia_chi_cu_the NVARCHAR(255) NULL`, `phuong_xa NVARCHAR(100) NULL`, `quan_huyen NVARCHAR(100) NULL`, `tinh_thanh NVARCHAR(100) NULL`.
 
-Không trả `mat_khau`. Các cột địa chỉ nullable ở result để có thể đọc an toàn dữ liệu cũ trước khi backfill; create/update mới vẫn bắt buộc đủ địa chỉ.
+Không trả `mat_khau`. Các cột địa chỉ nullable ở result để có thể đọc an toàn dữ liệu cũ trước khi backfill; create/update mới yêu cầu đồng thời ba trường địa chỉ hiển thị (địa chỉ cụ thể, phường/xã, tỉnh/thành phố), còn quận/huyện là tùy chọn.
 
 ### 7.3. `sp_nhan_vien_them`
 
@@ -424,7 +424,7 @@ Các route hiện tại đang map sai `PUT .../{id}` vào action `show`; việc 
 - CCCD và nơi cấp;
 - email;
 - số điện thoại;
-- bốn thành phần địa chỉ;
+- địa chỉ cụ thể, phường/xã và tỉnh/thành phố; quận/huyện tùy chọn;
 - ảnh đại diện tùy chọn.
 
 ### Bước 2 — Công việc và tài khoản
@@ -453,7 +453,7 @@ Laravel kiểm tra trước; procedure kiểm tra lại invariant quan trọng.
 - CCCD đúng 12 chữ số và duy nhất;
 - email hợp lệ, tối đa 100 ký tự, normalize chữ thường và duy nhất;
 - số điện thoại đúng 10 chữ số, bắt đầu bằng `0`;
-- họ tên, dân tộc, nơi cấp CCCD, học vấn và bốn thành phần địa chỉ không rỗng;
+- họ tên, dân tộc, nơi cấp CCCD, học vấn và ba trường địa chỉ hiển thị không rỗng khi nhập địa chỉ; quận/huyện tùy chọn;
 - phòng ban, chức vụ và trạng thái phải tồn tại;
 - client không được gửi `ma_vt`; create resolve role mặc định phía server, update giữ nguyên role;
 - ảnh tùy chọn, chỉ JPG/PNG/WebP, tối đa 2 MB;

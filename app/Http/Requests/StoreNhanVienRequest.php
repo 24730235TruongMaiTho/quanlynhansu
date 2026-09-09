@@ -14,6 +14,8 @@ use Illuminate\Validation\Validator;
 
 class StoreNhanVienRequest extends FormRequest
 {
+    private const CORE_ADDRESS_FIELDS = ['dia_chi_cu_the', 'phuong_xa', 'tinh_thanh'];
+
     public function authorize(): bool
     {
         return true;
@@ -144,13 +146,18 @@ class StoreNhanVienRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            $fields = ['dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh'];
-            $present = array_map(fn (string $field): bool => filled($this->input($field)), $fields);
+            $present = array_map(
+                fn (string $field): bool => filled($this->input($field)),
+                self::CORE_ADDRESS_FIELDS,
+            );
 
-            if (count(array_filter($present)) > 0 && count(array_filter($present)) < count($fields)) {
-                foreach ($fields as $index => $field) {
+            if (count(array_filter($present)) > 0 && count(array_filter($present)) < count(self::CORE_ADDRESS_FIELDS)) {
+                foreach (self::CORE_ADDRESS_FIELDS as $index => $field) {
                     if (! $present[$index]) {
-                        $validator->errors()->add($field, 'Vui lòng nhập đủ bốn thành phần địa chỉ hoặc để trống toàn bộ.');
+                        $validator->errors()->add(
+                            $field,
+                            'Vui lòng nhập đủ Địa chỉ cụ thể, Phường/Xã và Tỉnh/Thành phố hoặc để trống toàn bộ.',
+                        );
                     }
                 }
             }

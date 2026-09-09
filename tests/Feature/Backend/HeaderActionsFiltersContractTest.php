@@ -118,7 +118,6 @@ final class HeaderActionsFiltersContractTest extends TestCase
             'resources/views/backend/phongban/index.blade.php' => 'Thêm phòng ban',
             'resources/views/backend/chucvu/index.blade.php' => 'Thêm chức vụ',
             'resources/views/backend/hopdong/index.blade.php' => 'Thêm hợp đồng',
-            'resources/views/backend/nghiphep/index.blade.php' => 'Thêm nghỉ phép',
             'resources/views/backend/luong/index.blade.php' => 'Thêm thông tin lương',
             'resources/views/backend/vaitro/index.blade.php' => 'Thêm vai trò',
         ];
@@ -277,7 +276,7 @@ final class HeaderActionsFiltersContractTest extends TestCase
     {
         $identifierCases = [
             'resources/views/backend/chucvu/index.blade.php' => '/<th\s+scope="row">\s*<span class="identifier-text">\s*\{\{\s*\$position->ma_cv\s*\}\}/s',
-            'resources/views/backend/hopdong/index.blade.php' => '/<th\s+scope="row">\s*<span class="identifier-text">\s*\{\{\s*\$contract->ma_hd\s*\}\}/s',
+            'resources/views/backend/hopdong/index.blade.php' => '/<th\s+scope="row">\s*<span class="identifier-text">\s*\{\{\s*\$contract->ma_nv\s*\}\}/s',
             'resources/views/backend/vaitro/permissions.blade.php' => '/<span class="identifier-text">\s*Mã vai trò:\s*\{\{\s*\$role->ma_vt\s*\}\}/s',
         ];
 
@@ -510,7 +509,7 @@ final class HeaderActionsFiltersContractTest extends TestCase
         self::assertStringContainsString('salary-row-create-action', $script);
     }
 
-    public function test_salary_coefficient_dates_use_shared_display_date_fields(): void
+    public function test_salary_coefficient_dates_use_native_iso_date_fields(): void
     {
         $view = file_get_contents(base_path('resources/views/backend/luong/index.blade.php'));
         $script = file_get_contents(base_path('resources/js/frontend/luong/luongHeSoCreateUpdate.js'));
@@ -521,13 +520,14 @@ final class HeaderActionsFiltersContractTest extends TestCase
             $fieldStart = strpos($view, 'id="' . $id . '"');
             self::assertNotFalse($fieldStart, $id . ' must remain addressable.');
             $field = substr($view, $fieldStart - 250, 650);
-            self::assertStringContainsString('type="text"', $field);
-            self::assertStringContainsString('placeholder="dd/mm/yyyy"', $field);
-            self::assertStringContainsString('inputmode="numeric"', $field);
-            self::assertStringContainsString('maxlength="10"', $field);
+            self::assertStringContainsString('type="date"', $field);
+            self::assertStringNotContainsString('placeholder="dd/mm/yyyy"', $field);
+            self::assertStringNotContainsString('inputmode="numeric"', $field);
+            self::assertStringNotContainsString('maxlength="10"', $field);
         }
         self::assertStringContainsString("shared/date-field.js", $script);
         self::assertStringContainsString('toIsoDate', $script);
-        self::assertStringContainsString('formatDisplayDate', $script);
+        self::assertStringContainsString('canonicalServerDate', $script);
+        self::assertStringNotContainsString('formatDisplayDate', $script);
     }
 }

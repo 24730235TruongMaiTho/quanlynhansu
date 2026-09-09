@@ -28,6 +28,11 @@ export function parseDisplayDate(display) {
 }
 
 export function toIsoDate(display) {
+    if (typeof display === 'string') {
+        const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(display);
+        if (isoMatch && formatDisplayDate(display)) return display;
+    }
+
     const parts = parseDisplayDate(display);
     if (!parts) return null;
 

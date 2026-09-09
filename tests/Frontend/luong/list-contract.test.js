@@ -20,6 +20,8 @@ test('salary list uses explicit filter submit and canonical page sizes', () => {
     assert.match(view, /for="search-field"/);
     assert.match(view, /for="department-filter"/);
     assert.match(view, /for="position-filter"/);
+    assert.doesNotMatch(view, /<svg[^>]*>[^<]*(?:circle|path)/u);
+    assert.doesNotMatch(view, /input-group-text[\s\S]*?search-field/u);
     assert.match(view, /Áp dụng bộ lọc/);
     assert.match(view, /Đặt lại/);
     for (const size of [10, 20, 50]) {
@@ -59,4 +61,12 @@ test('salary tables expose responsive accessible state contracts', () => {
     assert.match(view, /salary-coefficient-tbody/);
     assert.match(view, /colspan="14"/);
     assert.match(view, /colspan="7"/);
+});
+
+test('salary detail rows keep employee name and code without generated avatar initials', () => {
+    assert.doesNotMatch(js, /function\s+getInitials\s*\(/u);
+    assert.doesNotMatch(js, /class="avatar"/u);
+    assert.doesNotMatch(view, /\.salary-page\s+\.avatar\s*\{/u);
+    assert.match(js, /class="employee-name"/u);
+    assert.match(js, /employeeCode/);
 });

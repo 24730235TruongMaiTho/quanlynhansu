@@ -2,6 +2,8 @@
     if (! isset($submitDisabled)) {
         $submitDisabled = $lookupError !== null || $missingLookups !== [];
     }
+    $modalOnly = $modalOnly ?? false;
+    $preservedDistrict = old('quan_huyen', data_get($employee, 'quan_huyen'));
     $selectedLookup = $selectedLookup ?? function (string $key, string $valueKey, string $labelKey) use ($lookups, $employee): string {
         $value = old($valueKey, data_get($employee, $valueKey));
         $selected = collect($lookups[$key])->first(
@@ -13,6 +15,15 @@
     $reviewValue = $reviewValue ?? fn (string $field): string => filled(old($field, data_get($employee, $field)))
         ? old($field, data_get($employee, $field))
         : 'Chưa nhập';
+    $reviewDateValue = static function () use ($reviewValue, $modalOnly): string {
+        $value = $reviewValue('ngay_vao_lam');
+
+        if (! $modalOnly || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return $value;
+        }
+
+        return substr($value, 8, 2).'/'.substr($value, 5, 2).'/'.substr($value, 0, 4);
+    };
 @endphp
 
 <form
@@ -24,6 +35,7 @@
     aria-describedby="edit-form-help"
     data-employee-wizard
     data-initial-step="{{ $firstErrorStep }}"
+    @if ($modalOnly && filled($preservedDistrict)) data-preserved-district="{{ $preservedDistrict }}" @endif
 >
     @csrf
     @method('PUT')
@@ -36,10 +48,10 @@
         <p class="text-secondary">Các trường có dấu <span aria-hidden="true">*</span> là bắt buộc.</p>
 
         @include('backend.nhanvien.partials.personal-fields')
-        @include('backend.nhanvien.partials.address-fields')
+        @include('backend.nhanvien.partials.address-fields', ['showDistrictField' => ! $modalOnly])
 
         <div class="employee-step-actions justify-content-end">
-            <button class="btn btn-primary" type="button" data-wizard-next>
+            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" data-wizard-next>
                 Tiếp tục
                 <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </button>
@@ -54,11 +66,11 @@
         @include('backend.nhanvien.partials.employment-fields')
 
         <div class="employee-step-actions">
-            <button class="btn btn-outline-secondary" type="button" data-wizard-previous>
+            <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" data-wizard-previous>
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 Quay lại
             </button>
-            <button class="btn btn-primary" type="button" data-wizard-next>
+            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" data-wizard-next>
                 Kiểm tra hồ sơ
                 <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </button>
@@ -106,17 +118,20 @@
             </div>
             <div class="employee-review-row">
                 <dt>Ngày vào làm</dt>
-                <dd data-review-output="ngay_vao_lam">{{ $reviewValue('ngay_vao_lam') }}</dd>
+                <dd
+                    data-review-output="ngay_vao_lam"
+                    @if ($modalOnly) data-review-format="date-dmy" @endif
+                >{{ $reviewDateValue() }}</dd>
             </div>
         </dl>
 
         <div class="employee-step-actions">
-            <button class="btn btn-outline-secondary" type="button" data-wizard-previous>
+            <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" data-wizard-previous>
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 Quay lại
             </button>
             <button
-                class="btn btn-primary"
+                class="btn btn-primary d-inline-flex align-items-center gap-2"
                 type="submit"
                 data-submit-employee
                 @disabled($submitDisabled)

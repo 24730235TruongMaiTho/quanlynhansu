@@ -38,6 +38,44 @@ final class DisplayDateFormatter
         return $date->format('d/m/Y');
     }
 
+    public static function formatForInput(mixed $value, string $invalidFallback = ''): string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (! is_string($value) || $value === '') {
+            return $invalidFallback;
+        }
+
+        if (self::isDisplayDate($value)) {
+            try {
+                $date = CarbonImmutable::createFromFormat('!d/m/Y', $value);
+                $errors = CarbonImmutable::getLastErrors();
+            } catch (Throwable) {
+                return $invalidFallback;
+            }
+
+            return $date !== false
+                && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))
+                ? $date->format('Y-m-d')
+                : $invalidFallback;
+        }
+
+        try {
+            $date = CarbonImmutable::createFromFormat('!Y-m-d', $value);
+            $errors = CarbonImmutable::getLastErrors();
+        } catch (Throwable) {
+            return $invalidFallback;
+        }
+
+        return $date !== false
+            && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))
+            && $date->format('Y-m-d') === $value
+            ? $value
+            : $invalidFallback;
+    }
+
     private static function isDisplayDate(string $value): bool
     {
         if (preg_match('/\A[0-9]{2}\/[0-9]{2}\/[0-9]{4}\z/', $value) !== 1) {

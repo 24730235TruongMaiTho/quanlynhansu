@@ -83,7 +83,7 @@ class NhanVienController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $emptyLookups = [
             'phong_ban' => [],
@@ -129,31 +129,63 @@ class NhanVienController extends Controller
             $firstErrorStep = 3;
         }
 
-        return view('backend.nhanvien.create', [
+        $viewData = [
             'lookups' => $lookups,
             'lookupError' => $lookupError,
             'missingLookups' => $missingLookups,
             'firstErrorField' => $firstErrorField,
             'firstErrorStep' => $firstErrorStep,
-        ]);
+        ];
+
+        if ($request->header('X-Employee-Create-Modal') === '1'
+            || ($request->ajax() && $request->header('X-Form-Modal') === 'create')) {
+            return view('backend.nhanvien.partials.create-modal-content', $viewData);
+        }
+
+        return view('backend.nhanvien.create', $viewData);
     }
 
-    public function store(StoreNhanVienRequest $request): RedirectResponse
+    public function store(StoreNhanVienRequest $request): JsonResponse|RedirectResponse
     {
         try {
             $maNv = $this->employees->create($request->validated());
         } catch (NhanVienDomainException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                    'errors' => [
+                        $exception->field ?? 'nhan_vien' => [$exception->getMessage()],
+                    ],
+                ], 422);
+            }
+
             return back()
                 ->withInput($request->safe()->except('anh_dai_dien'))
                 ->withErrors([
                     $exception->field ?? 'nhan_vien' => $exception->getMessage(),
                 ]);
         } catch (Throwable) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể tạo nhân viên lúc này. Vui lòng thử lại sau.',
+                ], 500);
+            }
+
             return back()
                 ->withInput($request->safe()->except('anh_dai_dien'))
                 ->withErrors([
                     'nhan_vien' => 'Không thể tạo nhân viên lúc này. Vui lòng thử lại sau.',
                 ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã tạo nhân viên; có thể bổ sung hợp đồng sau.',
+                'data' => ['ma_nv' => $maNv],
+            ], 201);
         }
 
         return redirect()

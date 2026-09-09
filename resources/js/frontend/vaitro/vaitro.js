@@ -44,7 +44,7 @@ function renderRoleActions(role, permissions) {
         actions.push(`<a class="btn btn-outline-secondary" href="/vai-tro/${roleId}/phan-quyen" aria-label="Phân quyền ${roleName}" title="Phân quyền ${roleName}"><i class="bi bi-key" aria-hidden="true"></i>Phân quyền</a>`);
     }
     if (permissions.canEdit) {
-        actions.push(`<button class="btn btn-outline-primary btn-icon-action" type="button" data-role-edit="${roleId}" aria-label="Sửa ${roleName}" title="Sửa ${roleName}"><i class="bi bi-pencil" aria-hidden="true"></i></button>`);
+        actions.push(`<button class="btn btn-outline-primary btn-icon-action" type="button" data-role-edit="${roleId}" aria-label="Sửa ${roleName}" title="Sửa ${roleName}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>`);
     }
     if (permissions.canDelete) {
         actions.push(`<button class="btn btn-outline-danger btn-icon-action" type="button" data-role-delete="${roleId}" aria-label="Xóa ${roleName}" title="Xóa ${roleName}"><i class="bi bi-trash" aria-hidden="true"></i></button>`);

@@ -6,7 +6,7 @@ import {
 } from './employee-response.js';
 import { renderSharedPagination } from '../shared/pagination.js';
 import { createDeleteAction } from '../shared/delete-action.js';
-import { formatDisplayDate, toIsoDate } from '../shared/date-field.js';
+import { canonicalServerDate, formatDisplayDate, toIsoDate } from '../shared/date-field.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         INSERT: 'NghiPhep.Insert',
         UPDATE: 'NghiPhep.Update',
         DELETE: 'NghiPhep.Delete',
+        APPROVE: 'NghiPhep.Approve',
     });
 
     const permissionState = {
@@ -41,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function canApproveLeaves() {
-        return can(PERMISSION_CODES.UPDATE)
+        return can(PERMISSION_CODES.APPROVE)
             && document.querySelector('.leave-page')?.dataset.nghiPhepCanApprove === '1';
     }
 
@@ -239,14 +240,17 @@ document.addEventListener('DOMContentLoaded', () => {
         noReadNotice:
             document.getElementById('leave-no-read-notice'),
 
-        calendarButton:
-            document.getElementById('calendar-btn'),
-
         search: document.getElementById('search-field'),
         filterForm: document.getElementById('leave-filter-form'),
         department: document.getElementById('department-filter'),
         position: document.getElementById('position-filter'),
         clearFilterButton: document.getElementById('clear-filter-btn'),
+        historyFilterForm: document.getElementById('leave-history-filter-form'),
+        historyFromDate: document.getElementById('history-from-date'),
+        historyToDate: document.getElementById('history-to-date'),
+        historyFromDateError: document.getElementById('history-from-date-error'),
+        historyToDateError: document.getElementById('history-to-date-error'),
+        allLeavesButton: document.getElementById('all-leaves-btn'),
 
         employeeTbody: document.getElementById('employee-tbody'),
         employeePageInfo: document.getElementById('employee-page-info'),
@@ -263,11 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
         historyTab: document.getElementById('history-tab'),
         pendingCount: document.getElementById('pending-count'),
         historyCount: document.getElementById('history-count'),
-
-        createButton: document.getElementById('create-btn'),
-        editButton: document.getElementById('edit-leave-btn'),
-        deleteButton: document.getElementById('delete-leave-btn'),
-        approveButton: document.getElementById('approve-leave-btn'),
 
         modal: document.getElementById('leave-modal'),
         form: document.getElementById('leave-form'),
@@ -316,7 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
         counts: { pending: null, history: null },
 
         activeTab: 'pending',
-        selectedLeaveId: null,
+        historyFilters: {
+            tu_ngay: elements.historyFromDate?.value || null,
+            den_ngay: elements.historyToDate?.value || null,
+        },
 
         leavePage: 1,
         leavePerPage:
@@ -655,6 +657,65 @@ document.addEventListener('DOMContentLoaded', () => {
         loadEmployees(1);
     }
 
+    function syncHistoryFiltersFromUI() {
+        state.historyFilters = {
+            tu_ngay: elements.historyFromDate?.value || null,
+            den_ngay: elements.historyToDate?.value || null,
+        };
+
+        return { ...state.historyFilters };
+    }
+
+    function clearHistoryFilterErrors() {
+        [
+            [elements.historyFromDate, elements.historyFromDateError],
+            [elements.historyToDate, elements.historyToDateError],
+        ].forEach(([input, error]) => {
+            input?.classList.remove('is-invalid');
+            if (error) error.textContent = '';
+        });
+    }
+
+    function validateHistoryFilters(filters = state.historyFilters) {
+        clearHistoryFilterErrors();
+
+        const from = filters.tu_ngay || '';
+        const to = filters.den_ngay || '';
+
+        if (from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+            elements.historyFromDate?.classList.add('is-invalid');
+            if (elements.historyFromDateError) {
+                elements.historyFromDateError.textContent = 'Từ ngày không hợp lệ.';
+            }
+            return false;
+        }
+
+        if (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+            elements.historyToDate?.classList.add('is-invalid');
+            if (elements.historyToDateError) {
+                elements.historyToDateError.textContent = 'Đến ngày không hợp lệ.';
+            }
+            return false;
+        }
+
+        if (from && to && from > to) {
+            elements.historyFromDate?.classList.add('is-invalid');
+            elements.historyToDate?.classList.add('is-invalid');
+            if (elements.historyToDateError) {
+                elements.historyToDateError.textContent = 'Đến ngày không được nhỏ hơn từ ngày.';
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    function appendHistoryFilters(url) {
+        Object.entries(state.historyFilters).forEach(([key, value]) => {
+            if (value) url.searchParams.set(key, value);
+        });
+    }
+
     function renderEmployeeLoading() {
         elements.employeeTbody.innerHTML = `
             <tr>
@@ -990,7 +1051,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!employee) return;
 
         state.selectedEmployee = employee;
-        state.selectedLeaveId = null;
         state.leavePage = 1;
 
         elements.selectedEmployeeBadge.textContent =
@@ -1003,11 +1063,6 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.leaveDescription.textContent =
                 'Hiển thị toàn bộ đơn nghỉ phép đang chờ duyệt.';
         }
-
-        elements.createButton.disabled = !can(PERMISSION_CODES.INSERT);
-        elements.editButton.disabled = true;
-        elements.deleteButton.disabled = true;
-        if (elements.approveButton) elements.approveButton.disabled = true;
 
         elements.employeeTbody
             .querySelectorAll('[data-employee-row]')
@@ -1112,29 +1167,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderLeaves() {
-        state.selectedLeaveId = null;
-        elements.editButton.disabled = true;
-        elements.deleteButton.disabled = true;
-        if (elements.approveButton) elements.approveButton.disabled = true;
-        syncApproveButtonVisibility();
+    function renderLeaveActions(leave) {
+        const leaveId = escapeHtml(leave.ma_np);
+        const actions = [];
 
-        if (
-            state.activeTab === 'history' &&
-            !state.selectedEmployee
-        ) {
-            elements.leaveTbody.innerHTML = `
-                <tr>
-                    <td colspan="8" class="text-center text-secondary py-5">
-                        Chọn một nhân viên để xem lịch sử nghỉ phép đã xử lý.
-                    </td>
-                </tr>
-            `;
-            elements.pageInfo.textContent = 'Hiển thị 0 trên 0 yêu cầu';
-            elements.pagination.innerHTML = '';
-            return;
+        if (can(PERMISSION_CODES.UPDATE)) {
+            actions.push(`
+                <button
+                    class="btn btn-outline-primary btn-icon-action"
+                    type="button"
+                    data-leave-action="edit"
+                    data-leave-id="${leaveId}"
+                    aria-label="Sửa đơn nghỉ phép ${leaveId}"
+                    title="Sửa đơn nghỉ phép ${leaveId}"
+                ><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
+            `);
         }
 
+        if (can(PERMISSION_CODES.DELETE)) {
+            actions.push(`
+                <button
+                    class="btn btn-outline-danger btn-icon-action"
+                    type="button"
+                    data-leave-action="delete"
+                    data-leave-id="${leaveId}"
+                    aria-label="Xóa đơn nghỉ phép ${leaveId}"
+                    title="Xóa đơn nghỉ phép ${leaveId}"
+                ><i class="bi bi-trash" aria-hidden="true"></i></button>
+            `);
+        }
+
+        if (leave.trang_thai_duyet === 0 && canApproveLeaves()) {
+            actions.push(`
+                <button
+                    class="btn btn-outline-success btn-icon-action"
+                    type="button"
+                    data-leave-action="approve"
+                    data-leave-id="${leaveId}"
+                    aria-label="Duyệt đơn nghỉ phép ${leaveId}"
+                    title="Duyệt đơn nghỉ phép ${leaveId}"
+                ><i class="bi bi-check2" aria-hidden="true"></i></button>
+            `);
+        }
+
+        return actions.length > 0
+            ? `<div class="table-actions">${actions.join('')}</div>`
+            : '—';
+    }
+
+    function renderLeaves() {
         const paginator = leavePaginator();
         const rows = rowsForActiveTab();
 
@@ -1145,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${
                 state.activeTab === 'pending'
                     ? 'Không có đơn nghỉ phép chờ duyệt.'
-                    : 'Nhân viên này chưa có lịch sử nghỉ phép đã xử lý.'
+                    : 'Không có lịch sử nghỉ phép đã xử lý trong khoảng ngày này.'
             }
                     </td>
                 </tr>
@@ -1159,17 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <tr
                 data-leave-row
                 data-id="${escapeHtml(leave.ma_np)}"
-                style="cursor:pointer;"
             >
-                <td>
-                    <input
-                        class="form-check-input leave-radio"
-                        type="radio"
-                        name="selected-leave"
-                        value="${escapeHtml(leave.ma_np)}"
-                        ${canAny(PERMISSION_CODES.UPDATE, PERMISSION_CODES.DELETE) ? '' : 'disabled'}
-                    >
-                </td>
                 <td class="fw-semibold">
                     ${escapeHtml(leave.ma_nv)}
                 </td>
@@ -1190,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </span>
                 </td>
                 <td>${leaveStatusLabel(leave.trang_thai_duyet)}</td>
+                <td>${renderLeaveActions(leave)}</td>
             </tr>
         `).join('');
 
@@ -1254,7 +1326,10 @@ document.addEventListener('DOMContentLoaded', () => {
             state.pendingPaginator = result.data && !Array.isArray(result.data)
                 ? result.data
                 : null;
-            state.counts = result.counts || state.counts;
+            state.counts = {
+                ...state.counts,
+                pending: result.counts?.pending ?? state.counts.pending,
+            };
             state.pendingRows = extractData(result)
                 .map(normalizeLeave)
                 .filter((item) => item.trang_thai_duyet === 0);
@@ -1284,10 +1359,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadProcessedLeavesForEmployee({ render = true } = {}) {
         state.historyAbortController?.abort();
 
-        if (
-            !can(PERMISSION_CODES.READ) ||
-            !state.selectedEmployee?.ma_nv
-        ) {
+        if (!can(PERMISSION_CODES.READ)) {
             state.historyRows = [];
             updateLeaveCounts();
 
@@ -1301,16 +1373,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (render && state.activeTab === 'history') {
             renderLeaveLoading(
-                `Đang tải lịch sử nghỉ phép của ${state.selectedEmployee.ho_ten}...`
+                state.selectedEmployee
+                    ? `Đang tải lịch sử nghỉ phép của ${state.selectedEmployee.ho_ten}...`
+                    : 'Đang tải lịch sử nghỉ phép toàn công ty...'
             );
         }
 
         try {
             const url = new URL(NGHI_PHEP_API_URL, window.location.origin);
-            url.searchParams.set('ma_nv', state.selectedEmployee.ma_nv);
+            if (state.selectedEmployee?.ma_nv) {
+                url.searchParams.set('ma_nv', state.selectedEmployee.ma_nv);
+            }
             url.searchParams.set('page', String(state.leavePage));
             url.searchParams.set('per_page', String(state.leavePerPage));
             url.searchParams.set('tab', 'history');
+            appendHistoryFilters(url);
 
             const response = await fetch(url.toString(), {
                 headers: {
@@ -1334,13 +1411,13 @@ document.addEventListener('DOMContentLoaded', () => {
             state.historyPaginator = result.data && !Array.isArray(result.data)
                 ? result.data
                 : null;
-            state.counts = result.counts || state.counts;
+            state.counts = {
+                ...state.counts,
+                history: result.counts?.history ?? state.counts.history,
+            };
             state.historyRows = extractData(result)
                 .map(normalizeLeave)
-                .filter((item) =>
-                    String(item.ma_nv) === String(state.selectedEmployee.ma_nv) &&
-                    item.trang_thai_duyet !== 0
-                );
+                .filter((item) => item.trang_thai_duyet !== 0);
 
             updateLeaveCounts();
 
@@ -1371,111 +1448,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }),
         ];
 
-        if (state.selectedEmployee) {
-            tasks.push(
-                loadProcessedLeavesForEmployee({
-                    render: state.activeTab === 'history',
-                })
-            );
-        }
+        tasks.push(
+            loadProcessedLeavesForEmployee({
+                render: state.activeTab === 'history',
+            })
+        );
 
         await Promise.all(tasks);
     }
 
-    function selectLeave(leaveId) {
-        if (
-            !canAny(
-                PERMISSION_CODES.UPDATE,
-                PERMISSION_CODES.DELETE
-            )
-        ) {
-            return;
-        }
-
-        state.selectedLeaveId =
-            String(leaveId);
-
-        const leave =
-            rowsForActiveTab().find(
-                (item) =>
-                    String(item.ma_np) ===
-                    state.selectedLeaveId
-            );
-
-        elements.leaveTbody
-            .querySelectorAll('[data-leave-row]')
-            .forEach((row) => {
-                const selected =
-                    row.dataset.id ===
-                    state.selectedLeaveId;
-
-                row.classList.toggle(
-                    'table-primary',
-                    selected
-                );
-
-                const radio =
-                    row.querySelector('.leave-radio');
-
-                if (radio) {
-                    radio.checked =
-                        selected;
-                }
-            });
-
-        if (elements.editButton) {
-            elements.editButton.disabled =
-                !leave ||
-                !can(PERMISSION_CODES.UPDATE);
-        }
-
-        if (elements.deleteButton) {
-            elements.deleteButton.disabled =
-                !leave ||
-                !can(PERMISSION_CODES.DELETE);
-        }
-
-        if (elements.approveButton) {
-            const canApprove =
-                state.activeTab === 'pending' &&
-                !!leave &&
-                leave.trang_thai_duyet === 0 &&
-                canApproveLeaves();
-
-            elements.approveButton.disabled =
-                !canApprove;
-
-            syncApproveButtonVisibility();
-        }
-    }
-
-    function syncApproveButtonVisibility() {
-        if (!elements.approveButton) {
-            return;
-        }
-
-        const shouldShow =
-            canApproveLeaves() &&
-            state.activeTab === 'pending';
-
-        elements.approveButton.hidden =
-            !shouldShow;
-
-        elements.approveButton.classList.toggle(
-            'd-none',
-            !shouldShow
-        );
-
-        if (!shouldShow) {
-            elements.approveButton.disabled =
-                true;
-        }
-    }
-
     function switchTab(tab) {
         state.activeTab = tab;
-        state.selectedLeaveId = null;
         state.leavePage = 1;
+
+        if (elements.historyFilterForm) {
+            elements.historyFilterForm.hidden = tab !== 'history';
+        }
 
         elements.pendingTab.classList.toggle(
             'active',
@@ -1505,15 +1493,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 `Lịch sử nghỉ phép đã xử lý của ${state.selectedEmployee.ho_ten} (${state.selectedEmployee.ma_nv}).`;
         } else {
             elements.leaveDescription.textContent =
-                'Chọn một nhân viên ở bảng phía trên để xem lịch sử nghỉ phép đã xử lý.';
+                'Hiển thị lịch sử nghỉ phép đã xử lý của toàn công ty trong khoảng ngày đã chọn.';
         }
 
-        syncApproveButtonVisibility();
         if (tab === 'pending') {
             loadPendingLeaves();
         } else {
             loadProcessedLeavesForEmployee();
         }
+    }
+
+    function showAllLeaveHistory() {
+        const filters = syncHistoryFiltersFromUI();
+        if (!validateHistoryFilters(filters)) return;
+
+        state.selectedEmployee = null;
+        state.leavePage = 1;
+        if (elements.selectedEmployeeBadge) {
+            elements.selectedEmployeeBadge.textContent = 'Chưa chọn nhân viên';
+        }
+
+        elements.employeeTbody
+            .querySelectorAll('[data-employee-row]')
+            .forEach((row) => {
+                row.classList.remove('table-primary');
+                const radio = row.querySelector('.employee-radio');
+                if (radio) radio.checked = false;
+            });
+
+        switchTab('history');
     }
 
     function showModalMessage(message) {
@@ -1543,7 +1551,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearModalMessage();
     }
 
-    function openEditModal() {
+    function openEditModal(leaveId) {
         if (
             !guard(
                 PERMISSION_CODES.UPDATE,
@@ -1557,7 +1565,7 @@ document.addEventListener('DOMContentLoaded', () => {
             rowsForActiveTab().find(
                 (item) =>
                     String(item.ma_np) ===
-                    String(state.selectedLeaveId)
+                    String(leaveId)
             );
 
         if (!leave) return;
@@ -1572,10 +1580,10 @@ document.addEventListener('DOMContentLoaded', () => {
             '';
 
         elements.leaveFromDate.value =
-            formatDate(leave.tu_ngay) ?? '';
+            canonicalServerDate(leave.tu_ngay) ?? '';
 
         elements.leaveToDate.value =
-            formatDate(leave.den_ngay) ?? '';
+            canonicalServerDate(leave.den_ngay) ?? '';
 
         elements.leaveType.value =
             leave.ma_lp ?? '';
@@ -1616,11 +1624,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.leaveFromDateError) elements.leaveFromDateError.textContent = '';
         if (elements.leaveToDateError) elements.leaveToDateError.textContent = '';
         if (fromRaw && !fromIso) {
-            if (elements.leaveFromDateError) elements.leaveFromDateError.textContent = 'Từ ngày phải có định dạng dd/mm/yyyy hợp lệ.';
+            if (elements.leaveFromDateError) elements.leaveFromDateError.textContent = 'Từ ngày không hợp lệ.';
             return 'Từ ngày không hợp lệ.';
         }
         if (toRaw && !toIso) {
-            if (elements.leaveToDateError) elements.leaveToDateError.textContent = 'Đến ngày phải có định dạng dd/mm/yyyy hợp lệ.';
+            if (elements.leaveToDateError) elements.leaveToDateError.textContent = 'Đến ngày không hợp lệ.';
             return 'Đến ngày không hợp lệ.';
         }
         if (!payload.ma_nv) return 'Thiếu mã nhân viên.';
@@ -1694,50 +1702,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    const deleteLeaveAction = createDeleteAction({
-        button: elements.deleteButton,
-        getSelection: () => ({
-            id: state.selectedLeaveId,
-            persisted: Boolean(state.selectedLeaveId),
-            canDelete: can(PERMISSION_CODES.DELETE),
-        }),
-        confirmAction: () => window.confirm('Bạn có chắc muốn xóa đơn nghỉ phép này không?'),
-        requestDelete: (id) => requestJson(
-            `${NGHI_PHEP_API_URL}/${encodeURIComponent(id)}`,
-            { method: 'DELETE' },
-        ),
-        onSuccess: async () => {
-            state.selectedLeaveId = null;
-            await refreshLeaveData();
-        },
-        onError: (error) => {
-            console.error(error);
-            window.alert(error.message);
-        },
-        sync: () => {
-            const selected = selectedLeave();
-            if (elements.deleteButton) {
-                elements.deleteButton.disabled = !selected || !can(PERMISSION_CODES.DELETE);
-            }
-        },
-        busyLabel: 'Đang xóa...',
-    });
+    const leaveDeleteActions = new WeakMap();
 
-    async function deleteSelectedLeave() {
-        if (!can(PERMISSION_CODES.DELETE)) {
-            notifyDenied('xóa đơn nghỉ phép');
-            return;
+    function deleteLeave(leaveId, button) {
+        if (!button || !guard(PERMISSION_CODES.DELETE, 'xóa đơn nghỉ phép')) {
+            return Promise.resolve(false);
         }
-        await deleteLeaveAction();
+
+        let action = leaveDeleteActions.get(button);
+        if (!action) {
+            action = createDeleteAction({
+                button,
+                getSelection: () => ({
+                    id: leaveId,
+                    persisted: rowsForActiveTab().some(
+                        (item) => String(item.ma_np) === String(leaveId)
+                    ),
+                    canDelete: can(PERMISSION_CODES.DELETE),
+                }),
+                confirmAction: () => window.confirm('Bạn có chắc muốn xóa đơn nghỉ phép này không?'),
+                requestDelete: (id) => requestJson(
+                    `${NGHI_PHEP_API_URL}/${encodeURIComponent(id)}`,
+                    { method: 'DELETE' },
+                ),
+                onSuccess: () => refreshLeaveData(),
+                onError: (error) => {
+                    console.error(error);
+                    window.alert(error.message);
+                },
+                sync: () => {
+                    if (!button.isConnected) return;
+                    button.disabled = false;
+                    button.title = `Xóa đơn nghỉ phép ${leaveId}`;
+                    button.setAttribute('aria-label', `Xóa đơn nghỉ phép ${leaveId}`);
+                },
+                busyLabel: 'Đang xóa...',
+            });
+            leaveDeleteActions.set(button, action);
+        }
+
+        return action();
     }
 
-    async function approveSelectedLeave() {
+    async function approveLeave(leaveId, button) {
         if (!canApproveLeaves()) {
             notifyDenied('duyệt nghỉ phép');
-            return;
-        }
-
-        if (!state.selectedLeaveId) {
             return;
         }
 
@@ -1745,17 +1754,24 @@ document.addEventListener('DOMContentLoaded', () => {
             state.pendingRows.find(
                 (item) =>
                     String(item.ma_np) ===
-                    String(state.selectedLeaveId)
+                    String(leaveId)
             );
 
-        if (!leave) {
+        if (!leave || leave.trang_thai_duyet !== 0) {
             return;
+        }
+
+        const originalContent = button?.innerHTML || '';
+        if (button) {
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Đang duyệt...</span>';
         }
 
         try {
             await requestJson(
                 `${NGHI_PHEP_API_URL}/${encodeURIComponent(
-                    state.selectedLeaveId
+                    leaveId
                 )}/duyet`,
                 {
                     method: 'PATCH',
@@ -1769,6 +1785,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error(error);
             window.alert(error.message);
+        } finally {
+            if (button?.isConnected) {
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                button.innerHTML = originalContent;
+            }
         }
     }
 
@@ -1820,13 +1842,22 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.leaveTbody.addEventListener(
         'click',
         (event) => {
-            const row = event.target.closest(
-                '[data-leave-row]'
+            const button = event.target.closest(
+                '[data-leave-action][data-leave-id]'
             );
 
-            if (!row) return;
+            if (!button) return;
 
-            selectLeave(row.dataset.id);
+            const leaveId = button.dataset.leaveId;
+            const action = button.dataset.leaveAction;
+
+            if (action === 'edit') {
+                openEditModal(leaveId);
+            } else if (action === 'delete') {
+                deleteLeave(leaveId, button);
+            } else if (action === 'approve') {
+                approveLeave(leaveId, button);
+            }
         }
     );
 
@@ -1838,6 +1869,24 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.clearFilterButton?.addEventListener(
         'click',
         clearEmployeeFilters
+    );
+
+    elements.historyFilterForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const filters = syncHistoryFiltersFromUI();
+        if (!validateHistoryFilters(filters)) return;
+
+        state.leavePage = 1;
+        if (state.activeTab !== 'history') {
+            switchTab('history');
+        } else {
+            refreshLeaveData();
+        }
+    });
+
+    elements.allLeavesButton?.addEventListener(
+        'click',
+        showAllLeaveHistory
     );
 
     /*
@@ -1934,68 +1983,6 @@ document.addEventListener('DOMContentLoaded', () => {
         () => switchTab('history')
     );
 
-    elements.calendarButton?.addEventListener(
-        'click',
-        () => {
-            if (
-                !guard(
-                    PERMISSION_CODES.READ,
-                    'xem lịch nghỉ'
-                )
-            ) {
-                return;
-            }
-
-            document.dispatchEvent(
-                new CustomEvent(
-                    'leave:calendar',
-                    {
-                        detail: {
-                            employee:
-                            state.selectedEmployee,
-                        },
-                    }
-                )
-            );
-        }
-    );
-
-    elements.createButton?.addEventListener(
-        'click',
-        () => {
-            if (
-                !guard(
-                    PERMISSION_CODES.INSERT,
-                    'thêm nghỉ phép'
-                )
-            ) {
-                return;
-            }
-
-            const target =
-                elements.createButton.dataset.createUrl ||
-                '/user/nghi-phep/create';
-
-            window.location.href =
-                target;
-        }
-    );
-
-    elements.editButton?.addEventListener(
-        'click',
-        openEditModal
-    );
-
-    elements.deleteButton?.addEventListener(
-        'click',
-        deleteSelectedLeave
-    );
-
-    elements.approveButton?.addEventListener(
-        'click',
-        approveSelectedLeave
-    );
-
     elements.form?.addEventListener(
         'submit',
         submitLeaveForm
@@ -2047,14 +2034,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             applyPermissionVisibility();
-            syncApproveButtonVisibility();
             restoreLeaveTableAnchor();
 
             const readOnly =
                 can(PERMISSION_CODES.READ) &&
                 !can(PERMISSION_CODES.INSERT) &&
                 !can(PERMISSION_CODES.UPDATE) &&
-                !can(PERMISSION_CODES.DELETE);
+                !can(PERMISSION_CODES.DELETE) &&
+                !canApproveLeaves();
 
             if (elements.readOnlyBadge) {
                 elements.readOnlyBadge.hidden =
@@ -2080,6 +2067,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await Promise.all([
                 loadEmployees(1),
                 loadPendingLeaves(),
+                loadProcessedLeavesForEmployee({ render: false }),
             ]);
 
             // Bảng nhân viên có thể thay đổi chiều cao sau khi fragment đã được reveal.

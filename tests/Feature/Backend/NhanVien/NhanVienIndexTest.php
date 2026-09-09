@@ -88,6 +88,7 @@ class NhanVienIndexTest extends TestCase
             ->assertSee('Thao tác')
             ->assertSee('Xem')
             ->assertSee('href="'.route('backend.nhanvien.create').'"', false)
+            ->assertSee('data-employee-create-trigger', false)
             ->assertSee('/build/nhanvien.js', false)
             ->assertDontSee('Chưa khả dụng');
 
@@ -109,6 +110,7 @@ class NhanVienIndexTest extends TestCase
         $this->get('/nhan-vien')
             ->assertOk()
             ->assertSee('href="'.e($editUrl).'"', false)
+            ->assertSee('data-employee-edit-trigger', false)
             ->assertSee('Chỉnh sửa')
             ->assertSee('Xóa hoặc kết thúc')
             ->assertDontSee('Đặt lại mật khẩu');

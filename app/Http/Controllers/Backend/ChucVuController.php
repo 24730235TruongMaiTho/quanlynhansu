@@ -38,12 +38,17 @@ final class ChucVuController extends Controller
         return view('backend.chucvu.index', compact('positions', 'positionError', 'filters'));
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
+        if ($request->header('X-Create-Modal') === '1'
+            || ($request->ajax() && $request->header('X-Form-Modal') === 'create')) {
+            return view('backend.chucvu.partials.create-modal-content');
+        }
+
         return view('backend.chucvu.create');
     }
 
-    public function store(StoreChucVuRequest $request): RedirectResponse
+    public function store(StoreChucVuRequest $request): JsonResponse|RedirectResponse
     {
         try {
             $this->positions->create(
@@ -51,13 +56,35 @@ final class ChucVuController extends Controller
                 (string) $request->validated('he_so_phu_cap'),
             );
         } catch (ChucVuDomainException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                    'errors' => [$exception->field ?? 'chuc_vu' => [$exception->getMessage()]],
+                ], 422);
+            }
+
             return back()->withInput()->withErrors([
                 $exception->field ?? 'chuc_vu' => $exception->getMessage(),
             ]);
         } catch (Throwable) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể tạo chức vụ lúc này. Vui lòng thử lại sau.',
+                ], 500);
+            }
+
             return back()->withInput()->withErrors([
                 'chuc_vu' => 'Không thể tạo chức vụ lúc này. Vui lòng thử lại sau.',
             ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã thêm chức vụ.',
+            ], 201);
         }
 
         return redirect()->route('backend.chucvu.index')->with('success', 'Đã thêm chức vụ.');

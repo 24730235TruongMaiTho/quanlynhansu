@@ -4,6 +4,7 @@
 
 @section('content')
     @php
+        $canCreate = \Illuminate\Support\Facades\Gate::allows(\App\Enums\HopDongPermission::Tao->value);
         $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\HopDongPermission::Sua->value);
         $canDelete = \Illuminate\Support\Facades\Gate::allows(\App\Enums\HopDongPermission::Xoa->value);
         $hasFilters = filled(request('keyword')) || filled(request('ma_lhd')) || request()->boolean('sap_het_han');
@@ -21,11 +22,11 @@
             ]"
         >
             <x-slot:actions>
-            @can(\App\Enums\HopDongPermission::Tao->value)
-                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm hợp đồng" title="Thêm hợp đồng" href="{{ route('backend.hopdong.create') }}">
+            @if ($canCreate)
+                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm hợp đồng" title="Thêm hợp đồng" href="{{ route('backend.hopdong.create') }}" data-action="modal" data-modal-mode="create" data-modal-url="{{ route('backend.hopdong.create') }}">
                     <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm hợp đồng
                 </a>
-            @endcan
+            @endif
             </x-slot:actions>
         </x-backend.page-header>
 
@@ -91,8 +92,7 @@
                         <caption class="visually-hidden">Danh sách hợp đồng theo bộ lọc hiện tại</caption>
                         <thead class="table-light">
                             <tr>
-                                <th scope="col">#</th>
-                                <th scope="col">Mã</th>
+                                <th scope="col">Mã nhân viên</th>
                                 <th scope="col">Nhân viên</th>
                                 <th scope="col">Loại hợp đồng</th>
                                 <th scope="col">Ngày ký</th>
@@ -104,9 +104,8 @@
                             @foreach ($contracts as $contract)
                                 @php($deleteId = 'contract-delete-' . (int) $contract->ma_hd)
                                 <tr class="{{ $contract->sap_het_han ? 'table-warning' : '' }}">
-                                    <td>{{ ($contracts->firstItem() ?? 0) + $loop->index }}</td>
-                                    <th scope="row"><span class="identifier-text">{{ $contract->ma_hd }}</span></th>
-                                    <td><span class="fw-semibold">{{ $contract->ho_ten }}</span><small class="d-block text-secondary">{{ $contract->ma_nv }}</small></td>
+                                    <th scope="row"><span class="identifier-text">{{ $contract->ma_nv }}</span></th>
+                                    <td><span class="fw-semibold">{{ $contract->ho_ten }}</span></td>
                                     <td>{{ $contract->ten_lhd }}</td>
                                     <td>{{ \App\Support\DisplayDateFormatter::format($contract->ngay_ky) }}</td>
                                     <td>
@@ -117,7 +116,7 @@
                                         <td>
                                             <div class="table-actions">
                                                 @if ($canEdit)
-                                                    <a class="btn btn-outline-primary btn-icon-action" href="{{ route('backend.hopdong.edit', $contract->ma_hd) }}" aria-label="Sửa hợp đồng {{ $contract->ma_hd }}" title="Sửa hợp đồng {{ $contract->ma_hd }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                                                    <a class="btn btn-outline-primary btn-icon-action" href="{{ route('backend.hopdong.edit', $contract->ma_hd) }}" aria-label="Sửa hợp đồng {{ $contract->ma_hd }}" title="Sửa hợp đồng {{ $contract->ma_hd }}" data-action="modal" data-modal-mode="edit" data-modal-url="{{ route('backend.hopdong.edit', $contract->ma_hd) }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
                                                 @endif
                                                 @if ($canDelete)
                                                     <form id="{{ $deleteId }}" method="post" action="{{ route('backend.hopdong.destroy', $contract->ma_hd) }}" onsubmit="return confirm('Bạn có chắc muốn xóa hợp đồng này?')">
@@ -148,6 +147,15 @@
                 </div>
             @endif
         </section>
+
+        @if ($canCreate || $canEdit)
+            @include('backend.partials.simple-edit-modal', [
+                'modalId' => 'hop-dong-create-modal',
+                'title' => $canCreate ? 'Thêm hợp đồng' : 'Chỉnh sửa hợp đồng',
+                'createTitle' => 'Thêm hợp đồng',
+                'editTitle' => 'Chỉnh sửa hợp đồng',
+            ])
+        @endif
     </main>
 @endsection
 

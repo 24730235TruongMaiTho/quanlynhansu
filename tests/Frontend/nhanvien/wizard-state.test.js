@@ -7,6 +7,7 @@ import {
     nextStep,
     previousStep,
 } from '../../../resources/js/frontend/nhanvien/wizard-state.js';
+import { formatReviewDate } from '../../../resources/js/frontend/nhanvien/wizard.js';
 
 test('opens the step containing the first invalid field', () => {
     assert.equal(firstInvalidStep(['email', 'ma_pb']), 1);
@@ -36,6 +37,19 @@ test('reconciles avatar upload and deletion as mutually exclusive choices', () =
         hasFile: true,
         deleteChecked: false,
     });
+});
+
+test('formats a changed ISO date as dd/mm/yyyy for the edit modal review', () => {
+    assert.equal(formatReviewDate('2026-09-08', 'date-dmy'), '08/09/2026');
+});
+
+test('create wizard review opts into the same date formatter as edit modal', async () => {
+    const source = await import('node:fs/promises').then(({ readFile }) => readFile(
+        new URL('../../../resources/views/backend/nhanvien/partials/create-form.blade.php', import.meta.url),
+        'utf8',
+    ));
+
+    assert.match(source, /data-review-output="ngay_vao_lam"[\s\S]{0,200}data-review-format="date-dmy"/);
 });
 
 test('wizard indicators are resolved from the employee page instead of the form', async () => {

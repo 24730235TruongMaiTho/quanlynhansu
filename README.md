@@ -12,18 +12,49 @@ Copy-Item .env.example .env
 php artisan key:generate
 npm install
 npm run build
+php artisan storage:link
 php artisan serve
 ```
 
-Điền credential local/disposable vào `.env`, không commit file này. Database fresh phải chạy theo đúng thứ tự:
+Avatar lưu trên public disk cần symlink `public/storage` được tạo bằng
+`php artisan storage:link`; không commit hoặc tự tạo symlink trong repository.
+Mặc định URL là tương đối `/storage`, có thể đặt `PUBLIC_STORAGE_URL` trong
+`.env` khi dùng CDN hoặc host asset riêng.
+
+Điền credential local/disposable vào `.env`, không commit file này. Với một
+database fresh/disposable, cách khuyến nghị là chạy snapshot tự chứa:
+
+```text
+quan_ly_nhan_vien_session_update.sql
+```
+
+Snapshot này có tính **destructive** (`DROP DATABASE`) và chỉ được chạy trên
+database rỗng/disposable hoặc target đã backup và được phê duyệt. Nếu cần chạy
+từng nguồn để kiểm tra, thứ tự canonical là:
 
 ```text
 database/sql/tao_bang.sql
 database/sql/du_lieu_mau.sql
 database/sql/quyen_vai_tro.sql
+database/sql/salary/2026_09_09_001_luong_functions.sql
 ```
 
-Ba file trên tạo hợp đồng 15 bảng, seed 19 nhân viên, 37 quyền và 12 thủ tục RBAC. Chúng có `USE quan_ly_nhan_su`; chỉ chạy trên database rỗng/disposable hoặc target đã được phê duyệt và backup. Không dùng `php artisan migrate`/`db:seed` thay cho setup này khi chưa chốt chiến lược migration.
+Các nguồn trên tạo hợp đồng 15 bảng, seed 19 nhân viên, 43 quyền, 12 thủ tục
+RBAC và 4 hàm lương. Chúng có `USE quan_ly_nhan_su`; chỉ chạy trên database
+rỗng/disposable hoặc target đã được phê duyệt và backup. Không dùng
+`php artisan migrate`/`db:seed` thay cho setup này khi chưa chốt chiến lược
+migration.
+
+Với database đã có dữ liệu, **không chạy snapshot**. Sau preflight, backup và
+phê duyệt target, chạy riêng hai script sau: RBAC upgrade là additive và
+rerunnable/idempotent; salary routine source là rerunnable và thay thế (replace)
+bốn hàm lương. DDL routine có thể implicit commit, vì vậy hai script không được
+coi là một transaction duy nhất:
+
+```text
+database/sql/rbac/2026_09_09_001_add_nghiphep_approve_permission.sql
+database/sql/salary/2026_09_09_001_luong_functions.sql
+```
 
 Mở `/`: guest vào `/dang-nhap`, user đã xác thực vào `/tong-quan`. Các trang module nằm dưới `/nhan-vien`, `/phong-ban` và `/chuc-vu`.
 
@@ -50,9 +81,9 @@ Phạm vi code hiện tại của nhóm là Nhân viên, Phòng ban và Chức v
 | Phòng ban | Verified hẹp | Direct Query Builder, transaction/row lock, Gate canonical; browser chưa kiểm chứng |
 | Chức vụ | Verified hẹp | Direct Query Builder, transaction/row lock, Gate canonical; browser chưa kiểm chứng |
 | Dashboard | Prototype | Chỉ có kiểm tra auth/permission và render; dữ liệu nghiệp vụ/acceptance riêng chưa đóng |
-| Lương | Prototype — blocked | `LuongRepository@all` gọi `sp_luong_tim_kiem_phan_trang`, procedure này không có trong ba SQL active |
-| Chấm công | Prototype — blocked | Lookup gọi `sp_phong_ban_danh_sach` và update gọi `sp_cham_cong_cap_nhat`; các procedure không có trong ba SQL active |
-| Nghỉ phép | Prototype — blocked | Duyệt gọi `sp_nghi_phep_duyet_phep`, procedure không có trong ba SQL active |
+| Lương | Prototype | Fresh/approved-existing SQL có 4 hàm tương thích; workflow, browser và production evidence chưa được claim |
+| Chấm công | Prototype — blocked | Lookup gọi `sp_phong_ban_danh_sach` và update gọi `sp_cham_cong_cap_nhat`; các procedure không có trong active SQL sources |
+| Nghỉ phép | Prototype — blocked | Duyệt gọi `sp_nghi_phep_duyet_phep`, procedure không có trong active SQL sources |
 | Hợp đồng | Planned/scaffold | Chưa có workflow quản trị và mutation evidence đầy đủ |
 | Vai trò/Phân quyền/RBAC | Nền tảng verified hẹp | Catalog/procedure RBAC active có test hẹp; UI quản trị và browser/mutation evidence đầy đủ chưa được claim |
 

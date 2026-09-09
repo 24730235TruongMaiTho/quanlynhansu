@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Auth\NhanVienUserProvider;
 use App\Authorization\PermissionRegistry;
-use App\Enums\NhanVienRole;
 use App\Contracts\NhanVienRepositoryContract;
 use App\Contracts\NhanVienServiceContract;
 use App\Contracts\ChucVuRepositoryContract;
@@ -70,13 +69,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::define('department-manager', static function (mixed $actor): bool {
-            return $actor instanceof NhanVien
-                && (int) $actor->ma_vt === NhanVienRole::DepartmentManager->value
-                && is_numeric($actor->ma_pb)
-                && (int) $actor->ma_pb > 0;
-        });
-
         Auth::provider('nhan-vien', function (Application $app, array $config): NhanVienUserProvider {
             return new NhanVienUserProvider(
                 $app->make(NhanVienRepositoryContract::class),

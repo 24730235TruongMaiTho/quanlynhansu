@@ -79,6 +79,20 @@ final class HopDongContractRulesTest extends TestCase
         }
     }
 
+    public function test_request_accepts_canonical_iso_dates_for_form_and_json_submissions(): void
+    {
+        foreach (['post', 'put', 'postJson', 'putJson'] as $method) {
+            $this->{$method}('/_tests/hopdong-contract-rules', $this->requestPayload([
+                'ma_lhd' => 2,
+                'ngay_ky' => '2026-09-05',
+                'ngay_het_han' => '2026-09-06',
+            ]))
+                ->assertOk()
+                ->assertJsonPath('ngay_ky', '2026-09-05')
+                ->assertJsonPath('ngay_het_han', '2026-09-06');
+        }
+    }
+
     public function test_request_accepts_canonical_or_grouped_salary_and_rejects_malformed_values(): void
     {
         foreach (['postJson', 'putJson'] as $method) {

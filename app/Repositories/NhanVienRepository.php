@@ -373,7 +373,7 @@ final class NhanVienRepository implements NhanVienRepositoryContract
                 ->leftJoin('vai_tro as vt', 'vt.ma_vt', '=', 'nv.ma_vt')
                 ->select([
                     'nv.ma_nv', 'nv.ho_ten', 'nv.email', 'nv.mat_khau', 'nv.ma_vt', 'nv.ma_pb', 'nv.ma_tt',
-                    'vt.ten_vt',
+                    'nv.anh_dai_dien', 'vt.ten_vt',
                 ])
                 ->where(function (Builder $query) use ($identifier): void {
                     $query->where('nv.ma_nv', $identifier)

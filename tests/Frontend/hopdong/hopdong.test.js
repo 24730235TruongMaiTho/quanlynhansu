@@ -1,5 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const contractView = fs.readFileSync(
+    new URL('../../../resources/views/backend/hopdong/index.blade.php', import.meta.url),
+    'utf8',
+);
+const fullContractFormView = fs.readFileSync(
+    new URL('../../../resources/views/backend/hopdong/form.blade.php', import.meta.url),
+    'utf8',
+);
+const simpleModalView = fs.readFileSync(
+    new URL('../../../resources/views/backend/partials/simple-edit-modal.blade.php', import.meta.url),
+    'utf8',
+);
 
 function fakeForm(message) {
     const listeners = {};
@@ -56,6 +70,13 @@ function fakeContractUi() {
     };
     const form = {
         dataset: {},
+        querySelector(selector) {
+            return {
+                '[name="ma_lhd"]': typeSelect,
+                '[name="ngay_het_han"]': expiryInput,
+                '[name="luong_co_ban"]': salaryInput,
+            }[selector] || null;
+        },
         addEventListener(type, listener) {
             listeners[`form:${type}`] = listeners[`form:${type}`] || [];
             listeners[`form:${type}`].push(listener);
@@ -167,4 +188,97 @@ test('contract salary input formats safely, submits canonical digits, and does n
     const event = ui.form.submit();
     assert.equal(event.defaultPrevented, false);
     assert.equal(ui.salaryInput.value, '13000000');
+});
+
+test('contract salary input keeps sequential typing formatted instead of clearing the field', async () => {
+    const { bindContractForm } = await import(
+        '../../..//resources/js/frontend/hopdong/hopdong.js'
+    );
+    const ui = fakeContractUi();
+
+    bindContractForm(ui.root);
+    ui.salaryInput.value = '12a.345';
+    ui.salaryInput.selectionStart = ui.salaryInput.value.length;
+    ui.salaryInput.input();
+    assert.equal(ui.salaryInput.value, '12.345');
+
+    ui.salaryInput.value = '';
+    ui.salaryInput.selectionStart = 0;
+
+    for (const digit of '1234') {
+        ui.salaryInput.value += digit;
+        ui.salaryInput.selectionStart = ui.salaryInput.value.length;
+        ui.salaryInput.input();
+    }
+    assert.equal(ui.salaryInput.value, '1.234');
+
+    ui.salaryInput.value += '5';
+    ui.salaryInput.selectionStart = ui.salaryInput.value.length;
+    ui.salaryInput.input();
+    assert.equal(ui.salaryInput.value, '12.345');
+
+    for (const digit of '6789012345678') {
+        ui.salaryInput.value += digit;
+        ui.salaryInput.selectionStart = ui.salaryInput.value.length;
+        ui.salaryInput.input();
+    }
+    assert.equal(ui.salaryInput.value, '123.456.789.012.345.678');
+
+    const event = ui.form.submit();
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(ui.salaryInput.value, '123456789012345678');
+});
+
+test('contract list uses employee code as the visible identifier while actions retain contract id', () => {
+    assert.doesNotMatch(contractView, /<th\s+scope="col">#<\/th>/u);
+    assert.match(contractView, /<th\s+scope="col">Mã nhân viên<\/th>/u);
+    assert.match(contractView, /<th\s+scope="row">\s*<span class="identifier-text">\s*\{\{\s*\$contract->ma_nv\s*\}\}/u);
+    assert.doesNotMatch(contractView, /<th\s+scope="row">\s*<span class="identifier-text">\s*\{\{\s*\$contract->ma_hd\s*\}\}/u);
+    assert.doesNotMatch(contractView, /<small[^>]*>\s*\{\{\s*\$contract->ma_nv\s*\}\}/u);
+    assert.match(contractView, /route\('backend\.hopdong\.edit',\s*\$contract->ma_hd\)/u);
+    assert.match(contractView, /route\('backend\.hopdong\.destroy',\s*\$contract->ma_hd\)/u);
+});
+
+test('contract edit trigger opens the modal while retaining its real fallback URL', () => {
+    assert.match(contractView, /route\('backend\.hopdong\.edit',\s*\$contract->ma_hd\)/u);
+    assert.match(contractView, /data-action="modal" data-modal-mode="edit"/u);
+    assert.match(contractView, /data-modal-url="\{\{\s*route\('backend\.hopdong\.edit'/u);
+    assert.match(simpleModalView, /data-edit-title=/u);
+    assert.match(fs.readFileSync(new URL('../../../resources/views/backend/hopdong/partials/edit-modal-content.blade.php', import.meta.url), 'utf8'), /@method\('PUT'\)/u);
+});
+
+test('full-page contract form loads the same entrypoint as the popup form', () => {
+    assert.match(fullContractFormView, /@push\('scripts'\)[\s\S]*@vite\('resources\/js\/frontend\/hopdong\/hopdong\.js'\)/u);
+});
+
+test('contract create trigger is a modal with a real no-script fallback', () => {
+    assert.match(contractView, /href="\{\{\s*route\('backend\.hopdong\.create'\)\s*\}\}"/u);
+    assert.match(contractView, /data-action="modal"/u);
+    assert.match(contractView, /data-modal-mode="create"/u);
+    assert.match(contractView, /data-modal-url="\{\{\s*route\('backend\.hopdong\.create'\)\s*\}\}"/u);
+    assert.match(simpleModalView, /data-simple-edit-modal/u);
+    assert.match(fs.readFileSync(new URL('../../../resources/views/backend/hopdong/partials/create-modal-content.blade.php', import.meta.url), 'utf8'), /data-contract-modal-close/u);
+});
+
+test('dynamic contract form binding scopes fields to the injected form', async () => {
+    const { bindContractForm } = await import(
+        '../../..//resources/js/frontend/hopdong/hopdong.js'
+    );
+    const ui = fakeContractUi();
+    const filterType = { selectedOptions: [{ dataset: { contractTerm: 'finite' } }] };
+    const originalQuery = ui.root.querySelector;
+    ui.root.getElementById = () => filterType;
+    ui.root.querySelector = (selector) => {
+        if (selector === '[data-contract-form]') return ui.form;
+        return originalQuery(selector);
+    };
+    ui.form.querySelector = (selector) => ({
+        '[name="ma_lhd"]': ui.typeSelect,
+        '[name="ngay_het_han"]': ui.expiryInput,
+        '[name="luong_co_ban"]': ui.salaryInput,
+    }[selector] || null);
+
+    bindContractForm(ui.root);
+    assert.equal(ui.expiryInput.disabled, true);
+    assert.equal(ui.typeSelect.selectedOptions[0].dataset.contractTerm, 'indefinite');
 });

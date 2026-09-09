@@ -45,11 +45,8 @@
                         <label class="form-label fw-semibold" for="leave-filter-keyword">
                             Tìm kiếm nhân viên (Tên hoặc Mã NV)
                         </label>
-                        <div class="input-group">
-                            <input class="form-control" id="leave-filter-keyword" type="search"
-                                   placeholder="Nhập tên hoặc mã nhân viên..." autocomplete="off">
-                            <span class="input-group-text bg-white"><i class="bi bi-search" aria-hidden="true"></i></span>
-                        </div>
+                        <input class="form-control" id="leave-filter-keyword" type="search"
+                               placeholder="Nhập tên hoặc mã nhân viên..." autocomplete="off">
                     </div>
 
                     <div class="filter-bar__field filter-bar__field--compact">
@@ -61,16 +58,14 @@
 
                     <div class="filter-bar__field filter-bar__field--compact">
                         <label class="form-label fw-semibold" for="leave-filter-from">Từ ngày</label>
-                        <input class="form-control" id="leave-filter-from" type="text"
-                               placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10"
+                        <input class="form-control" id="leave-filter-from" type="date"
                                aria-describedby="leave-filter-from-error">
                         <div class="invalid-feedback" id="leave-filter-from-error" role="alert"></div>
                     </div>
 
                     <div class="filter-bar__field filter-bar__field--compact">
                         <label class="form-label fw-semibold" for="leave-filter-to">Đến ngày</label>
-                        <input class="form-control" id="leave-filter-to" type="text"
-                               placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10"
+                        <input class="form-control" id="leave-filter-to" type="date"
                                aria-describedby="leave-filter-to-error">
                         <div class="invalid-feedback" id="leave-filter-to-error" role="alert"></div>
                     </div>

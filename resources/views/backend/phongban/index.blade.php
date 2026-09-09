@@ -28,7 +28,7 @@
         >
             <x-slot:actions>
             @if ($canCreate)
-                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm phòng ban" title="Thêm phòng ban" href="{{ route('backend.phongban.create') }}">
+                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm phòng ban" title="Thêm phòng ban" href="{{ route('backend.phongban.create') }}" data-action="modal" data-modal-mode="create" data-modal-url="{{ route('backend.phongban.create') }}">
                     <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm phòng ban
                 </a>
             @endif
@@ -122,7 +122,7 @@
                                             <div class="table-actions">
                                                 @if ($canEdit)
                                                     @php($editUrl = route('backend.phongban.edit', ['ma_pb' => $department->ma_pb] + $listQuery))
-                                                    <a class="btn btn-outline-primary btn-icon-action" href="{{ $editUrl }}" data-action="modal" data-modal-url="{{ $editUrl }}" aria-label="Sửa {{ $department->ten_pb }}" title="Sửa {{ $department->ten_pb }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+                                                    <a class="btn btn-outline-primary btn-icon-action" href="{{ $editUrl }}" data-action="modal" data-modal-url="{{ $editUrl }}" aria-label="Sửa {{ $department->ten_pb }}" title="Sửa {{ $department->ten_pb }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
                                                 @endif
                                                 @if ($canDelete && ! $hasEmployees)
                                                     <form id="{{ $deleteId }}" method="POST" action="{{ route('backend.phongban.destroy', $department->ma_pb) }}" onsubmit="return confirm('Bạn có chắc muốn xóa phòng ban này?')">
@@ -167,10 +167,11 @@
             @endif
         </section>
 
-        @if ($canEdit)
+        @if ($canCreate || $canEdit)
             @include('backend.partials.simple-edit-modal', [
                 'modalId' => 'phong-ban-edit-modal',
                 'title' => 'Chỉnh sửa phòng ban',
+                'createTitle' => 'Thêm phòng ban',
             ])
         @endif
     </main>

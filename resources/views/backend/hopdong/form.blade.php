@@ -23,45 +23,7 @@
             <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0">Thông tin hợp đồng</h2></div>
             <div class="card-body p-4">
                 @if ($errors->any())<div class="alert alert-danger" role="alert">Vui lòng kiểm tra lại dữ liệu.</div>@endif
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label" for="ma_nv">Nhân viên <span class="text-danger">*</span></label>
-                        <select class="form-select" id="ma_nv" name="ma_nv" required>
-                            @foreach ($employees as $employee)
-                                <option value="{{ $employee->ma_nv }}" @selected(old('ma_nv', $contract->ma_nv ?? '') === $employee->ma_nv)>{{ $employee->ma_nv }} — {{ $employee->ho_ten }}</option>
-                            @endforeach
-                        </select>
-                        @error('ma_nv')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="ma_lhd">Loại hợp đồng <span class="text-danger">*</span></label>
-                        <select class="form-select" id="ma_lhd" name="ma_lhd" required>
-                            @foreach ($types as $type)
-                                <option value="{{ $type->ma_lhd }}" data-contract-term="{{ (int) $type->ma_lhd === 1 ? 'indefinite' : 'finite' }}" @selected((string) old('ma_lhd', $contract->ma_lhd ?? '') === (string) $type->ma_lhd)>{{ $type->ten_lhd }}</option>
-                            @endforeach
-                        </select>
-                        @error('ma_lhd')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="ngay_ky">Ngày ký <span class="text-danger">*</span></label>
-                        <input class="form-control" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" id="ngay_ky" name="ngay_ky" value="{{ old('ngay_ky', \App\Support\DisplayDateFormatter::format($contract->ngay_ky ?? '')) }}" required>
-                        @error('ngay_ky')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="ngay_het_han">Ngày hết hạn</label>
-                        <input class="form-control" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" id="ngay_het_han" name="ngay_het_han" value="{{ old('ngay_het_han', \App\Support\DisplayDateFormatter::format($contract->ngay_het_han ?? '')) }}">
-                        <div class="form-text" data-expiry-required-marker>Để trống đối với hợp đồng không xác định thời hạn.</div>
-                        @error('ngay_het_han')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="luong_co_ban">Lương cơ bản <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <input class="form-control" type="text" inputmode="numeric" id="luong_co_ban" name="luong_co_ban" value="{{ old('luong_co_ban', $contract->luong_co_ban ?? '') }}" required>
-                            <span class="input-group-text">VNĐ</span>
-                        </div>
-                        @error('luong_co_ban')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    </div>
-                </div>
+                @include('backend.hopdong.partials.form-fields')
             </div>
             <div class="card-footer bg-white d-flex flex-wrap justify-content-end gap-2 py-3">
                 <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.hopdong.index') }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
@@ -70,3 +32,7 @@
         </form>
     </main>
 @endsection
+
+@push('scripts')
+    @vite('resources/js/frontend/hopdong/hopdong.js')
+@endpush

@@ -37,23 +37,50 @@ class PhongBanController extends Controller
         return view('backend.phongban.index', compact('departments', 'departmentError', 'filters'));
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
+        if ($request->header('X-Create-Modal') === '1'
+            || ($request->ajax() && $request->header('X-Form-Modal') === 'create')) {
+            return view('backend.phongban.partials.create-modal-content');
+        }
+
         return view('backend.phongban.create');
     }
 
-    public function store(StorePhongBanRequest $request): RedirectResponse
+    public function store(StorePhongBanRequest $request): JsonResponse|RedirectResponse
     {
         try {
             $this->departments->create($request->validated('ten_pb'));
         } catch (PhongBanDomainException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                    'errors' => [$exception->field ?? 'phong_ban' => [$exception->getMessage()]],
+                ], 422);
+            }
+
             return back()->withInput()->withErrors([
                 $exception->field ?? 'phong_ban' => $exception->getMessage(),
             ]);
         } catch (Throwable) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể tạo phòng ban lúc này. Vui lòng thử lại sau.',
+                ], 500);
+            }
+
             return back()->withInput()->withErrors([
                 'phong_ban' => 'Không thể tạo phòng ban lúc này. Vui lòng thử lại sau.',
             ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã thêm phòng ban.',
+            ], 201);
         }
 
         return redirect()->route('backend.phongban.index')->with('success', 'Đã thêm phòng ban.');

@@ -106,11 +106,8 @@
                 <form id="attendance-filter-form" class="filter-bar">
                 <div class="filter-bar__fields">
                     <div class="filter-bar__field">
-                        <div class="input-group">
-                            <span class="input-group-text bg-white">⌕</span>
-                            <input class="form-control" type="search" id="search-field"
-                                   placeholder="Tìm mã hoặc tên nhân viên..." aria-label="Tìm nhân viên">
-                        </div>
+                        <input class="form-control" type="search" id="search-field"
+                               placeholder="Tìm mã hoặc tên nhân viên..." aria-label="Tìm nhân viên">
                     </div>
 
                     <div class="filter-bar__field filter-bar__field--period">
@@ -448,7 +445,7 @@
                         </div>
 
                         <button
-                            class="btn btn-sm btn-link text-danger text-decoration-none"
+                            class="btn btn-sm btn-link text-danger text-decoration-none d-inline-flex align-items-center gap-2"
                             id="attendance-import-remove-file"
                             type="button"
                         >
@@ -463,7 +460,7 @@
                        px-4 py-3 border-top bg-light"
             >
                 <button
-                    class="btn btn-outline-secondary btn-sm"
+                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
                     id="attendance-import-cancel"
                     type="button"
                 >
@@ -587,7 +584,7 @@
 
             <div class="d-flex justify-content-end gap-2 px-4 py-3 border-top bg-light">
                 <button
-                    class="btn btn-outline-secondary btn-sm"
+                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
                     id="attendance-export-cancel"
                     type="button"
                 >

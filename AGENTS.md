@@ -15,9 +15,11 @@ Chrome fresh read-only ngày 2026-09-05 đã kiểm tra `/vai-tro` (main `1320`,
 - Đồ án: website quản lý nhân sự cho hai môn Web Application và UI/UX.
 - Stack: Laravel 12, PHP 8.2+, Blade, JavaScript, Vite 7, Tailwind CSS 4, Bootstrap, MariaDB/MySQL.
 - Nguồn dựng fresh hiện hành cho hợp đồng 15 bảng là lần lượt
-  `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql` và
-  `database/sql/quyen_vai_tro.sql`; các file SQL ở thư mục gốc và
-  `quan_ly_nhan_su.session.sql` là lịch sử đã đánh dấu, không phải nguồn active.
+  `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql`,
+  `database/sql/quyen_vai_tro.sql` và
+  `database/sql/salary/2026_09_09_001_luong_functions.sql`; các file SQL ở thư
+  mục gốc và `quan_ly_nhan_su.session.sql` là lịch sử đã đánh dấu, không phải
+  nguồn active.
 - Main hiện có UI/API prototype cho lương, chấm công, nghỉ phép; module Nhân viên + auth/RBAC Tasks 13–20 đã verified hẹp và tích hợp vào `main` qua merge `aa77419`. Trong task hiện tại, code ownership chỉ gồm Nhân viên, Phòng ban và Chức vụ; các issue Dashboard, Lương, Chấm công, Nghỉ phép, Hợp đồng, Vai trò/Phân quyền/RBAC và API của đồng nghiệp chỉ ghi chú, không tự sửa nếu user chưa giao rõ. Phòng ban và Chức vụ phải bám đúng catalog quyền `PhongBan.*`/`ChucVu.*` và fresh 15-table contract; xem handoff/guide để biết giới hạn browser.
 - Trạng thái chi tiết: `docs/PROJECT_STATUS.md`.
 
@@ -27,8 +29,10 @@ Chrome fresh read-only ngày 2026-09-05 đã kiểm tra `/vai-tro` (main `1320`,
 2. `docs/CODEX_NEXT_HANDOFF.md`.
 3. `docs/PROJECT_STATUS.md` và tài liệu chuyên đề liên quan. Với task module Nhân viên, đọc thêm [docs/EMPLOYEE_MODULE_GUIDE.md](docs/EMPLOYEE_MODULE_GUIDE.md).
 4. Route, controller, request, service/repository, model, Blade/JavaScript và test của task.
-5. Ba file `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql` và
-   `database/sql/quyen_vai_tro.sql` trước thay đổi fresh;
+5. Bốn file active `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql`,
+   `database/sql/quyen_vai_tro.sql` và
+   `database/sql/salary/2026_09_09_001_luong_functions.sql` trước thay đổi
+   fresh;
    đọc `quan_ly_nhan_su.session.sql` chỉ để đối chiếu legacy khi cần.
 6. Instruction/skill phù hợp trong `.codex/`.
 
@@ -75,6 +79,7 @@ Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa đ�
 - Dump có `DROP DATABASE IF EXISTS quan_ly_nhan_su`; không import vào DB có dữ liệu cần giữ.
 - Runtime audit là MariaDB 10.4.32; chưa mặc định tuyên bố tương thích MySQL 8.
 - Migrations chỉ là hạ tầng Laravel và chưa tạo bảng nghiệp vụ.
+- Fresh snapshot hiện hành ghép bốn nguồn trên, tạo 15 bảng, 43 quyền, 12 thủ tục RBAC và 4 hàm lương. Snapshot là disposable/destructive; với database đã có dữ liệu, dùng script RBAC additive và salary routine rerunnable riêng.
 - Module Nhân viên/auth/RBAC hiện dùng Query Builder trực tiếp trên hợp đồng 15
   bảng; không thêm procedure/view/trigger để né giới hạn bảng. Với procedure của
   module khác, kiểm tra tên, số tham số, thứ tự và result shape trong dump/live schema.
@@ -88,15 +93,18 @@ Main và local branch `frontend` đã phân kỳ. Shell ở `frontend` chưa đ�
   và mã lỗi `PB_*`; các `sp_phong_ban_*` trong dump/script/test cũ chỉ là
   historical, không phải caller active của repository.
 - Các lỗi đã audit ngoài ownership chỉ ghi chú: Dashboard còn ranh giới
-  auth/permission riêng; `LuongRepository@all` gọi
-  `sp_luong_tim_kiem_phan_trang` thiếu; Chấm công lookup/update gọi
+  auth/permission riêng; `LuongRepository@all` hiện dùng Query Builder trực tiếp
+  và gọi 4 hàm lương canonical (`fn_so_ngay_cong_chuan`,
+  `fn_so_ngay_cong_thuc_te`, `fn_tinh_luong_thuc_nhan`,
+  `fn_thong_bao_tinh_luong`); Chấm công lookup/update gọi
   `sp_phong_ban_danh_sach`/`sp_cham_cong_cap_nhat` thiếu; Nghỉ phép approve gọi
   `sp_nghi_phep_duyet_phep` thiếu; model/validation còn legacy drift; Hợp đồng
   và quản trị RBAC mới chỉ verified hẹp hoặc thiếu mutation/browser evidence.
-  Không coi các procedure này có trong active/live và không sửa chúng trong task
-  Nhân viên/Phòng ban/Chức vụ.
-- `sp_phong_ban_chi_tiet` và `sp_luong_tim_kiem_phan_trang` không thuộc active
-  repository contract; không tự tạo routine bằng phỏng đoán. Chấm công chi tiết
+  Không coi các routine legacy của Chấm công/Nghỉ phép có trong active/live và
+  không sửa chúng trong task Nhân viên/Phòng ban/Chức vụ.
+- `sp_phong_ban_chi_tiet` và `sp_luong_tim_kiem_phan_trang` là routine lịch sử,
+  không thuộc active repository contract; không tự tạo routine bằng phỏng đoán.
+  Chấm công chi tiết
   hiện dùng Query Builder trên cột canonical và không gọi
   `sp_cham_cong_chi_tiet_phan_trang`.
 - Chốt cùng timezone cho Laravel và DB trước các logic dùng `now()`/`CURDATE()`.

@@ -86,7 +86,7 @@ class LuongHeSoLuongTask12BContractTest extends TestCase
         self::assertStringContainsString('(2, 38),(2, 39),(2, 40),(2, 41),(2, 42)', $seed);
         self::assertStringContainsString('(3, 33)', $seed);
         self::assertStringNotContainsString('(3, 38)', $seed);
-        self::assertStringContainsString('ALTER TABLE quyen AUTO_INCREMENT = 43;', $seed);
+        self::assertStringContainsString('ALTER TABLE quyen AUTO_INCREMENT = 44;', $seed);
     }
 
     public function test_salary_mutation_failures_are_reported_with_safe_messages(): void

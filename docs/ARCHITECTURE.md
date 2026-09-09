@@ -41,7 +41,8 @@ Không nên coi sơ đồ lớp là chuẩn hoàn chỉnh: một số module b�
 
 Các route nghiệp vụ khai báo middleware `auth` và Gate theo từng quyền. Dashboard
 `/tong-quan` yêu cầu `auth`; lương, chấm công và nghỉ phép dùng riêng catalog
-`Luong.*` (33–36), `ChamCong.*` (29–32) và `NghiPhep.*` (25–28). Rollout
+`Luong.*` (33–36), `ChamCong.*` (29–32), `NghiPhep.*` (25–28) và custom
+`NghiPhep.Approve` (43). Rollout
 middleware của module Nhân viên đã được loại bỏ; Hợp đồng và Phân quyền giữ
 nguyên contract quyền do code đồng nghiệp cung cấp.
 
@@ -125,12 +126,13 @@ Frontend layout cũ lại yêu cầu `resources/css/app.css` và `resources/js/a
 
 ## Database
 
-Nguồn fresh active là ba file SQL chạy theo thứ tự:
+Nguồn fresh active là bốn file SQL chạy theo thứ tự:
 `database/sql/tao_bang.sql`, `database/sql/du_lieu_mau.sql`, rồi
-`database/sql/quyen_vai_tro.sql`:
+`database/sql/quyen_vai_tro.sql`, rồi
+`database/sql/salary/2026_09_09_001_luong_functions.sql`:
 
 - đúng 15 bảng;
-- 19 nhân viên, 37 quyền và 12 thủ tục RBAC có mã số tường minh;
+- 19 nhân viên, 43 quyền, 12 thủ tục RBAC và 4 hàm lương có hợp đồng tường minh;
 - `nhan_vien` chứa trực tiếp address/avatar/date columns;
 - role/status/permission dùng ID contracts, symbol dotted và counter row lock;
 - mã nhân viên seed/cấp mới dùng định dạng 5 chữ số; bộ đếm tự động thực tế
@@ -139,7 +141,10 @@ Nguồn fresh active là ba file SQL chạy theo thứ tự:
 `Database\\Seeders\\LocalDemoSeeder`, `quan_ly_nhan_su.session.sql` cùng các
 script employee 001–006 là **Lịch sử**, không dùng làm fresh setup path.
 
-Ba migrations Laravel chỉ tạo hạ tầng users/session/cache/jobs và chưa được chạy trên database live. Xem [DATABASE.md](DATABASE.md).
+Snapshot root `quan_ly_nhan_vien_session_update.sql` là artifact destructive;
+database đã có dữ liệu chỉ dùng các script additive phù hợp sau preflight/backup.
+Ba migrations Laravel chỉ tạo hạ tầng users/session/cache/jobs và chưa được
+chạy trên database live. Xem [DATABASE.md](DATABASE.md).
 
 Baseline hiện dùng `APP_TIMEZONE=Asia/Ho_Chi_Minh` và `DB_TIMEZONE=+07:00`. Môi trường triển khai phải giữ hai giá trị đồng bộ vì SQL vẫn dùng `CURDATE()` và PHP dùng `now()`.
 

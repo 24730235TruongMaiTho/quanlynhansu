@@ -214,13 +214,13 @@ document.addEventListener('DOMContentLoaded', () => {
         el.from.classList.toggle('is-invalid', Boolean(el.from.value && !fromIso));
         el.to.classList.toggle('is-invalid', Boolean(el.to.value && !toIso));
         if (el.from.value && !fromIso) {
-            if (fromError) fromError.textContent = 'Từ ngày phải có định dạng dd/mm/yyyy hợp lệ.';
+            if (fromError) fromError.textContent = 'Từ ngày không hợp lệ.';
             el.error.textContent = 'Vui lòng kiểm tra Từ ngày.';
             el.error.hidden = false;
             return false;
         }
         if (el.to.value && !toIso) {
-            if (toError) toError.textContent = 'Đến ngày phải có định dạng dd/mm/yyyy hợp lệ.';
+            if (toError) toError.textContent = 'Đến ngày không hợp lệ.';
             el.error.textContent = 'Vui lòng kiểm tra Đến ngày.';
             el.error.hidden = false;
             return false;

@@ -168,6 +168,23 @@ class NhanVienShowTest extends TestCase
             ->assertDontSee('Đặt lại mật khẩu');
     }
 
+    public function test_show_never_renders_reset_action_even_when_actor_is_authorized(): void
+    {
+        $this->actingAsEmployeeWithPermissions([
+            \App\Enums\NhanVienPermission::Xem,
+            \App\Enums\NhanVienPermission::DatLaiMatKhau,
+        ]);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('findOrFail')->once()->with('00001')->andReturn($this->employee());
+        });
+
+        $this->get('/nhan-vien/00001')
+            ->assertOk()
+            ->assertDontSee('Đặt lại mật khẩu')
+            ->assertDontSee('data-reset-password-form', false)
+            ->assertDontSee('/reset-mat-khau', false);
+    }
+
     public function test_show_renders_initials_when_the_employee_has_no_avatar(): void
     {
         $employee = $this->employee();

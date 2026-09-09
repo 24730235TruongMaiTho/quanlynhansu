@@ -160,7 +160,7 @@ class FakeContent extends FakeElement {
     }
 }
 
-function createHarness(fetchImpl, initializeWizards = null) {
+function createHarness(fetchImpl, initializeWizards = null, createFormData = null) {
     const form = new FakeForm();
     const content = new FakeContent(form);
     const ui = {
@@ -168,8 +168,6 @@ function createHarness(fetchImpl, initializeWizards = null) {
         content,
         loading: new FakeElement(),
         error: new FakeElement(),
-        fallback: new FakeElement(),
-        retry: new FakeElement(),
         close: new FakeElement(),
     };
     const navigation = { reloads: 0, reload() { this.reloads += 1; } };
@@ -178,7 +176,7 @@ function createHarness(fetchImpl, initializeWizards = null) {
         fetch: fetchImpl,
         navigation,
         initializeWizards: initializeWizards ?? ((root) => initialized.push(root)),
-        createFormData: () => ({ employee: '00001' }),
+        createFormData: createFormData ?? (() => ({ employee: '00001' })),
     });
 
     return { controller, ui, form, navigation, initialized };
@@ -204,7 +202,6 @@ test('loads edit form on demand, injects it once, and initializes the wizard', a
     await controller.open(opener, '/nhan-vien/00001/edit');
 
     assert.equal(ui.dialog.open, true);
-    assert.equal(ui.fallback.href, '/nhan-vien/00001/edit');
     assert.equal(ui.content.innerHTML, '<form data-employee-wizard></form>');
     assert.equal(initialized.length, 1);
     assert.equal(calls[0].url, '/nhan-vien/00001/edit');
@@ -212,7 +209,53 @@ test('loads edit form on demand, injects it once, and initializes the wizard', a
     assert.equal(navigation.reloads, 0);
 });
 
-test('keeps a safe retry and progressive fallback when the form cannot load', async () => {
+test('loads create form with the create modal header and submits FormData through the same controller', async () => {
+    const calls = [];
+    const { controller, form, ui, navigation } = createHarness(async (url, options) => {
+        calls.push({ url, options });
+        return calls.length === 1
+            ? response({ html: '<form data-employee-wizard></form>' })
+            : response({ json: { success: true, message: 'Đã tạo nhân viên.' } });
+    });
+    const opener = new FakeElement();
+    opener.dataset.employeeModalMode = 'create';
+
+    await controller.open(opener, '/nhan-vien/create');
+    await controller.submit(form, {});
+
+    assert.equal(calls[0].options.headers['X-Employee-Create-Modal'], '1');
+    assert.equal(calls[0].options.headers['X-Form-Modal'], 'create');
+    assert.equal(calls[1].options.method, 'POST');
+    assert.deepEqual(calls[1].options.body, { employee: '00001' });
+    assert.equal(ui.dialog.open, false);
+    assert.equal(navigation.reloads, 1);
+});
+
+test('preserves the hidden district value when an edit modal submits its FormData', async () => {
+    let submittedBody;
+    let requestCount = 0;
+    const { controller, form } = createHarness(async (url, options) => {
+        requestCount += 1;
+        if (requestCount === 1) {
+            return response({ html: '<form data-employee-wizard></form>' });
+        }
+
+        submittedBody = options.body;
+        return response({ json: { success: true, message: 'Đã cập nhật hồ sơ nhân viên.' } });
+    }, null, () => ({
+        append(name, value) {
+            this[name] = value;
+        },
+    }));
+    form.dataset.preservedDistrict = 'Quận 1';
+
+    await controller.open(new FakeElement(), '/nhan-vien/00001/edit');
+    await controller.submit(form, {});
+
+    assert.equal(submittedBody.quan_huyen, 'Quận 1');
+});
+
+test('shows a safe load error and closes without popup recovery controls', async () => {
     const { controller, ui } = createHarness(async () => response({ status: 503 }));
     const opener = new FakeElement();
 
@@ -220,10 +263,11 @@ test('keeps a safe retry and progressive fallback when the form cannot load', as
 
     assert.equal(ui.error.hidden, false);
     assert.match(ui.error.textContent, /Không tải được biểu mẫu/);
-    assert.equal(ui.fallback.hidden, false);
-    assert.equal(ui.fallback.href, '/nhan-vien/00002/edit');
-    assert.equal(ui.retry.hidden, false);
+    assert.match(ui.error.textContent, /đóng popup/i);
+    assert.doesNotMatch(ui.error.textContent, /mở trang đầy đủ/i);
     assert.doesNotMatch(ui.error.textContent, /SQLSTATE|Exception|stack/i);
+    assert.equal(controller.close(), true);
+    assert.equal(ui.dialog.open, false);
 });
 
 test('renders field validation errors and blocks a second submit while saving', async () => {
@@ -337,8 +381,6 @@ test('blocks close and Escape during update, then permits reopening after a safe
     assert.equal(cancel.prevented, true);
     assert.equal(ui.dialog.open, true);
     assert.equal(await controller.open(new FakeElement(), '/nhan-vien/00002/edit'), null);
-    assert.equal(ui.fallback.href, '/nhan-vien/00001/edit');
-
     resolveUpdate(response({ status: 500, json: { message: 'SQLSTATE private details' } }));
     await update;
     assert.equal(ui.close.disabled, false);
@@ -347,7 +389,6 @@ test('blocks close and Escape during update, then permits reopening after a safe
     const secondOpener = new FakeElement();
     await controller.open(secondOpener, '/nhan-vien/00002/edit');
     assert.equal(ui.dialog.open, true);
-    assert.equal(ui.fallback.href, '/nhan-vien/00002/edit');
 });
 
 test('shows a safe form-level message for an unmapped 422 error and keeps the form usable', async () => {
@@ -404,7 +445,6 @@ test('reuses the dialog for another employee and reinitializes the injected form
 
     assert.deepEqual(calls, ['/nhan-vien/00001/edit', '/nhan-vien/00002/edit']);
     assert.equal(initialized.length, 2);
-    assert.equal(ui.fallback.href, '/nhan-vien/00002/edit');
 });
 
 test('uses a safe server message and re-enables the form after an update failure', async () => {

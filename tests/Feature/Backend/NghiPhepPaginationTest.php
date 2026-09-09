@@ -123,11 +123,11 @@ final class NghiPhepPaginationTest extends TestCase
             ->assertJsonPath('counts.history', 1);
     }
 
-    public function test_department_manager_scope_overrides_client_department_filter(): void
+    public function test_read_actor_can_filter_companywide_without_department_scope(): void
     {
         $this->actingAsEmployeeWithPermissions(
             [NghiPhepPermission::Xem],
-            ['ma_vt' => 4, 'ma_pb' => 2],
+            ['ma_vt' => 5, 'ma_pb' => null],
         );
 
         $response = $this->getJson(
@@ -136,20 +136,20 @@ final class NghiPhepPaginationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonPath('data.total', 11)
-            ->assertJsonPath('data.data.0.ma_pb', 2);
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.ma_pb', 3);
     }
 
-    public function test_department_manager_without_valid_department_fails_closed(): void
+    public function test_read_actor_without_department_can_list_companywide(): void
     {
         $this->actingAsEmployeeWithPermissions(
             [NghiPhepPermission::Xem],
-            ['ma_vt' => 4, 'ma_pb' => 0],
+            ['ma_vt' => 5, 'ma_pb' => null],
         );
 
         $this->getJson('/api/v1/nghi-phep?tab=pending')
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertOk()
+            ->assertJsonPath('data.total', 12);
     }
 
     public function test_history_tab_returns_processed_rows_without_changing_tab_counts(): void
@@ -162,6 +162,15 @@ final class NghiPhepPaginationTest extends TestCase
             ->assertJsonPath('data.data.0.trang_thai_duyet', 1)
             ->assertJsonPath('counts.pending', 12)
             ->assertJsonPath('counts.history', 1);
+    }
+
+    public function test_index_rejects_a_history_range_that_ends_before_it_starts(): void
+    {
+        $this->actingAsEmployeeWithPermissions([NghiPhepPermission::Xem]);
+
+        $this->getJson('/api/v1/nghi-phep?tab=history&tu_ngay=2026-09-30&den_ngay=2026-09-01')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('den_ngay');
     }
 
     public function test_generic_update_rejects_crafted_approval_status(): void

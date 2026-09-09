@@ -60,6 +60,46 @@ class NhanVienStoreTest extends TestCase
         $this->assertStringNotContainsString('nhom3@2026', json_encode($session, JSON_UNESCAPED_UNICODE));
     }
 
+    public function test_modal_store_returns_safe_json_without_redirect_or_hash(): void
+    {
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('create')->once()->withArgs(function (array $validated): bool {
+                $this->assertArrayNotHasKey('ma_vt', $validated);
+                $this->assertArrayNotHasKey('mat_khau', $validated);
+
+                return true;
+            })->andReturn('00001');
+        });
+
+        $this->postJson('/nhan-vien', $this->validPayload())
+            ->assertCreated()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Đã tạo nhân viên; có thể bổ sung hợp đồng sau.',
+                'data' => ['ma_nv' => '00001'],
+            ])
+            ->assertJsonMissingPath('redirect')
+            ->assertJsonMissingPath('mat_khau');
+    }
+
+    public function test_modal_address_payload_without_optional_district_reaches_service_safely(): void
+    {
+        $payload = $this->validPayload();
+        unset($payload['quan_huyen']);
+
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('create')->once()->withArgs(function (array $validated): bool {
+                $this->assertArrayNotHasKey('quan_huyen', $validated);
+
+                return true;
+            })->andReturn('00001');
+        });
+
+        $this->postJson('/nhan-vien', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.ma_nv', '00001');
+    }
+
     public function test_create_flash_is_rendered_accessibly_after_following_the_redirect(): void
     {
         $employee = (object) [

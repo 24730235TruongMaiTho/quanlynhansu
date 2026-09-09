@@ -5,8 +5,7 @@
          colors="true">
     <testsuites>
         <testsuite name="MariaDb">
-            <!-- Các kiểm thử routine cũ còn lại thuộc contract lịch sử; harness
-                 active chỉ replay ba file SQL và database disposable. -->
+            <!-- Harness active replay bốn nguồn SQL canonical trên database disposable. -->
             <file>tests/Integration/MariaDb/FreshEmployeeSchemaContractTest.php</file>
         </testsuite>
     </testsuites>

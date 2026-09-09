@@ -2,12 +2,14 @@
     $dialogKey = preg_replace('/[^A-Za-z0-9_-]/', '-', (string) $employee->ma_nv);
     $destroyDialogId = 'employee-destroy-' . $dialogKey;
     $wrapActions = $wrapActions ?? true;
+    $includeResetPassword = $includeResetPassword ?? true;
 @endphp
 
 @if ($wrapActions)
 <div class="employee-action-dialogs table-actions d-inline-flex flex-wrap gap-2 mt-2" data-action-dialogs>
 @endif
 
+@if ($includeResetPassword)
 @can(\App\Enums\NhanVienPermission::DatLaiMatKhau->value)
     <form
         method="POST"
@@ -26,6 +28,7 @@
         ><i class="bi bi-key button-icon" aria-hidden="true"></i>Đặt lại mật khẩu</button>
     </form>
 @endcan
+@endif
 
 @can(\App\Enums\NhanVienPermission::Xoa->value)
 @if ((string) auth()->id() !== (string) $employee->ma_nv)

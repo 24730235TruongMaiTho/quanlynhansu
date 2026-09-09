@@ -4,7 +4,7 @@ import {
     guard,
 } from './luongPermissions.js';
 import {
-    formatDisplayDate,
+    canonicalServerDate,
     toIsoDate,
 } from '../shared/date-field.js';
 
@@ -446,13 +446,9 @@ document.addEventListener(
                     item.he_so_luong ??
                     '';
 
-                elements.from.value = formatDisplayDate(
-                    String(item.tu_ngay || '').substring(0, 10),
-                );
+                elements.from.value = canonicalServerDate(item.tu_ngay) || '';
 
-                elements.to.value = formatDisplayDate(
-                    String(item.den_ngay || '').substring(0, 10),
-                );
+                elements.to.value = canonicalServerDate(item.den_ngay) || '';
             } catch (error) {
                 console.error(
                     'Load coefficient failed:',
@@ -631,16 +627,23 @@ document.addEventListener(
 
                 if (!fromIso) {
                     elements.from.setAttribute?.('aria-invalid', 'true');
-                    showModalError('Từ ngày phải có định dạng dd/mm/yyyy hợp lệ.');
+                    showModalError('Từ ngày phải là ngày hợp lệ.');
                     return;
                 }
 
                 if (!toIso) {
                     if (elements.to.value) {
                         elements.to.setAttribute?.('aria-invalid', 'true');
-                        showModalError('Đến ngày phải có định dạng dd/mm/yyyy hợp lệ.');
+                        showModalError('Đến ngày phải là ngày hợp lệ.');
                         return;
                     }
+                }
+
+                if (toIso && fromIso > toIso) {
+                    elements.from.setAttribute?.('aria-invalid', 'true');
+                    elements.to.setAttribute?.('aria-invalid', 'true');
+                    showModalError('Đến ngày không được nhỏ hơn từ ngày.');
+                    return;
                 }
 
                 elements.from.removeAttribute?.('aria-invalid');

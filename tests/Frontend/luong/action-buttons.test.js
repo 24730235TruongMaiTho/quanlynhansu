@@ -37,9 +37,12 @@ test('salary row actions keep view/create text while edit/delete are icon-only',
         assert.match(salarySource, new RegExp(icon));
     }
 
-    for (const label of ['Xem chi tiết', 'Hệ số lương']) {
+    for (const label of ['Xem chi tiết']) {
         assert.match(salarySource, new RegExp(label));
     }
+
+    assert.doesNotMatch(salarySource, /function\s+iconCoefficient\s*\(/u);
+    assert.doesNotMatch(salarySource, /data-salary-action="coefficient"/u);
 
     for (const [action, label] of [
         ['edit', 'Sửa'],
@@ -68,6 +71,22 @@ test('salary row actions keep view/create text while edit/delete are icon-only',
     assert.match(createMarkup, /title="Tạo thông tin lương"/);
     assert.match(createMarkup, /aria-label="Tạo thông tin lương cho [^"]+"/);
     assert.match(createMarkup, /\$\{iconCreate\(\)\}Tạo thông tin lương/);
+});
+
+test('salary employee rows select coefficient context with keyboard without hijacking controls', () => {
+    assert.match(salarySource, /data-salary-row/u);
+    assert.match(salarySource, /data-employee-code=/u);
+    assert.match(salarySource, /data-employee-name=/u);
+    assert.match(salarySource, /tabindex="0"/u);
+    assert.match(salarySource, /aria-selected="\$\{[^}]+\}"/u);
+    assert.match(source, /\[data-salary-row\]/u);
+    assert.match(source, /salary-row-selected/u);
+    assert.match(source, /aria-selected/u);
+    assert.match(source, /Enter/u);
+    assert.match(source, /event\.key\s*!==\s*['"] ['"]/u);
+    assert.match(source, /button,\s*a,\s*input,\s*select,\s*textarea,\s*label,\s*\[role="button"\]/u);
+    assert.match(source, /salary-coefficient-card[\s\S]*scrollIntoView/u);
+    assert.doesNotMatch(source, /data-salary-action="coefficient"/u);
 });
 
 test('coefficient mutations use delete endpoint and lock controls in flight', () => {

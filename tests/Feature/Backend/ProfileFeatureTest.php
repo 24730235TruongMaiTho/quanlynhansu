@@ -208,17 +208,17 @@ final class ProfileFeatureTest extends TestCase
         self::assertArrayNotHasKey('mat_khau_moi', session('_old_input', []));
     }
 
-    public function test_sidebar_contains_canonical_profile_navigation_and_salary_hash(): void
+    public function test_sidebar_contains_canonical_profile_navigation_without_redundant_links(): void
     {
         $source = file_get_contents(resource_path('views/backend/layouts/sidebar.blade.php'));
         self::assertIsString($source);
         self::assertMatchesRegularExpression('/data-toggle="submenu"[\s\S]{0,1200}Quản lý chức vụ/', $source);
         self::assertStringContainsString("route('backend.chucvu.index')", $source);
-        self::assertStringContainsString("route('backend.chucvu.create')", $source);
+        self::assertStringNotContainsString("route('backend.chucvu.create')", $source);
         self::assertStringContainsString("route('backend.nghiphep.create')", $source);
         self::assertStringContainsString("route('backend.nghiphep.index')", $source);
         self::assertStringNotContainsString("backend.nghiphep.duyet-nghi-phep", $source);
-        self::assertStringContainsString("#salary-coefficient-card", $source);
+        self::assertStringNotContainsString("#salary-coefficient-card", $source);
     }
 
     private function ensureProfileValidationTable(): void

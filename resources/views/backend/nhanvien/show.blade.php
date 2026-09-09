@@ -62,8 +62,8 @@
             </x-slot:titlePrefix>
             <x-slot:actions>
                 @can(\App\Enums\NhanVienPermission::Sua->value)
-                    <a class="btn btn-primary" href="{{ $editUrl }}" data-employee-edit-trigger>
-                        <i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa
+                    <a class="btn btn-outline-primary" href="{{ $editUrl }}" data-employee-edit-trigger aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}">
+                        <i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa
                     </a>
                 @endcan
                 <a class="btn btn-outline-secondary" href="{{ $backUrl }}">
@@ -74,7 +74,10 @@
 
         @include('backend.nhanvien.partials.flash')
 
-        @include('backend.nhanvien.partials.action-dialogs', ['employee' => $employee])
+        @include('backend.nhanvien.partials.action-dialogs', [
+            'employee' => $employee,
+            'includeResetPassword' => false,
+        ])
 
         <div class="row g-3">
             <div class="col-12">

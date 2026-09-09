@@ -177,10 +177,7 @@
 
                                         <input class="form-control"
                                                id="leave-from-date"
-                                               type="text"
-                                               placeholder="dd/mm/yyyy"
-                                               inputmode="numeric"
-                                               maxlength="10"
+                                               type="date"
                                                aria-describedby="leave-from-date-error"
                                                required>
 
@@ -198,10 +195,7 @@
 
                                         <input class="form-control"
                                                id="leave-to-date"
-                                               type="text"
-                                               placeholder="dd/mm/yyyy"
-                                               inputmode="numeric"
-                                               maxlength="10"
+                                               type="date"
                                                aria-describedby="leave-to-date-error"
                                                required>
 
@@ -277,10 +271,7 @@
                                 <input
                                     class="form-control"
                                     id="leave-log-from-date"
-                                    type="text"
-                                    placeholder="dd/mm/yyyy"
-                                    inputmode="numeric"
-                                    maxlength="10"
+                                    type="date"
                                     aria-describedby="leave-log-from-date-error"
                                     aria-label="Lọc từ ngày"
                                 >
@@ -295,10 +286,7 @@
                                 <input
                                     class="form-control"
                                     id="leave-log-to-date"
-                                    type="text"
-                                    placeholder="dd/mm/yyyy"
-                                    inputmode="numeric"
-                                    maxlength="10"
+                                    type="date"
                                     aria-describedby="leave-log-to-date-error"
                                     aria-label="Lọc đến ngày"
                                 >

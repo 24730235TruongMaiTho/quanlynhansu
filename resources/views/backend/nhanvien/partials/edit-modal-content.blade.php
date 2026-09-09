@@ -16,5 +16,5 @@
         </div>
     @endif
 
-    @include('backend.nhanvien.partials.edit-form')
+    @include('backend.nhanvien.partials.edit-form', ['modalOnly' => true])
 </div>

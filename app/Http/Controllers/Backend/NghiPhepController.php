@@ -6,7 +6,6 @@ use App\Contracts\NhanVienServiceContract;
 use App\Http\Requests\StoreNghiPhepRequest;
 use App\Http\Requests\UpdateNghiPhepRequest;
 use App\Services\NghiPhepService;
-use App\Support\NhanVienScope;
 use App\Support\JsonPaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +18,6 @@ class NghiPhepController extends Controller
     public function __construct(
         NghiPhepService $service,
         private NhanVienServiceContract $nhanVienService,
-        private NhanVienScope $employeeScope,
     ) {
         $this->service = $service;
     }
@@ -30,7 +28,7 @@ class NghiPhepController extends Controller
             'ma_nv' => ['nullable', 'string', 'max:50'],
             'trang_thai_duyet' => ['nullable', 'integer', 'in:0,1,2'],
             'tu_ngay' => ['nullable', 'date_format:Y-m-d'],
-            'den_ngay' => ['nullable', 'date_format:Y-m-d'],
+            'den_ngay' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:tu_ngay'],
             'tab' => ['nullable', 'in:pending,history'],
             'tu_khoa' => ['nullable', 'string', 'max:100'],
             'ma_pb' => ['nullable', 'integer', 'min:1'],
@@ -38,7 +36,6 @@ class NghiPhepController extends Controller
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'in:10,20,50'],
         ]);
-        $actor = $request->user();
         $filters = [
             'ma_nv' => $validated['ma_nv'] ?? null,
             'trang_thai_duyet' => $validated['trang_thai_duyet'] ?? null,
@@ -51,14 +48,7 @@ class NghiPhepController extends Controller
             'page' => (int) ($validated['page'] ?? 1),
             'per_page' => (int) ($validated['per_page'] ?? 10),
         ];
-        $scopedFilters = $this->employeeScope->filtersFor($actor, $filters);
-        if ($scopedFilters === null) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tài khoản chưa được phân công phòng ban phụ trách.',
-            ], 403);
-        }
-        $result = $this->service->getAll($scopedFilters);
+        $result = $this->service->getAll($filters);
 
         if (!$result['success']) {
             return response()->json($result, 500);
@@ -257,16 +247,6 @@ class NghiPhepController extends Controller
                     'nullable|integer|min:1|max:100',
             ]);
 
-        /*
-         * QUAN TRỌNG:
-         * Không lấy ma_pb từ FE.
-         *
-         * Trưởng phòng chỉ được xem
-         * phòng ban của chính mình.
-         */
-        $validated['ma_pb'] =
-            auth()->user()->ma_pb;
-
         $data =
             $this->service
                 ->getApprovalList(
@@ -308,24 +288,13 @@ class NghiPhepController extends Controller
         }
     }
 
-    /**
-     * Duyệt hoặc từ chối một đơn trong phòng ban của Trưởng phòng.
-     */
+    /** Duyệt hoặc từ chối một đơn trong phạm vi toàn công ty. */
     public function duyet(Request $request, $ma_np): JsonResponse
     {
         $validated = $request->validate([
             'trang_thai_duyet' => ['required', 'integer', 'in:1,2'],
         ]);
-        $department = auth()->user()->ma_pb;
-
-        if (! is_numeric($department) || (int) $department < 1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tài khoản chưa được phân công phòng ban phụ trách.',
-            ], 403);
-        }
-
-        $data = $this->service->duyet((int) $ma_np, (int) $validated['trang_thai_duyet'], (int) $department);
+        $data = $this->service->duyet((int) $ma_np, (int) $validated['trang_thai_duyet']);
 
         if (! $data['success']) {
             return response()->json($data, isset($data['code']) ? 409 : 404);

@@ -196,7 +196,7 @@ Route::middleware('api')
                     'phe-duyet',
                     [NghiPhepController::class, 'approvalList']
                 )->name('api.v1.nghi-phep.phe-duyet')
-                ->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value, 'can:department-manager']);
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Xem->value, 'can:'.NghiPhepPermission::Duyet->value]);
 
                 Route::get(
                     'phong-ban',
@@ -221,7 +221,7 @@ Route::middleware('api')
                     [NghiPhepController::class, 'duyet']
                 )->name(
                     'api.v1.nghi-phep.duyet'
-                )->middleware(['auth', 'can:'.NghiPhepPermission::Sua->value, 'can:department-manager']);
+                )->middleware(['auth', 'can:'.NghiPhepPermission::Duyet->value]);
             });
 
         Route::apiResource(

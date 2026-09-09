@@ -126,6 +126,36 @@ class NhanVienUpdateTest extends TestCase
             ->assertDontSee('/build/nhanvien.js', false);
     }
 
+    public function test_modal_edit_hides_district_but_full_edit_keeps_it_and_formats_review_date(): void
+    {
+        $target = $this->employee(['ngay_vao_lam' => '2020-01-01']);
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($target): void {
+            $mock->shouldReceive('findOrFail')->twice()->with('00001')->andReturn($target);
+            $mock->shouldReceive('lookups')->twice()->andReturn($this->lookups());
+        });
+
+        $this->get('/nhan-vien/00001/edit', [
+            'X-Employee-Edit-Modal' => '1',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+            ->assertOk()
+            ->assertViewIs('backend.nhanvien.partials.edit-modal-content')
+            ->assertDontSee('Quận/Huyện')
+            ->assertDontSee('name="quan_huyen"', false)
+            ->assertSee('data-preserved-district="Quận 1"', false)
+            ->assertSee('data-review-output="ngay_vao_lam"', false)
+            ->assertSee('>01/01/2020</dd>', false)
+            ->assertDontSee('>2020-01-01</dd>', false);
+
+        $this->get('/nhan-vien/00001/edit')
+            ->assertOk()
+            ->assertViewIs('backend.nhanvien.edit')
+            ->assertSee('Quận/Huyện')
+            ->assertSee('name="quan_huyen"', false)
+            ->assertSee('data-review-output="ngay_vao_lam"', false)
+            ->assertSee('>2020-01-01</dd>', false);
+    }
+
     public function test_modal_edit_partial_explains_missing_lookups_and_keeps_submit_locked(): void
     {
         $target = $this->employee();

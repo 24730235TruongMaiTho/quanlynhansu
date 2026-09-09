@@ -11,10 +11,26 @@ export function bindEmployeeEditTriggers(root, editModal) {
         return;
     }
 
-    root.querySelectorAll('[data-employee-edit-trigger]').forEach((trigger) => {
+    const queryTriggers = (selector) => {
+        try {
+            return root.querySelectorAll(selector);
+        } catch {
+            return [];
+        }
+    };
+    const triggers = [
+        ...queryTriggers('[data-employee-edit-trigger]'),
+        ...queryTriggers('[data-employee-create-trigger]'),
+    ];
+
+    triggers.forEach((trigger) => {
         trigger.addEventListener('click', (event) => {
             event.preventDefault();
-            editModal.open(trigger, trigger.getAttribute('href') || trigger.href);
+            editModal.open(
+                trigger,
+                trigger.getAttribute('href') || trigger.href,
+                trigger.dataset.employeeModalMode || (trigger.hasAttribute?.('data-employee-create-trigger') ? 'create' : 'edit'),
+            );
         });
     });
 }

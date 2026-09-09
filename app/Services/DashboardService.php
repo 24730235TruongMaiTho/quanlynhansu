@@ -17,29 +17,22 @@ use Illuminate\Support\Facades\Log;
  */
 class DashboardService
 {
-    /**
-     * Đếm các đơn nghỉ phép đang chờ duyệt trong phòng ban của Trưởng phòng.
-     *
-     * Trả về null khi người gọi không phải Trưởng phòng đủ phạm vi, để
-     * dashboard không vô tình tiết lộ dữ liệu duyệt nghỉ phép.
-     */
-    public function getPendingDepartmentLeaveCount(NhanVien $manager): ?int
+    /** Đếm đơn nghỉ phép chờ duyệt cho actor đủ quyền đọc và duyệt. */
+    public function getPendingLeaveCount(NhanVien $actor): ?int
     {
-        if (! \Illuminate\Support\Facades\Gate::forUser($manager)->allows('department-manager')) {
-            return null;
-        }
-
         $permissionService = app(PermissionService::class);
-        if (! $permissionService->allows($manager, NghiPhepPermission::Xem)
-            || ! $permissionService->allows($manager, NghiPhepPermission::Sua)
+        if (! $permissionService->allows($actor, NghiPhepPermission::Xem)
+            || ! $permissionService->allows($actor, NghiPhepPermission::Duyet)
         ) {
             return null;
         }
 
         try {
-            return app(NghiPhepService::class)->countPendingForDepartment((int) $manager->ma_pb);
+            return app(NghiPhepService::class)->countPendingLeave();
         } catch (\Throwable $e) {
-            Log::warning('[DashboardService] Không thể lấy số đơn nghỉ phép chờ duyệt: ' . $e->getMessage());
+            Log::warning('[DashboardService] Không thể lấy số đơn nghỉ phép chờ duyệt.', [
+                'exception_class' => $e::class,
+            ]);
 
             return null;
         }
@@ -58,7 +51,7 @@ class DashboardService
             'hop_dong_sap_het_han' => $this->getExpiringContracts(),
             'bao_cao_cham_cong' => $this->getAttendanceReport(),
             'bao_cao_luong' => $this->getSalaryReport(),
-            'pending_department_leave_count' => null,
+            'pending_leave_count' => null,
         ];
     }
 

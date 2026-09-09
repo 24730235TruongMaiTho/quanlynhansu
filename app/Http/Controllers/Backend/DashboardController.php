@@ -44,8 +44,8 @@ class DashboardController extends Controller
             // Thêm thông tin tổng hợp nhanh
             $data['tong_nhan_vien'] = $this->dashboardService->getTotalEmployees();
             $data['tong_phong_ban'] = $this->dashboardService->getTotalDepartments();
-            $data['pending_department_leave_count'] = auth()->user() instanceof NhanVien
-                ? $this->dashboardService->getPendingDepartmentLeaveCount(auth()->user())
+            $data['pending_leave_count'] = auth()->user() instanceof NhanVien
+                ? $this->dashboardService->getPendingLeaveCount(auth()->user())
                 : null;
 
             return response()->json([

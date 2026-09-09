@@ -1,5 +1,8 @@
 <section class="employee-form-section" aria-labelledby="address-fields-title">
-    @php($formEmployee = $employee ?? null)
+    @php
+        $formEmployee = $employee ?? null;
+        $showDistrictField = $showDistrictField ?? true;
+    @endphp
     <h3 class="h6 fw-semibold" id="address-fields-title">Địa chỉ</h3>
     <div class="employee-form-grid">
         @foreach ([
@@ -8,8 +11,10 @@
             'quan_huyen' => ['Quận/Huyện', 100, 'address-level2'],
             'tinh_thanh' => ['Tỉnh/Thành phố', 100, 'address-level1'],
         ] as $field => [$label, $maxLength, $autocomplete])
+            @if ($showDistrictField || $field !== 'quan_huyen')
+            @php($required = $field !== 'quan_huyen')
             <div class="employee-field {{ $field === 'dia_chi_cu_the' ? 'employee-field-wide' : '' }}">
-                <label class="form-label" for="{{ $field }}">{{ $label }} <span aria-hidden="true">*</span></label>
+                <label class="form-label" for="{{ $field }}">{{ $label }}@if ($required) <span aria-hidden="true">*</span>@endif</label>
                 <input
                     class="form-control @error($field) is-invalid @enderror"
                     id="{{ $field }}"
@@ -18,7 +23,7 @@
                     maxlength="{{ $maxLength }}"
                     autocomplete="{{ $autocomplete }}"
                     value="{{ old($field, data_get($formEmployee, $field)) }}"
-                    required
+                    @if ($required) required @endif
                     @error($field) aria-describedby="{{ $field }}-error" @enderror
                     @if ($firstErrorField === $field) data-error-focus @endif
                 >
@@ -26,6 +31,7 @@
                     <div class="invalid-feedback" id="{{ $field }}-error">{{ $message }}</div>
                 @enderror
             </div>
+            @endif
         @endforeach
     </div>
 </section>

@@ -84,11 +84,12 @@ trait NormalizesDisplayDates
     /**
      * Add a stable, field-labelled error for values that were not supplied as
      * a strict display date. JSON clients may send an already canonical ISO
-     * date; browser form submissions must use dd/mm/yyyy.
+     * date; callers accepting native date form submissions can opt into the
+     * same ISO contract.
      *
      * @param array<string, string> $fields
      */
-    protected function rejectNonDisplayDates(Validator $validator, array $fields): void
+    protected function rejectNonDisplayDates(Validator $validator, array $fields, bool $allowCanonicalIso = false): void
     {
         foreach ($fields as $field => $label) {
             if (! $this->exists($field)) {
@@ -100,13 +101,15 @@ trait NormalizesDisplayDates
                 continue;
             }
 
-            if ($this->isJson() && $this->isCanonicalIsoDate($value)) {
+            if (($allowCanonicalIso || $this->isJson()) && $this->isCanonicalIsoDate($value)) {
                 continue;
             }
 
             $validator->errors()->add(
                 $field,
-                $label.' phải có định dạng dd/mm/yyyy.',
+                $allowCanonicalIso
+                    ? $label.' không hợp lệ.'
+                    : $label.' phải có định dạng dd/mm/yyyy.',
             );
         }
     }

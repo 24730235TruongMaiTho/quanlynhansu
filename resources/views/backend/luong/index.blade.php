@@ -32,7 +32,7 @@
                 </button>
 
                 <button
-                    class="btn btn-success d-inline-flex align-items-center gap-2"
+                    class="btn btn-primary d-inline-flex align-items-center gap-2"
                     id="create-salary-btn"
                     type="button"
                     data-salary-permission="Luong.Insert"
@@ -95,24 +95,12 @@
                             hidden
                         >
                             <label class="form-label" for="search-field">Tìm kiếm nhân viên</label>
-                            <div class="input-group">
-                            <span class="input-group-text bg-white">
-                                <svg aria-hidden="true" width="16" height="16"
-                                     viewBox="0 0 16 16" fill="none"
-                                     stroke="currentColor" stroke-width="1.5"
-                                     stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="7" cy="7" r="4.5"/>
-                                    <path d="M10.5 10.5 14 14"/>
-                                </svg>
-                            </span>
-
-                                <input
-                                    class="form-control"
-                                    id="search-field"
-                                    type="search"
-                                    placeholder="Tìm mã hoặc tên nhân viên..."
-                                >
-                            </div>
+                            <input
+                                class="form-control"
+                                id="search-field"
+                                type="search"
+                                placeholder="Tìm mã hoặc tên nhân viên..."
+                            >
                         </div>
 
                         <div class="filter-bar__field"
@@ -276,7 +264,7 @@
                             class="small text-secondary mb-0"
                             id="salary-coefficient-description"
                         >
-                            Chọn nút hệ số của một nhân viên để xem dữ liệu.
+                            Chọn một dòng nhân viên để xem dữ liệu hệ số lương.
                         </p>
                     </div>
 
@@ -289,7 +277,7 @@
                     </span>
 
                         <button
-                            class="btn btn-success d-inline-flex align-items-center gap-2"
+                            class="btn btn-primary d-inline-flex align-items-center gap-2"
                             id="add-coefficient-btn"
                             type="button"
                             disabled
@@ -475,7 +463,7 @@
 
             <footer class="salary-modal-footer d-flex justify-content-end gap-2">
                 <button
-                    class="btn btn-outline-secondary btn-sm"
+                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
                     id="salary-modal-cancel"
                     type="button"
                 >
@@ -483,7 +471,7 @@
                 </button>
 
                 <button
-                    class="btn btn-success btn-sm"
+                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
                     id="salary-modal-submit"
                     type="submit"
                 >
@@ -583,15 +571,12 @@
                         <input
                             class="form-control form-control-sm"
                             id="coefficient-from-date"
-                            type="text"
-                            placeholder="dd/mm/yyyy"
-                            inputmode="numeric"
-                            maxlength="10"
+                            type="date"
                             aria-describedby="coefficient-from-date-error"
                             required
                         >
                         <div class="invalid-feedback" id="coefficient-from-date-error" role="alert">
-                            Vui lòng nhập ngày bắt đầu theo định dạng dd/mm/yyyy.
+                            Vui lòng nhập ngày bắt đầu hợp lệ.
                         </div>
                     </div>
                 </div>
@@ -604,14 +589,11 @@
                         <input
                             class="form-control form-control-sm"
                             id="coefficient-to-date"
-                            type="text"
-                            placeholder="dd/mm/yyyy"
-                            inputmode="numeric"
-                            maxlength="10"
+                            type="date"
                             aria-describedby="coefficient-to-date-error"
                         >
                         <div class="invalid-feedback" id="coefficient-to-date-error" role="alert">
-                            Vui lòng nhập ngày kết thúc theo định dạng dd/mm/yyyy.
+                            Vui lòng nhập ngày kết thúc hợp lệ.
                         </div>
                     </div>
                 </div>
@@ -619,7 +601,7 @@
 
             <footer class="coefficient-modal-footer d-flex justify-content-end gap-2">
                 <button
-                    class="btn btn-outline-secondary btn-sm"
+                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
                     id="coefficient-modal-cancel"
                     type="button"
                 >
@@ -627,7 +609,7 @@
                 </button>
 
                 <button
-                    class="btn btn-success btn-sm"
+                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
                     id="coefficient-modal-submit"
                     type="submit"
                 >
@@ -748,13 +730,6 @@
             font-weight: 650;
         }
 
-        .salary-page .avatar {
-            width: 30px;
-            height: 30px;
-            flex: 0 0 30px;
-            font-size: .7rem;
-        }
-
         /* ----- status ----- */
         .salary-page .salary-data-table .badge {
             max-width: 225px;
@@ -825,10 +800,6 @@
             color: #a40e26;
         }
 
-        .salary-page .salary-icon-action[data-salary-action="coefficient"] {
-            color: #8250df;
-        }
-
         .salary-page .salary-icon-action svg,
         .salary-page .coefficient-icon-action svg {
             width: 15px;
@@ -849,6 +820,15 @@
         .salary-page .salary-row-selected > *,
         .salary-page .coefficient-row-selected > * {
             background: rgba(9,105,218,.06) !important;
+        }
+
+        .salary-page .salary-data-table tbody tr[data-salary-row] {
+            cursor: pointer;
+        }
+
+        .salary-page .salary-data-table tbody tr[data-salary-row]:focus-visible {
+            outline: 2px solid #0969da;
+            outline-offset: -2px;
         }
 
         /* responsive */

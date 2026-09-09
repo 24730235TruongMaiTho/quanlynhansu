@@ -494,6 +494,10 @@ body {
             flex-shrink: 0;
         }
 
+        .top-bar .user-dropdown img.avatar {
+            object-fit: cover;
+        }
+
         .top-bar .user-dropdown .user-info {
             text-align: left;
             line-height: 1.3;

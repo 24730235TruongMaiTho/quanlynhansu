@@ -792,7 +792,7 @@ git push
 
 - [ ] **Step 1: Viết rule và request tests RED**
 
-Khóa boundary đúng 18 tuổi tại ngày vào làm, leap day, invalid date, duplicate email không phân biệt hoa thường, duplicate CCCD sau trim, lookup thiếu, số điện thoại, avatar MIME/size, bốn thành phần địa chỉ và prohibited fields.
+Khóa boundary đúng 18 tuổi tại ngày vào làm, leap day, invalid date, duplicate email không phân biệt hoa thường, duplicate CCCD sau trim, lookup thiếu, số điện thoại, avatar MIME/size, ba trường địa chỉ hiển thị all-or-none với quận/huyện tùy chọn và prohibited fields.
 
 ```php
 $valid = [
@@ -829,7 +829,7 @@ Run: `php artisan test tests/Unit/Rules/Du18TuoiTaiNgayVaoLamTest.php tests/Feat
 - `cccd` regex 12 chữ số, unique; `sdt` regex `\A0[0-9]{9}\z`;
 - `ngay_sinh`, `ngay_vao_lam` ISO date và custom age rule;
 - `gioi_tinh` trong `0,1`; ba foreign key phòng ban/chức vụ/trạng thái `exists` đúng bảng;
-- bốn địa chỉ required, max lần lượt `255,100,100,100`;
+- ba trường địa chỉ hiển thị (`dia_chi_cu_the`, `phuong_xa`, `tinh_thanh`) required theo nhóm, `quan_huyen` nullable tùy chọn; max lần lượt `255,100,100,100`;
 - avatar `image`, MIME `jpeg,png,webp`, max `2048` KiB;
 - các field hệ thống dùng `prohibited`.
 

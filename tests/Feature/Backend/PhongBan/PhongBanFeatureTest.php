@@ -123,6 +123,21 @@ class PhongBanFeatureTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), 'name="_method" value="DELETE"'));
     }
 
+    public function test_create_action_is_a_modal_trigger_with_a_real_fallback_url(): void
+    {
+        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator([], 0, 20, 1, ['pageName' => 'page']));
+        });
+
+        $createUrl = route('backend.phongban.create');
+        $this->get('/phong-ban')
+            ->assertOk()
+            ->assertSee('data-action="modal"', false)
+            ->assertSee('data-modal-mode="create"', false)
+            ->assertSee('data-modal-url="'.e($createUrl).'"', false)
+            ->assertSee('href="'.e($createUrl).'"', false);
+    }
+
     public function test_authenticated_list_filters_paginates_and_keeps_delete_confirmation_safe(): void
     {
         $rows = [
@@ -187,6 +202,27 @@ class PhongBanFeatureTest extends TestCase
         $this->putJson('/phong-ban/1', ['ten_pb' => 'Nhân sự'])
             ->assertOk()
             ->assertJson(['success' => true, 'message' => 'Đã cập nhật phòng ban.'])
+            ->assertJsonMissingPath('redirect');
+    }
+
+    public function test_modal_create_returns_partial_and_ajax_store_returns_safe_json(): void
+    {
+        $this->mock(PhongBanServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('create')->once()->with('Nhân sự')->andReturnNull();
+        });
+
+        $this->get('/phong-ban/create', [
+            'X-Create-Modal' => '1',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+            ->assertOk()
+            ->assertViewIs('backend.phongban.partials.create-modal-content')
+            ->assertSee('data-simple-modal-form', false)
+            ->assertDontSee('<html', false);
+
+        $this->postJson('/phong-ban', ['ten_pb' => 'Nhân sự'])
+            ->assertCreated()
+            ->assertJson(['success' => true, 'message' => 'Đã thêm phòng ban.'])
             ->assertJsonMissingPath('redirect');
     }
 
