@@ -1,5 +1,22 @@
 # Handoff tiếp tục `quanlynhansu`
 
+## Current verified slice: Self-history Nghỉ phép cho actor Insert — 2026-09-10
+
+Trang `/tao-nghi-phep` tải log cá nhân qua `GET /api/v1/nghi-phep/cua-toi`;
+route đứng trước `apiResource`, có `web`, `auth` và `can:NghiPhep.Insert`.
+Controller lấy mã nhân viên từ authenticated user, chỉ nhận mã canonical 5 chữ
+số, luôn ghi đè `ma_nv` client và fail closed `403` nếu mã không hợp lệ. Endpoint danh sách chung vẫn yêu cầu
+`NghiPhep.Read`. Frontend không gửi `ma_nv` khi tải log; Update/Delete vẫn dùng
+permission riêng.
+
+RED: self request bị resource `{id}` bắt; frontend dùng Read và query
+`ma_nv`; malformed identity còn gọi service. GREEN: targeted PHP `8 tests, 38 assertions`; frontend `5/5`; leave
+regression `28 tests, 155 assertions`; full Laravel `519 passed, 4142
+assertions`; frontend script `96/96`; Vite `31 modules`; route inventory `98`,
+duplicate name/signature `0`; Composer, PHP lint và `git diff --check` pass.
+Chưa browser mutation, MariaDB disposable hoặc live DB; role matrix live chưa
+xác minh.
+
 ## Current verified UI slice: Dọn action header Nghỉ phép và audit avatar — 2026-09-09
 
 Header `/nghi-phep` đã bỏ đúng hai action `Lịch nghỉ` (`#calendar-btn`) và

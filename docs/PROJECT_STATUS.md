@@ -1,5 +1,48 @@
 # Trạng thái dự án
 
+## Self-history Nghỉ phép cho actor Insert — 2026-09-10
+
+Trang `/tao-nghi-phep` giờ tải log cá nhân qua `GET /api/v1/nghi-phep/cua-toi`,
+đặt trước resource route và yêu cầu `web`, `auth`, `NghiPhep.Insert`. Controller
+luôn lấy `ma_nv` từ authenticated employee, chỉ chấp nhận mã canonical 5 chữ số,
+ghi đè mọi selector client gửi lên và trả lỗi an toàn `403` nếu actor không có
+mã hợp lệ. Danh sách chung
+`GET /api/v1/nghi-phep` vẫn giữ `NghiPhep.Read`.
+
+Frontend dùng self endpoint, không gửi `ma_nv` khi tải log; quyền Insert đủ để
+hiển thị log, còn Update/Delete vẫn giữ đúng permission riêng.
+
+RED trước implementation: backend self request bị route `{id}` bắt và frontend
+vẫn yêu cầu Read/gửi `ma_nv`; malformed identity cũng RED trước regex canonical.
+GREEN: targeted PHP `8 tests, 38 assertions`,
+frontend contract `5/5`; leave regression `28 tests, 155 assertions`; full
+Laravel `519 passed, 4142 assertions`; `npm run test:frontend` `96/96`; Vite
+`31 modules transformed`; route inventory `98`, duplicate name/signature `0`;
+Composer, PHP lint và `git diff --check` pass. Chưa chạy browser mutation,
+MariaDB disposable hoặc live DB; role matrix live chưa xác minh.
+
+## Contract role 5 và tạo Nghỉ phép — 2026-09-10
+
+`PhanQuyenRepository::syncRolePermissions()` giờ cho phép đồng bộ quyền cho
+mọi vai trò, gồm vai trò Nhân viên mặc định `ma_vt = 5`; bảo vệ xóa chính vai
+trò mặc định vẫn giữ nguyên trong `sp_vai_tro_xoa`. SQL active và snapshot
+canonical đã đồng bộ: `sp_vai_tro_quyen_them`/`sp_vai_tro_quyen_xoa` cho phép
+thêm/xóa mapping role 5, còn xóa role 5 vẫn bị chặn.
+
+Trang `/tao-nghi-phep` dùng đúng `NghiPhep.Insert/Read/Update/Delete`, lookup
+loại phép và phòng ban dùng route riêng có `NghiPhep.Insert`, còn lookup danh
+sách cũ vẫn yêu cầu `NghiPhep.Read`. Sidebar hiển thị nhóm khi actor có Read
+hoặc Insert, và tách link Tạo/Danh sách theo đúng quyền.
+
+RED trước implementation: targeted PHP `5` failure và frontend `3` failure.
+GREEN: focused PHP `13 tests, 132 assertions`; full Laravel `514 passed,
+4121 assertions`; `npm run test:frontend` `94/94`; Vite `31 modules`; route
+inventory `97`, duplicate name/signature `0`; Composer, PHP lint và
+`git diff --check` pass. MariaDB disposable wrapper đã được thử nhưng không
+phát output sau khoảng một phút và phải dừng an toàn, nên chưa claim
+MariaDB procedure execution. Không có browser acceptance hoặc live DB
+mutation trong lát cắt này.
+
 ## Current verified UI slice: Dọn action header Nghỉ phép và audit avatar — 2026-09-09
 
 Header `/nghi-phep` đã bỏ đúng hai action `Lịch nghỉ` (`#calendar-btn`) và

@@ -112,6 +112,7 @@ final class ProfileFeatureTest extends TestCase
         $this->app->instance(NhanVienServiceContract::class, $service);
         $permissions = Mockery::mock(PermissionService::class);
         $permissions->shouldReceive('canSeeModule')->andReturnFalse();
+        $permissions->shouldReceive('allows')->andReturnFalse();
         $this->app->instance(PermissionService::class, $permissions);
 
         $this->actingAs($employee)

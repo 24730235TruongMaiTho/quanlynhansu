@@ -91,6 +91,31 @@ final class PortableSqlContractTest extends TestCase
         self::assertStringNotContainsString('DELETE FROM QUYEN', strtoupper($upgrade));
     }
 
+    public function test_role_permission_procedures_allow_mapping_mutations_for_role_five_but_role_deletion_stays_protected(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $rbac = file_get_contents($root.'\\database\\sql\\quyen_vai_tro.sql');
+        self::assertIsString($rbac);
+
+        $procedureBody = static function (string $source, string $name): string {
+            $start = strpos($source, 'CREATE PROCEDURE '.$name);
+            self::assertNotFalse($start, $name);
+            $end = strpos($source, 'END//', $start);
+            self::assertNotFalse($end, $name);
+
+            return substr($source, $start, $end - $start);
+        };
+
+        $rolePermissionAdd = $procedureBody($rbac, 'sp_vai_tro_quyen_them');
+        $rolePermissionRemove = $procedureBody($rbac, 'sp_vai_tro_quyen_xoa');
+        $roleDelete = $procedureBody($rbac, 'sp_vai_tro_xoa');
+
+        self::assertStringNotContainsString('p_ma_vt = 5', $rolePermissionAdd);
+        self::assertStringNotContainsString('p_ma_vt = 5', $rolePermissionRemove);
+        self::assertStringContainsString('p_ma_vt = 5', $roleDelete);
+        self::assertStringContainsString('VT_DEFAULT_ROLE_FORBIDDEN', $roleDelete);
+    }
+
     public function test_current_database_docs_describe_the_portable_sources_and_counts(): void
     {
         $root = dirname(__DIR__, 3);

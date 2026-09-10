@@ -7,30 +7,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const NGHI_PHEP_API_URL =
         '/api/v1/nghi-phep';
 
+    const OWN_LEAVE_API_URL =
+        '/api/v1/nghi-phep/cua-toi';
+
     const LOAI_PHEP_API_URL =
-        '/api/v1/nghi-phep/loai-phep';
+        '/api/v1/nghi-phep/tao/loai-phep';
 
     const PHONG_BAN_API_URL =
-        '/api/v1/nghi-phep/phong-ban';
+        '/api/v1/nghi-phep/tao/phong-ban';
 
     const CREATE_PERMISSIONS = Object.freeze([
         'NghiPhep.Insert',
-        'NhanVien.Insert',
-    ]);
-
-    const READ_PERMISSIONS = Object.freeze([
-        'NghiPhep.Read',
-        'NhanVien.Read',
     ]);
 
     const UPDATE_PERMISSIONS = Object.freeze([
         'NghiPhep.Update',
-        'NhanVien.Update',
     ]);
 
     const DELETE_PERMISSIONS = Object.freeze([
         'NghiPhep.Delete',
-        'NhanVien.Delete',
     ]);
 
     const elements = {
@@ -425,45 +420,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function canReadOwnLeaveLog() {
-        return canAnyPermission(
-            READ_PERMISSIONS
-        );
+        return canCreateLeave();
     }
 
     function canUpdateOwnLeave() {
-        /*
-         * Self-service:
-         * user được phép sửa chính đơn Chờ duyệt của mình
-         * nếu có quyền Update hoặc quyền tạo đơn.
-         *
-         * Backend vẫn phải kiểm tra:
-         * - ma_nv = current user
-         * - trang_thai_duyet = 0
-         */
-        return (
-            canAnyPermission(
-                UPDATE_PERMISSIONS
-            ) ||
-            canCreateLeave()
-        );
+        return canAnyPermission(UPDATE_PERMISSIONS);
     }
 
     function canDeleteOwnLeave() {
-        /*
-         * Self-service:
-         * ưu tiên permission Delete.
-         *
-         * Fallback quyền tạo đơn giữ tương thích với role nhân viên
-         * hiện tại đang dùng cho self-service.
-         *
-         * Backend bắt buộc vẫn phải kiểm tra ownership + pending.
-         */
-        return (
-            canAnyPermission(
-                DELETE_PERMISSIONS
-            ) ||
-            canCreateLeave()
-        );
+        return canAnyPermission(DELETE_PERMISSIONS);
     }
 
     function showError(message) {
@@ -1212,18 +1177,8 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
-        const url = new URL(
-            NGHI_PHEP_API_URL,
-            window.location.origin
-        );
-
-        url.searchParams.set(
-            'ma_nv',
-            String(state.user.ma_nv)
-        );
-
         const response = await fetch(
-            url.toString(),
+            OWN_LEAVE_API_URL,
             {
                 method: 'GET',
                 headers: {

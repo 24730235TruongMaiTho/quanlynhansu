@@ -27,12 +27,25 @@ final class PhanQuyenBulkAssignmentTest extends TestCase
             $table->unsignedInteger('ma_vt');
             $table->unsignedInteger('ma_tt');
         });
+        Schema::create('quyen', static function (Blueprint $table): void {
+            $table->unsignedInteger('ma_quyen')->primary();
+            $table->string('ky_hieu_quyen');
+            $table->string('ten_quyen');
+            $table->string('module');
+        });
+        Schema::create('vai_tro_quyen', static function (Blueprint $table): void {
+            $table->unsignedInteger('ma_vt');
+            $table->unsignedInteger('ma_quyen');
+            $table->primary(['ma_vt', 'ma_quyen']);
+        });
         $this->repository = app(PhanQuyenRepository::class);
     }
 
     protected function tearDown(): void
     {
         Schema::dropIfExists('nhan_vien');
+        Schema::dropIfExists('vai_tro_quyen');
+        Schema::dropIfExists('quyen');
         Schema::dropIfExists('vai_tro');
         parent::tearDown();
     }
@@ -59,6 +72,37 @@ final class PhanQuyenBulkAssignmentTest extends TestCase
             self::assertSame(5, (int) DB::table('nhan_vien')->where('ma_nv', '00001')->value('ma_vt'));
             self::assertSame(5, (int) DB::table('nhan_vien')->where('ma_nv', '00002')->value('ma_vt'));
         }
+    }
+
+    public function test_sync_role_permissions_allows_default_employee_role_five(): void
+    {
+        DB::table('vai_tro')->insert(['ma_vt' => 5, 'ten_vt' => 'Nhân viên']);
+        DB::table('quyen')->insert([
+            [
+                'ma_quyen' => 25,
+                'ky_hieu_quyen' => 'NghiPhep.Read',
+                'ten_quyen' => 'Xem nghỉ phép',
+                'module' => 'NghiPhep',
+            ],
+            [
+                'ma_quyen' => 26,
+                'ky_hieu_quyen' => 'NghiPhep.Insert',
+                'ten_quyen' => 'Tạo nghỉ phép',
+                'module' => 'NghiPhep',
+            ],
+        ]);
+        DB::table('vai_tro_quyen')->insert(['ma_vt' => 5, 'ma_quyen' => 25]);
+
+        $this->repository->syncRolePermissions(5, [26]);
+
+        self::assertSame([
+            ['ma_vt' => 5, 'ma_quyen' => 26],
+        ], DB::table('vai_tro_quyen')->get(['ma_vt', 'ma_quyen'])->map(
+            static fn (object $row): array => [
+                'ma_vt' => (int) $row->ma_vt,
+                'ma_quyen' => (int) $row->ma_quyen,
+            ],
+        )->all());
     }
 
     public function test_self_unchanged_is_allowed_but_self_changed_is_rejected(): void

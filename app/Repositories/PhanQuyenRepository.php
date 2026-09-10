@@ -27,7 +27,6 @@ final class PhanQuyenRepository implements PhanQuyenRepositoryContract
     {
         $connection = $this->database->connection();
         $connection->transaction(function () use ($connection, $maVt, $permissionIds): void {
-            if ($maVt === 5) throw new PhanQuyenDomainException('Không thể cấp quyền cho vai trò nhân viên mặc định.', 'RBAC_DEFAULT_ROLE_PROTECTED');
             if (! $connection->table('vai_tro')->where('ma_vt', $maVt)->lockForUpdate()->exists()) throw new PhanQuyenDomainException('Không tìm thấy vai trò.', 'RBAC_ROLE_NOT_FOUND');
             $valid = $connection->table('quyen')->whereIn('ma_quyen', $permissionIds)->pluck('ma_quyen')->map(fn ($id) => (int) $id)->all();
             sort($valid); $expected = array_values(array_unique(array_map('intval', $permissionIds))); sort($expected);

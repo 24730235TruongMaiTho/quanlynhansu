@@ -357,7 +357,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertDatabaseMissing('nhan_vien', ['ma_nv' => '00021'], 'employee_test');
     }
 
-    public function test_role_and_permission_procedures_use_explicit_ids_and_protect_default_role(): void
+    public function test_role_and_permission_procedures_allow_default_role_mapping_but_protect_role_deletion(): void
     {
         $this->runFreshPair();
         $pdo = $this->pdo();
@@ -396,12 +396,14 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
             'SELECT COUNT(*) FROM vai_tro WHERE ma_vt = 7'
         )->fetchColumn());
 
-        try {
-            $pdo->exec('CALL sp_vai_tro_quyen_them(5, 1)');
-            self::fail('Vai trò mặc định không được gán thêm quyền.');
-        } catch (\PDOException $exception) {
-            self::assertStringContainsString('VT_DEFAULT_ROLE_FORBIDDEN', $exception->getMessage());
-        }
+        $pdo->exec('CALL sp_vai_tro_quyen_them(5, 1)');
+        self::assertSame(1, (int) $pdo->query(
+            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 5 AND ma_quyen = 1'
+        )->fetchColumn());
+        $pdo->exec('CALL sp_vai_tro_quyen_xoa(5)');
+        self::assertSame(0, (int) $pdo->query(
+            'SELECT COUNT(*) FROM vai_tro_quyen WHERE ma_vt = 5'
+        )->fetchColumn());
         try {
             $pdo->exec('CALL sp_vai_tro_xoa(5)');
             self::fail('Vai trò mặc định không được xóa.');

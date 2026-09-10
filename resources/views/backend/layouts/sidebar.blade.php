@@ -122,21 +122,28 @@
             </li>
             @endif
             <!-- Quản lý nghỉ phép -->
-            @if ($sidebarUser instanceof \App\Models\NhanVien
-                && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'NghiPhep'))
-            <li class="nav-item" data-sidebar-group="leave" data-route-active="{{ $leaveGroupActive ? 'true' : 'false' }}">
-                <a href="#" class="nav-link" data-toggle="submenu" aria-expanded="{{ $leaveGroupActive ? 'true' : 'false' }}">
-                    <i class="bi bi-calendar-x-fill"></i>
-                    <span class="nav-title">Quản lý nghỉ phép</span>
-                    <i class="bi bi-chevron-down menu-arrow {{ $leaveGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
-                </a>
-                <ul class="sub-menu {{ $leaveGroupActive ? 'open' : '' }}" @if ($leaveGroupActive) data-submenu-ready="initial" @endif>
-                    @if (app(\App\Services\PermissionService::class)->allows($sidebarUser, \App\Enums\NghiPhepPermission::Tao->value))
-                        <li class="nav-item"><a href="{{ route('backend.nghiphep.create') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.create') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.create')) aria-current="page" @endif><i class="bi bi-calendar-plus"></i><span class="nav-title">Tạo nghỉ phép</span></a></li>
-                    @endif
-                    <li class="nav-item"><a href="{{ route('backend.nghiphep.index') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.index') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.index')) aria-current="page" @endif><i class="bi bi-calendar3"></i><span class="nav-title">Danh sách nghỉ phép</span></a></li>
-                </ul>
-            </li>
+            @if ($sidebarUser instanceof \App\Models\NhanVien)
+                @php
+                    $canCreateLeave = app(\App\Services\PermissionService::class)->allows($sidebarUser, \App\Enums\NghiPhepPermission::Tao->value);
+                    $canReadLeave = app(\App\Services\PermissionService::class)->allows($sidebarUser, \App\Enums\NghiPhepPermission::Xem->value);
+                @endphp
+                @if ($canCreateLeave || $canReadLeave)
+                    <li class="nav-item" data-sidebar-group="leave" data-route-active="{{ $leaveGroupActive ? 'true' : 'false' }}">
+                        <a href="#" class="nav-link" data-toggle="submenu" aria-expanded="{{ $leaveGroupActive ? 'true' : 'false' }}">
+                            <i class="bi bi-calendar-x-fill"></i>
+                            <span class="nav-title">Quản lý nghỉ phép</span>
+                            <i class="bi bi-chevron-down menu-arrow {{ $leaveGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
+                        </a>
+                        <ul class="sub-menu {{ $leaveGroupActive ? 'open' : '' }}" @if ($leaveGroupActive) data-submenu-ready="initial" @endif>
+                            @if ($canCreateLeave)
+                                <li class="nav-item"><a href="{{ route('backend.nghiphep.create') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.create') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.create')) aria-current="page" @endif><i class="bi bi-calendar-plus"></i><span class="nav-title">Tạo nghỉ phép</span></a></li>
+                            @endif
+                            @if ($canReadLeave)
+                                <li class="nav-item"><a href="{{ route('backend.nghiphep.index') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.index') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.index')) aria-current="page" @endif><i class="bi bi-calendar3"></i><span class="nav-title">Danh sách nghỉ phép</span></a></li>
+                            @endif
+                        </ul>
+                    </li>
+                @endif
             @endif
             <!-- Quản lý lương -->
             @if ($sidebarUser instanceof \App\Models\NhanVien)

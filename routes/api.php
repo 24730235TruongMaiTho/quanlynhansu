@@ -187,6 +187,24 @@ Route::middleware('api')
             ->group(function (): void {
 
                 Route::get(
+                    'cua-toi',
+                    [NghiPhepController::class, 'own']
+                )->name('api.v1.nghi-phep.cua-toi')
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Tao->value]);
+
+                Route::get(
+                    'tao/phong-ban',
+                    [NghiPhepController::class, 'phongBan']
+                )->name('api.v1.nghi-phep.tao.phong-ban')
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Tao->value]);
+
+                Route::get(
+                    'tao/loai-phep',
+                    [NghiPhepController::class, 'loaiPhep']
+                )->name('api.v1.nghi-phep.tao.loai-phep')
+                ->middleware(['auth', 'can:'.NghiPhepPermission::Tao->value]);
+
+                Route::get(
                     'nhan-vien',
                     [NghiPhepController::class, 'employees']
                 )->name('api.v1.nghi-phep.nhan-vien')

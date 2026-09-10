@@ -175,6 +175,7 @@ final class ContentFourManagementTest extends TestCase
         $this->mock(PermissionService::class, function ($mock): void {
             $mock->shouldReceive('canSeeModule')
                 ->andReturnUsing(static fn (mixed $candidate, string $module): bool => $module === 'VaiTro');
+            $mock->shouldReceive('allows')->andReturnFalse();
         });
 
         $this->view('backend.layouts.sidebar')
@@ -196,6 +197,7 @@ final class ContentFourManagementTest extends TestCase
         $this->mock(PermissionService::class, function ($mock): void {
             $mock->shouldReceive('canSeeModule')
                 ->andReturnUsing(static fn (mixed $candidate, string $module): bool => $module === 'PhanQuyen');
+            $mock->shouldReceive('allows')->andReturnFalse();
         });
 
         $this->view('backend.layouts.sidebar')

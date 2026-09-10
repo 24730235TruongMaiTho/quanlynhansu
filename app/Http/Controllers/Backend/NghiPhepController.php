@@ -57,6 +57,54 @@ class NghiPhepController extends Controller
         return response()->json($result);
     }
 
+    /**
+     * Return only the authenticated employee's own leave history.
+     *
+     * This endpoint intentionally uses Insert permission because it is part
+     * of the self-service create flow, while the company-wide index remains
+     * protected by NghiPhep.Read.
+     */
+    public function own(Request $request): JsonResponse
+    {
+        $actor = $request->user();
+        $maNv = $actor?->getAuthIdentifier();
+
+        if (! is_string($maNv) || preg_match('/\A[0-9]{5}\z/', $maNv) !== 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không xác định được nhân viên hiện tại.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'trang_thai_duyet' => ['nullable', 'integer', 'in:0,1,2'],
+            'tu_ngay' => ['nullable', 'date_format:Y-m-d'],
+            'den_ngay' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:tu_ngay'],
+            'tab' => ['nullable', 'in:pending,history'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'in:10,20,50'],
+        ]);
+
+        $filters = [
+            // Always override any client-supplied employee selector.
+            'ma_nv' => $maNv,
+            'trang_thai_duyet' => $validated['trang_thai_duyet'] ?? null,
+            'tu_ngay' => $validated['tu_ngay'] ?? null,
+            'den_ngay' => $validated['den_ngay'] ?? null,
+            'tab' => $validated['tab'] ?? null,
+            'page' => (int) ($validated['page'] ?? 1),
+            'per_page' => (int) ($validated['per_page'] ?? 10),
+        ];
+
+        $result = $this->service->getAll($filters);
+
+        if (! $result['success']) {
+            return response()->json($result, 500);
+        }
+
+        return response()->json($result);
+    }
+
     public function show($id)
     {
         $result = $this->service->getById($id);
