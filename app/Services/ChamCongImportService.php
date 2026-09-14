@@ -610,9 +610,7 @@ class ChamCongImportService
                     'ngay_lam' => $row['ngay_lam'],
                     'so_gio_lam' => $row['so_gio_lam'],
                     'vao_muon' => $row['vao_muon'],
-                    've_som' => $row['ve_som'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    've_som' => $row['ve_som']
                 ]);
 
                 $inserted++;
