@@ -1,3 +1,5 @@
+import { getButtonLabel, setButtonLabel } from './button-label.js';
+
 const LOAD_ERROR_MESSAGE = 'Không tải được biểu mẫu. Vui lòng đóng popup và thử lại sau.';
 const UPDATE_ERROR_MESSAGE = 'Không thể cập nhật lúc này. Vui lòng thử lại sau.';
 const FORM_ERROR_FALLBACK = 'Không thể cập nhật. Vui lòng kiểm tra lại thông tin hoặc thử lại sau.';
@@ -245,7 +247,7 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
             button.disabled = false;
             button.setAttribute?.('aria-disabled', 'false');
             if (button.dataset.previousText !== undefined) {
-                button.textContent = button.dataset.previousText;
+                setButtonLabel(button, button.dataset.previousText);
                 delete button.dataset.previousText;
             }
         });
@@ -270,8 +272,8 @@ export function createSimpleEditModalController(ui, dependencies = {}) {
         form.querySelectorAll?.('[data-submit-edit], [data-submit]').forEach((button) => {
             button.disabled = true;
             button.setAttribute?.('aria-disabled', 'true');
-            button.dataset.previousText ??= button.textContent;
-            button.textContent = button.dataset.submittingText || 'Đang lưu…';
+            button.dataset.previousText ??= getButtonLabel(button);
+            setButtonLabel(button, button.dataset.submittingText || 'Đang lưu…');
         });
 
         try {

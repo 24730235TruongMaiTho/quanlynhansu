@@ -3,6 +3,15 @@
 @section('title', 'Phân Quyền tài khoản')
 
 @section('content')
+    @php
+        $accountSort = request('sort', 'ma_nv');
+        $accountDirection = request('direction', 'desc');
+        $accountListQuery = array_filter(request()->only(['tu_khoa', 'per_page', 'sort', 'direction']), static fn (mixed $value): bool => $value !== null && $value !== '');
+        $accountSortUrl = static function (string $column) use ($accountSort, $accountDirection, $accountListQuery): string {
+            $next = $accountSort === $column && $accountDirection === 'asc' ? 'desc' : 'asc';
+            return route('backend.taikhoan.index', array_merge($accountListQuery, ['sort' => $column, 'direction' => $next, 'page' => 1]));
+        };
+    @endphp
     <main class="container-fluid container-xxl py-4" aria-labelledby="account-role-title">
         <x-backend.page-header
             title="Phân Quyền tài khoản"
@@ -16,7 +25,7 @@
         >
             <x-slot:actions>
             @can(\App\Enums\VaiTroPermission::Xem->value)
-                <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2" href="{{ route('backend.vaitro.index') }}"><i class="bi bi-shield-check" aria-hidden="true"></i>Quản lý vai trò và quyền</a>
+                <a class="btn btn-outline-primary btn-icon-text" href="{{ route('backend.vaitro.index') }}"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Quản lý vai trò và quyền</span></a>
             @endcan
             </x-slot:actions>
         </x-backend.page-header>
@@ -40,8 +49,8 @@
                         </div>
                     </div>
                     <div class="filter-bar__actions">
-                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-search" aria-hidden="true"></i>Áp dụng bộ lọc</button>
-                        @if (filled(request('tu_khoa')))<a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.taikhoan.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</a>@endif
+                        <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-search" aria-hidden="true"></i><span>Áp dụng bộ lọc</span></button>
+                        @if (filled(request('tu_khoa')))<a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.taikhoan.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Đặt lại</span></a>@endif
                     </div>
                 </form>
             </div>
@@ -53,13 +62,21 @@
                 <p class="small text-secondary mb-0">Tìm thấy {{ number_format($accounts->total(), 0, ',', '.') }} tài khoản.</p>
             </div>
             @if ($accounts->count() > 0)
-                <form method="POST" action="{{ route('backend.taikhoan.assign-roles', array_filter(request()->only(['tu_khoa', 'page', 'per_page']), static fn (mixed $value): bool => $value !== null && $value !== '')) }}">
+                <form method="POST" action="{{ route('backend.taikhoan.assign-roles', array_filter(request()->only(['tu_khoa', 'page', 'per_page', 'sort', 'direction']), static fn (mixed $value): bool => $value !== null && $value !== '')) }}">
                     @csrf
                     @method('PATCH')
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <caption class="visually-hidden">Danh sách tài khoản và vai trò hiện tại</caption>
-                        <thead class="table-light"><tr><th scope="col">Mã</th><th scope="col">Nhân viên</th><th scope="col">Email</th><th scope="col">Vai trò hiện tại</th><th scope="col">Phân quyền</th></tr></thead>
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" aria-sort="{{ $accountSort === 'ma_nv' ? ($accountDirection === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ma_nv" label="Mã" :sort="$accountSort" :direction="$accountDirection" :href="$accountSortUrl('ma_nv')" /></th>
+                                <th scope="col" aria-sort="{{ $accountSort === 'ho_ten' ? ($accountDirection === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ho_ten" label="Nhân viên" :sort="$accountSort" :direction="$accountDirection" :href="$accountSortUrl('ho_ten')" /></th>
+                                <th scope="col" aria-sort="{{ $accountSort === 'email' ? ($accountDirection === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="email" label="Email" :sort="$accountSort" :direction="$accountDirection" :href="$accountSortUrl('email')" /></th>
+                                <th scope="col" aria-sort="{{ $accountSort === 'ten_vt' ? ($accountDirection === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ten_vt" label="Vai trò hiện tại" :sort="$accountSort" :direction="$accountDirection" :href="$accountSortUrl('ten_vt')" /></th>
+                                <th scope="col">Phân quyền</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             @foreach ($accounts as $account)
                                 <tr>
@@ -84,7 +101,7 @@
                 </div>
                 @can(\App\Enums\PhanQuyenPermission::Sua->value)
                     <div class="card-footer bg-white d-flex justify-content-end py-3">
-                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>Lưu phân quyền</button>
+                        <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>Lưu phân quyền</span></button>
                     </div>
                 @endcan
                 </form>

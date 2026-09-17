@@ -44,10 +44,27 @@ class LuongService
         }
     }
 
-    public function getById($id)
+    public function getForEmployee(string $maNv, array $filters = []): array
     {
         try {
-            $record = $this->repository->find($id);
+            return [
+                'success' => true,
+                'data' => $this->repository->paginateForEmployee($maNv, $filters),
+            ];
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return [
+                'success' => false,
+                'message' => 'Không thể tải lương của bạn.',
+            ];
+        }
+    }
+
+    public function getById($id, ?string $maNv = null)
+    {
+        try {
+            $record = $this->repository->find($id, $maNv);
 
             if (!$record) {
                 return [
@@ -90,10 +107,10 @@ class LuongService
         }
     }
 
-    public function update($id, array $data)
+    public function update($id, array $data, ?string $maNv = null)
     {
         try {
-            $record = $this->repository->update($id, $data);
+            $record = $this->repository->update($id, $data, $maNv);
 
             if (!$record) {
                 return [
@@ -117,10 +134,10 @@ class LuongService
         }
     }
 
-    public function delete($id)
+    public function delete($id, ?string $maNv = null)
     {
         try {
-            $result = $this->repository->delete($id);
+            $result = $this->repository->delete($id, $maNv);
 
             if (!$result) {
                 return [
@@ -175,6 +192,7 @@ class LuongService
              * Chuẩn hóa filter trước khi gọi Stored Procedure.
              */
             $normalizedFilters = [
+                'ma_nv' => $this->normalizeKeyword($filters['ma_nv'] ?? null),
                 'tu_khoa' => $this->normalizeKeyword(
                     $filters['tu_khoa'] ?? null
                 ),
@@ -632,6 +650,7 @@ class LuongService
         $perPage = 50;
 
         $queryFilters = array_filter([
+            'ma_nv' => $filters['ma_nv'] ?? null,
             'tu_khoa' => $filters['tu_khoa'] ?? null,
             'ky_luong' => $filters['ky_luong'] ?? null,
             'ma_pb' => $filters['ma_pb'] ?? null,

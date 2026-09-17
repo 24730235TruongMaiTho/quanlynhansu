@@ -46,11 +46,15 @@ final class PortableSqlContractTest extends TestCase
         $rbac = file_get_contents($root.'\\database\\sql\\quyen_vai_tro.sql');
         $salary = file_get_contents($root.'\\database\\sql\\salary\\2026_09_09_001_luong_functions.sql');
         $upgrade = file_get_contents($root.'\\database\\sql\\rbac\\2026_09_09_001_add_nghiphep_approve_permission.sql');
+        $selfServiceUpgrade = file_get_contents($root.'\\database\\sql\\rbac\\2026_09_16_001_add_employee_self_service_permissions.sql');
+        $selfServiceCleanup = file_get_contents($root.'\\database\\sql\\rbac\\2026_09_17_001_remove_employee_management_permissions.sql');
 
         self::assertIsString($seed);
         self::assertIsString($rbac);
         self::assertIsString($salary);
         self::assertIsString($upgrade);
+        self::assertIsString($selfServiceUpgrade);
+        self::assertIsString($selfServiceCleanup);
 
         $permissionSection = strstr($seed, 'INSERT INTO quyen');
         self::assertIsString($permissionSection);
@@ -89,6 +93,14 @@ final class PortableSqlContractTest extends TestCase
         self::assertStringNotContainsString('DROP DATABASE', strtoupper($upgrade));
         self::assertStringNotContainsString('TRUNCATE', strtoupper($upgrade));
         self::assertStringNotContainsString('DELETE FROM QUYEN', strtoupper($upgrade));
+        self::assertStringContainsString('RBAC_EMPLOYEE_SELF_SERVICE_SCRIPT_SUPERSEDED', $selfServiceUpgrade);
+        self::assertStringContainsString('RBAC_EMPLOYEE_SELF_SERVICE_CLEANUP_APPROVAL_REQUIRED', $selfServiceCleanup);
+        self::assertStringContainsString('ma_quyen IN (25, 26, 33)', $selfServiceCleanup);
+        $roleFiveAssignments = array_values(array_filter(
+            $grants,
+            static fn (array $grant): bool => $grant[0] === 5,
+        ));
+        self::assertSame([], $roleFiveAssignments);
     }
 
     public function test_role_permission_procedures_allow_mapping_mutations_for_role_five_but_role_deletion_stays_protected(): void

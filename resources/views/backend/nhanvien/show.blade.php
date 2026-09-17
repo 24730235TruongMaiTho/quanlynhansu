@@ -62,12 +62,12 @@
             </x-slot:titlePrefix>
             <x-slot:actions>
                 @can(\App\Enums\NhanVienPermission::Sua->value)
-                    <a class="btn btn-outline-primary" href="{{ $editUrl }}" data-employee-edit-trigger aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}">
-                        <i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa
+                    <a class="btn btn-outline-primary btn-icon-text" href="{{ $editUrl }}" data-employee-edit-trigger aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}">
+                        <i class="bi bi-pencil-square" aria-hidden="true"></i><span>Chỉnh sửa</span>
                     </a>
                 @endcan
-                <a class="btn btn-outline-secondary" href="{{ $backUrl }}">
-                    <i class="bi bi-arrow-left" aria-hidden="true"></i> Quay lại danh sách
+                <a class="btn btn-outline-secondary btn-icon-text" href="{{ $backUrl }}">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i><span>Quay lại danh sách</span>
                 </a>
             </x-slot:actions>
         </x-backend.page-header>

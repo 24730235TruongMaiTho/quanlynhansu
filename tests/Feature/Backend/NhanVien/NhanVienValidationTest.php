@@ -190,11 +190,7 @@ class NhanVienValidationTest extends TestCase
         foreach (['dia_chi_cu_the', 'phuong_xa', 'tinh_thanh'] as $field) {
             $this->postJson('/_tests/nhan-vien', $this->validPayload([$field => '   ']))
                 ->assertUnprocessable()
-                ->assertJsonValidationErrors($field)
-                ->assertJsonPath(
-                    "errors.{$field}.0",
-                    'Vui lòng nhập đủ Địa chỉ cụ thể, Phường/Xã và Tỉnh/Thành phố hoặc để trống toàn bộ.',
-                );
+                ->assertJsonValidationErrors($field);
         }
     }
 
@@ -208,14 +204,16 @@ class NhanVienValidationTest extends TestCase
             ->assertJsonMissingPath('quan_huyen');
     }
 
-    public function test_three_visible_address_parts_may_be_omitted_together(): void
+    public function test_three_visible_address_parts_may_not_be_omitted_together(): void
     {
         $this->postJson('/_tests/nhan-vien', $this->validPayload([
             'dia_chi_cu_the' => null,
             'phuong_xa' => null,
             'quan_huyen' => null,
             'tinh_thanh' => null,
-        ]))->assertOk();
+        ]))->assertUnprocessable()->assertJsonValidationErrors([
+            'dia_chi_cu_the', 'phuong_xa', 'tinh_thanh',
+        ]);
     }
 
     public function test_avatar_accepts_supported_images_and_rejects_wrong_type_or_oversize(): void
@@ -361,7 +359,7 @@ class NhanVienValidationTest extends TestCase
         }
     }
 
-    public function test_update_requires_three_visible_address_parts_or_none(): void
+    public function test_update_requires_each_visible_address_part(): void
     {
         $this->putJson('/_tests/nhan-vien/00001', $this->validPayload([
             'phuong_xa' => '   ',

@@ -1,5 +1,234 @@
 # Handoff tiếp tục `quanlynhansu`
 
+## Dashboard cá nhân, login và RBAC — 2026-09-17
+
+Đã loại bỏ hoàn toàn markup/CSS “Quên mật khẩu” khỏi login, giữ nguyên luồng
+đăng nhập. Dashboard auth-only hiện luôn có “Tổng quan cá nhân” với đúng năm
+widget Hồ sơ, Chấm công tháng hiện tại, Nghỉ phép, Hợp đồng hiện tại và Lương
+(chỉ kỳ gần nhất/trạng thái, không chọn hoặc trả trường tiền), và năm liên kết
+self-service. “Tổng quan công ty” được render/gọi API
+theo quyền module; không có quyền thì key/widget và request module tương ứng
+vắng mặt. Dashboard dùng `PersonalDashboardService` + `CurrentEmployee` với
+exact mã `ma_nv` canonical 5 chữ số; các widget độc lập `ready|empty|error`,
+lỗi trả thông báo an toàn. API mới là `GET /api/v1/dashboard/personal`;
+endpoint công ty có middleware `NhanVien.Read`, `PhongBan.Read` (department
+cần đồng thời), `HopDong.Read`, `ChamCong.Read`, `Luong.Read`, và nghỉ phép
+giữ cặp `NghiPhep.Read` + `NghiPhep.Approve`.
+
+TDD evidence: RED trước sửa `5 failed, 12 passed (117 assertions)`; GREEN
+focused trước hardening `37 passed, 293 assertions`, smoke cuối sau hardening
+`24 passed, 212 assertions`; frontend thêm contract dashboard và `npm run
+test:frontend` `185/185`. Fresh verification: Herd PHP84 full Laravel
+`595 passed, 4592 assertions, 25.71s`; build `36 modules transformed`; route
+JSON `108`, duplicate name/signature `0/0`; Composer valid, npm audit high `0
+vulnerabilities`, PHP lint scope pass và `git diff --check` pass.
+
+Browser read-only: root đã reload browser với local employee session; `/tong-quan`
+hiển thị đúng 5 widget cá nhân, không có company section, screenshot desktop
+pass; forbidden education endpoint trả 403; console warn/error `[]`. Guest GET
+`/dang-nhap` trả 200, form còn đủ `dinh_danh`/`mat_khau`, và các forgot markers
+đều vắng. Chrome không cho mở trực tiếp JSON personal
+(`ERR_BLOCKED_BY_CLIENT`), chưa có session admin và chưa kiểm chứng viewport
+mobile/MariaDB live; không có nghiệp vụ mutation.
+
+Follow-up loại bỏ quick action: đã xóa đúng hai nút header “Cập nhật thông tin”
+và “Tạo đơn nghỉ phép”, thu gọn wrapper heading, giữ nguyên năm widget và link
+card Hồ sơ/Nghỉ phép. Regression frontend focused `4/4`; targeted PHP Dashboard
+`10 passed, 89 assertions`; `npm run test:frontend` `186/186`; build `36
+modules transformed`; full Laravel rerun `595 passed, 4592 assertions, 16.97s`.
+
+## Uniform button + sort contract — 2026-09-17
+
+Đã chuẩn hóa nút có icon và nhãn bằng `.btn-icon-text` trong CSS dùng chung
+(inline-flex, căn giữa, gap chính xác `.5rem`); icon-only vẫn dùng
+`.btn-icon-action`/`.btn-close`. Audit tự động quét đệ quy toàn bộ Blade backend
+và JavaScript frontend, loại đúng icon-only, đồng thời khóa control động dùng
+`[data-button-label]` thay vì thay toàn bộ `button.textContent` trên đường chạy
+DOM. Sort dùng Bootstrap icons và `.table-sort-control`; trạng thái ARIA hợp lệ
+là `none`/`ascending`/`descending`, có active/hover/focus state và căn phải cột
+số. Không còn glyph Unicode mũi tên trong backend views.
+
+Các list server-side đã validate direction/allowlist tại request hoặc controller,
+map cột an toàn tại repository/service, thêm secondary order deterministic, giữ
+filter/per_page và reset page khi đổi sort. Bao phủ Nhân viên, Phòng ban, Chức
+vụ, Hợp đồng, Vai trò, Chấm công, Nghỉ phép, Lương, hệ số lương và tài khoản;
+Chấm công tách đúng tổng giờ ở bảng nhân viên khỏi bảng ngày (detail vẫn 10 cột).
+Page size nhân viên Nghỉ phép là `[10, 20, 50]`; header Chấm công có `Tổng giờ`
+và request allowlist có `tong_gio_lam`.
+
+Evidence thực tế sau implementation: targeted Node contract `8/8`; targeted
+Laravel cuối `21 passed / 94 assertions` cho Chấm công và Uniform UI; full
+frontend `182/182`; full Laravel fresh `583 passed / 4492 assertions / 24.50s`;
+`npm run build` pass (`36 modules transformed`); route JSON `107`, duplicate
+name/signature `0/0`; Composer valid, `npm audit --audit-level=high` báo `0
+vulnerabilities`, PHP lint `279` files pass và `git diff --check` pass.
+Chrome local read-only với actor admin `00001`: `/ho-so-ca-nhan` có computed
+gap/pixel distance icon-label `8px`; Chấm công nút `Lưu`/`Xóa` giữ icon + label
+gap `8px`; bảng nhân viên có 12 header và 12 cell. Đã verify cả asc và desc trên
+Vai trò, Chấm công employee, Nghỉ phép employee, Lương và Phân quyền; sort
+Nhân viên giữ `tu_khoa` + `so_dong`; console warn/error `[]`. Không submit,
+không mutation nghiệp vụ/MariaDB/live DB.
+
+## UI contract sidebar, lương và hợp đồng — 2026-09-17
+
+Đã cập nhật nhóm self-service thành “Thông Tin Cá Nhân”; bốn mục con được
+hiển thị là “Đơn nghỉ phép”, “Hợp đồng”, “Lương”, “Chấm công”, còn “Tài khoản
+cá nhân” giữ nguyên. Caption/title/breadcrumb của các trang self-service
+không bị đổi. Trang tạo đơn nghỉ phép không còn action “Quay lại” hoặc action
+slot rỗng.
+
+Bảng lương dùng nền selected opaque `#e8f1ff` cho cả hover và các ô sticky,
+thay cho nền alpha gây lộ nội dung khi cuộn ngang. Trạng thái hoàn tất được
+chuẩn hóa qua mã `READY` hoặc thông báo canonical “Hoàn tất tính lương”
+(trim/case-safe), hiển thị badge xanh `text-bg-success`; trạng thái khác vẫn
+cảnh báo. Bộ lọc hợp đồng nhận bool-like như `'1'`, checkbox tự submit GET khi
+đổi, vẫn giữ nút Áp dụng, và empty state riêng nêu rõ cửa sổ 30 ngày; business
+rule không đổi, hợp đồng đã hết hạn vẫn bị loại.
+
+TDD: RED focused backend `5 failures` và frontend `20 tests / 4 failures`;
+GREEN focused backend `36 passed / 192 assertions`, frontend `25/25`.
+Fresh verification bằng Herd PHP 8.4: full Laravel `578 passed / 4460
+assertions / 22.03s`; `npm run test:frontend` `174/174`; `npm run build`
+`35 modules transformed`; route inventory `104`, duplicate name/signature
+`0/0`; Composer valid, `npm audit` `0 vulnerabilities`, PHP lint các file
+sửa và `git diff --check` pass.
+
+Browser local read-only: actor admin `00001`; trang tạo đơn hiển thị đúng
+nhóm/mục con và không có “Quay lại”. GET `/hop-dong?sap_het_han=1` hiển thị
+`0` và empty state “Không có hợp đồng nào hết hạn trong 30 ngày tới”; đổi
+checkbox từ trang danh sách tự điều hướng tới URL có `sap_het_han=1`. Trên
+`/luong`, chọn dòng rồi cuộn ngang (`scrollLeft=332`) giữ nền first/last
+sticky `rgb(232, 241, 255)`; dữ liệu hiện tại chỉ có trạng thái cảnh báo, chưa
+có bản ghi runtime “Hoàn tất tính lương”. Console warn/error ở các tab là `[]`.
+Không submit nghiệp vụ, không xóa/tạo/cập nhật và không mutation MariaDB/live.
+
+## Self-service mặc định cho mọi tài khoản — 2026-09-17
+
+Đã hoàn tất năm route self-service auth-only: `/ho-so-ca-nhan`,
+`/tao-nghi-phep` (lịch sử/tạo chính chủ), `/hop-dong-cua-toi`, `/luong-cua-toi`
+và `/cham-cong-cua-toi`, cùng API `cua-toi` cho nghỉ phép, lương và chấm công.
+`CurrentEmployee` fail-closed với actor không phải `NhanVien` hoặc mã không
+đúng 5 chữ số; query/repository chính chủ dùng exact owner và form cấm selector
+nhận diện. Sidebar “Thông tin của tôi” luôn hiển thị; route quản trị và quyền
+module không đổi. Fresh seed/snapshot không còn ba mapping role 5 `(5,25)`,
+`(5,26)`, `(5,33)`; script `2026_09_16` superseded và cleanup
+`2026_09_17` chỉ được kiểm tra ở mức contract, yêu cầu approval và chưa chạy
+trên MariaDB hoặc database live.
+
+RED theo task: `3`, `5`, `4`, `5`, `3`, `6`, `2` test fail tương ứng identity,
+leave, contract, salary, attendance, sidebar, RBAC (leave còn có RED Node do
+module chưa tồn tại). GREEN targeted self-service/RBAC `35 passed / 284
+assertions`. Review regression frontend đã bắt create transport dùng nhầm
+`/api/v1/nghi-phep` (RED), sau đó được sửa sang endpoint chính chủ. Herd Desktop
+wrapper đã dừng; dùng binary local
+`C:\Users\Aster\.config\herd\bin\php84\php.exe` (PHP 8.4.25, có GD): full
+Laravel `575 passed / 4445 assertions / 22.11s`; frontend
+`npm run test:frontend` `170/170`; build `34 modules`; route `107`, duplicate
+name/signature `0/0`; PHP lint `77/77`, Composer valid, npm audit
+`0 vulnerabilities`, `git diff --check` pass.
+
+Browser local read-only partial: session hiện tại là actor `00009` role Nhân
+viên (chưa phải `00007`), đã mở đủ năm URL self-service; sidebar đủ năm link,
+`/luong` trả `403`, profile bỏ Quận/Huyện và yêu cầu ba trường địa chỉ lõi,
+console warn/error `[]`. Không gửi đơn, không Confirm/xóa và không mutation
+business data. Actor `00007`, MariaDB/live DB và chạy cleanup SQL vẫn
+unverified; mutation backend chỉ chứng minh bằng SQLite disposable/contract.
+
+## Canonical backend và custom dialog xóa Chấm công — 2026-09-17
+
+Đã sửa model Chấm công theo schema active (`cham_cong`, khóa `ma_cc`, không
+timestamps, `ngay_lam`, giờ integer và cờ boolean). Feature test dùng SQLite
+disposable với schema `smallInteger`, xác nhận actor có `ChamCong.Delete` xóa
+được persisted row qua API và mã không tồn tại trả 404 an toàn.
+
+Nút xóa hiện mở custom accessible `<dialog>` với tiêu đề/mô tả, focus ban đầu
+ở Hủy, Confirm/Hủy/Escape/cancel và trả focus về nút mở. Chấm công không còn
+`window.confirm`; dialog fail-closed nếu API không có. Shared delete guard
+await được confirmation Promise, giữ stale/unpersisted guard và gửi toast
+success/error/warning đúng outcome.
+
+RED: backend `3 failed (4 assertions)` và frontend `12 tests` với `8 passed /
+4 failed` trước production edits. GREEN: backend `3 passed (13 assertions)`,
+frontend targeted `16/16`, `npm run test:frontend` `168/168`, build `33
+modules transformed`; full Laravel Herd PHP 8.4 `547 passed/4268 assertions`
+trong `21.13s`; route `98`, PHP lint hai file PHP sửa và `git diff --check`
+đều pass.
+
+Chrome fresh tab local `/cham-cong` với actor admin đã chọn employee `00021`;
+attendance persisted `ma_cc=4` ngày `01/09/2026`. Click Xóa mở dialog custom
+“Xác nhận xóa chấm công”, focus mặc định ở Hủy và `getJsDialog() = none`;
+Click Hủy giữ row `ma_cc=4`, restore/focus lại nút Xóa. Console warn/error
+fresh-tab là `[]`.
+
+Không bấm Confirm, không gửi DELETE hay mutation live; mutation chỉ được chứng
+minh trên SQLite disposable feature test. MariaDB DELETE/live DB chưa kiểm
+chứng.
+
+## Regression Nghỉ phép và xóa Chấm công — 2026-09-17
+
+> Đây là evidence lịch sử trước custom dialog Chấm công; dùng section phía trên
+> làm trạng thái hiện tại.
+
+Đã sửa ánh xạ giới tính của danh sách Nghỉ phép để dữ liệu `gioi_tinh=0` hiển
+thị “Nữ”. Xóa Chấm công persisted row giờ lấy selection theo ngày, không bị
+chặn bởi `selectedAttendanceId` stale; `window.confirm` vẫn được giữ và các
+kết quả DELETE dùng shared Bootstrap toast success/danger, còn refresh lỗi sau
+DELETE báo warning “đã xóa nhưng chưa tải lại được”. Dòng chưa lưu không gửi
+DELETE và vẫn có cảnh báo qua shared guard.
+
+RED targeted Node `5 tests`, `2 passed, 3 failed`; GREEN targeted combined
+regression/shared/toast `15/15`, `npm run test:frontend` `161/161`, build `32
+modules`. Full Laravel explicit Herd PHP 8.4: `544 passed, 4255 assertions`,
+exit `0`, `23.08s`; `git diff --check` pass.
+
+Browser read-only local fresh: `/nghi-phep` sau reload hiển thị “Nữ” cho các
+nhân viên canonical `gioi_tinh=0`, gồm `00019 Vũ Thị Hương` và `00017 Phan Thị
+Ngọc Ánh`. Ở `/cham-cong`, employee `00021` có attendance persisted `ma_cc=4`,
+nút Xóa enabled và click mở `window.confirm` đúng message; confirm được dismiss,
+row vẫn còn, không gửi DELETE và không mutation. Console error/warn `[]` ở cả
+hai trang. Không kích hoạt success toast runtime để tránh xóa dữ liệu live;
+contract đã được chứng minh bằng regression tự động. MariaDB/live DB vẫn chưa
+kiểm chứng.
+
+## Hòa giải feedback_v6 — 2026-09-16
+
+Đã triển khai feedback_v6 trên nội dung worktree hiện tại, bảo toàn các file
+dirty/untracked có sẵn. Role Nhân viên (`ma_vt = 5`) được scope server-side
+exact theo authenticated `ma_nv` cho list/detail/export/create/update/delete
+lương và list/lookup/detail/create/update/delete nghỉ phép; admin behavior giữ
+nguyên. Fresh SQL và script additive/rerunnable cấp các quyền cơ bản 25, 26,
+33 với guard/post-check an toàn. Profile đổi sang “Tài khoản cá nhân”, bỏ
+district khỏi self view, cấm crafted `quan_huyen` nhưng không xóa giá trị cũ,
+và bắt buộc địa chỉ cụ thể/phường-xã/tỉnh-thành.
+
+Các list Nhân viên, Phòng ban, Chức vụ, Hợp đồng và Vai trò có newest-first,
+allowlist sort asc/desc, giữ filter/pagination; `/hop-dong` hiển thị card read-only
+từ canonical `$types`. Chấm công đã sửa delete persisted-row, import lỗi bất
+ngờ trả generic, còn export canonical của HEAD được chứng minh bằng mở lại
+CSV/XLSX và round-trip trên SQLite test schema mô phỏng cột active không
+timestamp; đây không phải bằng chứng MariaDB/live schema. Danh sách nhân viên
+tổng hợp Chấm công cũng newest-first, còn chi tiết lịch giữ chronological.
+Avatar được phân loại
+fixed-by-HEAD sau regression controller upload xanh.
+
+Evidence vòng review: RED contract ban đầu `3 failed`; focused GREEN contract
+`3/20`, privacy `7/30`, artifact `5/29`, avatar store `7/45`, Hợp đồng sort
+`1/4`, RBAC `1 test`, repository/list/profile pass; full Laravel post-review
+`544 passed, 4255 assertions`, exit `0`, `20.67s` (Herd PHP 8.4). Toàn bộ Node
+frontend và `npm run test:frontend` đều `158/158`; `npm run build` (`32 modules
+transformed`); route inventory `98`, duplicate name/signature `0/0`; Composer
+valid, PHP lint `47` file và `git diff --check` pass. Browser read-only local đã
+kiểm tra `/ho-so-ca-nhan`: title/menu “Tài khoản cá nhân”, không có Quận/Huyện
+và ba trường địa chỉ lõi là bắt buộc; cùng
+`/hop-dong?per_page=50&ma_lhd=1`: card danh sách loại hợp đồng hiển thị, hợp
+đồng mới nhất mã `21` đứng đầu, sort href giữ `ma_lhd=1` và `per_page=50`.
+Console error/warn ở cả hai trang là `[]`. Screenshot capture timeout nên không
+claim screenshot; không có browser mutation. MariaDB disposable/live DB vẫn
+chưa kiểm chứng. `node --test tests/Frontend`
+literal không chạy được trên Node 24 vì Node coi thư mục là module
+(`MODULE_NOT_FOUND`); enumeration tất cả file `*.test.js` là bằng chứng thay
+thế. Chưa browser hoặc MariaDB/live DB; không claim các phần đó.
+
 ## Current verified slice: Self-history Nghỉ phép cho actor Insert — 2026-09-10
 
 Trang `/tao-nghi-phep` tải log cá nhân qua `GET /api/v1/nghi-phep/cua-toi`;

@@ -120,6 +120,8 @@ class ChucVuFeatureTest extends TestCase
                 'ten_cv' => 'Trưởng',
                 'page' => 2,
                 'so_dong' => 5,
+                'sort' => 'ma_cv',
+                'direction' => 'desc',
             ])->andReturn(new LengthAwarePaginator($rows, 11, 5, 2, ['pageName' => 'page']));
         });
 

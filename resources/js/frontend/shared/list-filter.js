@@ -1,3 +1,5 @@
+import { setButtonLabel } from './button-label.js';
+
 const initializedFilters = new WeakSet();
 
 export function initializeListFilter(form) {
@@ -19,7 +21,7 @@ export function initializeListFilter(form) {
         form.setAttribute('aria-busy', 'true');
         submitButton.disabled = true;
         submitButton.setAttribute('aria-disabled', 'true');
-        submitButton.textContent = submitButton.dataset.submittingText || 'Đang lọc…';
+        setButtonLabel(submitButton, submitButton.dataset.submittingText || 'Đang lọc…');
     });
 }
 

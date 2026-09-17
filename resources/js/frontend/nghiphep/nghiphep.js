@@ -7,6 +7,8 @@ import {
 import { renderSharedPagination } from '../shared/pagination.js';
 import { createDeleteAction } from '../shared/delete-action.js';
 import { canonicalServerDate, formatDisplayDate, toIsoDate } from '../shared/date-field.js';
+import { showToast } from '../shared/toast.js';
+import { setButtonLabel } from '../shared/button-label.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
@@ -186,24 +188,20 @@ document.addEventListener('DOMContentLoaded', () => {
             ? 'Bạn không có quyền xóa đơn nghỉ phép.'
             : `Bạn không có quyền ${action}.`;
 
-        const toast =
-            document.querySelector('.leave-toast');
+        showToast(message, {
+            variant: 'warning',
+            title: 'Không có quyền',
+        });
+    }
 
-        if (toast) {
-            toast.textContent = message;
-            toast.classList.add('show');
+    function applyEmployeeScopeVisibility(root = document) {
+        const selfOnly = String(permissionState.user?.ma_vt ?? '') === '5';
 
-            window.setTimeout(
-                () => {
-                    toast.classList.remove('show');
-                },
-                2500
-            );
-
-            return;
-        }
-
-        window.alert(message);
+        root.querySelectorAll('[data-leave-employee-filter]')
+            .forEach((element) => {
+                element.hidden = selfOnly;
+                element.classList.toggle('d-none', selfOnly);
+            });
     }
 
     function guard(permission, action) {
@@ -298,7 +296,9 @@ document.addEventListener('DOMContentLoaded', () => {
          * Query Builder trên hợp đồng 15 bảng.
          */
         employeePage: 1,
-        employeePerPage: 15,
+        employeePerPage: 10,
+        employeeSort: 'ma_nv',
+        employeeDirection: 'desc',
 
         employeeFilters: {
             tu_khoa: null,
@@ -321,6 +321,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         leavePage: 1,
+        leaveSort: 'ma_nv',
+        leaveDirection: 'desc',
         leavePerPage:
             Number(
                 document.getElementById('leave-per-page')?.value || 10
@@ -605,6 +607,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ...state.employeeFilters,
             page,
             per_page: state.employeePerPage,
+            sort: state.employeeSort,
+            direction: state.employeeDirection,
         };
     }
 
@@ -1272,6 +1276,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (paginator) renderLeavePagination(paginator);
     }
 
+    function updateSortControls(selector, activeColumn, direction) {
+        document.querySelectorAll(selector).forEach((button) => {
+            const column = button.dataset.leaveEmployeeSort || button.dataset.leaveSort;
+            const active = column === activeColumn;
+            const nextDirection = active && direction === 'asc' ? 'desc' : 'asc';
+            const label = button.dataset.sortLabel || button.textContent.trim();
+            const icon = button.querySelector('i');
+            const header = button.closest('th');
+
+            button.classList.toggle('is-active', active);
+            button.dataset.sortDirection = active ? direction : 'asc';
+            button.setAttribute('aria-label', active
+                ? `Sắp xếp ${label}; đang ${direction === 'asc' ? 'tăng dần' : 'giảm dần'}; nhấn để sắp xếp ${nextDirection === 'asc' ? 'tăng dần' : 'giảm dần'}`
+                : `Sắp xếp ${label} tăng dần`);
+            header?.setAttribute(
+                'aria-sort',
+                active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none',
+            );
+            icon?.classList.remove('bi-arrow-down-up', 'bi-arrow-up-short', 'bi-arrow-down-short');
+            icon?.classList.add(active
+                ? (direction === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short')
+                : 'bi-arrow-down-up');
+        });
+    }
+
+    updateSortControls('[data-leave-employee-sort]', state.employeeSort, state.employeeDirection);
+    updateSortControls('[data-leave-sort]', state.leaveSort, state.leaveDirection);
+
     function renderLeaveLoading(message = 'Đang tải dữ liệu nghỉ phép...') {
         elements.leaveTbody.innerHTML = `
             <tr>
@@ -1299,6 +1331,8 @@ document.addEventListener('DOMContentLoaded', () => {
             url.searchParams.set('page', String(state.leavePage));
             url.searchParams.set('per_page', String(state.leavePerPage));
             url.searchParams.set('tab', 'pending');
+            url.searchParams.set('sort', state.leaveSort);
+            url.searchParams.set('direction', state.leaveDirection);
             const filters = state.employeeFilters;
             if (filters.tu_khoa) url.searchParams.set('tu_khoa', filters.tu_khoa);
             if (filters.ma_pb) url.searchParams.set('ma_pb', filters.ma_pb);
@@ -1387,6 +1421,8 @@ document.addEventListener('DOMContentLoaded', () => {
             url.searchParams.set('page', String(state.leavePage));
             url.searchParams.set('per_page', String(state.leavePerPage));
             url.searchParams.set('tab', 'history');
+            url.searchParams.set('sort', state.leaveSort);
+            url.searchParams.set('direction', state.leaveDirection);
             appendHistoryFilters(url);
 
             const response = await fetch(url.toString(), {
@@ -1597,8 +1633,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.modalDescription.textContent =
             `Cập nhật đơn nghỉ phép #${leave.ma_np}.`;
 
-        elements.modalSubmit.textContent =
-            'Lưu thay đổi';
+        setButtonLabel(elements.modalSubmit, 'Lưu thay đổi');
 
         elements.modal.showModal();
     }
@@ -1678,8 +1713,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         elements.modalSubmit.disabled = true;
-        elements.modalSubmit.textContent =
-            'Đang lưu...';
+        setButtonLabel(elements.modalSubmit, 'Đang lưu...');
 
         try {
             await requestJson(
@@ -1697,8 +1731,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showModalMessage(error.message);
         } finally {
             elements.modalSubmit.disabled = false;
-            elements.modalSubmit.textContent =
-                'Lưu thay đổi';
+            setButtonLabel(elements.modalSubmit, 'Lưu thay đổi');
         }
     }
 
@@ -1728,7 +1761,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 onSuccess: () => refreshLeaveData(),
                 onError: (error) => {
                     console.error(error);
-                    window.alert(error.message);
+                    showToast(error.message, {
+                        variant: 'danger',
+                        title: 'Lỗi xóa đơn nghỉ phép',
+                    });
                 },
                 sync: () => {
                     if (!button.isConnected) return;
@@ -1784,7 +1820,10 @@ document.addEventListener('DOMContentLoaded', () => {
             await refreshLeaveData();
         } catch (error) {
             console.error(error);
-            window.alert(error.message);
+            showToast(error.message, {
+                variant: 'danger',
+                title: 'Lỗi duyệt nghỉ phép',
+            });
         } finally {
             if (button?.isConnected) {
                 button.disabled = false;
@@ -1870,6 +1909,36 @@ document.addEventListener('DOMContentLoaded', () => {
         'click',
         clearEmployeeFilters
     );
+
+    document.querySelectorAll('[data-leave-employee-sort]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const column = button.dataset.leaveEmployeeSort;
+            state.employeeDirection = state.employeeSort === column && state.employeeDirection === 'asc'
+                ? 'desc'
+                : 'asc';
+            state.employeeSort = column;
+            state.employeePage = 1;
+            updateSortControls('[data-leave-employee-sort]', state.employeeSort, state.employeeDirection);
+            loadEmployees(1);
+        });
+    });
+
+    document.querySelectorAll('[data-leave-sort]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const column = button.dataset.leaveSort;
+            state.leaveDirection = state.leaveSort === column && state.leaveDirection === 'asc'
+                ? 'desc'
+                : 'asc';
+            state.leaveSort = column;
+            state.leavePage = 1;
+            updateSortControls('[data-leave-sort]', state.leaveSort, state.leaveDirection);
+            if (state.activeTab === 'pending') {
+                loadPendingLeaves();
+            } else {
+                loadProcessedLeavesForEmployee();
+            }
+        });
+    });
 
     elements.historyFilterForm?.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -2034,6 +2103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             applyPermissionVisibility();
+            applyEmployeeScopeVisibility();
             restoreLeaveTableAnchor();
 
             const readOnly =

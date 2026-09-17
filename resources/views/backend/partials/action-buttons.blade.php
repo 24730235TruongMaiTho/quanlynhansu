@@ -34,7 +34,7 @@
 
 <div class="table-actions" data-action-buttons>
     @if ($viewUrl && $canView)
-        <a class="btn btn-sm btn-outline-primary" href="{{ $viewUrl }}" aria-label="{{ $viewLabel }}"><i class="bi bi-eye button-icon" aria-hidden="true"></i>{{ $viewLabel }}</a>
+        <a class="btn btn-sm btn-outline-primary btn-icon-text" href="{{ $viewUrl }}" aria-label="{{ $viewLabel }}"><i class="bi bi-eye" aria-hidden="true"></i>{{ $viewLabel }}</a>
     @endif
     @if ($editUrl && $canEdit)
         <a class="btn btn-sm btn-outline-primary btn-icon-action" href="{{ $editUrl }}" aria-label="{{ $editLabel }}" title="{{ $editLabel }}"><i class="bi bi-pencil-square button-icon" aria-hidden="true"></i></a>
@@ -52,10 +52,10 @@
             @if ($resetMethod !== 'POST')
                 @method($resetMethod)
             @endif
-            <button class="btn btn-sm btn-outline-secondary" type="submit" aria-label="{{ $resetLabel }}"><i class="bi bi-key button-icon" aria-hidden="true"></i>{{ $resetLabel }}</button>
+        <button class="btn btn-sm btn-outline-secondary btn-icon-text" type="submit" aria-label="{{ $resetLabel }}"><i class="bi bi-key" aria-hidden="true"></i>{{ $resetLabel }}</button>
         </form>
     @endif
     @if ($permissionUrl && $canPermission)
-        <a class="btn btn-sm btn-outline-secondary" href="{{ $permissionUrl }}" aria-label="{{ $permissionLabel }}"><i class="bi bi-shield-lock button-icon" aria-hidden="true"></i>{{ $permissionLabel }}</a>
+        <a class="btn btn-sm btn-outline-secondary btn-icon-text" href="{{ $permissionUrl }}" aria-label="{{ $permissionLabel }}"><i class="bi bi-shield-lock" aria-hidden="true"></i>{{ $permissionLabel }}</a>
     @endif
 </div>

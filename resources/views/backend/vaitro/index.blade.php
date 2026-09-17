@@ -22,7 +22,7 @@
         >
             <x-slot:actions>
                 @can(\App\Enums\VaiTroPermission::Tao->value)
-                    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" data-role-create aria-label="Thêm vai trò" title="Thêm vai trò">
+                    <button class="btn btn-primary btn-icon-text" type="button" data-role-create aria-label="Thêm vai trò" title="Thêm vai trò">
                         <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm vai trò
                     </button>
                 @endcan
@@ -40,8 +40,8 @@
                         </div>
                     </div>
                     <div class="filter-bar__actions">
-                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-search" aria-hidden="true"></i>Tìm kiếm</button>
-                        <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="reset"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
+                        <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-search" aria-hidden="true"></i>Tìm kiếm</button>
+                        <button class="btn btn-outline-secondary btn-icon-text" type="reset"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
                     </div>
                 </form>
             </div>
@@ -56,9 +56,9 @@
                     <div class="d-flex align-items-center gap-2">
                         <label class="small text-secondary mb-0" for="role-page-size">Số phần tử / trang</label>
                         <select class="form-select form-select-sm w-auto pe-5" id="role-page-size">
-                            <option value="5">5</option>
                             <option value="10" selected>10</option>
                             <option value="20">20</option>
+                            <option value="50">50</option>
                         </select>
                     </div>
                 </div>
@@ -68,8 +68,8 @@
                     <caption class="visually-hidden">Danh sách vai trò</caption>
                     <thead class="table-light">
                         <tr>
-                            <th scope="col">Mã</th>
-                            <th scope="col">Tên vai trò</th>
+                            <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-role-sort="ma_vt" aria-label="Sắp xếp mã vai trò tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Mã</span></button></th>
+                            <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-role-sort="ten_vt" aria-label="Sắp xếp tên vai trò tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Tên vai trò</span></button></th>
                             <th scope="col">Mô tả</th>
                             <th scope="col" class="text-end">Thao tác</th>
                         </tr>
@@ -107,8 +107,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" data-bs-dismiss="modal"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</button>
-                    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit" id="role-submit"><i class="bi bi-check2" aria-hidden="true"></i>Lưu vai trò</button>
+                    <button class="btn btn-outline-secondary btn-icon-text" type="button" data-bs-dismiss="modal"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</button>
+                    <button class="btn btn-primary btn-icon-text" type="submit" id="role-submit"><i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>Lưu vai trò</span></button>
                 </div>
             </form>
         </div>

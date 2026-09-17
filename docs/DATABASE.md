@@ -32,13 +32,24 @@ riêng lẻ:
 
 ```text
 database/sql/rbac/2026_09_09_001_add_nghiphep_approve_permission.sql
+database/sql/rbac/2026_09_17_001_remove_employee_management_permissions.sql
 database/sql/salary/2026_09_09_001_luong_functions.sql
 ```
 
-Script RBAC chỉ thêm quyền `NghiPhep.Approve` khi metadata không xung đột;
-script salary chỉ replace 4 function cần cho danh sách lương, không tạo view
-hoặc procedure. Routine DDL của MariaDB/MySQL có thể implicit commit, nên vẫn
-phải dùng quy trình backup/rollout phù hợp.
+Script RBAC `2026_09_09` chỉ thêm quyền `NghiPhep.Approve` khi metadata không
+xung đột. Script `2026_09_16` đã superseded và chỉ SIGNAL
+`RBAC_EMPLOYEE_SELF_SERVICE_SCRIPT_SUPERSEDED`; không chạy script này. Script
+`2026_09_17` là remediation approval-gated cho database đã có dữ liệu: chỉ sau
+preflight/backup/approval, quản trị viên có thể chạy
+`SET @approved_employee_self_service_cleanup = 1;` rồi gọi script để xóa đúng
+assignment role 5 với permission `(25, 26, 33)`. Script fail-closed nếu thiếu
+role/metadata, post-check phải còn zero assignment mục tiêu và biến approval
+được reset; assignment role 5 ngoài allowlist được giữ nguyên để quản trị viên
+review và xử lý thủ công bằng thao tác được duyệt, không tự động xóa. Chưa có
+script nào được chạy trên database live. Script salary chỉ replace 4 function
+cần cho danh sách lương, không tạo view hoặc procedure.
+Routine DDL của MariaDB/MySQL có thể implicit commit, nên vẫn phải dùng quy
+trình backup/rollout phù hợp.
 
 Không import SQL active vào database cần giữ dữ liệu. Trước mọi DDL phải xác nhận target, backup và approval; không dùng web request cho backup/restore/import/export. Không tự tạo procedure bằng phỏng đoán để làm xanh caller.
 

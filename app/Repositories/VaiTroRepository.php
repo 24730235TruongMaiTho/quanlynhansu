@@ -17,15 +17,23 @@ final class VaiTroRepository implements VaiTroRepositoryContract
             ->leftJoin('nhan_vien as nv', 'nv.ma_vt', '=', 'vt.ma_vt')
             ->when($keyword !== '', fn ($q) => $q->where('vt.ten_vt', 'like', '%'.$keyword.'%'))
             ->select(['vt.ma_vt', 'vt.ten_vt', 'vt.mo_ta'])->selectRaw('COUNT(nv.ma_nv) AS so_tai_khoan')
-            ->groupBy('vt.ma_vt', 'vt.ten_vt', 'vt.mo_ta')->orderBy('vt.ma_vt')->get()->all();
+            ->groupBy('vt.ma_vt', 'vt.ten_vt', 'vt.mo_ta')->orderBy('vt.ma_vt', 'asc')->get()->all();
     }
 
     public function paginate(array $filters): LengthAwarePaginator
     {
+        $sortColumns = [
+            'ma_vt' => 'vt.ma_vt',
+            'ten_vt' => 'vt.ten_vt',
+        ];
+        $sort = $sortColumns[$filters['sort'] ?? 'ma_vt'] ?? $sortColumns['ma_vt'];
+        $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
         return $this->database->connection()->table('vai_tro as vt')
             ->when(($filters['ten_vt'] ?? null) !== null, fn ($query) => $query->where('vt.ten_vt', 'like', '%'.$filters['ten_vt'].'%'))
             ->select(['vt.ma_vt', 'vt.ten_vt', 'vt.mo_ta'])
-            ->orderBy('vt.ma_vt')
+            ->orderBy($sort, $direction)
+            ->orderBy('vt.ma_vt', 'desc')
             ->paginate((int) ($filters['per_page'] ?? 10), ['*'], 'page', (int) ($filters['page'] ?? 1))
             ->withQueryString();
     }

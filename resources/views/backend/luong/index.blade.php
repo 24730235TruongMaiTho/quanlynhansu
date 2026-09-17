@@ -21,18 +21,18 @@
             </x-slot:titleSuffix>
             <x-slot:actions>
                 <button
-                    class="btn btn-outline-secondary d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary btn-icon-text"
                     id="export-btn"
                     type="button"
                     data-salary-permission="Luong.Read"
                     hidden
                 >
                     <i class="bi bi-download" aria-hidden="true"></i>
-                    Xuất báo cáo
+                    <span data-button-label>Xuất báo cáo</span>
                 </button>
 
                 <button
-                    class="btn btn-primary d-inline-flex align-items-center gap-2"
+                    class="btn btn-primary btn-icon-text"
                     id="create-salary-btn"
                     type="button"
                     data-salary-permission="Luong.Insert"
@@ -91,6 +91,7 @@
                     <form class="filter-bar" id="salary-filter-form">
                     <div class="filter-bar__fields">
                         <div class="filter-bar__field"
+                            data-salary-employee-filter
                             data-salary-permission="Luong.Read"
                             hidden
                         >
@@ -104,6 +105,7 @@
                         </div>
 
                         <div class="filter-bar__field"
+                            data-salary-employee-filter
                             data-salary-permission="Luong.Read"
                             hidden
                         >
@@ -117,6 +119,7 @@
                         </div>
 
                         <div class="filter-bar__field"
+                            data-salary-employee-filter
                             data-salary-permission="Luong.Read"
                             hidden
                         >
@@ -152,8 +155,8 @@
 
                     </div>
                     <div class="filter-bar__actions">
-                        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
-                        <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
+                        <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i><span>Áp dụng bộ lọc</span></button>
+                        <button class="btn btn-outline-secondary btn-icon-text" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Đặt lại</span></button>
                     </div>
                     </form>
                 </div>
@@ -184,18 +187,16 @@
                         <caption class="visually-hidden">Danh sách bảng lương</caption>
                         <thead class="table-light">
                         <tr>
-                            <th scope="col" class="salary-col-employee">Nhân viên</th>
+                            <th scope="col" class="salary-col-employee" aria-sort="none"><button class="table-sort-control" type="button" data-salary-sort="ho_ten" data-sort-label="Nhân viên" aria-label="Sắp xếp Nhân viên tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Nhân viên</span></button></th>
                             <th scope="col" class="salary-col-position">Phòng ban / Chức vụ</th>
-                            <th scope="col" class="text-end salary-col-period">Kỳ lương</th>
-                            <th scope="col" class="text-end">Thưởng</th>
-                            <th scope="col" class="text-end">Phạt</th>
-                            <th scope="col" class="text-end">Bảo hiểm</th>
-                            <th scope="col" class="text-end">Thuế</th>
-                            <th scope="col" class="text-end">Hệ số phụ cấp</th>
-                            <th scope="col" class="text-end">Thực nhận</th>
-                            <th scope="col" class="text-end">Ngày công</th>
-                            <th scope="col" class="text-end">Vào muộn</th>
-                            <th scope="col" class="text-end">Về sớm</th>
+                            @foreach ([
+                                'ky_luong' => 'Kỳ lương', 'thuong' => 'Thưởng', 'phat' => 'Phạt',
+                                'bao_hiem' => 'Bảo hiểm', 'thue' => 'Thuế', 'phu_cap' => 'Hệ số phụ cấp',
+                                'thuc_nhan' => 'Thực nhận', 'so_ngay_cham_cong' => 'Ngày công',
+                                'so_lan_vao_muon' => 'Vào muộn', 'so_lan_ve_som' => 'Về sớm',
+                            ] as $sortColumn => $sortLabel)
+                                <th scope="col" class="text-end" aria-sort="none"><button class="table-sort-control" type="button" data-salary-sort="{{ $sortColumn }}" data-sort-label="{{ $sortLabel }}" aria-label="Sắp xếp {{ $sortLabel }} tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>{{ $sortLabel }}</span></button></th>
+                            @endforeach
                             <th scope="col" class="salary-col-status">Trạng thái</th>
                             <th scope="col" class="text-end salary-col-actions">Thao tác</th>
                         </tr>
@@ -277,7 +278,7 @@
                     </span>
 
                         <button
-                            class="btn btn-primary d-inline-flex align-items-center gap-2"
+                            class="btn btn-primary btn-icon-text d-inline-flex align-items-center gap-2"
                             id="add-coefficient-btn"
                             type="button"
                             disabled
@@ -330,10 +331,12 @@
                                     disabled
                                 >
                             </th>
-                            <th scope="col">Mã lịch sử</th>
-                            <th scope="col" class="text-end">Hệ số lương</th>
-                            <th scope="col">Từ ngày</th>
-                            <th scope="col">Đến ngày</th>
+                            @foreach ([
+                                'ma_ls' => 'Mã lịch sử', 'he_so_luong' => 'Hệ số lương',
+                                'tu_ngay' => 'Từ ngày', 'den_ngay' => 'Đến ngày',
+                            ] as $sortColumn => $sortLabel)
+                                <th scope="col" @class(['text-end' => $sortColumn === 'he_so_luong']) aria-sort="none"><button class="table-sort-control" type="button" data-coefficient-sort="{{ $sortColumn }}" data-sort-label="{{ $sortLabel }}" aria-label="Sắp xếp {{ $sortLabel }} tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>{{ $sortLabel }}</span></button></th>
+                            @endforeach
                             <th scope="col">Trạng thái</th>
                             <th scope="col" class="text-end">Thao tác</th>
                         </tr>
@@ -463,19 +466,19 @@
 
             <footer class="salary-modal-footer d-flex justify-content-end gap-2">
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="salary-modal-cancel"
                     type="button"
                 >
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>Hủy
+                    <i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span>
                 </button>
 
                 <button
-                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-primary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="salary-modal-submit"
                     type="submit"
                 >
-                    <i class="bi bi-check2" aria-hidden="true"></i>Lưu thông tin
+                    <i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>Lưu thông tin</span>
                 </button>
             </footer>
         </form>
@@ -601,19 +604,19 @@
 
             <footer class="coefficient-modal-footer d-flex justify-content-end gap-2">
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="coefficient-modal-cancel"
                     type="button"
                 >
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>Hủy
+                    <i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span>
                 </button>
 
                 <button
-                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-primary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="coefficient-modal-submit"
                     type="submit"
                 >
-                    <i class="bi bi-check2" aria-hidden="true"></i>Lưu hệ số
+                    <i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>Lưu hệ số</span>
                 </button>
             </footer>
         </form>
@@ -817,9 +820,10 @@
             white-space: nowrap;
         }
 
-        .salary-page .salary-row-selected > *,
+        .salary-page .salary-data-table tbody tr.salary-row-selected > *,
+        .salary-page .salary-data-table tbody tr.salary-row-selected:hover > *,
         .salary-page .coefficient-row-selected > * {
-            background: rgba(9,105,218,.06) !important;
+            background: #e8f1ff !important;
         }
 
         .salary-page .salary-data-table tbody tr[data-salary-row] {

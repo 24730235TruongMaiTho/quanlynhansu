@@ -13,6 +13,7 @@ final class HopDongService implements HopDongServiceContract
 {
     public function __construct(private HopDongRepositoryContract $repository) {}
     public function paginate(array $filters): LengthAwarePaginator { return $this->repository->paginate($filters, (int) ($filters['per_page'] ?? 20), max(1, (int) config('hopdong.expiring_warning_days', 30))); }
+    public function paginateForEmployee(string $maNv, int $perPage = 20): LengthAwarePaginator { return $this->repository->paginateForEmployee($maNv, $perPage); }
     public function findOrFail(int $maHd): object { return $this->repository->find($maHd) ?? throw new HopDongDomainException('Không tìm thấy hợp đồng.', 'HD_NOT_FOUND'); }
     public function formOptions(): array { return ['employees' => $this->repository->employees(), 'types' => $this->repository->types()]; }
     public function create(array $data): int

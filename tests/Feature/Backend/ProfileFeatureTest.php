@@ -62,7 +62,7 @@ final class ProfileFeatureTest extends TestCase
         $this->actingAs($employee)
             ->view('backend.layouts.topbar')
             ->assertSee('Quản trị hệ thống', false)
-            ->assertDontSee('Tài khoản', false);
+            ->assertSee('Tài khoản cá nhân', false);
     }
 
     public function test_profile_request_has_explicit_self_service_allowlist_and_date_contract(): void
@@ -120,7 +120,8 @@ final class ProfileFeatureTest extends TestCase
             ->assertOk()
             ->assertSee('Nhân viên', false)
             ->assertSee('03/09/2008', false)
-            ->assertSee('Có thể nhập từng thành phần địa chỉ; các trường này không bắt buộc.')
+            ->assertSee('Địa chỉ cụ thể, Phường/Xã và Tỉnh/Thành phố là bắt buộc.')
+            ->assertDontSee('name="quan_huyen"', false)
             ->assertDontSee('Nhập đủ bốn thành phần hoặc để trống toàn bộ.')
             ->assertDontSee('2008-09-03', false);
     }
@@ -149,7 +150,7 @@ final class ProfileFeatureTest extends TestCase
             ->assertSessionHasErrors('ma_nv');
     }
 
-    public function test_profile_patch_accepts_partial_address_and_normalizes_blank_part(): void
+    public function test_profile_patch_requires_core_address_and_normalizes_values(): void
     {
         $this->ensureProfileValidationTable();
         $employee = NhanVien::fromAuthRow((object) [
@@ -158,15 +159,17 @@ final class ProfileFeatureTest extends TestCase
         ]);
         $payload = $this->profilePayload([
             'dia_chi_cu_the' => '  1 Nguyễn Trãi  ',
-            'phuong_xa' => '   ',
+            'phuong_xa' => '  Bến Thành  ',
+            'tinh_thanh' => '  TP HCM  ',
         ]);
-        unset($payload['quan_huyen'], $payload['tinh_thanh']);
+        unset($payload['quan_huyen']);
 
         $service = Mockery::mock(NhanVienServiceContract::class);
         $service->shouldReceive('updateOwnProfile')->once()->withArgs(
             fn (string $maNv, array $profile): bool => $maNv === '00001'
                 && $profile['dia_chi_cu_the'] === '1 Nguyễn Trãi'
-                && $profile['phuong_xa'] === null
+                && $profile['phuong_xa'] === 'Bến Thành'
+                && $profile['tinh_thanh'] === 'TP HCM'
                 && ! array_key_exists('ma_pb', $profile),
         );
         $this->app->instance(NhanVienServiceContract::class, $service);
@@ -239,7 +242,7 @@ final class ProfileFeatureTest extends TestCase
             'ho_ten' => 'Nguyễn An', 'ngay_sinh' => '03/09/2008', 'gioi_tinh' => 1,
             'sdt' => '0912345678', 'email' => 'an@example.test', 'dan_toc' => 'Kinh',
             'cccd' => '012345678901', 'noi_cap_cccd' => 'TP HCM', 'hoc_van' => 'Đại học',
-            'dia_chi_cu_the' => '', 'phuong_xa' => '', 'quan_huyen' => '', 'tinh_thanh' => '',
+            'dia_chi_cu_the' => '1 Nguyễn Trãi', 'phuong_xa' => 'Bến Thành', 'tinh_thanh' => 'TP Hồ Chí Minh',
         ], $overrides);
     }
 }

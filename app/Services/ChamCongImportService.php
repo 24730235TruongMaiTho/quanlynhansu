@@ -51,12 +51,20 @@ class ChamCongImportService
             }
 
             return $this->validateAndImport($rows);
+        } catch (InvalidArgumentException $exception) {
+            // Template/header validation messages are deliberately actionable
+            // and contain no filesystem, SQL, or exception details.
+            report($exception);
+
+            return $this->error($exception->getMessage());
+        } catch (RuntimeException $exception) {
+            report($exception);
+
+            return $this->error('Không thể đọc file chấm công. Vui lòng kiểm tra lại file và thử lại.');
         } catch (\Throwable $exception) {
             report($exception);
 
-            return $this->error(
-                'Lỗi xử lý file: '.$exception->getMessage()
-            );
+            return $this->error('Không thể xử lý file chấm công lúc này. Vui lòng kiểm tra lại file và thử lại.');
         }
     }
 
@@ -164,7 +172,7 @@ class ChamCongImportService
             ->createTextRun(
                 "Số giờ làm.\n".
                 "Bắt buộc.\n".
-                "Giá trị từ 0 đến 8."
+                "Số nguyên từ 0 đến 8."
             );
 
         $sheet->getComment('D1')
@@ -223,12 +231,10 @@ class ChamCongImportService
         );
 
         /*
-         * Validate số giờ: 0 - 24.
+         * Validate số giờ: số nguyên từ 0 đến 8, phù hợp cột SMALLINT.
          */
         $hoursValidation = new DataValidation();
-        $hoursValidation->setType(
-            DataValidation::TYPE_DECIMAL
-        );
+        $hoursValidation->setType(DataValidation::TYPE_WHOLE);
         $hoursValidation->setErrorStyle(
             DataValidation::STYLE_STOP
         );
@@ -239,13 +245,13 @@ class ChamCongImportService
             'Số giờ không hợp lệ'
         );
         $hoursValidation->setError(
-            'Số giờ làm phải từ 0 đến 8.'
+            'Số giờ làm phải là số nguyên từ 0 đến 8.'
         );
         $hoursValidation->setPromptTitle(
             'Số giờ làm'
         );
         $hoursValidation->setPrompt(
-            'Nhập số giờ từ 0 đến 8.'
+            'Nhập số nguyên từ 0 đến 8.'
         );
         $hoursValidation->setOperator(
             DataValidation::OPERATOR_BETWEEN
@@ -388,7 +394,22 @@ class ChamCongImportService
      */
     private function parseExcel(UploadedFile $file): array
     {
-        $spreadsheet = IOFactory::load($file->getRealPath());
+        $path = $file->getRealPath();
+        $extension = strtolower($file->getClientOriginalExtension());
+        $readerType = IOFactory::identify($path);
+
+        // Do not let a text/HTML response disguised as .xlsx reach the
+        // header validator: it is a malformed spreadsheet, not an actionable
+        // template error. Legacy .xls HTML workbooks remain supported.
+        if ($extension === 'xlsx' && $readerType !== 'Xlsx') {
+            throw new RuntimeException('Định dạng XLSX không hợp lệ.');
+        }
+
+        if ($extension === 'xls' && ! in_array($readerType, ['Xls', 'Html'], true)) {
+            throw new RuntimeException('Định dạng XLS không hợp lệ.');
+        }
+
+        $spreadsheet = IOFactory::load($path);
 
         try {
             $sheet = $spreadsheet->getSheetByName('ChamCong')
@@ -555,10 +576,11 @@ class ChamCongImportService
 
             if (
                 ! is_numeric($soGioLam)
+                || fmod((float) $soGioLam, 1.0) !== 0.0
                 || (float) $soGioLam < 0
                 || (float) $soGioLam > 8
             ) {
-                $rowErrors[] = 'Số giờ làm phải từ 0 đến 8.';
+                $rowErrors[] = 'Số giờ làm phải là số nguyên từ 0 đến 8.';
             }
 
             if (! $this->isBinaryValue($vaoMuon)) {
@@ -578,7 +600,7 @@ class ChamCongImportService
                 'row_num' => $rowNumber,
                 'ma_nv' => $maNv,
                 'ngay_lam' => $ngayLam,
-                'so_gio_lam' => (float) $soGioLam,
+                'so_gio_lam' => (int) $soGioLam,
                 'vao_muon' => (int) $vaoMuon,
                 've_som' => (int) $veSom,
             ];

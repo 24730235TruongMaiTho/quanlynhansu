@@ -33,7 +33,7 @@ final class UpdateProfileRequest extends FormRequest
             $normalized['gioi_tinh'] = (int) $normalized['gioi_tinh'];
         }
 
-        foreach (['dia_chi_cu_the', 'phuong_xa', 'quan_huyen', 'tinh_thanh'] as $field) {
+        foreach (['dia_chi_cu_the', 'phuong_xa', 'tinh_thanh'] as $field) {
             if (array_key_exists($field, $normalized) && $normalized[$field] === '') {
                 $normalized[$field] = null;
             }
@@ -78,10 +78,10 @@ final class UpdateProfileRequest extends FormRequest
             ],
             'noi_cap_cccd' => ['required', 'string', 'max:50'],
             'hoc_van' => ['required', 'string', 'max:50'],
-            'dia_chi_cu_the' => ['nullable', 'string', 'max:255'],
-            'phuong_xa' => ['nullable', 'string', 'max:100'],
-            'quan_huyen' => ['nullable', 'string', 'max:100'],
-            'tinh_thanh' => ['nullable', 'string', 'max:100'],
+            'dia_chi_cu_the' => ['required', 'string', 'max:255'],
+            'phuong_xa' => ['required', 'string', 'max:100'],
+            'quan_huyen' => ['prohibited'],
+            'tinh_thanh' => ['required', 'string', 'max:100'],
             'anh_dai_dien' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
             'xoa_anh_dai_dien' => ['sometimes', 'boolean'],
         ];
@@ -151,7 +151,7 @@ final class UpdateProfileRequest extends FormRequest
             'email' => ':attribute không đúng định dạng.',
             'regex' => ':attribute không đúng định dạng.',
             'unique' => ':attribute đã tồn tại.',
-            'prohibited' => ':attribute không được phép cập nhật từ hồ sơ cá nhân.',
+            'prohibited' => ':attribute không được phép cập nhật từ tài khoản cá nhân.',
             'different' => ':attribute phải khác mật khẩu hiện tại.',
         ];
     }

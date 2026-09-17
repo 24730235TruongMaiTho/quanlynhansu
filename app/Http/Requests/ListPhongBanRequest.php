@@ -16,13 +16,15 @@ final class ListPhongBanRequest extends FormRequest
     {
         $normalized = [];
 
-        foreach (['ten_pb', 'page', 'so_dong'] as $key) {
+        foreach (['ten_pb', 'page', 'so_dong', 'sort', 'direction'] as $key) {
             if (! $this->exists($key)) {
                 continue;
             }
 
             $value = $this->input($key);
-            $normalized[$key] = is_string($value) ? trim($value) : $value;
+            $normalized[$key] = is_string($value)
+                ? (in_array($key, ['sort', 'direction'], true) ? strtolower(trim($value)) : trim($value))
+                : $value;
         }
 
         if (($normalized['ten_pb'] ?? null) === '') {
@@ -34,6 +36,8 @@ final class ListPhongBanRequest extends FormRequest
         if (($normalized['so_dong'] ?? null) === null || ($normalized['so_dong'] ?? null) === '') {
             $normalized['so_dong'] = 20;
         }
+        $normalized['sort'] = $normalized['sort'] ?? 'ma_pb';
+        $normalized['direction'] = $normalized['direction'] ?? 'desc';
 
         $this->merge($normalized);
     }
@@ -44,6 +48,8 @@ final class ListPhongBanRequest extends FormRequest
             'ten_pb' => ['nullable', 'string', 'max:100'],
             'page' => ['sometimes', 'integer', 'min:1'],
             'so_dong' => ['sometimes', 'integer', Rule::in([5, 10, 20, 50, 100])],
+            'sort' => ['sometimes', 'string', Rule::in(['ma_pb', 'ten_pb', 'so_nhan_vien'])],
+            'direction' => ['sometimes', 'string', Rule::in(['asc', 'desc'])],
         ];
     }
 
@@ -56,6 +62,8 @@ final class ListPhongBanRequest extends FormRequest
             'ten_pb' => $validated['ten_pb'] ?? null,
             'page' => (int) ($validated['page'] ?? 1),
             'so_dong' => (int) ($validated['so_dong'] ?? 20),
+            'sort' => $validated['sort'] ?? 'ma_pb',
+            'direction' => $validated['direction'] ?? 'desc',
         ];
     }
 }

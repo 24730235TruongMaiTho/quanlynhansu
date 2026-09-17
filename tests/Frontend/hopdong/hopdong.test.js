@@ -14,6 +14,10 @@ const simpleModalView = fs.readFileSync(
     new URL('../../../resources/views/backend/partials/simple-edit-modal.blade.php', import.meta.url),
     'utf8',
 );
+const hopDongSource = fs.readFileSync(
+    new URL('../../../resources/js/frontend/hopdong/hopdong.js', import.meta.url),
+    'utf8',
+);
 
 function fakeForm(message) {
     const listeners = {};
@@ -115,6 +119,37 @@ function fakeContractUi() {
             querySelector(selector) {
                 if (selector === '[data-contract-form]') return form;
                 if (selector === '[data-expiry-required-marker]') return marker;
+                return null;
+            },
+        },
+    };
+}
+
+function fakeExpiringFilterUi() {
+    const listeners = {};
+    const checkbox = {
+        dataset: {},
+        addEventListener(type, listener) {
+            listeners[type] = listener;
+        },
+        change() {
+            listeners.change?.({ target: checkbox });
+        },
+    };
+    const form = {
+        requestSubmitCount: 0,
+        requestSubmit() {
+            this.requestSubmitCount += 1;
+        },
+    };
+
+    return {
+        checkbox,
+        form,
+        root: {
+            querySelector(selector) {
+                if (selector === '#sap_het_han') return checkbox;
+                if (selector === '#contract-filter-form') return form;
                 return null;
             },
         },
@@ -231,12 +266,31 @@ test('contract salary input keeps sequential typing formatted instead of clearin
 
 test('contract list uses employee code as the visible identifier while actions retain contract id', () => {
     assert.doesNotMatch(contractView, /<th\s+scope="col">#<\/th>/u);
-    assert.match(contractView, /<th\s+scope="col">Mã nhân viên<\/th>/u);
+    assert.match(contractView, /<th\s+scope="col"\s+aria-sort="\{\{\s*\$sort\s*===\s*'ma_nv'/u);
     assert.match(contractView, /<th\s+scope="row">\s*<span class="identifier-text">\s*\{\{\s*\$contract->ma_nv\s*\}\}/u);
     assert.doesNotMatch(contractView, /<th\s+scope="row">\s*<span class="identifier-text">\s*\{\{\s*\$contract->ma_hd\s*\}\}/u);
     assert.doesNotMatch(contractView, /<small[^>]*>\s*\{\{\s*\$contract->ma_nv\s*\}\}/u);
     assert.match(contractView, /route\('backend\.hopdong\.edit',\s*\$contract->ma_hd\)/u);
     assert.match(contractView, /route\('backend\.hopdong\.destroy',\s*\$contract->ma_hd\)/u);
+});
+
+test('expiring-only checkbox submits the contract filter immediately and keeps an explicit form action', async () => {
+    const { bindExpiringFilter } = await import(
+        '../../..//resources/js/frontend/hopdong/hopdong.js'
+    );
+    const ui = fakeExpiringFilterUi();
+
+    assert.match(hopDongSource, /bindExpiringFilter/u);
+    assert.match(contractView, /id="contract-filter-form"/u);
+    bindExpiringFilter(ui.root);
+    ui.checkbox.change();
+
+    assert.equal(ui.form.requestSubmitCount, 1);
+});
+
+test('contract empty state explains when only the expiring window has no results', () => {
+    assert.match(contractView, /expiringFilterOnly/u);
+    assert.match(contractView, /Không có hợp đồng nào hết hạn trong \{\{\s*\$expiringWarningDays\s*\}\} ngày tới/u);
 });
 
 test('contract edit trigger opens the modal while retaining its real fallback URL', () => {

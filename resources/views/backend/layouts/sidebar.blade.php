@@ -23,6 +23,7 @@
                 $leaveGroupActive = request()->routeIs('backend.nghiphep.*');
                 $salaryGroupActive = request()->routeIs('backend.luong.*');
                 $authorizationGroupActive = request()->routeIs('backend.vaitro.*', 'backend.taikhoan.*');
+                $selfServiceGroupActive = request()->routeIs('backend.profile.*', 'backend.nghiphep.create', 'backend.selfservice.*');
             @endphp
             <!-- Liên kết tới trang tổng quan -->
             <li class="nav-item">
@@ -35,6 +36,22 @@
             @php
                 $sidebarUser = auth()->user();
             @endphp
+            @if ($sidebarUser instanceof \App\Models\NhanVien)
+                <li class="nav-item" data-sidebar-group="selfservice" data-route-active="{{ $selfServiceGroupActive ? 'true' : 'false' }}">
+                    <a href="#" class="nav-link" data-toggle="submenu" aria-expanded="{{ $selfServiceGroupActive ? 'true' : 'false' }}">
+                        <i class="bi bi-person-heart" aria-hidden="true"></i>
+                        <span class="nav-title">Thông Tin Cá Nhân</span>
+                        <i class="bi bi-chevron-down menu-arrow {{ $selfServiceGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
+                    </a>
+                    <ul class="sub-menu {{ $selfServiceGroupActive ? 'open' : '' }}" @if ($selfServiceGroupActive) data-submenu-ready="initial" @endif>
+                        <li class="nav-item"><a href="{{ route('backend.profile.edit') }}" class="nav-link {{ request()->routeIs('backend.profile.*') ? 'active' : '' }}" @if (request()->routeIs('backend.profile.*')) aria-current="page" @endif><i class="bi bi-person-circle" aria-hidden="true"></i><span class="nav-title">Tài khoản cá nhân</span></a></li>
+                        <li class="nav-item"><a href="{{ route('backend.nghiphep.create') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.create') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.create')) aria-current="page" @endif><i class="bi bi-calendar-plus" aria-hidden="true"></i><span class="nav-title">Đơn nghỉ phép</span></a></li>
+                        <li class="nav-item"><a href="{{ route('backend.selfservice.hopdong.index') }}" class="nav-link {{ request()->routeIs('backend.selfservice.hopdong.*') ? 'active' : '' }}" @if (request()->routeIs('backend.selfservice.hopdong.*')) aria-current="page" @endif><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span class="nav-title">Hợp đồng</span></a></li>
+                        <li class="nav-item"><a href="{{ route('backend.selfservice.luong.index') }}" class="nav-link {{ request()->routeIs('backend.selfservice.luong.*') ? 'active' : '' }}" @if (request()->routeIs('backend.selfservice.luong.*')) aria-current="page" @endif><i class="bi bi-cash-coin" aria-hidden="true"></i><span class="nav-title">Lương</span></a></li>
+                        <li class="nav-item"><a href="{{ route('backend.selfservice.chamcong.index') }}" class="nav-link {{ request()->routeIs('backend.selfservice.chamcong.*') ? 'active' : '' }}" @if (request()->routeIs('backend.selfservice.chamcong.*')) aria-current="page" @endif><i class="bi bi-calendar-check" aria-hidden="true"></i><span class="nav-title">Chấm công</span></a></li>
+                    </ul>
+                </li>
+            @endif
             @if ($sidebarUser instanceof \App\Models\NhanVien
                 && app(\App\Services\PermissionService::class)->canSeeModule($sidebarUser, 'NhanVien'))
                 <!-- Nhân sự -->
@@ -127,7 +144,7 @@
                     $canCreateLeave = app(\App\Services\PermissionService::class)->allows($sidebarUser, \App\Enums\NghiPhepPermission::Tao->value);
                     $canReadLeave = app(\App\Services\PermissionService::class)->allows($sidebarUser, \App\Enums\NghiPhepPermission::Xem->value);
                 @endphp
-                @if ($canCreateLeave || $canReadLeave)
+                @if ($canReadLeave)
                     <li class="nav-item" data-sidebar-group="leave" data-route-active="{{ $leaveGroupActive ? 'true' : 'false' }}">
                         <a href="#" class="nav-link" data-toggle="submenu" aria-expanded="{{ $leaveGroupActive ? 'true' : 'false' }}">
                             <i class="bi bi-calendar-x-fill"></i>
@@ -135,9 +152,6 @@
                             <i class="bi bi-chevron-down menu-arrow {{ $leaveGroupActive ? 'rotated' : '' }}" aria-hidden="true"></i>
                         </a>
                         <ul class="sub-menu {{ $leaveGroupActive ? 'open' : '' }}" @if ($leaveGroupActive) data-submenu-ready="initial" @endif>
-                            @if ($canCreateLeave)
-                                <li class="nav-item"><a href="{{ route('backend.nghiphep.create') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.create') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.create')) aria-current="page" @endif><i class="bi bi-calendar-plus"></i><span class="nav-title">Tạo nghỉ phép</span></a></li>
-                            @endif
                             @if ($canReadLeave)
                                 <li class="nav-item"><a href="{{ route('backend.nghiphep.index') }}" class="nav-link {{ request()->routeIs('backend.nghiphep.index') ? 'active' : '' }}" @if (request()->routeIs('backend.nghiphep.index')) aria-current="page" @endif><i class="bi bi-calendar3"></i><span class="nav-title">Danh sách nghỉ phép</span></a></li>
                             @endif

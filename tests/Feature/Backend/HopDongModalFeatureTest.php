@@ -89,6 +89,73 @@ final class HopDongModalFeatureTest extends TestCase
             ->assertSee('data-simple-edit-modal', false);
     }
 
+    public function test_contract_list_renders_the_canonical_read_only_type_catalog(): void
+    {
+        $this->mock(HopDongServiceContract::class, function ($mock): void {
+            $mock->shouldReceive('paginate')->once()->andReturn(new LengthAwarePaginator([], 0, 20, 1, ['pageName' => 'page']));
+            $mock->shouldReceive('formOptions')->once()->andReturn([
+                'employees' => [],
+                'types' => [
+                    (object) ['ma_lhd' => 1, 'ten_lhd' => 'Không thời hạn'],
+                    (object) ['ma_lhd' => 2, 'ten_lhd' => 'Có thời hạn'],
+                ],
+            ]);
+        });
+
+        $this->get('/hop-dong')
+            ->assertOk()
+            ->assertSee('id="contract-types-title"', false)
+            ->assertSee('Danh sách loại hợp đồng')
+            ->assertSee('Không thời hạn')
+            ->assertSee('Có thời hạn');
+    }
+
+    public function test_contract_sort_links_preserve_requested_page_size(): void
+    {
+        $this->mock(HopDongServiceContract::class, function ($mock): void {
+            $mock->shouldReceive('paginate')->once()->withArgs(static function (array $filters): bool {
+                return (int) ($filters['per_page'] ?? 0) === 50;
+            })->andReturn(new LengthAwarePaginator([
+                (object) [
+                    'ma_hd' => 18,
+                    'ma_nv' => '00001',
+                    'ho_ten' => 'Nguyễn An',
+                    'ten_lhd' => 'Không thời hạn',
+                    'ngay_ky' => '2019-02-15',
+                    'ngay_het_han' => null,
+                    'sap_het_han' => false,
+                ],
+            ], 1, 50, 1, ['path' => '/hop-dong', 'pageName' => 'page']));
+            $mock->shouldReceive('formOptions')->once()->andReturn(['employees' => [], 'types' => []]);
+        });
+
+        $response = $this->get('/hop-dong?per_page=50');
+        $response->assertOk();
+
+        $sortUrl = route('backend.hopdong.index', [
+            'per_page' => 50,
+            'sort' => 'ma_nv',
+            'direction' => 'asc',
+            'page' => 1,
+        ]);
+        $response->assertSee('href="'.e($sortUrl).'"', false);
+    }
+
+    public function test_contract_list_normalizes_expiring_query_and_explains_an_empty_window(): void
+    {
+        $this->mock(HopDongServiceContract::class, function ($mock): void {
+            $mock->shouldReceive('paginate')->once()->withArgs(static function (array $filters): bool {
+                return ($filters['sap_het_han'] ?? null) === true;
+            })->andReturn(new LengthAwarePaginator([], 0, 20, 1, ['path' => '/hop-dong', 'pageName' => 'page']));
+            $mock->shouldReceive('formOptions')->once()->andReturn(['employees' => [], 'types' => []]);
+        });
+
+        $this->get('/hop-dong?sap_het_han=1')
+            ->assertOk()
+            ->assertSee('Không có hợp đồng nào hết hạn trong 30 ngày tới')
+            ->assertSee('Hãy kiểm tra lại bộ lọc hoặc quay lại danh sách tất cả hợp đồng.');
+    }
+
     public function test_modal_create_returns_form_partial_but_regular_create_keeps_full_page(): void
     {
         $this->mock(HopDongServiceContract::class, function ($mock): void {

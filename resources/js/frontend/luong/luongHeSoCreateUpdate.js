@@ -7,6 +7,8 @@ import {
     canonicalServerDate,
     toIsoDate,
 } from '../shared/date-field.js';
+import { showToast } from '../shared/toast.js';
+import { getButtonLabel, setButtonLabel } from '../shared/button-label.js';
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -191,7 +193,10 @@ document.addEventListener(
 
         function showListError(message) {
             if (!elements.listError) {
-                window.alert(message);
+                showToast(message, {
+                    variant: 'danger',
+                    title: 'Lỗi hệ số lương',
+                });
                 return;
             }
 
@@ -666,16 +671,17 @@ document.addEventListener(
                 };
 
                 const oldLabel =
-                    elements.submit.textContent;
+                    getButtonLabel(elements.submit);
 
                 elements.submit.disabled =
                     true;
 
-                elements.submit.textContent =
-                    state.mode ===
-                    'edit'
+                setButtonLabel(
+                    elements.submit,
+                    state.mode === 'edit'
                         ? 'Đang cập nhật...'
-                        : 'Đang lưu...';
+                        : 'Đang lưu...',
+                );
 
                 try {
                     await requestJson(
@@ -725,8 +731,7 @@ document.addEventListener(
                     elements.submit.disabled =
                         false;
 
-                    elements.submit.textContent =
-                        oldLabel;
+                    setButtonLabel(elements.submit, oldLabel);
                 }
             }
         );

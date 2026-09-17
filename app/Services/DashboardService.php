@@ -3,6 +3,11 @@
 namespace App\Services;
 
 use App\Enums\NghiPhepPermission;
+use App\Enums\ChamCongPermission;
+use App\Enums\HopDongPermission;
+use App\Enums\LuongPermission;
+use App\Enums\NhanVienPermission;
+use App\Enums\PhongBanPermission;
 use App\Enums\NhanVienStatus;
 use App\Models\NhanVien;
 use App\Services\NghiPhepService;
@@ -43,16 +48,41 @@ class DashboardService
      *
      * @return array
      */
-    public function getOverview(): array
+    public function getOverview(?NhanVien $actor = null): array
     {
-        return [
-            'nhan_vien_theo_hoc_van' => $this->getEmployeeCountByEducation(),
-            'nhan_vien_theo_phong_ban' => $this->getEmployeeCountByDepartment(),
-            'hop_dong_sap_het_han' => $this->getExpiringContracts(),
-            'bao_cao_cham_cong' => $this->getAttendanceReport(),
-            'bao_cao_luong' => $this->getSalaryReport(),
-            'pending_leave_count' => null,
-        ];
+        if (! $actor instanceof NhanVien) {
+            return [];
+        }
+
+        $data = [];
+        $canEmployeeRead = $this->allows($actor, NhanVienPermission::Xem);
+        $canDepartmentRead = $this->allows($actor, PhongBanPermission::Xem);
+
+        if ($canEmployeeRead) {
+            $data['nhan_vien_theo_hoc_van'] = $this->getEmployeeCountByEducation($actor);
+            $data['tong_nhan_vien'] = $this->getTotalEmployees($actor);
+        }
+        if ($canDepartmentRead) {
+            $data['tong_phong_ban'] = $this->getTotalDepartments($actor);
+        }
+        if ($canEmployeeRead && $canDepartmentRead) {
+            $data['nhan_vien_theo_phong_ban'] = $this->getEmployeeCountByDepartment($actor);
+        }
+        if ($this->allows($actor, HopDongPermission::Xem)) {
+            $data['hop_dong_sap_het_han'] = $this->getExpiringContracts(actor: $actor);
+        }
+        if ($this->allows($actor, ChamCongPermission::Xem)) {
+            $data['bao_cao_cham_cong'] = $this->getAttendanceReport($actor);
+        }
+        if ($this->allows($actor, LuongPermission::Xem)) {
+            $data['bao_cao_luong'] = $this->getSalaryReport($actor);
+        }
+        if ($this->allows($actor, NghiPhepPermission::Xem)
+            && $this->allows($actor, NghiPhepPermission::Duyet)) {
+            $data['pending_leave_count'] = $this->getPendingLeaveCount($actor);
+        }
+
+        return $data;
     }
 
     /**
@@ -60,8 +90,12 @@ class DashboardService
      *
      * @return array
      */
-    public function getEmployeeCountByEducation(): array
+    public function getEmployeeCountByEducation(?NhanVien $actor = null): array
     {
+        if ($actor instanceof NhanVien && ! $this->allows($actor, NhanVienPermission::Xem)) {
+            return [];
+        }
+
         try {
             $result = DB::table('nhan_vien')
                 ->select('hoc_van', DB::raw('COUNT(*) as total'))
@@ -78,8 +112,11 @@ class DashboardService
             }
 
             return $result;
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy thống kê học vấn: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_company_query_failed', [
+                'widget' => 'education',
+                'exception_class' => $e::class,
+            ]);
             return [];
         }
     }
@@ -89,8 +126,14 @@ class DashboardService
      *
      * @return array
      */
-    public function getEmployeeCountByDepartment(): array
+    public function getEmployeeCountByDepartment(?NhanVien $actor = null): array
     {
+        if ($actor instanceof NhanVien
+            && (! $this->allows($actor, NhanVienPermission::Xem)
+                || ! $this->allows($actor, PhongBanPermission::Xem))) {
+            return [];
+        }
+
         try {
             $result = DB::table('nhan_vien as nv')
                 ->join('phong_ban as pb', 'nv.ma_pb', '=', 'pb.ma_pb')
@@ -106,8 +149,11 @@ class DashboardService
             }
 
             return $result;
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy thống kê phòng ban: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_company_query_failed', [
+                'widget' => 'department',
+                'exception_class' => $e::class,
+            ]);
             return [];
         }
     }
@@ -118,8 +164,12 @@ class DashboardService
      * @param int $days Số ngày cần kiểm tra (mặc định 30)
      * @return array
      */
-    public function getExpiringContracts(int $days = 30): array
+    public function getExpiringContracts(int $days = 30, ?NhanVien $actor = null): array
     {
+        if ($actor instanceof NhanVien && ! $this->allows($actor, HopDongPermission::Xem)) {
+            return [];
+        }
+
         try {
             $days = max(0, min($days, 365));
             $today = now()->startOfDay();
@@ -155,8 +205,11 @@ class DashboardService
             }
 
             return $result;
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy hợp đồng sắp hết hạn: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_company_query_failed', [
+                'widget' => 'expiring_contracts',
+                'exception_class' => $e::class,
+            ]);
             return [];
         }
     }
@@ -166,8 +219,12 @@ class DashboardService
      *
      * @return array
      */
-    public function getAttendanceReport(): array
+    public function getAttendanceReport(?NhanVien $actor = null): array
     {
+        if ($actor instanceof NhanVien && ! $this->allows($actor, ChamCongPermission::Xem)) {
+            return [];
+        }
+
         try {
             $month = (int) now()->month;
             $year = (int) now()->year;
@@ -195,8 +252,11 @@ class DashboardService
                 'so_lan_ve_som' => (int) ($data->so_lan_ve_som ?? 0),
                 'gio_lam_trung_binh' => (float) ($data->gio_lam_trung_binh ?? 0),
             ];
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy báo cáo chấm công: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_company_query_failed', [
+                'widget' => 'attendance',
+                'exception_class' => $e::class,
+            ]);
             return [
                 'thang' => (int) now()->month,
                 'nam' => (int) now()->year,
@@ -215,8 +275,12 @@ class DashboardService
      *
      * @return array
      */
-    public function getSalaryReport(): array
+    public function getSalaryReport(?NhanVien $actor = null): array
     {
+        if ($actor instanceof NhanVien && ! $this->allows($actor, LuongPermission::Xem)) {
+            return [];
+        }
+
         try {
             $month = (int) now()->month;
             $year = (int) now()->year;
@@ -251,8 +315,11 @@ class DashboardService
                 'dieu_chinh_trung_binh' => (float) $data->dieu_chinh_trung_binh,
             ];
 
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy báo cáo lương: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_company_query_failed', [
+                'widget' => 'salary',
+                'exception_class' => $e::class,
+            ]);
             return [
                 'thang' => (int) now()->month,
                 'nam' => (int) now()->year,
@@ -277,8 +344,11 @@ class DashboardService
                 ->orderBy('ten_pb')
                 ->get()
                 ->toArray();
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy danh sách phòng ban: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_filter_query_failed', [
+                'filter' => 'departments',
+                'exception_class' => $e::class,
+            ]);
             return [];
         }
     }
@@ -296,8 +366,11 @@ class DashboardService
                 ->orderBy('ten_cv')
                 ->get()
                 ->toArray();
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy danh sách chức vụ: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_filter_query_failed', [
+                'filter' => 'positions',
+                'exception_class' => $e::class,
+            ]);
             return [];
         }
     }
@@ -307,14 +380,21 @@ class DashboardService
      *
      * @return int
      */
-    public function getTotalEmployees(): int
+    public function getTotalEmployees(?NhanVien $actor = null): int
     {
+        if ($actor instanceof NhanVien && ! $this->allows($actor, NhanVienPermission::Xem)) {
+            return 0;
+        }
+
         try {
             return (int) DB::table('nhan_vien')
                 ->whereNotIn('ma_tt', NhanVienStatus::terminalValues())
                 ->count();
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy tổng số nhân viên: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_company_query_failed', [
+                'widget' => 'total_employees',
+                'exception_class' => $e::class,
+            ]);
             return 0;
         }
     }
@@ -324,13 +404,25 @@ class DashboardService
      *
      * @return int
      */
-    public function getTotalDepartments(): int
+    public function getTotalDepartments(?NhanVien $actor = null): int
     {
-        try {
-            return (int) DB::table('phong_ban')->count();
-        } catch (\Exception $e) {
-            Log::error('[DashboardService] Lỗi lấy tổng số phòng ban: ' . $e->getMessage());
+        if ($actor instanceof NhanVien && ! $this->allows($actor, PhongBanPermission::Xem)) {
             return 0;
         }
+
+        try {
+            return (int) DB::table('phong_ban')->count();
+        } catch (\Throwable $e) {
+            Log::warning('dashboard_company_query_failed', [
+                'widget' => 'total_departments',
+                'exception_class' => $e::class,
+            ]);
+            return 0;
+        }
+    }
+
+    private function allows(NhanVien $actor, \App\Contracts\PermissionDefinitionContract|string $permission): bool
+    {
+        return app(PermissionService::class)->allows($actor, $permission);
     }
 }

@@ -148,6 +148,8 @@ class PhongBanFeatureTest extends TestCase
                 'ten_pb' => 'Kế hoạch',
                 'page' => 2,
                 'so_dong' => 5,
+                'sort' => 'ma_pb',
+                'direction' => 'desc',
             ])->andReturn(new LengthAwarePaginator($rows, 11, 5, 2, ['pageName' => 'page']));
         });
 

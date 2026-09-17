@@ -1,4 +1,8 @@
 import { formatDisplayDate, toIsoDate } from '../shared/date-field.js';
+import {
+    OWN_LEAVE_API_URL,
+    buildOwnLeavePayload,
+} from './own-leave-contract.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL =
@@ -7,18 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const NGHI_PHEP_API_URL =
         '/api/v1/nghi-phep';
 
-    const OWN_LEAVE_API_URL =
-        '/api/v1/nghi-phep/cua-toi';
-
     const LOAI_PHEP_API_URL =
         '/api/v1/nghi-phep/tao/loai-phep';
 
     const PHONG_BAN_API_URL =
         '/api/v1/nghi-phep/tao/phong-ban';
-
-    const CREATE_PERMISSIONS = Object.freeze([
-        'NghiPhep.Insert',
-    ]);
 
     const UPDATE_PERMISSIONS = Object.freeze([
         'NghiPhep.Update',
@@ -414,9 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function canCreateLeave() {
-        return canAnyPermission(
-            CREATE_PERMISSIONS
-        );
+        return /^\d{5}$/.test(String(state.user?.ma_nv || ''));
     }
 
     function canReadOwnLeaveLog() {
@@ -749,31 +744,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildPayload() {
-        return {
-            ma_nv:
-                String(
-                    state.user?.ma_nv ||
-                    ''
-                ),
-
-            tu_ngay: toIsoDate(elements.fromDate?.value || '') || null,
-
-            den_ngay: toIsoDate(elements.toDate?.value || '') || null,
-
-            ma_lp:
-                elements.leaveType
-                    ?.value ||
-                null,
-
-            ly_do:
-                elements.reason
-                    ?.value
-                    .trim() ||
-                '',
-
-            trang_thai_duyet:
-                0,
-        };
+        return buildOwnLeavePayload({
+            fromDate: elements.fromDate?.value || '',
+            toDate: elements.toDate?.value || '',
+            leaveType: elements.leaveType?.value || null,
+            reason: elements.reason?.value || '',
+        });
     }
 
     function validatePayload(payload) {
@@ -794,7 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return 'Ngày kết thúc không hợp lệ.';
         }
 
-        if (!payload.ma_nv) {
+        if (!/^\d{5}$/.test(String(state.user?.ma_nv || ''))) {
             return 'Không xác định được mã nhân viên hiện tại.';
         }
 
@@ -1547,8 +1523,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const payload =
-            buildPayload();
+        const payload = buildPayload();
+        const requestPayload = isEdit
+            ? {
+                ...payload,
+                ma_nv: String(state.user?.ma_nv || ''),
+            }
+            : payload;
 
         const validation =
             validatePayload(
@@ -1592,7 +1573,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await requestJson(
                     isEdit
                         ? `${NGHI_PHEP_API_URL}/${encodeURIComponent(leaveId)}`
-                        : NGHI_PHEP_API_URL,
+                        : OWN_LEAVE_API_URL,
                     {
                         method:
                             isEdit
@@ -1601,7 +1582,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         body:
                             JSON.stringify(
-                                payload
+                                requestPayload
                             ),
                     }
                 );

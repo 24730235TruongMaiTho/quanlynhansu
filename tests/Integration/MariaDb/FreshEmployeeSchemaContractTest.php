@@ -47,6 +47,7 @@ final class FreshEmployeeSchemaContractTest extends MariaDbTestCase
         self::assertSame(0, (int) DB::table('information_schema.TRIGGERS')
             ->where('TRIGGER_SCHEMA', DB::raw('DATABASE()'))->count());
         self::assertSame(19, (int) DB::table('nhan_vien')->count());
+        self::assertSame(0, (int) DB::table('vai_tro_quyen')->where('ma_vt', 5)->count());
         self::assertSame(19, (int) DB::table('bo_dem_ma_nhan_vien')
             ->where('ten_bo_dem', 'NHAN_VIEN')->value('so_da_cap'));
 

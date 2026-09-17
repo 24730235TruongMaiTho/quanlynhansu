@@ -18,7 +18,7 @@
             </x-slot:titleSuffix>
             <x-slot:actions>
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="import-btn"
                     type="button"
                     data-attendance-permission="ChamCong.Insert"
@@ -29,7 +29,7 @@
                     <span>Nhập bảng chấm công</span>
                 </button>
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="export-btn"
                     type="button"
                     data-attendance-permission="ChamCong.Read"
@@ -40,25 +40,25 @@
                     <span>Xuất bảng chấm công</span>
                 </button>
                 <button
-                    class="btn btn-primary btn-sm"
+                    class="btn btn-primary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="update-btn"
                     type="button"
                     disabled
                     data-attendance-permission="ChamCong.Update"
                     hidden
                 >
-                    <i class="bi bi-check2-circle" aria-hidden="true"></i>Lưu thay đổi chấm công
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i><span data-button-label>Lưu thay đổi chấm công</span>
                 </button>
 
                 <button
-                    class="btn btn-outline-danger btn-sm"
+                    class="btn btn-outline-danger btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="delete-btn"
                     type="button"
                     disabled
                     data-attendance-permission="ChamCong.Delete"
                     hidden
                 >
-                    <i class="bi bi-trash" aria-hidden="true"></i>Xóa chấm công
+                    <i class="bi bi-trash" aria-hidden="true"></i><span data-button-label>Xóa chấm công</span>
                 </button>
             </x-slot:actions>
         </x-backend.page-header>
@@ -147,8 +147,8 @@
 
                 </div>
                 <div class="filter-bar__actions">
-                    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
-                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
+                    <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i><span>Áp dụng bộ lọc</span></button>
+                    <button class="btn btn-outline-secondary btn-icon-text" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Đặt lại</span></button>
                 </div>
                 </form>
             </div>
@@ -179,20 +179,21 @@
                     <thead class="table-light">
                     <tr>
                         <th scope="col" style="width:42px;"></th>
-                        <th scope="col">Mã nhân viên</th>
-                        <th scope="col">Họ tên</th>
-                        <th scope="col">Giới tính</th>
-                        <th scope="col">Số điện thoại</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Phòng ban</th>
-                        <th scope="col">Chức vụ</th>
-                        <th scope="col" class="text-end">Vào muộn</th>
-                        <th scope="col" class="text-end">Về sớm</th>
-                        <th scope="col" class="text-end">Ngày công</th>
+                        @foreach ([
+                            'ma_nv' => 'Mã nhân viên', 'ho_ten' => 'Họ tên', 'gioi_tinh' => 'Giới tính',
+                            'sdt' => 'Số điện thoại', 'email' => 'Email', 'ma_pb' => 'Phòng ban', 'ma_cv' => 'Chức vụ',
+                            'so_lan_vao_muon' => 'Vào muộn', 'so_lan_ve_som' => 'Về sớm', 'so_ngay_cham_cong' => 'Ngày công', 'tong_gio_lam' => 'Tổng giờ',
+                        ] as $sortColumn => $sortLabel)
+                            <th scope="col" @class(['text-end' => str_starts_with($sortColumn, 'so_') || $sortColumn === 'tong_gio_lam']) aria-sort="none">
+                                <button class="table-sort-control" type="button" data-attendance-employee-sort="{{ $sortColumn }}" data-sort-label="{{ $sortLabel }}" aria-label="Sắp xếp {{ $sortLabel }} tăng dần">
+                                    <i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>{{ $sortLabel }}</span>
+                                </button>
+                            </th>
+                        @endforeach
                     </tr>
                     </thead>
                     <tbody id="employee-tbody">
-                    <tr><td colspan="11" class="text-center text-secondary py-5">Đang tải danh sách nhân viên...</td></tr>
+                    <tr><td colspan="12" class="text-center text-secondary py-5">Đang tải danh sách nhân viên...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -240,15 +241,17 @@
                     <thead class="table-light">
                     <tr>
                         <th scope="col" style="width:42px;"></th>
-                        <th scope="col">Mã chấm công</th>
-                        <th scope="col">Mã nhân viên</th>
-                        <th scope="col">Ngày</th>
-                        <th scope="col">Thứ</th>
-                        <th scope="col" class="text-end">Số giờ làm</th>
-                        <th scope="col" class="text-center">Vào muộn</th>
-                        <th scope="col" class="text-center">Về sớm</th>
-                        <th scope="col" class="text-end">Ngày công</th>
-                        <th scope="col">Đánh giá</th>
+                        @foreach ([
+                            'ma_cc' => 'Mã chấm công', 'ma_nv' => 'Mã nhân viên', 'ngay_lam' => 'Ngày', 'thu' => 'Thứ',
+                            'so_gio_lam' => 'Số giờ làm', 'vao_muon' => 'Vào muộn', 've_som' => 'Về sớm',
+                            'ngay_cong' => 'Ngày công', 'danh_gia' => 'Đánh giá',
+                        ] as $sortColumn => $sortLabel)
+                            <th scope="col" @class(['text-end' => in_array($sortColumn, ['so_gio_lam', 'ngay_cong'], true), 'text-center' => in_array($sortColumn, ['vao_muon', 've_som'], true)]) aria-sort="none">
+                                <button class="table-sort-control" type="button" data-attendance-sort="{{ $sortColumn }}" data-sort-label="{{ $sortLabel }}" aria-label="Sắp xếp {{ $sortLabel }} tăng dần">
+                                    <i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>{{ $sortLabel }}</span>
+                                </button>
+                            </th>
+                        @endforeach
                     </tr>
                     </thead>
                     <tbody id="attendance-tbody">
@@ -445,11 +448,11 @@
                         </div>
 
                         <button
-                            class="btn btn-sm btn-link text-danger text-decoration-none d-inline-flex align-items-center gap-2"
+                            class="btn btn-sm btn-link text-danger text-decoration-none btn-icon-text d-inline-flex align-items-center gap-2"
                             id="attendance-import-remove-file"
                             type="button"
                         >
-                            <i class="bi bi-x-lg" aria-hidden="true"></i>Bỏ file
+                            <i class="bi bi-x-lg" aria-hidden="true"></i><span>Bỏ file</span>
                         </button>
                     </div>
                 </div>
@@ -460,23 +463,22 @@
                        px-4 py-3 border-top bg-light"
             >
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="attendance-import-cancel"
                     type="button"
                 >
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>Đóng
+                    <i class="bi bi-x-lg" aria-hidden="true"></i><span>Đóng</span>
                 </button>
 
                 <button
-                    class="btn btn-primary btn-sm d-inline-flex
-                           align-items-center gap-2"
+                    class="btn btn-primary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="attendance-import-submit"
                     type="button"
                     disabled
                 >
                     <i class="bi bi-upload" aria-hidden="true"></i>
 
-                    <span id="attendance-import-submit-label">
+                            <span id="attendance-import-submit-label" data-button-label>
                         Nhập dữ liệu
                     </span>
                 </button>
@@ -584,26 +586,68 @@
 
             <div class="d-flex justify-content-end gap-2 px-4 py-3 border-top bg-light">
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="attendance-export-cancel"
                     type="button"
                 >
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>Hủy
+                    <i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span>
                 </button>
 
                 <button
-                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-primary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="attendance-export-submit"
                     type="submit"
                 >
                     <i class="bi bi-download" aria-hidden="true"></i>
 
-                    <span id="attendance-export-submit-label">
+                    <span id="attendance-export-submit-label" data-button-label>
                         Xuất file
                     </span>
                 </button>
             </div>
         </form>
+    </dialog>
+
+    <dialog
+        class="attendance-delete-dialog"
+        id="attendance-delete-dialog"
+        aria-labelledby="attendance-delete-dialog-title"
+        aria-describedby="attendance-delete-dialog-description"
+    >
+        <div class="attendance-delete-modal">
+            <div class="px-4 pt-4 pb-3 border-bottom">
+                <h2
+                    class="h5 fw-semibold mb-1"
+                    id="attendance-delete-dialog-title"
+                >
+                    Xác nhận xóa chấm công
+                </h2>
+                <p
+                    class="small text-secondary mb-0"
+                    id="attendance-delete-dialog-description"
+                >
+                    Bản ghi chấm công đã chọn sẽ bị xóa vĩnh viễn khỏi hệ thống.
+                </p>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 px-4 py-3 border-top bg-light">
+                <button
+                    class="btn btn-outline-secondary btn-sm btn-icon-text"
+                    id="attendance-delete-dialog-cancel"
+                    type="button"
+                >
+                    <i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span>
+                </button>
+
+                <button
+                    class="btn btn-danger btn-sm btn-icon-text"
+                    id="attendance-delete-dialog-confirm"
+                    type="button"
+                >
+                    <i class="bi bi-trash" aria-hidden="true"></i><span data-button-label>Xóa chấm công</span>
+                </button>
+            </div>
+        </div>
     </dialog>
 
     <input
@@ -612,7 +656,6 @@
         accept=".xlsx,.xls,.csv"
         hidden
     >
-    <div class="toast attendance-toast" role="status" aria-live="polite"></div>
 
     <style>
         .attendance-page {
@@ -670,7 +713,8 @@
         }
 
         .attendance-export-dialog,
-        .attendance-import-dialog {
+        .attendance-import-dialog,
+        .attendance-delete-dialog {
             position: fixed;
             inset: 0;
             width: min(560px, calc(100vw - 32px));
@@ -693,14 +737,21 @@
         }
 
         .attendance-export-dialog::backdrop,
-        .attendance-import-dialog::backdrop {
+        .attendance-import-dialog::backdrop,
+        .attendance-delete-dialog::backdrop {
             background: rgba(31, 35, 40, .42);
             backdrop-filter: blur(1px);
         }
 
         .attendance-export-form,
-        .attendance-import-modal {
+        .attendance-import-modal,
+        .attendance-delete-modal {
             margin: 0;
+        }
+
+        .attendance-delete-dialog {
+            width: min(440px, calc(100vw - 32px));
+            max-width: 440px;
         }
 
         .attendance-export-dialog .form-label,
@@ -776,7 +827,8 @@
 
         @media (max-width: 575.98px) {
             .attendance-export-dialog,
-            .attendance-import-dialog {
+            .attendance-import-dialog,
+            .attendance-delete-dialog {
                 width: calc(100vw - 24px);
                 max-height: calc(100vh - 24px);
             }

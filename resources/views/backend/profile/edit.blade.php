@@ -1,6 +1,6 @@
 @extends('backend.layouts.app')
 
-@section('title', 'Hồ sơ cá nhân')
+@section('title', 'Tài khoản cá nhân')
 
 @section('content')
     @php
@@ -17,18 +17,18 @@
 
     <main class="container container-xl py-4 profile-page" aria-labelledby="page-title">
         <x-backend.page-header
-            title="Hồ sơ cá nhân"
+            title="Tài khoản cá nhân"
             title-id="page-title"
             icon="bi-person-circle"
             description-id="profile-form-help"
             description="Cập nhật thông tin liên hệ và địa chỉ của chính bạn."
             :breadcrumbs="[
                 ['label' => 'Tài khoản', 'url' => route('backend.tongquan.index')],
-                ['label' => 'Hồ sơ cá nhân'],
+                ['label' => 'Tài khoản cá nhân'],
             ]"
         >
             <x-slot:actions>
-                <a class="btn btn-outline-secondary" href="{{ route('backend.profile.password.edit') }}"><i class="bi bi-key button-icon" aria-hidden="true"></i>Đổi mật khẩu</a>
+                <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.profile.password.edit') }}"><i class="bi bi-key" aria-hidden="true"></i><span>Đổi mật khẩu</span></a>
             </x-slot:actions>
         </x-backend.page-header>
 
@@ -37,7 +37,7 @@
         @endif
         @if ($errors->any())
             <div class="alert alert-danger" role="alert">
-                <p class="fw-semibold mb-1">Chưa thể cập nhật hồ sơ. Vui lòng kiểm tra:</p>
+                <p class="fw-semibold mb-1">Chưa thể cập nhật tài khoản. Vui lòng kiểm tra:</p>
                 <ul class="mb-0">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -117,17 +117,16 @@
 
                     <fieldset class="mb-4">
                         <legend class="h5 fw-semibold">Địa chỉ liên hệ</legend>
-                        <p class="form-text">Có thể nhập từng thành phần địa chỉ; các trường này không bắt buộc.</p>
+                        <p class="form-text">Địa chỉ cụ thể, Phường/Xã và Tỉnh/Thành phố là bắt buộc.</p>
                         <div class="row g-3">
                             @foreach ([
                                 ['dia_chi_cu_the', 'Địa chỉ cụ thể', '255'],
                                 ['phuong_xa', 'Phường/Xã', '100'],
-                                ['quan_huyen', 'Quận/Huyện', '100'],
                                 ['tinh_thanh', 'Tỉnh/Thành phố', '100'],
                             ] as [$field, $label, $max])
                                 <div class="col-12 col-md-6">
-                                    <label class="form-label" for="{{ $field }}">{{ $label }}</label>
-                                    <input class="form-control @error($field) is-invalid @enderror" id="{{ $field }}" name="{{ $field }}" type="text" maxlength="{{ $max }}" value="{{ $value($field) }}" @error($field) aria-describedby="{{ $field }}-error" @enderror>
+                                    <label class="form-label" for="{{ $field }}">{{ $label }} <span aria-hidden="true">*</span></label>
+                                    <input class="form-control @error($field) is-invalid @enderror" id="{{ $field }}" name="{{ $field }}" type="text" maxlength="{{ $max }}" value="{{ $value($field) }}" required @error($field) aria-describedby="{{ $field }}-error" @enderror>
                                     @error($field)<div class="invalid-feedback" id="{{ $field }}-error" role="alert">{{ $message }}</div>@enderror
                                 </div>
                             @endforeach
@@ -153,8 +152,8 @@
                     </fieldset>
 
                     <div class="d-flex flex-wrap justify-content-end gap-2">
-                        <a class="btn btn-outline-secondary" href="{{ route('backend.tongquan.index') }}"><i class="bi bi-x-circle button-icon" aria-hidden="true"></i>Hủy</a>
-                        <button class="btn btn-primary" type="submit"><i class="bi bi-floppy button-icon" aria-hidden="true"></i>Lưu hồ sơ</button>
+                        <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.tongquan.index') }}"><i class="bi bi-x-circle" aria-hidden="true"></i><span>Hủy</span></a>
+                        <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-floppy" aria-hidden="true"></i><span data-button-label>Lưu thông tin</span></button>
                     </div>
                 </form>
             </div>

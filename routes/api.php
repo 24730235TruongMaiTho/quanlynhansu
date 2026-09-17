@@ -64,6 +64,11 @@ Route::middleware('api')
             ])
             ->group(function (): void {
 
+                Route::get(
+                    'cua-toi',
+                    [ChamCongController::class, 'own']
+                )->name('api.v1.cham-cong.cua-toi');
+
                 /*
                  * Export dữ liệu chấm công
                  *
@@ -190,19 +195,25 @@ Route::middleware('api')
                     'cua-toi',
                     [NghiPhepController::class, 'own']
                 )->name('api.v1.nghi-phep.cua-toi')
-                ->middleware(['auth', 'can:'.NghiPhepPermission::Tao->value]);
+                ->middleware(['auth']);
+
+                Route::post(
+                    'cua-toi',
+                    [NghiPhepController::class, 'storeOwn']
+                )->name('api.v1.nghi-phep.cua-toi.store')
+                ->middleware(['auth']);
 
                 Route::get(
                     'tao/phong-ban',
                     [NghiPhepController::class, 'phongBan']
                 )->name('api.v1.nghi-phep.tao.phong-ban')
-                ->middleware(['auth', 'can:'.NghiPhepPermission::Tao->value]);
+                ->middleware(['auth']);
 
                 Route::get(
                     'tao/loai-phep',
                     [NghiPhepController::class, 'loaiPhep']
                 )->name('api.v1.nghi-phep.tao.loai-phep')
-                ->middleware(['auth', 'can:'.NghiPhepPermission::Tao->value]);
+                ->middleware(['auth']);
 
                 Route::get(
                     'nhan-vien',
@@ -291,6 +302,12 @@ Route::middleware('api')
         ])
             ->prefix('luong')
             ->group(function (): void {
+
+                Route::get(
+                    'cua-toi',
+                    [LuongController::class, 'own']
+                )->name('api.v1.luong.cua-toi')
+                ->middleware(['auth']);
 
                 Route::get(
                     'phong-ban',
@@ -394,21 +411,32 @@ Route::middleware('api')
 Route::middleware(['web', 'auth'])
     ->prefix('v1/dashboard')
     ->group(function () {
+        Route::get('personal', [DashboardController::class, 'personal'])
+            ->name('api.v1.dashboard.personal');
+
         Route::get('overview', [DashboardController::class, 'overview'])
             ->name('api.v1.dashboard.overview');
 
         Route::get('education-stats', [DashboardController::class, 'educationStats'])
+            ->middleware('can:'.\App\Enums\NhanVienPermission::Xem->value)
             ->name('api.v1.dashboard.education-stats');
 
         Route::get('department-stats', [DashboardController::class, 'departmentStats'])
+            ->middleware([
+                'can:'.\App\Enums\NhanVienPermission::Xem->value,
+                'can:'.\App\Enums\PhongBanPermission::Xem->value,
+            ])
             ->name('api.v1.dashboard.department-stats');
 
         Route::get('expiring-contracts', [DashboardController::class, 'expiringContracts'])
+            ->middleware('can:'.\App\Enums\HopDongPermission::Xem->value)
             ->name('api.v1.dashboard.expiring-contracts');
 
         Route::get('attendance-report', [DashboardController::class, 'attendanceReport'])
+            ->middleware('can:'.\App\Enums\ChamCongPermission::Xem->value)
             ->name('api.v1.dashboard.attendance-report');
 
         Route::get('salary-report', [DashboardController::class, 'salaryReport'])
+            ->middleware('can:'.\App\Enums\LuongPermission::Xem->value)
             ->name('api.v1.dashboard.salary-report');
     });

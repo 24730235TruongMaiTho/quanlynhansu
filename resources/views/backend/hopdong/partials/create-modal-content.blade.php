@@ -7,8 +7,8 @@
             @include('backend.hopdong.partials.form-fields', ['fieldPrefix' => 'contract-create-'])
         </div>
         <div class="card-footer bg-white d-flex flex-wrap justify-content-end gap-2 py-3">
-            <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" data-contract-modal-close><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</button>
-            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit" data-submit-edit data-submit data-submitting-text="Đang lưu..."><i class="bi bi-check2" aria-hidden="true"></i>Lưu hợp đồng</button>
+            <button class="btn btn-outline-secondary btn-icon-text" type="button" data-contract-modal-close><i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span></button>
+            <button class="btn btn-primary btn-icon-text" type="submit" data-submit-edit data-submit data-submitting-text="Đang lưu..."><i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>Lưu hợp đồng</span></button>
         </div>
     </form>
 </div>

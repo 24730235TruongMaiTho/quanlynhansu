@@ -1,10 +1,12 @@
+import { setButtonLabel } from '../shared/button-label.js';
+
 const initializedFilters = new WeakSet();
 
 function setSubmittingState(form, button) {
     form.setAttribute('aria-busy', 'true');
     button.disabled = true;
     button.setAttribute('aria-disabled', 'true');
-    button.textContent = button.dataset.submittingText || 'Đang lọc…';
+    setButtonLabel(button, button.dataset.submittingText || 'Đang lọc…');
 }
 
 export function initializeEmployeeFilter(form) {

@@ -1,3 +1,5 @@
+import { showToast } from '../shared/toast.js';
+
 const AUTH_ME_API_URL =
     '/api/v1/auth/me';
 
@@ -191,34 +193,10 @@ function notifyDenied(
     const message =
         `Bạn không có quyền ${action}.`;
 
-    const toast =
-        document.querySelector(
-            '.salary-toast'
-        );
-
-    if (toast) {
-        toast.textContent =
-            message;
-
-        toast.classList.add(
-            'show'
-        );
-
-        window.setTimeout(
-            () => {
-                toast.classList.remove(
-                    'show'
-                );
-            },
-            2500
-        );
-
-        return;
-    }
-
-    window.alert(
-        message
-    );
+    showToast(message, {
+        variant: 'warning',
+        title: 'Không có quyền',
+    });
 }
 
 function guard(
@@ -279,6 +257,16 @@ function applyPermissionVisibility(
                 'd-none',
                 !allowed
             );
+        });
+}
+
+function applyEmployeeScopeVisibility(root = document) {
+    const selfOnly = String(getUser()?.ma_vt ?? '') === '5';
+
+    root.querySelectorAll('[data-salary-employee-filter]')
+        .forEach((element) => {
+            element.hidden = selfOnly;
+            element.classList.toggle('d-none', selfOnly);
         });
 }
 
@@ -365,6 +353,8 @@ function applyAllPermissionUI(
     applyPermissionVisibility(
         root
     );
+
+    applyEmployeeScopeVisibility(root);
 
     updatePermissionSummary();
 }
@@ -472,5 +462,6 @@ export {
 
     applyPermissionVisibility,
     applyAllPermissionUI,
+    applyEmployeeScopeVisibility,
     updatePermissionSummary,
 };

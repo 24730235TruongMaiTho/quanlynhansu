@@ -6,23 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChamCong extends Model
 {
-    protected $table = 'chamcong';
+    protected $table = 'cham_cong';
     protected $primaryKey = 'ma_cc';
     public $timestamps = false;
 
     protected $fillable = [
         'ma_nv',
-        'ngay_ky',
+        'ngay_lam',
         'so_gio_lam',
         'vao_muon',
         've_som',
     ];
 
     protected $casts = [
-        'ngay_ky' => 'date',
-        'so_gio_lam' => 'decimal:2',
-        'vao_muon' => 'integer',
-        've_som' => 'integer',
+        'ngay_lam' => 'date',
+        'so_gio_lam' => 'integer',
+        'vao_muon' => 'boolean',
+        've_som' => 'boolean',
     ];
 
     public function nhanVien()

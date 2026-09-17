@@ -20,12 +20,21 @@ class LuongHeSoLuongController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $maNv = $request->query('ma_nv');
-            $page = max((int) $request->query('page', 1), 1);
-            $requestedPerPage = (int) $request->query('per_page', 10);
+            $validated = $request->validate([
+                'ma_nv' => ['nullable', 'string', 'max:5'],
+                'page' => ['nullable', 'integer', 'min:1'],
+                'per_page' => ['nullable', 'integer', 'min:1'],
+                'sort' => ['nullable', 'string', 'in:ma_ls,ma_nv,he_so_luong,tu_ngay,den_ngay'],
+                'direction' => ['nullable', 'string', 'in:asc,desc'],
+            ]);
+            $maNv = $validated['ma_nv'] ?? null;
+            $page = max((int) ($validated['page'] ?? 1), 1);
+            $requestedPerPage = (int) ($validated['per_page'] ?? 10);
             $perPage = in_array($requestedPerPage, [10, 20, 50], true)
                 ? $requestedPerPage
                 : 10;
+            $sort = $validated['sort'] ?? 'tu_ngay';
+            $direction = $validated['direction'] ?? 'desc';
 
             if (empty($maNv)) {
                 $paginator = new LengthAwarePaginator([], 0, $perPage, $page);
@@ -33,7 +42,14 @@ class LuongHeSoLuongController extends Controller
                 $paginator = DB::table('lich_su_he_so_luong')
                     ->select('ma_ls', 'ma_nv', 'he_so_luong', 'tu_ngay', 'den_ngay')
                     ->where('ma_nv', $maNv)
-                    ->orderByDesc('tu_ngay')
+                    ->orderBy([
+                        'ma_ls' => 'ma_ls',
+                        'ma_nv' => 'ma_nv',
+                        'he_so_luong' => 'he_so_luong',
+                        'tu_ngay' => 'tu_ngay',
+                        'den_ngay' => 'den_ngay',
+                    ][$sort], $direction)
+                    ->orderBy('ma_ls', 'desc')
                     ->paginate($perPage, ['*'], 'page', $page)
                     ->withQueryString();
             }

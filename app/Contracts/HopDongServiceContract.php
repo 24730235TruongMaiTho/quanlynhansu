@@ -7,6 +7,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 interface HopDongServiceContract
 {
     public function paginate(array $filters): LengthAwarePaginator;
+    public function paginateForEmployee(string $maNv, int $perPage = 20): LengthAwarePaginator;
     public function findOrFail(int $maHd): object;
     public function formOptions(): array;
     public function create(array $data): int;

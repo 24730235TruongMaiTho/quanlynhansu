@@ -1,6 +1,7 @@
 import { renderSharedPagination } from '../shared/pagination.js';
+import { setButtonLabel } from '../shared/button-label.js';
 
-const state = { editingId: null, roles: [], currentPage: 1, pageSize: 10, paginator: null };
+const state = { editingId: null, roles: [], currentPage: 1, pageSize: 10, paginator: null, sort: 'ma_vt', direction: 'desc' };
 
 const dom = typeof document !== 'undefined' ? document : null;
 
@@ -41,7 +42,7 @@ function renderRoleActions(role, permissions) {
     const actions = [];
 
     if (permissions.canViewPermissions) {
-        actions.push(`<a class="btn btn-outline-secondary" href="/vai-tro/${roleId}/phan-quyen" aria-label="Phân quyền ${roleName}" title="Phân quyền ${roleName}"><i class="bi bi-key" aria-hidden="true"></i>Phân quyền</a>`);
+        actions.push(`<a class="btn btn-outline-secondary btn-icon-text" href="/vai-tro/${roleId}/phan-quyen" aria-label="Phân quyền ${roleName}" title="Phân quyền ${roleName}"><i class="bi bi-key" aria-hidden="true"></i><span data-button-label>Phân quyền</span></a>`);
     }
     if (permissions.canEdit) {
         actions.push(`<button class="btn btn-outline-primary btn-icon-action" type="button" data-role-edit="${roleId}" aria-label="Sửa ${roleName}" title="Sửa ${roleName}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>`);
@@ -122,6 +123,8 @@ async function loadRoles() {
         const query = new URLSearchParams(new FormData(elements.searchForm));
         query.set('page', String(state.currentPage));
         query.set('per_page', String(state.pageSize));
+        query.set('sort', state.sort);
+        query.set('direction', state.direction);
         const endpoint = query.get('ten_vt') ? elements.page.dataset.roleSearchUrl : elements.page.dataset.roleDataUrl;
         const payload = await request(`${endpoint}?${query}`);
         const paginator = payload.data && Array.isArray(payload.data.data)
@@ -139,7 +142,7 @@ async function loadRoles() {
 function openCreate() {
     state.editingId = null;
     elements.modalTitle.textContent = 'Thêm vai trò';
-    elements.submit.textContent = 'Lưu vai trò';
+    setButtonLabel(elements.submit, 'Lưu vai trò');
     elements.form.reset();
     elements.formError.classList.add('d-none');
     modal.show();
@@ -151,7 +154,7 @@ async function openEdit(id) {
         const role = payload.data;
         state.editingId = id;
         elements.modalTitle.textContent = 'Chỉnh sửa vai trò';
-        elements.submit.textContent = 'Cập nhật vai trò';
+        setButtonLabel(elements.submit, 'Cập nhật vai trò');
         elements.name.value = role.ten_vt || '';
         elements.description.value = role.mo_ta || '';
         elements.formError.classList.add('d-none');
@@ -214,7 +217,41 @@ if (elements.searchForm) {
         state.currentPage = 1;
         loadRoles();
     });
+    document.querySelectorAll('[data-role-sort]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const column = button.dataset.roleSort;
+            state.direction = state.sort === column && state.direction === 'asc' ? 'desc' : 'asc';
+            state.sort = column;
+            state.currentPage = 1;
+            updateSortControls();
+            loadRoles();
+        });
+    });
+    updateSortControls();
     loadRoles();
+}
+
+function updateSortControls() {
+    document.querySelectorAll('[data-role-sort]').forEach((button) => {
+        const column = button.dataset.roleSort;
+        const active = state.sort === column;
+        const nextDirection = active && state.direction === 'asc' ? 'desc' : 'asc';
+        const icon = button.querySelector('i');
+        const header = button.closest('th');
+        button.classList.toggle('is-active', active);
+        button.dataset.sortDirection = active ? state.direction : 'asc';
+        button.setAttribute('aria-label', active
+            ? `Sắp xếp ${button.textContent.trim()}; đang ${state.direction === 'asc' ? 'tăng dần' : 'giảm dần'}; nhấn để sắp xếp ${nextDirection === 'asc' ? 'tăng dần' : 'giảm dần'}`
+            : `Sắp xếp ${button.textContent.trim()} tăng dần`);
+        header?.setAttribute('aria-sort', active
+            ? (state.direction === 'asc' ? 'ascending' : 'descending')
+            : 'none');
+        if (icon) {
+            icon.className = `bi ${active
+                ? (state.direction === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short')
+                : 'bi-arrow-down-up'}`;
+        }
+    });
 }
 
 export { renderRoleActions, renderRoles };

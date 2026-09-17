@@ -41,8 +41,8 @@
         @include('backend.nhanvien.partials.address-fields', ['showDistrictField' => ! $modalOnly])
 
         <div class="employee-step-actions justify-content-end">
-            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" data-wizard-next>
-                Tiếp tục
+            <button class="btn btn-primary btn-icon-text d-inline-flex align-items-center gap-2" type="button" data-wizard-next>
+                <span>Tiếp tục</span>
                 <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </button>
         </div>
@@ -56,12 +56,12 @@
         @include('backend.nhanvien.partials.employment-fields')
 
         <div class="employee-step-actions">
-            <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" data-wizard-previous>
+            <button class="btn btn-outline-secondary btn-icon-text d-inline-flex align-items-center gap-2" type="button" data-wizard-previous>
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
-                Quay lại
+                <span>Quay lại</span>
             </button>
-            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button" data-wizard-next>
-                Kiểm tra hồ sơ
+            <button class="btn btn-primary btn-icon-text d-inline-flex align-items-center gap-2" type="button" data-wizard-next>
+                <span>Kiểm tra hồ sơ</span>
                 <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </button>
         </div>
@@ -99,12 +99,12 @@
         </dl>
 
         <div class="employee-step-actions">
-            <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" type="button" data-wizard-previous>
+            <button class="btn btn-outline-secondary btn-icon-text d-inline-flex align-items-center gap-2" type="button" data-wizard-previous>
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
-                Quay lại
+                <span>Quay lại</span>
             </button>
             <button
-                class="btn btn-primary d-inline-flex align-items-center gap-2"
+                class="btn btn-primary btn-icon-text d-inline-flex align-items-center gap-2"
                 type="submit"
                 data-submit-employee
                 @disabled($submitDisabled)
@@ -112,7 +112,7 @@
                 data-submitting-text="Đang lưu nhân viên…"
             >
                 <i class="bi bi-check-circle" aria-hidden="true"></i>
-                Lưu nhân viên
+                <span data-button-label>Lưu nhân viên</span>
             </button>
         </div>
     </fieldset>

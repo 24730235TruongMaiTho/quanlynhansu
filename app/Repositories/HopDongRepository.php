@@ -15,6 +15,10 @@ final class HopDongRepository implements HopDongRepositoryContract
     {
         $today = now()->toDateString();
         $warningEnd = now()->addDays($warningDays)->toDateString();
+        $expiringOnly = filter_var(
+            $filters['sap_het_han'] ?? false,
+            FILTER_VALIDATE_BOOLEAN,
+        );
 
         return $this->database->connection()->table('hop_dong as hd')
             ->join('nhan_vien as nv', 'nv.ma_nv', '=', 'hd.ma_nv')
@@ -23,10 +27,43 @@ final class HopDongRepository implements HopDongRepositoryContract
                 ->where('nv.ma_nv', 'like', '%'.$filters['keyword'].'%')
                 ->orWhere('nv.ho_ten', 'like', '%'.$filters['keyword'].'%')))
             ->when(($filters['ma_lhd'] ?? null) !== null, fn ($q) => $q->where('hd.ma_lhd', $filters['ma_lhd']))
-            ->when(($filters['sap_het_han'] ?? false) === true, fn ($q) => $q->whereBetween('hd.ngay_het_han', [$today, $warningEnd]))
+            ->when($expiringOnly, fn ($q) => $q->whereBetween('hd.ngay_het_han', [$today, $warningEnd]))
             ->select(['hd.ma_hd', 'hd.ma_nv', 'nv.ho_ten', 'hd.ma_lhd', 'lhd.ten_lhd', 'hd.ngay_ky', 'hd.ngay_het_han', 'hd.luong_co_ban'])
             ->selectRaw('CASE WHEN hd.ngay_het_han BETWEEN ? AND ? THEN 1 ELSE 0 END AS sap_het_han', [$today, $warningEnd])
-            ->orderByDesc('hd.ma_hd')->paginate($perPage)->withQueryString();
+            ->tap(function ($query) use ($filters): void {
+                $columns = [
+                    'ma_hd' => 'hd.ma_hd',
+                    'ma_nv' => 'hd.ma_nv',
+                    'ho_ten' => 'nv.ho_ten',
+                    'ten_lhd' => 'lhd.ten_lhd',
+                    'ngay_ky' => 'hd.ngay_ky',
+                    'ngay_het_han' => 'hd.ngay_het_han',
+                    'luong_co_ban' => 'hd.luong_co_ban',
+                ];
+                $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+                $query->orderBy($columns[$filters['sort'] ?? 'ma_hd'] ?? 'hd.ma_hd', $direction)
+                    ->orderBy('hd.ma_hd', 'desc');
+            })
+            ->paginate($perPage)->withQueryString();
+    }
+
+    public function paginateForEmployee(string $maNv, int $perPage = 20): LengthAwarePaginator
+    {
+        return $this->database->connection()->table('hop_dong as hd')
+            ->join('loai_hop_dong as lhd', 'lhd.ma_lhd', '=', 'hd.ma_lhd')
+            ->where('hd.ma_nv', '=', $maNv)
+            ->select([
+                'hd.ma_hd',
+                'hd.ma_nv',
+                'hd.ma_lhd',
+                'lhd.ten_lhd',
+                'hd.ngay_ky',
+                'hd.ngay_het_han',
+                'hd.luong_co_ban',
+            ])
+            ->orderByDesc('hd.ma_hd')
+            ->paginate($perPage)
+            ->withQueryString();
     }
 
     public function find(int $maHd): ?object

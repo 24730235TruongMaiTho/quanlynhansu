@@ -43,13 +43,13 @@ final class ProfileController extends Controller
             return back()
                 ->withInput($request->safe()->except(['anh_dai_dien']))
                 ->withErrors([
-                    'profile' => 'Không thể cập nhật hồ sơ cá nhân lúc này. Vui lòng thử lại sau.',
+                    'profile' => 'Không thể cập nhật tài khoản cá nhân lúc này. Vui lòng thử lại sau.',
                 ]);
         }
 
         return redirect()
             ->route('backend.profile.edit')
-            ->with('success', 'Đã cập nhật hồ sơ cá nhân.');
+            ->with('success', 'Đã cập nhật tài khoản cá nhân.');
     }
 
     public function password(): View

@@ -71,9 +71,23 @@ class PhongBanRepositoryTest extends TestCase
 
         $this->assertSame(2, $page->total());
         $this->assertCount(1, $page->items());
-        $this->assertSame('Phòng Kế hoạch', $page->items()[0]->ten_pb);
+        $this->assertSame('Phòng Kỹ thuật', $page->items()[0]->ten_pb);
         $this->assertSame(['ma_pb', 'ten_pb', 'so_nhan_vien'], array_keys(get_object_vars($page->items()[0])));
         $this->assertSame(2, $page->lastPage());
+    }
+
+    public function test_paginate_supports_newest_default_and_both_directions(): void
+    {
+        $this->insertDepartment('A');
+        $this->insertDepartment('B');
+
+        $this->assertSame(2, $this->repository->paginate(['page' => 1, 'so_dong' => 10])->items()[0]->ma_pb);
+        $this->assertSame(1, $this->repository->paginate([
+            'sort' => 'ma_pb', 'direction' => 'asc', 'page' => 1, 'so_dong' => 10,
+        ])->items()[0]->ma_pb);
+        $this->assertSame(2, $this->repository->paginate([
+            'sort' => 'ma_pb', 'direction' => 'desc', 'page' => 1, 'so_dong' => 10,
+        ])->items()[0]->ma_pb);
     }
 
     public function test_create_and_update_trim_names_and_persist_state(): void

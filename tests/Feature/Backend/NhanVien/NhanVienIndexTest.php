@@ -59,6 +59,8 @@ class NhanVienIndexTest extends TestCase
                 'ma_tt' => null,
                 'page' => 1,
                 'so_dong' => 20,
+                'sort' => 'ma_nv',
+                'direction' => 'desc',
             ])->andReturn($this->employeePaginator());
             $mock->shouldReceive('lookups')->once()->andReturn($this->employeeLookups());
         });
@@ -75,6 +77,8 @@ class NhanVienIndexTest extends TestCase
                 'ma_tt' => null,
                 'page' => 1,
                 'so_dong' => 20,
+                'sort' => 'ma_nv',
+                'direction' => 'desc',
             ])
             ->assertSee('00001')
             ->assertSee('name="tu_khoa"', false)
@@ -164,6 +168,8 @@ class NhanVienIndexTest extends TestCase
             'ma_tt' => 1,
             'page' => 2,
             'so_dong' => 5,
+            'sort' => 'ma_nv',
+            'direction' => 'desc',
         ];
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($filters): void {
             $mock->shouldReceive('paginate')->once()->with($filters)->andReturn(

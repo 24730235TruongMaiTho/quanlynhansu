@@ -223,79 +223,6 @@
             color: #e94560;
         }
 
-        /* Options */
-        .login-options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .login-options .form-check {
-            margin: 0;
-            padding-left: 0;
-        }
-
-        .login-options .form-check input[type="checkbox"] {
-            display: none;
-        }
-
-        .login-options .form-check label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #495057;
-            font-size: 14px;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .login-options .form-check label .checkmark {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #d0d0d0;
-            border-radius: 6px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-            background: #fff;
-        }
-
-        .login-options .form-check label .checkmark i {
-            font-size: 14px;
-            color: #fff;
-            opacity: 0;
-            transform: scale(0.5);
-            transition: all 0.2s ease;
-        }
-
-        .login-options .form-check input[type="checkbox"]:checked + label .checkmark {
-            background: #e94560;
-            border-color: #e94560;
-        }
-
-        .login-options .form-check input[type="checkbox"]:checked + label .checkmark i {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        .login-options .forgot-link {
-            color: #e94560;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .login-options .forgot-link:hover {
-            color: #c23152;
-            text-decoration: underline;
-        }
-
         /* Submit button */
         .login-form .btn-login {
             width: 100%;
@@ -413,10 +340,6 @@
                 font-size: 15px;
             }
 
-            .login-options {
-                flex-direction: column;
-                align-items: flex-start;
-            }
         }
 
         @media (max-width: 380px) {
@@ -528,11 +451,6 @@
                         </button>
                     </div>
                     <div class="invalid-feedback" id="passwordFeedback">Vui lòng nhập mật khẩu.</div>
-                </div>
-
-                <!-- Options -->
-                <div class="login-options">
-                    <a href="#" class="forgot-link">Quên mật khẩu?</a>
                 </div>
 
                 <!-- Submit -->

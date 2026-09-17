@@ -38,17 +38,26 @@ final class PhanQuyenRepository implements PhanQuyenRepositoryContract
 
     public function accounts(array $filters = []): LengthAwarePaginator
     {
-        $filters += ['tu_khoa' => null, 'page' => 1, 'per_page' => 10];
+        $filters += ['tu_khoa' => null, 'page' => 1, 'per_page' => 10, 'sort' => 'ma_nv', 'direction' => 'desc'];
         $perPageCandidate = (int) $filters['per_page'];
         $perPage = in_array($perPageCandidate, [10, 20, 50], true) ? $perPageCandidate : 10;
         $page = max((int) $filters['page'], 1);
         $keyword = trim((string) ($filters['tu_khoa'] ?? ''));
+        $sortColumns = [
+            'ma_nv' => 'nv.ma_nv',
+            'ho_ten' => 'nv.ho_ten',
+            'email' => 'nv.email',
+            'ten_vt' => 'vt.ten_vt',
+        ];
+        $sort = $sortColumns[$filters['sort'] ?? 'ma_nv'] ?? $sortColumns['ma_nv'];
+        $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
         $query = $this->database->connection()->table('nhan_vien as nv')
             ->join('vai_tro as vt', 'vt.ma_vt', '=', 'nv.ma_vt')
             ->when($keyword !== '', fn ($q) => $q->where(fn ($q) => $q
                 ->where('nv.ma_nv', 'like', '%'.$keyword.'%')
                 ->orWhere('nv.ho_ten', 'like', '%'.$keyword.'%')))
-            ->orderBy('nv.ma_nv');
+            ->orderBy($sort, $direction)
+            ->orderBy('nv.ma_nv', 'desc');
 
         $paginator = $query->paginate(
             $perPage,
@@ -61,6 +70,8 @@ final class PhanQuyenRepository implements PhanQuyenRepositoryContract
             'tu_khoa' => $keyword !== '' ? $keyword : null,
             'page' => $page,
             'per_page' => $perPage,
+            'sort' => $filters['sort'] ?? 'ma_nv',
+            'direction' => $direction,
         ]);
     }
 

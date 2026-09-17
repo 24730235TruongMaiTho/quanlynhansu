@@ -74,9 +74,23 @@ class ChucVuRepositoryTest extends TestCase
 
         $this->assertSame(2, $page->total());
         $this->assertCount(1, $page->items());
-        $this->assertSame('Trưởng phòng', $page->items()[0]->ten_cv);
+        $this->assertSame('Phó phòng', $page->items()[0]->ten_cv);
         $this->assertSame(['ma_cv', 'ten_cv', 'he_so_phu_cap', 'so_nhan_vien'], array_keys(get_object_vars($page->items()[0])));
         $this->assertSame(2, $page->lastPage());
+    }
+
+    public function test_paginate_supports_newest_default_and_both_directions(): void
+    {
+        $this->insertPosition('A', '1');
+        $this->insertPosition('B', '2');
+
+        $this->assertSame(2, $this->repository->paginate(['page' => 1, 'so_dong' => 10])->items()[0]->ma_cv);
+        $this->assertSame(1, $this->repository->paginate([
+            'sort' => 'ma_cv', 'direction' => 'asc', 'page' => 1, 'so_dong' => 10,
+        ])->items()[0]->ma_cv);
+        $this->assertSame(2, $this->repository->paginate([
+            'sort' => 'ma_cv', 'direction' => 'desc', 'page' => 1, 'so_dong' => 10,
+        ])->items()[0]->ma_cv);
     }
 
     public function test_create_and_update_trim_names_and_normalize_decimal_rate(): void

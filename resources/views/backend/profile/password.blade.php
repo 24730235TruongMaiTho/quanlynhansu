@@ -52,8 +52,8 @@
                         @error('mat_khau_moi_confirmation')<div class="invalid-feedback" id="mat_khau_moi_confirmation-error" role="alert">{{ $message }}</div>@enderror
                     </div>
                     <div class="d-flex flex-wrap justify-content-end gap-2">
-                        <a class="btn btn-outline-secondary" href="{{ route('backend.profile.edit') }}"><i class="bi bi-x-circle button-icon" aria-hidden="true"></i>Hủy</a>
-                        <button class="btn btn-primary" type="submit"><i class="bi bi-key button-icon" aria-hidden="true"></i>Đổi mật khẩu</button>
+                        <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.profile.edit') }}"><i class="bi bi-x-circle" aria-hidden="true"></i><span>Hủy</span></a>
+                        <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-key" aria-hidden="true"></i><span data-button-label>Đổi mật khẩu</span></button>
                     </div>
                 </form>
             </div>

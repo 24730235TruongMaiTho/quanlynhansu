@@ -122,6 +122,18 @@ Route::prefix('')->name('backend.')
         ->middleware('auth')
         ->name('profile.password.update');
 
+    Route::get('/hop-dong-cua-toi', [HopDongController::class, 'own'])
+        ->middleware('auth')
+        ->name('selfservice.hopdong.index');
+
+    Route::get('/luong-cua-toi', [LuongController::class, 'ownPage'])
+        ->middleware('auth')
+        ->name('selfservice.luong.index');
+
+    Route::get('/cham-cong-cua-toi', [ChamCongController::class, 'ownPage'])
+        ->middleware('auth')
+        ->name('selfservice.chamcong.index');
+
     // Danh sách phòng ban, yêu cầu quyền xem.
     Route::get('/phong-ban', [PhongBanController::class, 'index'])
         ->middleware(['auth', 'can:'.PhongBanPermission::Xem->value])
@@ -274,6 +286,6 @@ Route::prefix('')->name('backend.')
 
     Route::get('/tao-nghi-phep', function () {
         return view('backend.nghiphep.create');
-    })->middleware(['auth', 'can:'.NghiPhepPermission::Tao->value])->name('nghiphep.create');
+    })->middleware(['auth'])->name('nghiphep.create');
 
 });

@@ -7,7 +7,17 @@
         $canCreate = \Illuminate\Support\Facades\Gate::allows(\App\Enums\HopDongPermission::Tao->value);
         $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\HopDongPermission::Sua->value);
         $canDelete = \Illuminate\Support\Facades\Gate::allows(\App\Enums\HopDongPermission::Xoa->value);
-        $hasFilters = filled(request('keyword')) || filled(request('ma_lhd')) || request()->boolean('sap_het_han');
+        $expiringWarningDays = max(1, (int) config('hopdong.expiring_warning_days', 30));
+        $hasExpiringFilter = request()->boolean('sap_het_han');
+        $expiringFilterOnly = $hasExpiringFilter && !filled(request('keyword')) && !filled(request('ma_lhd'));
+        $hasFilters = filled(request('keyword')) || filled(request('ma_lhd')) || $hasExpiringFilter;
+        $sort = request('sort', 'ma_hd');
+        $direction = request('direction', 'desc');
+        $listQuery = array_filter(request()->only(['keyword', 'ma_lhd', 'sap_het_han', 'per_page', 'sort', 'direction']), static fn (mixed $value): bool => $value !== null && $value !== '');
+        $sortUrl = static function (string $column) use ($sort, $direction, $listQuery): string {
+            $next = $sort === $column && $direction === 'asc' ? 'desc' : 'asc';
+            return route('backend.hopdong.index', array_merge($listQuery, ['sort' => $column, 'direction' => $next, 'page' => 1]));
+        };
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="contract-title">
@@ -15,7 +25,7 @@
             title="Danh sách hợp đồng"
             title-id="contract-title"
             icon="bi-file-earmark-text"
-            description="Theo dõi hợp đồng và cảnh báo hết hạn trong {{ config('hopdong.expiring_warning_days', 30) }} ngày."
+            description="Theo dõi hợp đồng và cảnh báo hết hạn trong {{ $expiringWarningDays }} ngày."
             :breadcrumbs="[
                 ['label' => 'Nhân sự', 'url' => route('backend.tongquan.index')],
                 ['label' => 'Quản lý hợp đồng'],
@@ -23,7 +33,7 @@
         >
             <x-slot:actions>
             @if ($canCreate)
-                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm hợp đồng" title="Thêm hợp đồng" href="{{ route('backend.hopdong.create') }}" data-action="modal" data-modal-mode="create" data-modal-url="{{ route('backend.hopdong.create') }}">
+                <a class="btn btn-primary btn-icon-text" aria-label="Thêm hợp đồng" title="Thêm hợp đồng" href="{{ route('backend.hopdong.create') }}" data-action="modal" data-modal-mode="create" data-modal-url="{{ route('backend.hopdong.create') }}">
                     <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm hợp đồng
                 </a>
             @endif
@@ -42,7 +52,7 @@
                 <h2 class="h6 fw-semibold mb-0" id="contract-filter-title">Bộ lọc hợp đồng</h2>
             </div>
             <div class="card-body">
-                <form method="get" action="{{ route('backend.hopdong.index') }}" class="filter-bar">
+                <form method="get" action="{{ route('backend.hopdong.index') }}" class="filter-bar" id="contract-filter-form">
                     <div class="filter-bar__fields">
                         <div class="filter-bar__field">
                             <label class="form-label" for="keyword">Nhân viên</label>
@@ -67,14 +77,14 @@
                         </div>
                         <div class="filter-bar__field filter-bar__field--toggle">
                             <div class="form-check mb-2">
-                                <input class="form-check-input" id="sap_het_han" name="sap_het_han" type="checkbox" value="1" @checked(request()->boolean('sap_het_han'))>
+                                <input class="form-check-input" id="sap_het_han" name="sap_het_han" type="checkbox" value="1" @checked($hasExpiringFilter)>
                                 <label class="form-check-label" for="sap_het_han">Chỉ xem hợp đồng sắp hết hạn</label>
                             </div>
                         </div>
                     </div>
                     <div class="filter-bar__actions">
-                            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
-                        @if ($hasFilters)<a class="btn btn-outline-secondary" href="{{ route('backend.hopdong.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa lọc</a>@endif
+                            <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i><span>Áp dụng bộ lọc</span></button>
+                        @if ($hasFilters)<a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.hopdong.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Xóa lọc</span></a>@endif
                     </div>
                 </form>
             </div>
@@ -92,11 +102,11 @@
                         <caption class="visually-hidden">Danh sách hợp đồng theo bộ lọc hiện tại</caption>
                         <thead class="table-light">
                             <tr>
-                                <th scope="col">Mã nhân viên</th>
-                                <th scope="col">Nhân viên</th>
-                                <th scope="col">Loại hợp đồng</th>
-                                <th scope="col">Ngày ký</th>
-                                <th scope="col">Ngày hết hạn</th>
+                                <th scope="col" aria-sort="{{ $sort === 'ma_nv' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ma_nv" label="Mã nhân viên" :sort="$sort" :direction="$direction" :href="$sortUrl('ma_nv')" /></th>
+                                <th scope="col" aria-sort="{{ $sort === 'ho_ten' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ho_ten" label="Nhân viên" :sort="$sort" :direction="$direction" :href="$sortUrl('ho_ten')" /></th>
+                                <th scope="col" aria-sort="{{ $sort === 'ten_lhd' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ten_lhd" label="Loại hợp đồng" :sort="$sort" :direction="$direction" :href="$sortUrl('ten_lhd')" /></th>
+                                <th scope="col" aria-sort="{{ $sort === 'ngay_ky' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ngay_ky" label="Ngày ký" :sort="$sort" :direction="$direction" :href="$sortUrl('ngay_ky')" /></th>
+                                <th scope="col" aria-sort="{{ $sort === 'ngay_het_han' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ngay_het_han" label="Ngày hết hạn" :sort="$sort" :direction="$direction" :href="$sortUrl('ngay_het_han')" /></th>
                                 @if ($canEdit || $canDelete)<th scope="col">Thao tác</th>@endif
                             </tr>
                         </thead>
@@ -136,8 +146,13 @@
             @else
                 <div class="card-body text-center py-5" role="status">
                     <i class="bi bi-file-earmark-text fs-1 text-secondary" aria-hidden="true"></i>
-                    <h3 class="h6 mt-3 mb-1">{{ $hasFilters ? 'Không tìm thấy hợp đồng phù hợp' : 'Chưa có hợp đồng nào' }}</h3>
-                    <p class="text-secondary mb-0">{{ $hasFilters ? 'Hãy điều chỉnh hoặc xóa bộ lọc để xem thêm kết quả.' : 'Danh sách sẽ hiển thị khi dữ liệu hợp đồng được bổ sung.' }}</p>
+                    @if ($expiringFilterOnly)
+                        <h3 class="h6 mt-3 mb-1">Không có hợp đồng nào hết hạn trong {{ $expiringWarningDays }} ngày tới</h3>
+                        <p class="text-secondary mb-0">Hãy kiểm tra lại bộ lọc hoặc quay lại danh sách tất cả hợp đồng.</p>
+                    @else
+                        <h3 class="h6 mt-3 mb-1">{{ $hasFilters ? 'Không tìm thấy hợp đồng phù hợp' : 'Chưa có hợp đồng nào' }}</h3>
+                        <p class="text-secondary mb-0">{{ $hasFilters ? 'Hãy điều chỉnh hoặc xóa bộ lọc để xem thêm kết quả.' : 'Danh sách sẽ hiển thị khi dữ liệu hợp đồng được bổ sung.' }}</p>
+                    @endif
                 </div>
             @endif
 
@@ -145,6 +160,27 @@
                 <div class="card-footer pagination-footer bg-white d-flex justify-content-center py-3">
                     @include('backend.partials.pagination', ['paginator' => $contracts, 'label' => 'hợp đồng'])
                 </div>
+            @endif
+        </section>
+
+        <section class="card shadow-sm mt-3" aria-labelledby="contract-types-title">
+            <div class="card-header bg-white py-3">
+                <h2 class="h6 fw-semibold mb-0" id="contract-types-title">Danh sách loại hợp đồng</h2>
+            </div>
+            @if (count($types) > 0)
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <caption class="visually-hidden">Các loại hợp đồng hiện có</caption>
+                        <thead class="table-light"><tr><th scope="col">Mã loại</th><th scope="col">Tên loại hợp đồng</th></tr></thead>
+                        <tbody>
+                            @foreach ($types as $type)
+                                <tr><th scope="row">{{ $type->ma_lhd }}</th><td>{{ $type->ten_lhd }}</td></tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="card-body text-secondary" role="status">Chưa có loại hợp đồng.</div>
             @endif
         </section>
 

@@ -29,7 +29,7 @@
             <div class="card-body">
                 @include('backend.chucvu.partials.edit-form')
                 <div class="mt-3">
-                    <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ $backUrl }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
+                    <a class="btn btn-outline-secondary btn-icon-text" href="{{ $backUrl }}"><i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span></a>
                 </div>
             </div>
         </section>

@@ -69,10 +69,10 @@ class StoreNhanVienRequest extends FormRequest
             'noi_cap_cccd' => ['required', 'string', 'max:50'],
             'hoc_van' => ['required', 'string', 'max:50'],
             'ma_tt' => ['required', 'integer', $this->statusExistsRule()],
-            'dia_chi_cu_the' => ['nullable', 'string', 'max:255'],
-            'phuong_xa' => ['nullable', 'string', 'max:100'],
+            'dia_chi_cu_the' => ['required', 'string', 'max:255'],
+            'phuong_xa' => ['required', 'string', 'max:100'],
             'quan_huyen' => ['nullable', 'string', 'max:100'],
-            'tinh_thanh' => ['nullable', 'string', 'max:100'],
+            'tinh_thanh' => ['required', 'string', 'max:100'],
             'anh_dai_dien' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
             'xoa_anh_dai_dien' => ['missing', 'prohibited'],
             'ma_nv' => ['missing', 'prohibited'],
@@ -145,22 +145,6 @@ class StoreNhanVienRequest extends FormRequest
 
     public function after(): array
     {
-        return [function (Validator $validator): void {
-            $present = array_map(
-                fn (string $field): bool => filled($this->input($field)),
-                self::CORE_ADDRESS_FIELDS,
-            );
-
-            if (count(array_filter($present)) > 0 && count(array_filter($present)) < count(self::CORE_ADDRESS_FIELDS)) {
-                foreach (self::CORE_ADDRESS_FIELDS as $index => $field) {
-                    if (! $present[$index]) {
-                        $validator->errors()->add(
-                            $field,
-                            'Vui lòng nhập đủ Địa chỉ cụ thể, Phường/Xã và Tỉnh/Thành phố hoặc để trống toàn bộ.',
-                        );
-                    }
-                }
-            }
-        }];
+        return [];
     }
 }

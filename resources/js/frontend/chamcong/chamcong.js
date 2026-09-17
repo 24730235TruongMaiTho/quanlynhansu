@@ -1,6 +1,9 @@
 import { renderSharedPagination } from '../shared/pagination.js';
 import { createDeleteAction } from '../shared/delete-action.js';
+import { createConfirmDialog } from '../shared/confirm-dialog.js';
 import { formatDisplayDate } from '../shared/date-field.js';
+import { showToast } from '../shared/toast.js';
+import { getButtonLabel, setButtonLabel } from '../shared/button-label.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const AUTH_ME_API_URL = '/api/v1/auth/me';
@@ -154,21 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const message =
             `Bạn không có quyền ${action}.`;
 
-        const toast =
-            document.querySelector('.attendance-toast');
-
-        if (toast) {
-            toast.textContent = message;
-            toast.classList.add('show');
-
-            window.setTimeout(() => {
-                toast.classList.remove('show');
-            }, 2500);
-
-            return;
-        }
-
-        window.alert(message);
+        showToast(message, {
+            variant: 'warning',
+            title: 'Không có quyền',
+        });
     }
 
     function guard(permission, action) {
@@ -280,6 +272,15 @@ document.addEventListener('DOMContentLoaded', () => {
         exportSubmitLabel:
             document.getElementById('attendance-export-submit-label'),
 
+        deleteDialog:
+            document.getElementById('attendance-delete-dialog'),
+
+        deleteDialogCancel:
+            document.getElementById('attendance-delete-dialog-cancel'),
+
+        deleteDialogConfirm:
+            document.getElementById('attendance-delete-dialog-confirm'),
+
         updateButton: document.getElementById('update-btn'),
         deleteButton: document.getElementById('delete-btn'),
         importFile: document.getElementById('attendance-import-file'),
@@ -308,6 +309,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         employeePage: 1,
         employeePerPage: Number(elements.employeePerPage?.value || 15),
+        employeeSort: 'ma_nv',
+        employeeDirection: 'desc',
         filters: {
             tu_khoa: null,
             ma_pb: null,
@@ -319,6 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         attendancePage: 1,
         attendancePerPage: Number(elements.attendancePerPage?.value || 15),
+        attendanceSort: 'ngay_lam',
+        attendanceDirection: 'asc',
         selectedAttendanceId: null,
         selectedAttendanceRow: null,
 
@@ -334,6 +339,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         selectedImportFile: null,
     };
+
+    const confirmDialog = createConfirmDialog({
+        dialog: elements.deleteDialog,
+        cancelButton: elements.deleteDialogCancel,
+        confirmButton: elements.deleteDialogConfirm,
+        onUnavailable: () => showToast(
+            'Trình duyệt không hỗ trợ hộp thoại xác nhận. Thao tác đã được hủy.',
+            {
+                variant: 'warning',
+                title: 'Không thể xác nhận xóa',
+            }
+        ),
+    });
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -545,6 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ...state.filters,
             page,
             per_page: state.employeePerPage,
+            sort: state.employeeSort,
+            direction: state.employeeDirection,
         });
     }
 
@@ -613,6 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
             so_lan_vao_muon: Number(item.so_lan_vao_muon ?? item.vao_muon ?? 0),
             so_lan_ve_som: Number(item.so_lan_ve_som ?? item.ve_som ?? 0),
             so_ngay_cham_cong: Number(item.so_ngay_cham_cong ?? item.ngay_cong ?? 0),
+            tong_gio_lam: Number(item.tong_gio_lam ?? 0),
         };
     }
 
@@ -620,7 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!rows.length) {
             elements.employeeTbody.innerHTML = `
                 <tr>
-                    <td colspan="11" class="text-center text-secondary py-5">
+                    <td colspan="12" class="text-center text-secondary py-5">
                         Không tìm thấy nhân viên.
                     </td>
                 </tr>
@@ -651,6 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="text-end">${number(item.so_lan_vao_muon, 0)}</td>
                     <td class="text-end">${number(item.so_lan_ve_som, 0)}</td>
                     <td class="text-end fw-semibold">${number(item.so_ngay_cham_cong)}</td>
+                    <td class="text-end fw-semibold">${number(item.tong_gio_lam, 1)}</td>
                 </tr>
             `;
         }).join('');
@@ -658,7 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadEmployees(page = 1) {
         if (!can(PERMISSION_CODES.READ)) {
-            return;
+            return false;
         }
 
         state.employeePage = Math.max(Number(page) || 1, 1);
@@ -669,7 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         elements.employeeTbody.innerHTML = `
             <tr>
-                <td colspan="11" class="text-center text-secondary py-5">
+                <td colspan="12" class="text-center text-secondary py-5">
                     <span class="spinner-border spinner-border-sm me-2"></span>
                     Đang tải danh sách nhân viên...
                 </td>
@@ -723,14 +745,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     hour: '2-digit',
                     minute: '2-digit',
                 })}`;
+
+            return true;
         } catch (error) {
-            if (error.name === 'AbortError') return;
+            if (error.name === 'AbortError') return false;
 
             console.error(error);
 
             elements.employeeTbody.innerHTML = `
                 <tr>
-                    <td colspan="11" class="text-center text-danger py-5">
+                    <td colspan="12" class="text-center text-danger py-5">
                         ${escapeHtml(error.message)}
                     </td>
                 </tr>
@@ -738,6 +762,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             elements.employeePageInfo.textContent = 'Hiển thị 0 trên 0 nhân viên';
             elements.employeePagination.innerHTML = '';
+
+            return false;
         }
     }
 
@@ -953,6 +979,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 total
             );
 
+        const sortedRows = sortRows(
+            state.attendanceRows,
+            state.attendanceSort,
+            state.attendanceDirection,
+        );
+
         return {
             current_page:
             state.attendancePage,
@@ -968,11 +1000,81 @@ document.addEventListener('DOMContentLoaded', () => {
             to:
             toIndex,
             data:
-                state.attendanceRows.slice(
+                sortedRows.slice(
                     fromIndex,
                     toIndex
                 ),
         };
+    }
+
+    function compareSortValues(left, right) {
+        const leftMissing = left === null || left === undefined || left === '';
+        const rightMissing = right === null || right === undefined || right === '';
+        if (leftMissing && rightMissing) return 0;
+        if (leftMissing) return 1;
+        if (rightMissing) return -1;
+
+        const leftNumber = Number(left);
+        const rightNumber = Number(right);
+        if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+            return leftNumber - rightNumber;
+        }
+
+        return String(left).localeCompare(String(right), 'vi', {
+            numeric: true,
+            sensitivity: 'base',
+        });
+    }
+
+    function sortRows(rows, column, direction) {
+        const multiplier = direction === 'asc' ? 1 : -1;
+        return [...rows].sort((left, right) => {
+            const valueFor = (item) => {
+                if (column === 'thu') {
+                    const date = item?.ngay_lam ? new Date(`${item.ngay_lam}T00:00:00`) : null;
+                    return date && !Number.isNaN(date.valueOf()) ? date.getDay() : null;
+                }
+                if (column === 'danh_gia') return item?.so_gio_lam;
+                return item?.[column];
+            };
+            const leftValue = valueFor(left);
+            const rightValue = valueFor(right);
+            const leftMissing = leftValue === null || leftValue === undefined || leftValue === '';
+            const rightMissing = rightValue === null || rightValue === undefined || rightValue === '';
+            if (leftMissing !== rightMissing) return leftMissing ? 1 : -1;
+            const value = compareSortValues(leftValue, rightValue);
+            if (value !== 0) return value * multiplier;
+            return String(left?.ngay_lam ?? left?.ma_cc ?? '').localeCompare(
+                String(right?.ngay_lam ?? right?.ma_cc ?? ''),
+                'vi',
+                { numeric: true },
+            );
+        });
+    }
+
+    function updateSortControls(selector, activeColumn, direction) {
+        document.querySelectorAll(selector).forEach((button) => {
+            const column = button.dataset.attendanceEmployeeSort || button.dataset.attendanceSort;
+            const active = column === activeColumn;
+            const nextDirection = active && direction === 'asc' ? 'desc' : 'asc';
+            const label = button.dataset.sortLabel || button.textContent.trim();
+            const icon = button.querySelector('i');
+            const header = button.closest('th');
+
+            button.classList.toggle('is-active', active);
+            button.dataset.sortDirection = active ? direction : 'asc';
+            button.setAttribute('aria-label', active
+                ? `Sắp xếp ${label}; đang ${direction === 'asc' ? 'tăng dần' : 'giảm dần'}; nhấn để sắp xếp ${nextDirection === 'asc' ? 'tăng dần' : 'giảm dần'}`
+                : `Sắp xếp ${label} tăng dần`);
+            if (header) header.setAttribute(
+                'aria-sort',
+                active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none',
+            );
+            icon?.classList.remove('bi-arrow-down-up', 'bi-arrow-up-short', 'bi-arrow-down-short');
+            icon?.classList.add(active
+                ? (direction === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short')
+                : 'bi-arrow-down-up');
+        });
     }
 
     function findAttendanceByDate(date) {
@@ -1238,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', () => {
             !can(PERMISSION_CODES.READ) ||
             !state.selectedEmployee?.ma_nv
         ) {
-            return;
+            return false;
         }
 
         state.attendancePage =
@@ -1275,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             syncAttendanceUpdateButton();
-            return;
+            return true;
         }
 
         state.attendanceAbortController?.abort();
@@ -1371,9 +1473,11 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             syncAttendanceUpdateButton();
+
+            return true;
         } catch (error) {
             if (error.name === 'AbortError') {
-                return;
+                return false;
             }
 
             console.error(error);
@@ -1396,6 +1500,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 '';
 
             syncAttendanceUpdateButton();
+
+            return false;
         }
     }
 
@@ -1409,6 +1515,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
         syncAttendanceUpdateButton();
     }
+
+    updateSortControls('[data-attendance-employee-sort]', state.employeeSort, state.employeeDirection);
+    updateSortControls('[data-attendance-sort]', state.attendanceSort, state.attendanceDirection);
+
+    document.querySelectorAll('[data-attendance-employee-sort]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const column = button.dataset.attendanceEmployeeSort;
+            state.employeeDirection = state.employeeSort === column && state.employeeDirection === 'asc'
+                ? 'desc'
+                : 'asc';
+            state.employeeSort = column;
+            state.employeePage = 1;
+            updateSortControls('[data-attendance-employee-sort]', state.employeeSort, state.employeeDirection);
+            loadEmployees(1);
+        });
+    });
+
+    document.querySelectorAll('[data-attendance-sort]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const column = button.dataset.attendanceSort;
+            state.attendanceDirection = state.attendanceSort === column && state.attendanceDirection === 'asc'
+                ? 'desc'
+                : 'asc';
+            state.attendanceSort = column;
+            state.attendancePage = 1;
+            updateSortControls('[data-attendance-sort]', state.attendanceSort, state.attendanceDirection);
+            if (state.selectedEmployee) {
+                loadAttendance(1, { reloadFromServer: false });
+            }
+        });
+    });
 
     function selectAttendance(row) {
         if (
@@ -1560,8 +1697,12 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
         if (invalid) {
-            window.alert(
-                `Số giờ làm ngày ${formatDate(invalid.ngay_lam)} phải nằm trong khoảng -1 đến 24.`
+            showToast(
+                `Số giờ làm ngày ${formatDate(invalid.ngay_lam)} phải nằm trong khoảng -1 đến 24.`,
+                {
+                    variant: 'warning',
+                    title: 'Dữ liệu chấm công chưa hợp lệ',
+                },
             );
             return;
         }
@@ -1648,13 +1789,15 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const oldLabel =
-            elements.updateButton.textContent;
+            getButtonLabel(elements.updateButton);
 
         elements.updateButton.disabled =
             true;
 
-        elements.updateButton.textContent =
-            `Đang lưu ${payload.rows.length} ngày...`;
+        setButtonLabel(
+            elements.updateButton,
+            `Đang lưu ${payload.rows.length} ngày...`,
+        );
 
         try {
             /*
@@ -1715,12 +1858,12 @@ document.addEventListener('DOMContentLoaded', () => {
              * Backend rollback toàn batch nên dirty state
              * vẫn giữ nguyên để user có thể sửa rồi save lại.
              */
-            window.alert(
-                error.message
-            );
+            showToast(error.message, {
+                variant: 'danger',
+                title: 'Lỗi lưu chấm công',
+            });
         } finally {
-            elements.updateButton.textContent =
-                oldLabel;
+            setButtonLabel(elements.updateButton, oldLabel);
 
             syncAttendanceUpdateButton();
         }
@@ -1728,25 +1871,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deleteAttendanceAction = createDeleteAction({
         button: elements.deleteButton,
-        getSelection: () => ({
-            id: state.selectedAttendanceId,
-            persisted: Boolean(state.selectedAttendanceRow?._persisted),
-            canDelete: can(PERMISSION_CODES.DELETE),
-        }),
-        confirmAction: () => window.confirm(
-            'Bạn có chắc muốn xóa bản ghi chấm công đã chọn không?'
-        ),
+        getSelection: () => {
+            const selectedItem = findAttendanceByDate(
+                state.selectedAttendanceRow?.dataset?.date
+            );
+
+            return {
+                id: selectedItem?.ma_cc
+                    ? String(selectedItem.ma_cc)
+                    : null,
+                persisted: selectedItem?._persisted === true,
+                canDelete: can(PERMISSION_CODES.DELETE),
+            };
+        },
+        onInvalidSelection: (selection) => {
+            if (selection?.persisted !== true) {
+                showToast(
+                    'Bản ghi chấm công chưa được lưu nên không thể xóa.',
+                    {
+                        variant: 'warning',
+                        title: 'Không thể xóa chấm công',
+                    }
+                );
+            }
+        },
+        confirmAction: () => confirmDialog.open(elements.deleteButton),
         requestDelete: (id) => requestJson(
             `${CHAM_CONG_API_URL}/${encodeURIComponent(id)}`,
             { method: 'DELETE' },
         ),
-        onSuccess: () => Promise.all([
-            loadAttendance(state.attendancePage),
-            loadEmployees(state.employeePage),
-        ]),
+        onSuccess: async () => {
+            let refreshSucceeded = false;
+
+            try {
+                const [attendanceReloaded, employeesReloaded] =
+                    await Promise.all([
+                        loadAttendance(state.attendancePage),
+                        loadEmployees(state.employeePage),
+                    ]);
+
+                refreshSucceeded =
+                    attendanceReloaded === true &&
+                    employeesReloaded === true;
+            } catch (error) {
+                console.error(error);
+            }
+
+            if (!refreshSucceeded) {
+                showToast(
+                    'Đã xóa chấm công nhưng chưa tải lại được danh sách.',
+                    {
+                        variant: 'warning',
+                        title: 'Đã xóa chấm công',
+                    }
+                );
+
+                return;
+            }
+
+            showToast('Đã xóa chấm công thành công.', {
+                variant: 'success',
+                title: 'Đã xóa chấm công',
+            });
+        },
         onError: (error) => {
             console.error(error);
-            window.alert(error.message);
+            showToast(error.message, {
+                variant: 'danger',
+                title: 'Lỗi xóa chấm công',
+            });
         },
         sync: syncAttendanceUpdateButton,
         busyLabel: 'Đang xóa...',
@@ -1755,11 +1948,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteSelectedAttendance() {
         if (!can(PERMISSION_CODES.DELETE)) {
             notifyDenied('xóa chấm công');
-            return;
-        }
-
-        if (!state.selectedAttendanceId) {
-            window.alert('Bản ghi chấm công chưa được lưu nên không thể xóa.');
             return;
         }
 
@@ -2932,8 +3120,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     hours < -1 ||
                     hours > 24
                 ) {
-                    window.alert(
-                        'Số giờ làm phải nằm trong khoảng -1 đến 24.'
+                    showToast(
+                        'Số giờ làm phải nằm trong khoảng -1 đến 24.',
+                        {
+                            variant: 'warning',
+                            title: 'Dữ liệu chấm công chưa hợp lệ',
+                        },
                     );
                     return;
                 }

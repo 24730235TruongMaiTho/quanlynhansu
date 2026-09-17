@@ -20,6 +20,13 @@ test('leave employee filter is explicit and uses canonical page sizes', () => {
     assert.match(view, /<option value="50"/);
 });
 
+test('employee leave role cannot see employee picker or companywide control', () => {
+    assert.match(view, /data-leave-employee-filter/u);
+    assert.match(js, /permissionState\.user\?\.ma_vt/);
+    assert.match(js, /applyEmployeeScopeVisibility/);
+    assert.match(js, /element\.hidden\s*=\s*selfOnly/);
+});
+
 test('leave UI does not fetch when a filter control changes', () => {
     assert.match(js, /filterForm\?\.addEventListener\(\s*['"]submit['"]/);
     assert.doesNotMatch(js, /department\?\.addEventListener\([\s\S]*?applyEmployeeFilters/);

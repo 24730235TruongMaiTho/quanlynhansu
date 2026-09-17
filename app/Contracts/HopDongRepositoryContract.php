@@ -7,6 +7,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 interface HopDongRepositoryContract
 {
     public function paginate(array $filters, int $perPage, int $warningDays): LengthAwarePaginator;
+    public function paginateForEmployee(string $maNv, int $perPage = 20): LengthAwarePaginator;
     public function find(int $maHd): ?object;
     public function findType(int $maLhd): ?object;
     public function employees(): array;

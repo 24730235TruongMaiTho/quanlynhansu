@@ -3,15 +3,19 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Requests\BatchSaveChamCongRequest;
+use App\Http\Requests\ListChamCongEmployeeRequest;
+use App\Http\Requests\ListOwnChamCongRequest;
 use App\Http\Requests\UpdateChamCongRequest;
 use App\Contracts\NhanVienServiceContract;
 use App\Services\ChamCongService;
 use App\Services\ChamCongExportService;
 use App\Services\ChamCongImportService;
 use App\Support\JsonPaginator;
+use App\Support\CurrentEmployee;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,9 +25,61 @@ class ChamCongController extends Controller
 {
     public function __construct(
         private ChamCongService $chamCongService,
-        private NhanVienServiceContract $nhanVienService
+        private NhanVienServiceContract $nhanVienService,
+        private CurrentEmployee $currentEmployee,
     )
     {
+    }
+
+    public function own(ListOwnChamCongRequest $request): JsonResponse
+    {
+        $filters = $request->filters();
+        $result = $this->chamCongService->forEmployee(
+            $this->currentEmployee->id($request->user()),
+            $filters,
+        );
+
+        if (! ($result['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? 'Không thể tải dữ liệu chấm công của bạn.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => JsonPaginator::from($result['paginator']),
+            'summary' => $result['summary'],
+        ]);
+    }
+
+    public function ownPage(ListOwnChamCongRequest $request): \Illuminate\Contracts\View\View
+    {
+        $filters = $request->filters();
+        $result = $this->chamCongService->forEmployee(
+            $this->currentEmployee->id($request->user()),
+            $filters,
+        );
+        $paginator = $result['paginator'] ?? new LengthAwarePaginator(
+            [],
+            0,
+            $filters['per_page'],
+            $filters['page'],
+            ['path' => route('backend.selfservice.chamcong.index')],
+        );
+
+        return view('backend.selfservice.chamcong', [
+            'attendanceRows' => $paginator,
+            'summary' => $result['summary'] ?? [
+                'tong_gio_lam' => 0.0,
+                'so_lan_vao_muon' => 0,
+                'so_lan_ve_som' => 0,
+                'so_ngay_cham_cong' => 0.0,
+            ],
+            'error' => $result['success'] ?? false
+                ? null
+                : ($result['message'] ?? 'Không thể tải dữ liệu chấm công của bạn.'),
+        ]);
     }
 
     /**
@@ -42,52 +98,13 @@ class ChamCongController extends Controller
      * page
      * per_page
      */
-    public function employees(
-        Request $request
-    ): JsonResponse {
+    public function employees(ListChamCongEmployeeRequest $request): JsonResponse {
         try {
-            $validated = $request->validate([
-                'tu_khoa' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                ],
-
-                'ma_pb' => [
-                    'nullable',
-                    'integer',
-                    'exists:phong_ban,ma_pb',
-                ],
-
-                'thang' => [
-                    'nullable',
-                    'integer',
-                    'between:1,12',
-                ],
-
-                'nam' => [
-                    'nullable',
-                    'integer',
-                    'between:2000,2100',
-                ],
-
-                'page' => [
-                    'nullable',
-                    'integer',
-                    'min:1',
-                ],
-
-                'per_page' => ['nullable', 'integer'],
-            ]);
-
-            $filters = [
-                'tu_khoa' => $this->nullIfEmpty($validated['tu_khoa'] ?? null),
-                'ma_pb' => isset($validated['ma_pb']) ? (int) $validated['ma_pb'] : null,
-                'thang' => (int) ($validated['thang'] ?? now()->month),
-                'nam' => (int) ($validated['nam'] ?? now()->year),
-                'page' => (int) ($validated['page'] ?? 1),
-                'so_dong' => $this->pageSize($validated['per_page'] ?? null),
-            ];
+            $filters = $request->filters();
+            $request->throwIfValidationDatabaseFailed();
+            if (! $request->sortWasProvided()) {
+                unset($filters['sort'], $filters['direction']);
+            }
 
             $paginator = $this->nhanVienService->paginateForAttendance($filters);
 
@@ -525,10 +542,8 @@ class ChamCongController extends Controller
      * Ví dụ:
      * GET /api/v1/cham-cong/template?format=xlsx
      *
-     * Template:
+     * Template chỉ chứa header canonical (không thêm dòng mẫu):
      * ma_nv,ngay_lam,so_gio_lam,vao_muon,ve_som
-     *
-     * 00001,01/08/2026,8,0,0
      */
     public function exportImportTemplate(
         Request $request,

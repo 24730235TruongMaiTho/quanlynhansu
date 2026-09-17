@@ -157,3 +157,29 @@ test('successful leave DELETE awaits the list reload before syncing selection st
     assert.equal(button.getAttribute('aria-busy'), null);
     assert.equal(button.title, 'Bản ghi chưa được lưu nên không thể xóa');
 });
+
+test('delete action awaits an asynchronous confirmation before sending DELETE', async () => {
+    const button = new FakeButton();
+    let resolveConfirmation;
+    let deleteCalls = 0;
+    const confirmation = new Promise((resolve) => {
+        resolveConfirmation = resolve;
+    });
+
+    const action = createDeleteAction({
+        button,
+        getSelection: () => ({ id: '7', persisted: true, canDelete: true }),
+        confirmAction: () => confirmation,
+        requestDelete: async () => {
+            deleteCalls += 1;
+        },
+    });
+
+    const pending = action();
+    await Promise.resolve();
+    assert.equal(deleteCalls, 0);
+
+    resolveConfirmation(true);
+    assert.equal(await pending, true);
+    assert.equal(deleteCalls, 1);
+});

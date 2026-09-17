@@ -57,6 +57,12 @@ document.addEventListener(
 
             coefficientPerPage:
                 10,
+
+            coefficientSort:
+                'ma_ls',
+
+            coefficientDirection:
+                'desc',
         };
 
         function escapeHtml(value) {
@@ -252,7 +258,7 @@ document.addEventListener(
 
             const response =
                 await fetch(
-                    `${API}?ma_nv=${encodeURIComponent(state.employeeCode)}&page=${state.coefficientPage}&per_page=${state.coefficientPerPage}`,
+                    `${API}?ma_nv=${encodeURIComponent(state.employeeCode)}&page=${state.coefficientPage}&per_page=${state.coefficientPerPage}&sort=${encodeURIComponent(state.coefficientSort)}&direction=${state.coefficientDirection}`,
                     {
                         headers: {
                             Accept:
@@ -300,6 +306,48 @@ document.addEventListener(
                     );
             }
         }
+
+        function updateSortControls() {
+            document.querySelectorAll('[data-coefficient-sort]').forEach((button) => {
+                const active = button.dataset.coefficientSort === state.coefficientSort;
+                const nextDirection = active && state.coefficientDirection === 'asc' ? 'desc' : 'asc';
+                const label = button.dataset.sortLabel || button.textContent.trim();
+                const icon = button.querySelector('i');
+                const header = button.closest('th');
+
+                button.classList.toggle('is-active', active);
+                button.dataset.sortDirection = active ? state.coefficientDirection : 'asc';
+                button.setAttribute('aria-label', active
+                    ? `Sắp xếp ${label}; đang ${state.coefficientDirection === 'asc' ? 'tăng dần' : 'giảm dần'}; nhấn để sắp xếp ${nextDirection === 'asc' ? 'tăng dần' : 'giảm dần'}`
+                    : `Sắp xếp ${label} tăng dần`);
+                header?.setAttribute(
+                    'aria-sort',
+                    active
+                        ? (state.coefficientDirection === 'asc' ? 'ascending' : 'descending')
+                        : 'none',
+                );
+                icon?.classList.remove('bi-arrow-down-up', 'bi-arrow-up-short', 'bi-arrow-down-short');
+                icon?.classList.add(active
+                    ? (state.coefficientDirection === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short')
+                    : 'bi-arrow-down-up');
+            });
+        }
+
+        updateSortControls();
+        document.querySelectorAll('[data-coefficient-sort]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const column = button.dataset.coefficientSort;
+                state.coefficientDirection = state.coefficientSort === column && state.coefficientDirection === 'asc'
+                    ? 'desc'
+                    : 'asc';
+                state.coefficientSort = column;
+                state.coefficientPage = 1;
+                updateSortControls();
+                if (state.employeeCode) {
+                    load(state.employeeCode, state.employeeName, 1);
+                }
+            });
+        });
 
         function isNonRowInteractiveTarget(target) {
             return target instanceof Element && target.closest(

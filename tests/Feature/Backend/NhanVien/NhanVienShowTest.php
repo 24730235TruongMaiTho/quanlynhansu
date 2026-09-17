@@ -107,6 +107,8 @@ class NhanVienShowTest extends TestCase
             'ma_tt' => 1,
             'page' => 3,
             'so_dong' => 20,
+            'sort' => 'ma_nv',
+            'direction' => 'desc',
             'redirect' => 'https://evil.example/steal',
             'return_to' => 'https://evil.example/return',
         ]));
@@ -297,7 +299,7 @@ class NhanVienShowTest extends TestCase
         }
     }
 
-    public function test_index_show_link_preserves_only_the_six_whitelisted_query_keys(): void
+    public function test_index_show_link_preserves_only_the_eight_whitelisted_query_keys(): void
     {
         $filters = [
             'tu_khoa' => 'Nguyễn An',
@@ -306,6 +308,8 @@ class NhanVienShowTest extends TestCase
             'ma_tt' => 1,
             'page' => 3,
             'so_dong' => 20,
+            'sort' => 'ma_nv',
+            'direction' => 'desc',
         ];
         $this->mock(NhanVienServiceContract::class, function (MockInterface $mock) use ($filters): void {
             $mock->shouldReceive('paginate')->once()->with($filters)->andReturn(

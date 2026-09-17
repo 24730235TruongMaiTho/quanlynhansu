@@ -15,11 +15,11 @@ class ChamCongRepository
         }
 
         if (isset($filters['from_date'])) {
-            $query->whereDate('ngay_ky', '>=', $filters['from_date']);
+            $query->whereDate('ngay_lam', '>=', $filters['from_date']);
         }
 
         if (isset($filters['to_date'])) {
-            $query->whereDate('ngay_ky', '<=', $filters['to_date']);
+            $query->whereDate('ngay_lam', '<=', $filters['to_date']);
         }
 
         return $query->with('nhanVien')->paginate(15);

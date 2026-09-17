@@ -57,8 +57,8 @@
                     </div>
                 </div>
                 <div class="card-footer bg-white d-flex flex-wrap justify-content-end gap-2 py-3">
-                    <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.vaitro.index') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i>Quay lại danh sách vai trò</a>
-                    <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Lưu phân quyền</button>
+                    <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.vaitro.index') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Quay lại danh sách vai trò</span></a>
+                    <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-check2-circle" aria-hidden="true"></i><span data-button-label>Lưu phân quyền</span></button>
                 </div>
             </section>
         </form>

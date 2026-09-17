@@ -9,6 +9,9 @@ import {
 import { formatDisplayDate } from '../shared/date-field.js';
 import { renderSharedPagination } from '../shared/pagination.js';
 import { normalizePaginator } from '../shared/json-paginator.js';
+import { showToast } from '../shared/toast.js';
+import { getSalaryStatusText, isSalaryCalculationComplete } from './salary-status.js';
+import { getButtonLabel, setButtonLabel } from '../shared/button-label.js';
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -107,11 +110,13 @@ document.addEventListener(
 
         const state = {
             page: 1,
+            sort: 'ky_luong',
+            direction: 'desc',
 
             perPage:
                 Number(
                     elements.perPage?.value ||
-                    15
+                    10
                 ),
 
             abortController: null,
@@ -334,6 +339,8 @@ document.addEventListener(
                 page,
                 per_page:
                 state.perPage,
+                sort: state.sort,
+                direction: state.direction,
             };
 
             Object.entries(
@@ -354,6 +361,30 @@ document.addEventListener(
             );
 
             return url.toString();
+        }
+
+        function updateSortControls() {
+            document.querySelectorAll('[data-salary-sort]').forEach((button) => {
+                const active = button.dataset.salarySort === state.sort;
+                const nextDirection = active && state.direction === 'asc' ? 'desc' : 'asc';
+                const label = button.dataset.sortLabel || button.textContent.trim();
+                const icon = button.querySelector('i');
+                const header = button.closest('th');
+
+                button.classList.toggle('is-active', active);
+                button.dataset.sortDirection = active ? state.direction : 'asc';
+                button.setAttribute('aria-label', active
+                    ? `Sắp xếp ${label}; đang ${state.direction === 'asc' ? 'tăng dần' : 'giảm dần'}; nhấn để sắp xếp ${nextDirection === 'asc' ? 'tăng dần' : 'giảm dần'}`
+                    : `Sắp xếp ${label} tăng dần`);
+                header?.setAttribute(
+                    'aria-sort',
+                    active ? (state.direction === 'asc' ? 'ascending' : 'descending') : 'none',
+                );
+                icon?.classList.remove('bi-arrow-down-up', 'bi-arrow-up-short', 'bi-arrow-down-short');
+                icon?.classList.add(active
+                    ? (state.direction === 'asc' ? 'bi-arrow-up-short' : 'bi-arrow-down-short')
+                    : 'bi-arrow-down-up');
+            });
         }
 
         function renderLoading() {
@@ -485,7 +516,7 @@ document.addEventListener(
             ) {
                 actions.push(`
                     <button
-                        class="btn salary-row-create-action"
+                        class="btn btn-icon-text salary-row-create-action"
                         type="button"
                         data-salary-action="create-for-employee"
                         data-employee-code="${escapeHtml(employeeCode)}"
@@ -493,7 +524,7 @@ document.addEventListener(
                         title="Tạo thông tin lương"
                         aria-label="Tạo thông tin lương cho ${escapeHtml(employeeName)}"
                     >
-                        ${iconCreate()}Tạo thông tin lương
+                        ${iconCreate()}<span data-button-label>Tạo thông tin lương</span>
                     </button>
                 `);
             }
@@ -564,12 +595,8 @@ document.addEventListener(
                                 }
                             );
 
-                        const statusText =
-                            salary.thong_bao_tinh_luong ||
-                            'Cần kiểm tra dữ liệu';
-
-                        const ready =
-                            salary.trang_thai_tinh_luong === 'READY';
+                        const statusText = getSalaryStatusText(salary);
+                        const ready = isSalaryCalculationComplete(salary);
 
                         const statusHtml = ready
                             ? `
@@ -579,7 +606,7 @@ document.addEventListener(
                                     data-bs-placement="top"
                                     title="Đã hoàn tất tính lương"
                                 >
-                                    Đã hoàn tất
+                                    Hoàn tất tính lương
                                 </span>
                             `
                                                     : `
@@ -1041,6 +1068,20 @@ document.addEventListener(
             }
         }
 
+        updateSortControls();
+        document.querySelectorAll('[data-salary-sort]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const column = button.dataset.salarySort;
+                state.direction = state.sort === column && state.direction === 'asc'
+                    ? 'desc'
+                    : 'asc';
+                state.sort = column;
+                state.page = 1;
+                updateSortControls();
+                loadSalaryData(1);
+            });
+        });
+
         elements.filterForm?.addEventListener('submit', (event) => {
             event.preventDefault();
             applyFilters();
@@ -1085,7 +1126,7 @@ document.addEventListener(
                             elements
                                 .perPage
                                 .value ||
-                            15
+                            10
                         );
 
                     loadSalaryData(
@@ -1184,11 +1225,10 @@ document.addEventListener(
             }
 
             const oldText =
-                elements.exportButton.textContent;
+                getButtonLabel(elements.exportButton);
 
             elements.exportButton.disabled = true;
-            elements.exportButton.textContent =
-                'Đang xuất...';
+            setButtonLabel(elements.exportButton, 'Đang xuất...');
 
             try {
                 const response = await fetch(
@@ -1302,16 +1342,16 @@ document.addEventListener(
                     error
                 );
 
-                window.alert(
-                    error.message
-                );
+                showToast(error.message, {
+                    variant: 'danger',
+                    title: 'Lỗi xuất báo cáo',
+                });
 
             } finally {
                 elements.exportButton.disabled =
                     false;
 
-                elements.exportButton.textContent =
-                    oldText;
+                setButtonLabel(elements.exportButton, oldText);
             }
         }
 

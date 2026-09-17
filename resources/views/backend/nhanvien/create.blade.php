@@ -28,7 +28,7 @@
             ]"
         >
             <x-slot:actions>
-            <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.nhanvien.index') }}">
+            <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.nhanvien.index') }}">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 Quay lại danh sách
             </a>

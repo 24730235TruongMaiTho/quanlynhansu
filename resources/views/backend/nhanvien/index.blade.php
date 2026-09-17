@@ -18,10 +18,18 @@
             'ma_tt',
             'page',
             'so_dong',
+            'sort',
+            'direction',
         ]), static fn (mixed $value): bool => $value !== null && $value !== '');
         $canCreate = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Tao->value);
         $canEdit = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Sua->value);
         $canDestroy = \Illuminate\Support\Facades\Gate::allows(\App\Enums\NhanVienPermission::Xoa->value);
+        $sort = $filters['sort'] ?? 'ma_nv';
+        $direction = $filters['direction'] ?? 'desc';
+        $sortUrl = static function (string $column) use ($sort, $direction, $listQuery): string {
+            $next = $sort === $column && $direction === 'asc' ? 'desc' : 'asc';
+            return route('backend.nhanvien.index', array_merge($listQuery, ['sort' => $column, 'direction' => $next, 'page' => 1]));
+        };
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="page-title">
@@ -37,7 +45,7 @@
         >
             <x-slot:actions>
             @if ($canCreate)
-                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm nhân viên" title="Thêm nhân viên" href="{{ route('backend.nhanvien.create') }}" data-employee-create-trigger data-employee-modal-mode="create">
+                <a class="btn btn-primary btn-icon-text" aria-label="Thêm nhân viên" title="Thêm nhân viên" href="{{ route('backend.nhanvien.create') }}" data-employee-create-trigger data-employee-modal-mode="create">
                     <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm nhân viên
                 </a>
             @endif
@@ -148,17 +156,17 @@
                     </div>
                     <div class="filter-bar__actions">
                             <button
-                                class="btn btn-primary d-inline-flex align-items-center gap-2"
+                                class="btn btn-primary btn-icon-text"
                                 type="submit"
                                 aria-disabled="false"
                                 data-disable-on-submit
                                 data-submitting-text="Đang lọc..."
                             >
                                 <i class="bi bi-funnel" aria-hidden="true"></i>
-                                Áp dụng bộ lọc
+                                <span data-button-label>Áp dụng bộ lọc</span>
                             </button>
                             @if ($hasFilters)
-                                <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.nhanvien.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa bộ lọc</a>
+                                <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.nhanvien.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Xóa bộ lọc</span></a>
                             @endif
                     </div>
                 </form>
@@ -180,12 +188,12 @@
                         <thead class="table-light">
                             <tr>
                                 <th scope="col">Ảnh đại diện</th>
-                                <th scope="col">Mã nhân viên</th>
-                                <th scope="col">Họ tên</th>
+                                <th scope="col" aria-sort="{{ $sort === 'ma_nv' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ma_nv" label="Mã nhân viên" :sort="$sort" :direction="$direction" :href="$sortUrl('ma_nv')" /></th>
+                                <th scope="col" aria-sort="{{ $sort === 'ho_ten' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ho_ten" label="Họ tên" :sort="$sort" :direction="$direction" :href="$sortUrl('ho_ten')" /></th>
                                 <th scope="col">Liên hệ</th>
-                                <th scope="col">Phòng ban</th>
-                                <th scope="col">Chức vụ</th>
-                                <th scope="col">Trạng thái</th>
+                                <th scope="col" aria-sort="{{ $sort === 'ma_pb' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ma_pb" label="Phòng ban" :sort="$sort" :direction="$direction" :href="$sortUrl('ma_pb')" /></th>
+                                <th scope="col" aria-sort="{{ $sort === 'ma_cv' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ma_cv" label="Chức vụ" :sort="$sort" :direction="$direction" :href="$sortUrl('ma_cv')" /></th>
+                                <th scope="col" aria-sort="{{ $sort === 'ma_tt' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ma_tt" label="Trạng thái" :sort="$sort" :direction="$direction" :href="$sortUrl('ma_tt')" /></th>
                                 <th scope="col">Thao tác</th>
                             </tr>
                         </thead>
@@ -227,7 +235,7 @@
                                         @endphp
                                         <label class="visually-hidden" for="employee-action-{{ $dialogKey }}">Thao tác với {{ $employee->ho_ten }}</label>
                                         <div class="table-actions employee-table-actions flex-nowrap gap-1" data-action-buttons>
-                                            <a class="btn btn-outline-primary" href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" aria-label="Xem {{ $employee->ho_ten }}" title="Xem {{ $employee->ho_ten }}"><i class="bi bi-eye button-icon" aria-hidden="true"></i>Xem</a>
+                                            <a class="btn btn-outline-primary btn-icon-text" href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}" aria-label="Xem {{ $employee->ho_ten }}" title="Xem {{ $employee->ho_ten }}"><i class="bi bi-eye" aria-hidden="true"></i><span>Xem</span></a>
                                             @if ($canEdit)
                                                 <a class="btn btn-outline-primary btn-icon-action" href="{{ $editUrl }}" data-employee-edit-trigger data-employee-modal-mode="edit" aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}"><i class="bi bi-pencil-square button-icon" aria-hidden="true"></i></a>
                                             @endif
@@ -249,7 +257,7 @@
                                         <noscript>
                                             <a href="{{ route('backend.nhanvien.show', ['ma_nv' => $employee->ma_nv] + $listQuery) }}">Xem</a>
                                             @if ($canEdit)
-                                                <a class="btn btn-outline-primary btn-sm" href="{{ $editUrl }}" aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}"><i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa</a>
+                                                <a class="btn btn-outline-primary btn-sm btn-icon-text" href="{{ $editUrl }}" aria-label="Chỉnh sửa {{ $employee->ho_ten }}" title="Chỉnh sửa {{ $employee->ho_ten }}"><i class="bi bi-pencil-square" aria-hidden="true"></i><span>Chỉnh sửa</span></a>
                                             @endif
                                         </noscript>
                                     </td>
@@ -271,7 +279,7 @@
                             nhưng trang {{ $employees->currentPage() }} không chứa dòng nào.
                         @endif
                     </p>
-                    <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ $employees->url(1) }}"><i class="bi bi-arrow-left" aria-hidden="true"></i>Về trang đầu tiên</a>
+                    <a class="btn btn-outline-secondary btn-icon-text" href="{{ $employees->url(1) }}"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Về trang đầu tiên</span></a>
                 </div>
             @elseif (! $employeeError)
                 <div class="card-body text-center py-5" role="status">

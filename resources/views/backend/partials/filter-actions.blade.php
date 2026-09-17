@@ -37,11 +37,11 @@
         @endforeach
     </div>
     <div class="filter-bar__actions">
-        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel button-icon" aria-hidden="true"></i>{{ $applyLabel }}</button>
+        <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i><span>{{ $applyLabel }}</span></button>
         @if ($resetUrl)
-            <a class="btn btn-outline-secondary" href="{{ $resetUrl }}"><i class="bi bi-arrow-counterclockwise button-icon" aria-hidden="true"></i>{{ $resetLabel }}</a>
+            <a class="btn btn-outline-secondary btn-icon-text" href="{{ $resetUrl }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>{{ $resetLabel }}</span></a>
         @else
-            <button class="btn btn-outline-secondary" type="reset"><i class="bi bi-arrow-counterclockwise button-icon" aria-hidden="true"></i>{{ $resetLabel }}</button>
+            <button class="btn btn-outline-secondary btn-icon-text" type="reset"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>{{ $resetLabel }}</span></button>
         @endif
     </div>
 </form>

@@ -27,6 +27,13 @@ class ListNhanVienRequest extends FormRequest
                 : (is_string($value) ? trim($value) : $value);
         }
 
+        foreach (['sort', 'direction'] as $key) {
+            if ($this->exists($key)) {
+                $value = $this->input($key);
+                $normalized[$key] = is_string($value) ? strtolower(trim($value)) : $value;
+            }
+        }
+
         if (($normalized['page'] ?? null) === null) {
             $normalized['page'] = 1;
         }
@@ -34,6 +41,8 @@ class ListNhanVienRequest extends FormRequest
         if (($normalized['so_dong'] ?? null) === null) {
             $normalized['so_dong'] = 20;
         }
+        $normalized['sort'] = $normalized['sort'] ?? 'ma_nv';
+        $normalized['direction'] = $normalized['direction'] ?? 'desc';
 
         $this->merge($normalized);
     }
@@ -47,12 +56,12 @@ class ListNhanVienRequest extends FormRequest
             'ma_tt' => ['nullable', 'integer', 'min:1'],
             'page' => ['sometimes', 'integer', 'min:1'],
             'so_dong' => ['sometimes', 'integer', Rule::in([5, 10, 20, 50, 100])],
+            'sort' => ['sometimes', 'string', Rule::in(['ma_nv', 'ho_ten', 'ma_pb', 'ma_cv', 'ma_tt'])],
+            'direction' => ['sometimes', 'string', Rule::in(['asc', 'desc'])],
         ];
     }
 
-    /**
-     * @return array{tu_khoa: ?string, ma_pb: ?int, ma_cv: ?int, ma_tt: ?int, page: int, so_dong: int}
-     */
+    /** @return array{tu_khoa: ?string, ma_pb: ?int, ma_cv: ?int, ma_tt: ?int, page: int, so_dong: int, sort: string, direction: string} */
     public function filters(): array
     {
         $validated = $this->validated();
@@ -64,6 +73,8 @@ class ListNhanVienRequest extends FormRequest
             'ma_tt' => isset($validated['ma_tt']) ? (int) $validated['ma_tt'] : null,
             'page' => (int) ($validated['page'] ?? 1),
             'so_dong' => (int) ($validated['so_dong'] ?? 20),
+            'sort' => $validated['sort'] ?? 'ma_nv',
+            'direction' => $validated['direction'] ?? 'desc',
         ];
     }
 }

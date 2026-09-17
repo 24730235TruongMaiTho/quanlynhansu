@@ -26,7 +26,7 @@
                 </button>
                 <ul class="dropdown-menu-custom" id="userDropdown" style="list-style: none; padding: 8px; margin: 0;">
                     <li><a class="dropdown-item" href="{{ route('backend.profile.edit') }}">
-                        <i class="bi bi-person-circle" aria-hidden="true"></i> Hồ sơ cá nhân
+                        <i class="bi bi-person-circle" aria-hidden="true"></i> Tài khoản cá nhân
                     </a></li>
                     <li><a class="dropdown-item" href="{{ route('backend.profile.password.edit') }}">
                         <i class="bi bi-key" aria-hidden="true"></i> Đổi mật khẩu

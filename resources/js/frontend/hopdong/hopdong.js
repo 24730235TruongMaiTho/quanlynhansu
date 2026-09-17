@@ -75,10 +75,27 @@ function bindContractForm(root = typeof document !== 'undefined' ? document : nu
     });
 }
 
+function bindExpiringFilter(root = typeof document !== 'undefined' ? document : null) {
+    const checkbox = root?.querySelector?.('#sap_het_han');
+    const form = checkbox?.form || root?.querySelector?.('#contract-filter-form');
+    if (!checkbox || !form || checkbox.dataset.expiringFilterBound === '1') return;
+
+    checkbox.dataset.expiringFilterBound = '1';
+    checkbox.addEventListener('change', () => {
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+            return;
+        }
+
+        form.submit?.();
+    });
+}
+
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
         bindConfirmDeleteForms();
         bindContractForm();
+        bindExpiringFilter();
     });
 
     const contractModal = initializeSimpleEditModal(document, window);
@@ -102,6 +119,7 @@ if (typeof document !== 'undefined') {
 export {
     bindConfirmDeleteForms,
     bindContractForm,
+    bindExpiringFilter,
     formatVietnameseInteger,
     formatVietnameseIntegerInput,
     parseVietnameseInteger,

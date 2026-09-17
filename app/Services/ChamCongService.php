@@ -293,6 +293,72 @@ class ChamCongService
     }
 
     /**
+     * Return the attendance projection for one authenticated employee.
+     * Identity is supplied by the controller boundary and is never taken
+     * from the request filters.
+     *
+     * @return array{success: bool, paginator?: LengthAwarePaginator, summary?: array, message?: string}
+     */
+    public function forEmployee(string $maNv, array $filters = []): array
+    {
+        try {
+            $month = (int) ($filters['thang'] ?? now()->month);
+            $year = (int) ($filters['nam'] ?? now()->year);
+            $page = max((int) ($filters['page'] ?? 1), 1);
+            $perPage = in_array((int) ($filters['per_page'] ?? 10), [10, 20, 50], true)
+                ? (int) $filters['per_page']
+                : 10;
+
+            $fromDate = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+            $toDate = Carbon::create($year, $month, 1)->startOfMonth()->addMonth()->toDateString();
+
+            $base = DB::table('cham_cong')
+                ->where('ma_nv', '=', $maNv)
+                ->whereDate('ngay_lam', '>=', $fromDate)
+                ->whereDate('ngay_lam', '<', $toDate);
+
+            $paginator = (clone $base)
+                ->select([
+                    'ma_cc',
+                    'ma_nv',
+                    'ngay_lam',
+                    'so_gio_lam',
+                    'vao_muon',
+                    've_som',
+                ])
+                ->orderBy('ngay_lam')
+                ->orderBy('ma_cc')
+                ->paginate($perPage, ['*'], 'page', $page)
+                ->withQueryString();
+
+            $summary = (clone $base)
+                ->selectRaw('COALESCE(SUM(so_gio_lam), 0) AS tong_gio_lam')
+                ->selectRaw('COALESCE(SUM(CASE WHEN vao_muon = 1 THEN 1 ELSE 0 END), 0) AS so_lan_vao_muon')
+                ->selectRaw('COALESCE(SUM(CASE WHEN ve_som = 1 THEN 1 ELSE 0 END), 0) AS so_lan_ve_som')
+                ->selectRaw('COALESCE(SUM(CASE WHEN so_gio_lam >= 8 THEN 1 WHEN so_gio_lam >= 4 THEN 0.5 ELSE 0 END), 0) AS so_ngay_cham_cong')
+                ->first();
+
+            return [
+                'success' => true,
+                'paginator' => $paginator,
+                'summary' => [
+                    'tong_gio_lam' => (float) ($summary->tong_gio_lam ?? 0),
+                    'so_lan_vao_muon' => (int) ($summary->so_lan_vao_muon ?? 0),
+                    'so_lan_ve_som' => (int) ($summary->so_lan_ve_som ?? 0),
+                    'so_ngay_cham_cong' => (float) ($summary->so_ngay_cham_cong ?? 0),
+                ],
+            ];
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return [
+                'success' => false,
+                'message' => 'Không thể tải dữ liệu chấm công của bạn.',
+            ];
+        }
+    }
+
+    /**
      * Save nhiều ngày chấm công trong 1 request + 1 transaction.
      *
      * Payload:

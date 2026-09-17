@@ -28,7 +28,10 @@ class EmployeeAuthenticationTest extends TestCase
             ->assertSee('name="mat_khau"', false)
             ->assertSee('autocomplete="username"', false)
             ->assertSee('autocomplete="current-password"', false)
-            ->assertDontSee('remember', false);
+            ->assertDontSee('remember', false)
+            ->assertDontSee('Quên mật khẩu', false)
+            ->assertDontSee('forgot-link', false)
+            ->assertDontSee('login-options', false);
     }
 
     public function test_authenticated_user_visiting_login_form_is_redirected_to_dashboard(): void

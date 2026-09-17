@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ListHopDongRequest;
 use App\Http\Requests\StoreHopDongRequest;
 use App\Http\Requests\UpdateHopDongRequest;
+use App\Support\CurrentEmployee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,20 @@ use Throwable;
 
 final class HopDongController extends Controller
 {
-    public function __construct(private HopDongServiceContract $contracts) {}
+    public function __construct(
+        private HopDongServiceContract $contracts,
+        private CurrentEmployee $currentEmployee,
+    ) {}
+
+    public function own(Request $request): View
+    {
+        $contracts = $this->contracts->paginateForEmployee(
+            $this->currentEmployee->id($request->user()),
+            20,
+        );
+
+        return view('backend.selfservice.hopdong', compact('contracts'));
+    }
 
     public function index(ListHopDongRequest $request): View
     {

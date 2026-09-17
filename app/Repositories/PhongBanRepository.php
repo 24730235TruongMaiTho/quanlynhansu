@@ -21,7 +21,7 @@ final class PhongBanRepository implements PhongBanRepositoryContract
     public function all(): array
     {
         return $this->databaseOperation(
-            fn (): array => $this->departmentQuery()->get()->map(
+            fn (): array => $this->departmentQuery()->orderBy('pb.ma_pb', 'asc')->get()->map(
                 fn (object $row): object => $this->explicitRow($row),
             )->all(),
         );
@@ -36,6 +36,15 @@ final class PhongBanRepository implements PhongBanRepositoryContract
             if (filled($filters['ten_pb'])) {
                 $query->where('pb.ten_pb', 'like', '%'.trim((string) $filters['ten_pb']).'%');
             }
+
+            $sortColumns = [
+                'ma_pb' => 'pb.ma_pb',
+                'ten_pb' => 'pb.ten_pb',
+                'so_nhan_vien' => 'so_nhan_vien',
+            ];
+            $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortColumns[$filters['sort'] ?? 'ma_pb'] ?? 'pb.ma_pb', $direction)
+                ->orderBy('pb.ma_pb', 'desc');
 
             return $query->paginate(
                 (int) $filters['so_dong'],
@@ -123,8 +132,7 @@ final class PhongBanRepository implements PhongBanRepositoryContract
             ->leftJoin('nhan_vien as nv', 'nv.ma_pb', '=', 'pb.ma_pb')
             ->select(['pb.ma_pb', 'pb.ten_pb'])
             ->selectRaw('COUNT(nv.ma_nv) AS so_nhan_vien')
-            ->groupBy('pb.ma_pb', 'pb.ten_pb')
-            ->orderBy('pb.ma_pb', 'asc');
+            ->groupBy('pb.ma_pb', 'pb.ten_pb');
     }
 
     private function lockedDepartment(int $maPb): ?object

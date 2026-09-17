@@ -1,5 +1,6 @@
 import { initializeListFilters } from '../shared/list-filter.js';
 import { initializeSimpleEditModal } from '../shared/edit-modal.js';
+import { setButtonLabel } from '../shared/button-label.js';
 
 function disableSubmit(form) {
     const submit = form.querySelector('[data-submit]');
@@ -13,7 +14,7 @@ function disableSubmit(form) {
     submit.setAttribute('aria-disabled', 'true');
 
     if (submittingText) {
-        submit.textContent = submittingText;
+        setButtonLabel(submit, submittingText);
     }
 }
 

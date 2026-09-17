@@ -1,3 +1,5 @@
+import { setButtonLabel } from './button-label.js';
+
 /**
  * Create a guarded destructive action for controls whose target is selected
  * elsewhere in the page. The selection callback is re-read before transport
@@ -6,6 +8,7 @@
 export function createDeleteAction({
     button,
     getSelection,
+    onInvalidSelection,
     confirmAction,
     requestDelete,
     onSuccess,
@@ -24,11 +27,20 @@ export function createDeleteAction({
             selection.persisted !== true ||
             selection.canDelete !== true
         ) {
+            onInvalidSelection?.(selection);
             sync?.();
             return false;
         }
 
-        if (!confirmAction?.()) return false;
+        const confirmation = confirmAction?.();
+        if (
+            confirmation &&
+            typeof confirmation.then === 'function'
+        ) {
+            if (!(await confirmation)) return false;
+        } else if (!confirmation) {
+            return false;
+        }
 
         inFlight = true;
         if (button) {
@@ -36,6 +48,7 @@ export function createDeleteAction({
             button.setAttribute?.('aria-busy', 'true');
             button.title = busyLabel;
             button.setAttribute?.('aria-label', busyLabel);
+            setButtonLabel(button, busyLabel);
         }
 
         try {

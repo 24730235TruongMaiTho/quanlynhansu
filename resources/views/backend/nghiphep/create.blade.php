@@ -10,31 +10,24 @@
             icon="bi-calendar-plus"
             description="Tạo yêu cầu nghỉ phép cho tài khoản đang đăng nhập."
             :breadcrumbs="[
-                ['label' => 'Nghỉ phép', 'url' => route('backend.nghiphep.index')],
+                ['label' => 'Tổng quan', 'url' => route('backend.tongquan.index')],
                 ['label' => 'Tạo đơn'],
             ]"
-        >
-            <x-slot:actions>
-                <a href="{{ route('backend.nghiphep.index') }}"
-                   class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
-                    <i class="bi bi-arrow-left button-icon" aria-hidden="true"></i>Quay lại
-                </a>
-            </x-slot:actions>
-        </x-backend.page-header>
+        ></x-backend.page-header>
 
         <section class="alert alert-light border shadow-sm mb-3" id="leave-create-auth-loading">
             <div class="d-flex align-items-center gap-2">
                 <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                <span>Đang kiểm tra tài khoản và quyền tạo đơn...</span>
+                <span>Đang kiểm tra tài khoản...</span>
             </div>
         </section>
 
         <section class="alert alert-danger border shadow-sm mb-3"
                  id="leave-create-access-denied"
                  hidden>
-            <div class="fw-semibold mb-1">Không thể tạo đơn nghỉ phép</div>
+            <div class="fw-semibold mb-1">Không thể tải thông tin tài khoản</div>
             <div class="small" id="leave-create-access-denied-message">
-                Tài khoản hiện tại chưa có quyền NghiPhep.Insert.
+                Không xác định được nhân viên hiện tại.
             </div>
         </section>
 
@@ -218,18 +211,18 @@
 
                     <div class="d-flex gap-2">
                         <button
-                            class="btn btn-outline-secondary btn-sm"
+                            class="btn btn-outline-secondary btn-sm btn-icon-text"
                             id="leave-create-clear"
                             type="button"
                         >
-                            <i class="bi bi-arrow-clockwise button-icon" aria-hidden="true"></i>Làm mới
+                            <i class="bi bi-arrow-clockwise" aria-hidden="true"></i><span>Làm mới</span>
                         </button>
 
-                        <button class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
+                        <button class="btn btn-primary btn-sm btn-icon-text"
                                 id="leave-create-submit"
                                 type="submit">
-                            <i class="bi bi-send button-icon" aria-hidden="true"></i>
-                            <span id="leave-create-submit-label">Gửi đơn nghỉ phép</span>
+                            <i class="bi bi-send" aria-hidden="true"></i>
+                            <span id="leave-create-submit-label" data-button-label>Gửi đơn nghỉ phép</span>
                         </button>
                     </div>
                 </div>
@@ -294,11 +287,11 @@
                             </div>
 
                             <button
-                                class="btn btn-outline-secondary btn-sm text-nowrap"
+                                class="btn btn-outline-secondary btn-sm btn-icon-text text-nowrap"
                                 id="leave-log-clear-filter"
                                 type="button"
                             >
-                                <i class="bi bi-arrow-counterclockwise button-icon" aria-hidden="true"></i>Xóa lọc
+                                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Xóa lọc</span>
                             </button>
                         </div>
                     </div>
@@ -363,10 +356,10 @@
                     Hiển thị 0 yêu cầu
                 </span>
 
-                <button class="btn btn-outline-secondary btn-sm"
+                <button class="btn btn-outline-secondary btn-sm btn-icon-text"
                         id="leave-create-log-refresh"
                         type="button">
-                    <i class="bi bi-arrow-clockwise button-icon" aria-hidden="true"></i>Làm mới
+                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i><span>Làm mới</span>
                 </button>
             </div>
         </section>

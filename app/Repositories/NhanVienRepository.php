@@ -64,7 +64,20 @@ final class NhanVienRepository implements NhanVienRepositoryContract
             $this->applyEmployeeFilters($query, $filters);
             $columns = $query->columns ?? ['*'];
 
-            return $query->orderBy('nv.ma_nv')->paginate(
+            $sortColumns = [
+                'ma_nv' => 'nv.ma_nv',
+                'ho_ten' => 'nv.ho_ten',
+                'gioi_tinh' => 'nv.gioi_tinh',
+                'sdt' => 'nv.sdt',
+                'email' => 'nv.email',
+                'ma_pb' => 'nv.ma_pb',
+                'ma_cv' => 'nv.ma_cv',
+                'ma_tt' => 'nv.ma_tt',
+            ];
+            $sort = $filters['sort'] ?? 'ma_nv';
+            $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+            return $query->orderBy($sortColumns[$sort] ?? $sortColumns['ma_nv'], $direction)->orderBy('nv.ma_nv', 'desc')->paginate(
                 (int) $filters['so_dong'],
                 $columns,
                 'page',
@@ -112,7 +125,27 @@ final class NhanVienRepository implements NhanVienRepositoryContract
             $this->applyEmployeeFilters($query, $filters);
             $columns = $query->columns ?? ['*'];
 
-            return $query->orderBy('nv.ma_nv')->paginate(
+            $sortColumns = [
+                'ma_nv' => 'nv.ma_nv',
+                'ho_ten' => 'nv.ho_ten',
+                'gioi_tinh' => 'nv.gioi_tinh',
+                'sdt' => 'nv.sdt',
+                'email' => 'nv.email',
+                'ma_pb' => 'nv.ma_pb',
+                'ma_cv' => 'nv.ma_cv',
+                'so_lan_vao_muon' => 'so_lan_vao_muon',
+                'so_lan_ve_som' => 'so_lan_ve_som',
+                'so_ngay_cham_cong' => 'so_ngay_cham_cong',
+                'tong_gio_lam' => 'tong_gio_lam',
+            ];
+            $sort = $filters['sort'] ?? 'ma_nv';
+            $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortColumns[$sort] ?? $sortColumns['ma_nv'], $direction);
+            if (($sortColumns[$sort] ?? $sortColumns['ma_nv']) !== 'nv.ma_nv') {
+                $query->orderBy('nv.ma_nv', 'desc');
+            }
+
+            return $query->paginate(
                 (int) $filters['so_dong'],
                 $columns,
                 'page',
@@ -424,6 +457,10 @@ final class NhanVienRepository implements NhanVienRepositoryContract
 
     private function applyEmployeeFilters(Builder $query, array $filters): void
     {
+        if (filled($filters['ma_nv'] ?? null)) {
+            $query->where('nv.ma_nv', (string) $filters['ma_nv']);
+        }
+
         if (filled($filters['tu_khoa'] ?? null)) {
             $keyword = trim((string) $filters['tu_khoa']);
             $query->where(function (Builder $inner) use ($keyword): void {

@@ -1,3 +1,4 @@
+import { setButtonLabel } from '../shared/button-label.js';
 import {
     firstInvalidStep,
     nextStep,
@@ -154,7 +155,7 @@ function initializeWizard(form) {
             form.setAttribute('aria-busy', 'true');
             submitButton.disabled = true;
             submitButton.setAttribute('aria-disabled', 'true');
-            submitButton.textContent = submitButton.dataset.submittingText || 'Đang lưu…';
+            setButtonLabel(submitButton, submitButton.dataset.submittingText || 'Đang lưu…');
         });
     }
 

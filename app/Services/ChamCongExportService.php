@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -26,17 +27,7 @@ class ChamCongExportService
      */
     public function exportToCSV(int $month, int $year): string
     {
-        $pdo = DB::connection()->getPdo();
-
-        // Query dữ liệu từ chấm công theo tháng, năm
-        $statement = $pdo->prepare(
-            'SELECT ma_nv, ngay_lam, so_gio_lam, vao_muon, ve_som
-             FROM cham_cong
-             WHERE MONTH(ngay_lam) = ? AND YEAR(ngay_lam) = ?
-             ORDER BY ma_nv, ngay_lam'
-        );
-        $statement->execute([$month, $year]);
-        $rows = $statement->fetchAll(\PDO::FETCH_ASSOC);
+        $rows = $this->rowsForPeriod($month, $year);
 
         // Tạo file CSV
         $filename = "cham_cong_{$month}_{$year}.csv";
@@ -79,17 +70,7 @@ class ChamCongExportService
      */
     public function exportToExcel(int $month, int $year): string
     {
-        $pdo = DB::connection()->getPdo();
-
-        // Query dữ liệu
-        $statement = $pdo->prepare(
-            'SELECT ma_nv, ngay_lam, so_gio_lam, vao_muon, ve_som
-             FROM cham_cong
-             WHERE MONTH(ngay_lam) = ? AND YEAR(ngay_lam) = ?
-             ORDER BY ma_nv, ngay_lam'
-        );
-        $statement->execute([$month, $year]);
-        $rows = $statement->fetchAll(\PDO::FETCH_ASSOC);
+        $rows = $this->rowsForPeriod($month, $year);
 
         // Tạo file Excel bằng PhpSpreadsheet
         $spreadsheet = new Spreadsheet();
@@ -120,7 +101,8 @@ class ChamCongExportService
         // Data rows
         $rowNum = 2;
         foreach ($rows as $row) {
-            $sheet->setCellValue("A{$rowNum}", $row['ma_nv']);
+            // Employee codes are identifiers; keep leading zeroes on export.
+            $sheet->setCellValueExplicit("A{$rowNum}", (string) $row['ma_nv'], DataType::TYPE_STRING);
             $sheet->setCellValue("B{$rowNum}", $row['ngay_lam']);
             $sheet->setCellValue("C{$rowNum}", (float)$row['so_gio_lam']);
             $sheet->setCellValue("D{$rowNum}", (int)$row['vao_muon']);
@@ -172,9 +154,9 @@ class ChamCongExportService
 
         // Sample rows
         $samples = [
-            ['NV001', '2026-08-01', '8', '0', '0'],
-            ['NV002', '2026-08-02', '7.5', '1', '0'],
-            ['NV003', '2026-08-03', '8', '0', '1'],
+            ['00001', '2026-08-01', '8', '0', '0'],
+            ['00002', '2026-08-02', '8', '1', '0'],
+            ['00003', '2026-08-03', '8', '0', '1'],
         ];
 
         foreach ($samples as $sample) {
@@ -185,5 +167,37 @@ class ChamCongExportService
 
         return $filePath;
     }
-}
 
+    /**
+     * Read the active attendance columns using a portable half-open date
+     * range. This keeps CSV and XLSX exports identical on SQLite and MariaDB.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function rowsForPeriod(int $month, int $year): array
+    {
+        if ($month < 1 || $month > 12) {
+            throw new \InvalidArgumentException('Tháng không hợp lệ.');
+        }
+
+        $start = sprintf('%04d-%02d-01', $year, $month);
+        $nextMonth = $month === 12
+            ? sprintf('%04d-01-01', $year + 1)
+            : sprintf('%04d-%02d-01', $year, $month + 1);
+
+        return DB::table('cham_cong')
+            ->where('ngay_lam', '>=', $start)
+            ->where('ngay_lam', '<', $nextMonth)
+            ->orderBy('ma_nv')
+            ->orderBy('ngay_lam')
+            ->get(['ma_nv', 'ngay_lam', 'so_gio_lam', 'vao_muon', 've_som'])
+            ->map(static fn ($row): array => [
+                'ma_nv' => (string) $row->ma_nv,
+                'ngay_lam' => (string) $row->ngay_lam,
+                'so_gio_lam' => $row->so_gio_lam,
+                'vao_muon' => (int) $row->vao_muon,
+                've_som' => (int) $row->ve_som,
+            ])
+            ->all();
+    }
+}

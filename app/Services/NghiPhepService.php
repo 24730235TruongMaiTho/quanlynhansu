@@ -99,8 +99,23 @@ class NghiPhepService
                 'history' => (clone $countsQuery)->whereIn('np.trang_thai_duyet', [1, 2])->count(),
             ];
 
+            $sortColumns = [
+                'ma_np' => 'np.ma_np',
+                'ma_nv' => 'np.ma_nv',
+                'ho_ten' => 'nv.ho_ten',
+                'tu_ngay' => 'np.tu_ngay',
+                'den_ngay' => 'np.den_ngay',
+                'ten_lp' => 'lp.ten_lp',
+                'ly_do' => 'np.ly_do',
+                'trang_thai_duyet' => 'np.trang_thai_duyet',
+                'so_ngay' => 'so_ngay',
+            ];
+            $sort = $filters['sort'] ?? 'ma_np';
+            $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
             $paginator = $query
-                ->orderByDesc('np.ma_np')
+                ->orderBy($sortColumns[$sort] ?? $sortColumns['ma_np'], $direction)
+                ->orderBy('np.ma_np', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page)
                 ->withQueryString();
 
@@ -122,14 +137,14 @@ class NghiPhepService
     /**
      * Lấy chi tiết một đơn nghỉ phép.
      */
-    public function getById($id): array
+    public function getById($id, ?string $maNv = null): array
     {
         try {
-            $record = $this->baseLeaveQuery()
-                ->where(
-                    'np.ma_np',
-                    $id
-                )
+            $query = $this->baseLeaveQuery()->where('np.ma_np', $id);
+            if ($maNv !== null) {
+                $query->where('np.ma_nv', $maNv);
+            }
+            $record = $query
                 ->first();
 
             if (! $record) {
@@ -255,10 +270,7 @@ class NghiPhepService
      * Query Builder replacement cho:
      * sp_nghi_phep_sua
      */
-    public function update(
-        $id,
-        array $data
-    ): array {
+    public function update($id, array $data, ?string $ownerMaNv = null): array {
         try {
             /*
              * Generic edits are deliberately allowlisted. Approval status is
@@ -285,6 +297,7 @@ class NghiPhepService
 
             $leave = DB::table('nghi_phep')
                 ->where('ma_np', $id)
+                ->when($ownerMaNv !== null, fn ($query) => $query->where('ma_nv', $ownerMaNv))
                 ->first();
 
             if (! $leave) {
@@ -389,7 +402,7 @@ class NghiPhepService
      * Query Builder replacement cho:
      * sp_nghi_phep_xoa
      */
-    public function delete($id): array
+    public function delete($id, ?string $ownerMaNv = null): array
     {
         try {
             $deleted = DB::table('nghi_phep')
@@ -397,6 +410,7 @@ class NghiPhepService
                     'ma_np',
                     $id
                 )
+                ->when($ownerMaNv !== null, fn ($query) => $query->where('ma_nv', $ownerMaNv))
                 ->delete();
 
             if ($deleted === 0) {
@@ -431,7 +445,8 @@ class NghiPhepService
         ?int $maPb,
         ?int $maCv,
         int $page = 1,
-        int $perPage = 15
+        int $perPage = 15,
+        ?string $maNv = null,
     ): LengthAwarePaginator {
         /*
          * Chuẩn hóa pagination giống SP.
@@ -463,6 +478,10 @@ class NghiPhepService
         $query = DB::table(
             'vw_danh_sach_nhan_vien_chi_tiet as nv'
         );
+
+        if ($maNv !== null) {
+            $query->where('nv.ma_nv', $maNv);
+        }
 
         /*
          * Filter phòng ban.

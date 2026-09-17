@@ -21,8 +21,8 @@ final class ChucVuRepository implements ChucVuRepositoryContract
     public function all(): array
     {
         return $this->databaseOperation(
-            fn (): array => $this->positionQuery()->get()->map(
-                fn (object $row): object => $this->explicitRow($row),
+            fn (): array => $this->positionQuery()->orderBy('cv.ma_cv', 'asc')->get()->map(
+            fn (object $row): object => $this->explicitRow($row),
             )->all(),
         );
     }
@@ -36,6 +36,16 @@ final class ChucVuRepository implements ChucVuRepositoryContract
             if (filled($filters['ten_cv'])) {
                 $query->where('cv.ten_cv', 'like', '%'.trim((string) $filters['ten_cv']).'%');
             }
+
+            $sortColumns = [
+                'ma_cv' => 'cv.ma_cv',
+                'ten_cv' => 'cv.ten_cv',
+                'he_so_phu_cap' => 'cv.he_so_phu_cap',
+                'so_nhan_vien' => 'so_nhan_vien',
+            ];
+            $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortColumns[$filters['sort'] ?? 'ma_cv'] ?? 'cv.ma_cv', $direction)
+                ->orderBy('cv.ma_cv', 'desc');
 
             return $query->paginate(
                 (int) $filters['so_dong'],
@@ -127,8 +137,7 @@ final class ChucVuRepository implements ChucVuRepositoryContract
             ->leftJoin('nhan_vien as nv', 'nv.ma_cv', '=', 'cv.ma_cv')
             ->select(['cv.ma_cv', 'cv.ten_cv', 'cv.he_so_phu_cap'])
             ->selectRaw('COUNT(nv.ma_nv) AS so_nhan_vien')
-            ->groupBy('cv.ma_cv', 'cv.ten_cv', 'cv.he_so_phu_cap')
-            ->orderBy('cv.ma_cv', 'asc');
+            ->groupBy('cv.ma_cv', 'cv.ten_cv', 'cv.he_so_phu_cap');
     }
 
     private function lockedPosition(int $maCv): ?object

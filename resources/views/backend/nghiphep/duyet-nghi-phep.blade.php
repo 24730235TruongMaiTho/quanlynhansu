@@ -72,11 +72,11 @@
 
                     </div>
                     <div class="filter-bar__actions">
-                        <button class="btn btn-primary" id="leave-filter-apply" type="button">
-                            <i class="bi bi-funnel button-icon" aria-hidden="true"></i>Áp dụng bộ lọc
+                        <button class="btn btn-primary btn-icon-text" id="leave-filter-apply" type="button">
+                            <i class="bi bi-funnel" aria-hidden="true"></i><span>Áp dụng bộ lọc</span>
                         </button>
-                        <button class="btn btn-outline-secondary" id="leave-filter-reset" type="button">
-                            <i class="bi bi-arrow-counterclockwise button-icon" aria-hidden="true"></i>Đặt lại
+                        <button class="btn btn-outline-secondary btn-icon-text" id="leave-filter-reset" type="button">
+                            <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Đặt lại</span>
                         </button>
                     </div>
                 </div>
@@ -176,8 +176,8 @@
                             </div>
 
                             <div class="d-flex flex-wrap gap-2">
-                                <button class="btn btn-primary btn-sm flex-fill" id="leave-action-approve" type="button"><i class="bi bi-check-circle button-icon" aria-hidden="true"></i>Phê duyệt</button>
-                                <button class="btn btn-outline-danger btn-sm flex-fill" id="leave-action-reject" type="button"><i class="bi bi-x-circle button-icon" aria-hidden="true"></i>Từ chối</button>
+                                <button class="btn btn-primary btn-sm flex-fill btn-icon-text" id="leave-action-approve" type="button"><i class="bi bi-check-circle" aria-hidden="true"></i><span>Phê duyệt</span></button>
+                                <button class="btn btn-outline-danger btn-sm flex-fill btn-icon-text" id="leave-action-reject" type="button"><i class="bi bi-x-circle" aria-hidden="true"></i><span>Từ chối</span></button>
                             </div>
 
                             <div class="alert alert-primary-subtle border border-primary-subtle small mt-3 mb-0 py-2">

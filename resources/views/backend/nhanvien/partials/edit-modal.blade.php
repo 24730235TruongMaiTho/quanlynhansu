@@ -14,8 +14,8 @@
             data-edit-title="Chỉnh sửa hồ sơ nhân viên"
             data-create-title="Thêm nhân viên"
         >Chỉnh sửa hồ sơ nhân viên</h2>
-        <button class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2" type="button" data-employee-edit-close>
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>Đóng
+        <button class="btn btn-outline-secondary btn-sm btn-icon-text" type="button" data-employee-edit-close>
+                    <i class="bi bi-x-lg" aria-hidden="true"></i><span>Đóng</span>
         </button>
     </div>
     <div class="employee-edit-dialog-status" id="edit-form-help" data-employee-edit-status aria-live="polite">

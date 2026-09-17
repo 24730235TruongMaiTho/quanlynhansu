@@ -1,3 +1,4 @@
+import { setButtonLabel, getButtonLabel } from '../shared/button-label.js';
 import { initializeEmployeeWizards } from './wizard.js';
 
 const LOAD_ERROR_MESSAGE = 'Không tải được biểu mẫu chỉnh sửa. Vui lòng đóng popup và thử lại sau.';
@@ -281,7 +282,7 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
             button.disabled = false;
             button.setAttribute('aria-disabled', 'false');
             if (button.dataset.previousText !== undefined) {
-                button.textContent = button.dataset.previousText;
+                setButtonLabel(button, button.dataset.previousText);
                 delete button.dataset.previousText;
             }
         });
@@ -308,8 +309,8 @@ export function createEmployeeEditModalController(ui, dependencies = {}) {
         form.querySelectorAll?.('[data-submit-employee]').forEach((button) => {
             button.disabled = true;
             button.setAttribute('aria-disabled', 'true');
-            button.dataset.previousText ??= button.textContent;
-            button.textContent = button.dataset.submittingText || 'Đang lưu…';
+            button.dataset.previousText ??= getButtonLabel(button);
+            setButtonLabel(button, button.dataset.submittingText || 'Đang lưu…');
         });
 
         try {

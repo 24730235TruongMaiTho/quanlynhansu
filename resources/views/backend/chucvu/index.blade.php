@@ -12,7 +12,15 @@
             'ten_cv' => $filters['ten_cv'],
             'page' => $filters['page'] > 1 ? $filters['page'] : null,
             'so_dong' => $filters['so_dong'] !== 20 ? $filters['so_dong'] : null,
+            'sort' => request()->filled('sort') ? ($filters['sort'] ?? 'ma_cv') : null,
+            'direction' => request()->filled('direction') ? ($filters['direction'] ?? 'desc') : null,
         ], static fn (mixed $value): bool => $value !== null && $value !== '');
+        $sort = $filters['sort'] ?? 'ma_cv';
+        $direction = $filters['direction'] ?? 'desc';
+        $sortUrl = static function (string $column) use ($sort, $direction, $listQuery): string {
+            $next = $sort === $column && $direction === 'asc' ? 'desc' : 'asc';
+            return route('backend.chucvu.index', array_merge($listQuery, ['sort' => $column, 'direction' => $next, 'page' => 1]));
+        };
     @endphp
 
     <main class="container-fluid container-xxl py-4" aria-labelledby="position-page-title">
@@ -28,7 +36,7 @@
         >
             <x-slot:actions>
             @if ($canCreate)
-                <a class="btn btn-primary d-inline-flex align-items-center gap-2" aria-label="Thêm chức vụ" title="Thêm chức vụ" href="{{ route('backend.chucvu.create') }}" data-action="modal" data-modal-mode="create" data-modal-url="{{ route('backend.chucvu.create') }}">
+                <a class="btn btn-primary btn-icon-text" aria-label="Thêm chức vụ" title="Thêm chức vụ" href="{{ route('backend.chucvu.create') }}" data-action="modal" data-modal-mode="create" data-modal-url="{{ route('backend.chucvu.create') }}">
                     <i class="bi bi-plus-circle" aria-hidden="true"></i>Thêm chức vụ
                 </a>
             @endif
@@ -72,9 +80,9 @@
                         </div>
                     </div>
                     <div class="filter-bar__actions">
-                            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit" data-disable-on-submit data-submitting-text="Đang lọc..."><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
+                            <button class="btn btn-primary btn-icon-text" type="submit" data-disable-on-submit data-submitting-text="Đang lọc..."><i class="bi bi-funnel" aria-hidden="true"></i><span data-button-label>Áp dụng bộ lọc</span></button>
                             @if ($hasFilters)
-                                <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.chucvu.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Xóa</a>
+                                <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.chucvu.index') }}"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Xóa</span></a>
                             @endif
                     </div>
                 </form>
@@ -96,10 +104,10 @@
                         <thead class="table-light">
                             <tr>
                                 <th scope="col">#</th>
-                                <th scope="col">Mã chức vụ</th>
-                                <th scope="col">Tên chức vụ</th>
-                                <th scope="col">Hệ số phụ cấp</th>
-                                <th scope="col">Số nhân viên</th>
+                                <th scope="col" aria-sort="{{ $sort === 'ma_cv' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ma_cv" label="Mã chức vụ" :sort="$sort" :direction="$direction" :href="$sortUrl('ma_cv')" /></th>
+                                <th scope="col" aria-sort="{{ $sort === 'ten_cv' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="ten_cv" label="Tên chức vụ" :sort="$sort" :direction="$direction" :href="$sortUrl('ten_cv')" /></th>
+                                <th scope="col" class="text-end" aria-sort="{{ $sort === 'he_so_phu_cap' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="he_so_phu_cap" label="Hệ số phụ cấp" :numeric="true" :sort="$sort" :direction="$direction" :href="$sortUrl('he_so_phu_cap')" /></th>
+                                <th scope="col" class="text-end" aria-sort="{{ $sort === 'so_nhan_vien' ? ($direction === 'asc' ? 'ascending' : 'descending') : 'none' }}"><x-backend.table-sort column="so_nhan_vien" label="Số nhân viên" :numeric="true" :sort="$sort" :direction="$direction" :href="$sortUrl('so_nhan_vien')" /></th>
                                 @if ($canEdit || $canDelete)
                                     <th scope="col">Thao tác</th>
                                 @endif
@@ -115,8 +123,8 @@
                                     <td>{{ ($positions->firstItem() ?? 0) + $loop->index }}</td>
                                     <th scope="row"><span class="identifier-text">{{ $position->ma_cv }}</span></th>
                                     <td>{{ $position->ten_cv }}</td>
-                                    <td>{{ number_format((float) $position->he_so_phu_cap, 2, '.', ',') }}</td>
-                                    <td>{{ $hasEmployees ? $position->so_nhan_vien : 'Chưa có nhân viên' }}</td>
+                                    <td class="text-end">{{ number_format((float) $position->he_so_phu_cap, 2, '.', ',') }}</td>
+                                    <td class="text-end">{{ $hasEmployees ? $position->so_nhan_vien : 'Chưa có nhân viên' }}</td>
                                     @if ($canEdit || $canDelete)
                                         <td>
                                             <div class="table-actions">
@@ -145,7 +153,7 @@
                 <div class="card-body text-center py-5" role="status">
                     <h3 class="h6">Trang hiện tại không có dữ liệu</h3>
                     <p class="text-secondary mb-3">Danh sách có {{ number_format($positions->total(), 0, ',', '.') }} chức vụ, nhưng trang {{ $positions->currentPage() }} không chứa dòng nào.</p>
-                    <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ $positions->url(1) }}"><i class="bi bi-arrow-left" aria-hidden="true"></i>Về trang đầu tiên</a>
+                    <a class="btn btn-outline-secondary btn-icon-text" href="{{ $positions->url(1) }}"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Về trang đầu tiên</span></a>
                 </div>
             @elseif (! $positionError)
                 <div class="card-body text-center py-5" role="status">

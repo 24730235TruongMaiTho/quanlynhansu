@@ -19,7 +19,7 @@ test('dynamic role edit/delete controls are icon-only and keep safe accessible n
     assert.match(rendered, /data-role-delete="7"[^>]+aria-label="Xóa &lt;Vai trò&gt;"[^>]+title="Xóa &lt;Vai trò&gt;"/);
     assert.doesNotMatch(rendered, /data-role-edit="7"[\s\S]*?>\s*<i[^>]*><\/i>\s*Sửa\s*</);
     assert.doesNotMatch(rendered, /data-role-delete="7"[\s\S]*?>\s*<i[^>]*><\/i>\s*Xóa\s*</);
-    assert.match(rendered, />Phân quyền<\/a>/);
+    assert.match(rendered, /(?:>Phân quyền<\/a>|data-button-label>Phân quyền<\/span>)/);
     assert.match(source, /btn-icon-action/);
     assert.match(source, /escapeHtml\(role\.ten_vt\)/);
 });
@@ -41,7 +41,7 @@ test('salary and leave dynamic edit/delete controls are icon-only while create c
     const createStart = salary.lastIndexOf('<button', createIndex);
     const createMarkup = salary.slice(createStart, createStart + 760);
     assert.doesNotMatch(createMarkup, /class="[^\"]*btn-icon-action/, 'salary create must not be icon-only');
-    assert.match(createMarkup, /\$\{iconCreate\(\)\}Tạo thông tin lương/);
+    assert.match(createMarkup, /\$\{iconCreate\(\)\}(?:Tạo thông tin lương|<span data-button-label>Tạo thông tin lương<\/span>)/);
 
     assert.match(coefficient, /btn-icon-action[\s\S]*?data-coefficient-action="edit"/);
     assert.match(coefficient, /btn-icon-action[\s\S]*?data-coefficient-action="delete"/);

@@ -21,11 +21,11 @@
     >
         @csrf
         <button
-            class="btn btn-outline-warning"
+            class="btn btn-outline-warning btn-icon-text"
             type="submit"
             aria-label="Đặt lại mật khẩu cho {{ $employee->ho_ten }}"
             title="Đặt lại mật khẩu cho {{ $employee->ho_ten }}"
-        ><i class="bi bi-key button-icon" aria-hidden="true"></i>Đặt lại mật khẩu</button>
+        ><i class="bi bi-key" aria-hidden="true"></i><span>Đặt lại mật khẩu</span></button>
     </form>
 @endcan
 @endif
@@ -50,8 +50,8 @@
             <h2 class="h5" id="{{ $destroyDialogId }}-title">Xóa hoặc kết thúc hồ sơ</h2>
             <p>Xóa cứng nếu chưa có lịch sử; nếu đã có lịch sử, hệ thống chỉ kết thúc hồ sơ và giữ lại lịch sử liên quan.</p>
             <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" data-dialog-cancel><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</button>
-                <button type="submit" class="btn btn-danger d-inline-flex align-items-center gap-2" data-dialog-submit><i class="bi bi-check2" aria-hidden="true"></i>Xác nhận thao tác</button>
+                <button type="button" class="btn btn-outline-secondary btn-icon-text" data-dialog-cancel><i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span></button>
+                <button type="submit" class="btn btn-danger btn-icon-text" data-dialog-submit><i class="bi bi-check2" aria-hidden="true"></i><span>Xác nhận thao tác</span></button>
             </div>
         </form>
     </dialog>

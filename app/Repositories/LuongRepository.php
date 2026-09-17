@@ -9,6 +9,37 @@ use Illuminate\Support\Facades\DB;
 
 class LuongRepository
 {
+    public function paginateForEmployee(string $maNv, array $filters = []): LengthAwarePaginator
+    {
+        $page = max((int) ($filters['page'] ?? 1), 1);
+        $requestedPerPage = (int) ($filters['per_page'] ?? 10);
+        $perPage = in_array($requestedPerPage, [10, 20, 50], true)
+            ? $requestedPerPage
+            : 10;
+        $period = $this->nullIfEmpty($filters['ky_luong'] ?? null);
+
+        return DB::table('luong as l')
+            ->where('l.ma_nv', '=', $maNv)
+            ->when($period !== null, fn ($query) => $query->where('l.ky_luong', '=', $period))
+            ->select([
+                'l.ma_luong',
+                'l.ma_nv',
+                'l.ky_luong',
+                'l.thuong',
+                'l.phat',
+                'l.bao_hiem',
+                'l.thue',
+            ])
+            ->selectRaw('fn_so_ngay_cong_chuan(l.ma_nv, l.ky_luong) AS so_ngay_cong_chuan')
+            ->selectRaw('fn_so_ngay_cong_thuc_te(l.ma_nv, l.ky_luong) AS so_ngay_cong_thuc_te')
+            ->selectRaw('fn_tinh_luong_thuc_nhan(l.ma_nv, l.ky_luong) AS thuc_nhan')
+            ->selectRaw('fn_thong_bao_tinh_luong(l.ma_nv, l.ky_luong) AS thong_bao_tinh_luong')
+            ->orderByDesc('l.ky_luong')
+            ->orderByDesc('l.ma_luong')
+            ->paginate($perPage, ['*'], 'page', $page)
+            ->withQueryString();
+    }
+
     /**
      * Query Builder replacement for:
      * sp_luong_tim_kiem_phan_trang
@@ -45,11 +76,8 @@ class LuongRepository
          * Repository cũ truyền ma_nv vào p_tu_khoa,
          * nên support cả hai để giữ backward compatibility.
          */
-        $tuKhoa = $this->nullIfEmpty(
-            $filters['tu_khoa']
-            ?? $filters['ma_nv']
-            ?? null
-        );
+        $maNhanVien = $this->nullIfEmpty($filters['ma_nv'] ?? null);
+        $tuKhoa = $this->nullIfEmpty($filters['tu_khoa'] ?? null);
 
         if ($tuKhoa !== null) {
             $tuKhoa = trim(
@@ -323,6 +351,12 @@ class LuongRepository
             );
         }
 
+        // Mã nhân viên là bộ lọc định danh, luôn so sánh chính xác. Không
+        // dùng LIKE ở đây để tránh lộ bản ghi lương của người khác.
+        if ($maNhanVien !== null) {
+            $query->where('nv.ma_nv', (string) $maNhanVien);
+        }
+
         /*
          * 7. Search.
          *
@@ -370,14 +404,29 @@ class LuongRepository
          * LIMIT
          * OFFSET
          */
+        $sortColumns = [
+            'ma_nv' => 'nv.ma_nv',
+            'ho_ten' => 'nv.ho_ten',
+            'ky_luong' => 'l.ky_luong',
+            'thuong' => 'l.thuong',
+            'phat' => 'l.phat',
+            'bao_hiem' => 'l.bao_hiem',
+            'thue' => 'l.thue',
+            'phu_cap' => 'phu_cap',
+            'thuc_nhan' => 'thuc_nhan',
+            'so_ngay_cham_cong' => 'so_ngay_cham_cong',
+            'so_lan_vao_muon' => 'so_lan_vao_muon',
+            'so_lan_ve_som' => 'so_lan_ve_som',
+        ];
+        $sort = $filters['sort'] ?? 'ky_luong';
+        $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        $query
+            ->orderBy($sortColumns[$sort] ?? $sortColumns['ky_luong'], $direction)
+            ->orderBy('nv.ma_nv', 'desc')
+            ->orderBy('l.ma_luong', 'desc');
+
         return $query
-            ->orderByDesc(
-                'l.ky_luong'
-            )
-            ->orderBy(
-                'nv.ma_nv',
-                'asc'
-            )
             ->paginate(
                 $perPage,
                 ['*'],
@@ -386,11 +435,15 @@ class LuongRepository
             );
     }
 
-    public function find($id)
+    public function find($id, ?string $maNv = null)
     {
-        return Luong::with(
-            'nhanVien'
-        )->find($id);
+        $query = Luong::with('nhanVien')->whereKey($id);
+
+        if ($maNv !== null) {
+            $query->where('ma_nv', $maNv);
+        }
+
+        return $query->first();
     }
 
     public function create(array $data)
@@ -400,13 +453,13 @@ class LuongRepository
         );
     }
 
-    public function update(
-        $id,
-        array $data
-    ) {
-        $record = Luong::find(
-            $id
-        );
+    public function update($id, array $data, ?string $maNv = null)
+    {
+        $query = Luong::whereKey($id);
+        if ($maNv !== null) {
+            $query->where('ma_nv', $maNv);
+        }
+        $record = $query->first();
 
         if ($record) {
             $record->update(
@@ -417,11 +470,14 @@ class LuongRepository
         return $record;
     }
 
-    public function delete($id)
+    public function delete($id, ?string $maNv = null)
     {
-        return Luong::destroy(
-            $id
-        );
+        $query = Luong::whereKey($id);
+        if ($maNv !== null) {
+            $query->where('ma_nv', $maNv);
+        }
+
+        return $query->delete();
     }
 
     private function nullIfEmpty(

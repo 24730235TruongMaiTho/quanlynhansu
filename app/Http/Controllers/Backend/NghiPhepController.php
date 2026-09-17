@@ -3,9 +3,15 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Contracts\NhanVienServiceContract;
+use App\Enums\NhanVienRole;
+use App\Models\NhanVien;
+use App\Http\Requests\ListNghiPhepEmployeeRequest;
+use App\Http\Requests\ListOwnNghiPhepRequest;
 use App\Http\Requests\StoreNghiPhepRequest;
+use App\Http\Requests\StoreOwnNghiPhepRequest;
 use App\Http\Requests\UpdateNghiPhepRequest;
 use App\Services\NghiPhepService;
+use App\Support\CurrentEmployee;
 use App\Support\JsonPaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +24,7 @@ class NghiPhepController extends Controller
     public function __construct(
         NghiPhepService $service,
         private NhanVienServiceContract $nhanVienService,
+        private CurrentEmployee $currentEmployee,
     ) {
         $this->service = $service;
     }
@@ -35,6 +42,8 @@ class NghiPhepController extends Controller
             'ma_cv' => ['nullable', 'integer', 'min:1'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'in:10,20,50'],
+            'sort' => ['nullable', 'string', 'in:ma_np,ma_nv,ho_ten,tu_ngay,den_ngay,ten_lp,ly_do,trang_thai_duyet,so_ngay'],
+            'direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
         $filters = [
             'ma_nv' => $validated['ma_nv'] ?? null,
@@ -47,7 +56,16 @@ class NghiPhepController extends Controller
             'ma_cv' => isset($validated['ma_cv']) ? (int) $validated['ma_cv'] : null,
             'page' => (int) ($validated['page'] ?? 1),
             'per_page' => (int) ($validated['per_page'] ?? 10),
+            'sort' => $validated['sort'] ?? 'ma_np',
+            'direction' => $validated['direction'] ?? 'desc',
         ];
+        $owner = $this->employeeOwner();
+        if ($owner !== null) {
+            $filters['ma_nv'] = $owner;
+            $filters['tu_khoa'] = null;
+            $filters['ma_pb'] = null;
+            $filters['ma_cv'] = null;
+        }
         $result = $this->service->getAll($filters);
 
         if (!$result['success']) {
@@ -60,41 +78,13 @@ class NghiPhepController extends Controller
     /**
      * Return only the authenticated employee's own leave history.
      *
-     * This endpoint intentionally uses Insert permission because it is part
-     * of the self-service create flow, while the company-wide index remains
+     * This endpoint is authentication-only; the company-wide index remains
      * protected by NghiPhep.Read.
      */
-    public function own(Request $request): JsonResponse
+    public function own(ListOwnNghiPhepRequest $request): JsonResponse
     {
-        $actor = $request->user();
-        $maNv = $actor?->getAuthIdentifier();
-
-        if (! is_string($maNv) || preg_match('/\A[0-9]{5}\z/', $maNv) !== 1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không xác định được nhân viên hiện tại.',
-            ], 403);
-        }
-
-        $validated = $request->validate([
-            'trang_thai_duyet' => ['nullable', 'integer', 'in:0,1,2'],
-            'tu_ngay' => ['nullable', 'date_format:Y-m-d'],
-            'den_ngay' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:tu_ngay'],
-            'tab' => ['nullable', 'in:pending,history'],
-            'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'in:10,20,50'],
-        ]);
-
-        $filters = [
-            // Always override any client-supplied employee selector.
-            'ma_nv' => $maNv,
-            'trang_thai_duyet' => $validated['trang_thai_duyet'] ?? null,
-            'tu_ngay' => $validated['tu_ngay'] ?? null,
-            'den_ngay' => $validated['den_ngay'] ?? null,
-            'tab' => $validated['tab'] ?? null,
-            'page' => (int) ($validated['page'] ?? 1),
-            'per_page' => (int) ($validated['per_page'] ?? 10),
-        ];
+        $filters = $request->filters();
+        $filters['ma_nv'] = $this->currentEmployee->id($request->user());
 
         $result = $this->service->getAll($filters);
 
@@ -105,9 +95,23 @@ class NghiPhepController extends Controller
         return response()->json($result);
     }
 
+    public function storeOwn(StoreOwnNghiPhepRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $data['ma_nv'] = $this->currentEmployee->id($request->user());
+        $data['trang_thai_duyet'] = 0;
+        $result = $this->service->create($data);
+
+        if (! $result['success']) {
+            return response()->json($result, 400);
+        }
+
+        return response()->json($result, 201);
+    }
+
     public function show($id)
     {
-        $result = $this->service->getById($id);
+        $result = $this->service->getById($id, $this->employeeOwner());
 
         if (!$result['success']) {
             return response()->json($result, 404);
@@ -118,7 +122,13 @@ class NghiPhepController extends Controller
 
     public function store(StoreNghiPhepRequest $request)
     {
-        $result = $this->service->create($request->validated());
+        $data = $request->validated();
+        $owner = $this->employeeOwner();
+        if ($owner !== null) {
+            $data['ma_nv'] = $owner;
+            $data['trang_thai_duyet'] = 0;
+        }
+        $result = $this->service->create($data);
 
         if (!$result['success']) {
             return response()->json($result, 400);
@@ -129,7 +139,12 @@ class NghiPhepController extends Controller
 
     public function update(UpdateNghiPhepRequest $request, $id)
     {
-        $result = $this->service->update($id, $request->validated());
+        $data = $request->validated();
+        $owner = $this->employeeOwner();
+        if ($owner !== null) {
+            $data['ma_nv'] = $owner;
+        }
+        $result = $this->service->update($id, $data, $owner);
 
         if (!$result['success']) {
             return response()->json($result, 400);
@@ -140,7 +155,7 @@ class NghiPhepController extends Controller
 
     public function destroy($id)
     {
-        $result = $this->service->delete($id);
+        $result = $this->service->delete($id, $this->employeeOwner());
 
         if (!$result['success']) {
             return response()->json($result, 404);
@@ -149,28 +164,19 @@ class NghiPhepController extends Controller
         return response()->json($result);
     }
 
-    public function employees(Request $request)
+    public function employees(ListNghiPhepEmployeeRequest $request)
     {
-        $validated = $request->validate([
-            'tu_khoa' => ['nullable', 'string', 'max:255'],
-            'ma_pb' => ['nullable', 'integer', 'min:1'],
-            'ma_cv' => ['nullable', 'integer', 'min:1'],
-            'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
-        $keyword = isset($validated['tu_khoa'])
-            ? trim($validated['tu_khoa'])
-            : null;
-
-        $filters = [
-            'tu_khoa' => $keyword === '' ? null : $keyword,
-            'ma_pb' => isset($validated['ma_pb']) ? (int) $validated['ma_pb'] : null,
-            'ma_cv' => isset($validated['ma_cv']) ? (int) $validated['ma_cv'] : null,
-            'ma_tt' => null,
-            'page' => (int) ($validated['page'] ?? 1),
-            'so_dong' => (int) ($validated['per_page'] ?? 15),
-        ];
+        $filters = $request->filters();
+        if (! $request->sortWasProvided()) {
+            unset($filters['sort'], $filters['direction']);
+        }
+        $owner = $this->employeeOwner();
+        if ($owner !== null) {
+            $filters['tu_khoa'] = null;
+            $filters['ma_pb'] = null;
+            $filters['ma_cv'] = null;
+            $filters['ma_nv'] = $owner;
+        }
 
         try {
             $paginator = $this->nhanVienService->paginate($filters);
@@ -232,6 +238,8 @@ class NghiPhepController extends Controller
                 ? (int) $maPb
                 : null;
 
+        $owner = $this->employeeOwner();
+
         $maCv =
             is_numeric($maCv)
                 ? (int) $maCv
@@ -245,7 +253,8 @@ class NghiPhepController extends Controller
                         $maPb,
                         $maCv,
                         $page,
-                        $perPage
+                        $perPage,
+                        $owner,
                     );
 
             return response()->json([
@@ -349,5 +358,18 @@ class NghiPhepController extends Controller
         }
 
         return response()->json($data);
+    }
+
+    private function employeeOwner(): ?string
+    {
+        $actor = request()->user();
+        if (! $actor instanceof NhanVien || (int) $actor->ma_vt !== NhanVienRole::Employee->value) {
+            return null;
+        }
+
+        $maNv = $actor->getAuthIdentifier();
+        abort_unless(is_string($maNv) && preg_match('/\A[0-9]{5}\z/', $maNv) === 1, 403);
+
+        return $maNv;
     }
 }

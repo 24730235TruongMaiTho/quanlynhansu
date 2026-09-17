@@ -20,7 +20,7 @@
         @error('he_so_phu_cap')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit" data-submit-edit data-submit data-submitting-text="Đang lưu..."><i class="bi bi-check2" aria-hidden="true"></i>Lưu chức vụ</button>
-        <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.chucvu.index') }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
+        <button class="btn btn-primary btn-icon-text d-inline-flex align-items-center gap-2" type="submit" data-submit-edit data-submit data-submitting-text="Đang lưu..."><i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>Lưu chức vụ</span></button>
+        <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.chucvu.index') }}"><i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span></a>
     </div>
 </form>

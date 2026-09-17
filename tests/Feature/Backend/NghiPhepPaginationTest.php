@@ -127,7 +127,7 @@ final class NghiPhepPaginationTest extends TestCase
     {
         $this->actingAsEmployeeWithPermissions(
             [NghiPhepPermission::Xem],
-            ['ma_vt' => 5, 'ma_pb' => null],
+            ['ma_vt' => 1, 'ma_pb' => null],
         );
 
         $response = $this->getJson(
@@ -144,7 +144,7 @@ final class NghiPhepPaginationTest extends TestCase
     {
         $this->actingAsEmployeeWithPermissions(
             [NghiPhepPermission::Xem],
-            ['ma_vt' => 5, 'ma_pb' => null],
+            ['ma_vt' => 1, 'ma_pb' => null],
         );
 
         $this->getJson('/api/v1/nghi-phep?tab=pending')

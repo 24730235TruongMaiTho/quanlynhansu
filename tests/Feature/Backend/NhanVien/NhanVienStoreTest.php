@@ -5,6 +5,7 @@ namespace Tests\Feature\Backend\NhanVien;
 use App\Contracts\NhanVienServiceContract;
 use App\Exceptions\NhanVienDomainException;
 use App\Http\Controllers\Backend\NhanVienController;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Mockery\MockInterface;
@@ -96,6 +97,26 @@ class NhanVienStoreTest extends TestCase
         });
 
         $this->postJson('/nhan-vien', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.ma_nv', '00001');
+    }
+
+    public function test_store_forwards_a_valid_avatar_to_the_service_without_false_error(): void
+    {
+        $this->mock(NhanVienServiceContract::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('create')->once()->withArgs(function (array $validated): bool {
+                return ($validated['anh_dai_dien'] ?? null) instanceof UploadedFile;
+            })->andReturn('00001');
+        });
+
+        $avatar = UploadedFile::fake()->createWithContent(
+            'avatar.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true),
+        );
+
+        $this->postJson('/nhan-vien', $this->validPayload([
+            'anh_dai_dien' => $avatar,
+        ]))
             ->assertCreated()
             ->assertJsonPath('data.ma_nv', '00001');
     }

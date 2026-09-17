@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\NhanVien;
 use App\Services\DashboardService;
+use App\Services\PersonalDashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 /**
  * Controller xử lý các API cho Dashboard
@@ -26,27 +29,25 @@ class DashboardController extends Controller
      *
      * @param DashboardService $dashboardService
      */
-    public function __construct(DashboardService $dashboardService)
+    public function __construct(
+        DashboardService $dashboardService,
+        private PersonalDashboardService $personalDashboardService,
+    )
     {
         $this->dashboardService = $dashboardService;
     }
 
     /**
-     * API: Lấy dữ liệu tổng quan cho Dashboard
+     * API: Lấy dữ liệu tổng quan cho Dashboard, bao gồm pending_leave_count
      *
      * @return JsonResponse
      */
     public function overview(): JsonResponse
     {
-        try {
-            $data = $this->dashboardService->getOverview();
+        $actor = $this->actor();
 
-            // Thêm thông tin tổng hợp nhanh
-            $data['tong_nhan_vien'] = $this->dashboardService->getTotalEmployees();
-            $data['tong_phong_ban'] = $this->dashboardService->getTotalDepartments();
-            $data['pending_leave_count'] = auth()->user() instanceof NhanVien
-                ? $this->dashboardService->getPendingLeaveCount(auth()->user())
-                : null;
+        try {
+            $data = $this->dashboardService->getOverview($actor);
 
             return response()->json([
                 'success' => true,
@@ -54,8 +55,11 @@ class DashboardController extends Controller
                 'timestamp' => now()->toIso8601String(),
                 'message' => 'Lấy dữ liệu thành công'
             ]);
-        } catch (\Exception $e) {
-            Log::error('[DashboardController] Lỗi lấy dữ liệu overview: ' . $e->getMessage());
+        } catch (Throwable $exception) {
+            Log::warning('dashboard_controller_failed', [
+                'endpoint' => 'overview',
+                'exception_class' => $exception::class,
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -73,16 +77,21 @@ class DashboardController extends Controller
      */
     public function educationStats(): JsonResponse
     {
+        $actor = $this->actor();
+
         try {
-            $data = $this->dashboardService->getEmployeeCountByEducation();
+            $data = $this->dashboardService->getEmployeeCountByEducation($actor);
 
             return response()->json([
                 'success' => true,
                 'data' => $data,
                 'timestamp' => now()->toIso8601String()
             ]);
-        } catch (\Exception $e) {
-            Log::error('[DashboardController] Lỗi lấy thống kê học vấn: ' . $e->getMessage());
+        } catch (Throwable $exception) {
+            Log::warning('dashboard_controller_failed', [
+                'endpoint' => 'education',
+                'exception_class' => $exception::class,
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -99,16 +108,21 @@ class DashboardController extends Controller
      */
     public function departmentStats(): JsonResponse
     {
+        $actor = $this->actor();
+
         try {
-            $data = $this->dashboardService->getEmployeeCountByDepartment();
+            $data = $this->dashboardService->getEmployeeCountByDepartment($actor);
 
             return response()->json([
                 'success' => true,
                 'data' => $data,
                 'timestamp' => now()->toIso8601String()
             ]);
-        } catch (\Exception $e) {
-            Log::error('[DashboardController] Lỗi lấy thống kê phòng ban: ' . $e->getMessage());
+        } catch (Throwable $exception) {
+            Log::warning('dashboard_controller_failed', [
+                'endpoint' => 'department',
+                'exception_class' => $exception::class,
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -126,9 +140,11 @@ class DashboardController extends Controller
      */
     public function expiringContracts(Request $request): JsonResponse
     {
+        $actor = $this->actor();
+
         try {
             $days = max(0, min((int) $request->input('days', 30), 365));
-            $data = $this->dashboardService->getExpiringContracts($days);
+            $data = $this->dashboardService->getExpiringContracts($days, $actor);
 
             return response()->json([
                 'success' => true,
@@ -139,8 +155,11 @@ class DashboardController extends Controller
                 ],
                 'timestamp' => now()->toIso8601String()
             ]);
-        } catch (\Exception $e) {
-            Log::error('[DashboardController] Lỗi lấy danh sách hợp đồng: ' . $e->getMessage());
+        } catch (Throwable $exception) {
+            Log::warning('dashboard_controller_failed', [
+                'endpoint' => 'expiring_contracts',
+                'exception_class' => $exception::class,
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -158,16 +177,21 @@ class DashboardController extends Controller
      */
     public function attendanceReport(Request $request): JsonResponse
     {
+        $actor = $this->actor();
+
         try {
-            $data = $this->dashboardService->getAttendanceReport();
+            $data = $this->dashboardService->getAttendanceReport($actor);
 
             return response()->json([
                 'success' => true,
                 'data' => $data,
                 'timestamp' => now()->toIso8601String()
             ]);
-        } catch (\Exception $e) {
-            Log::error('[DashboardController] Lỗi lấy báo cáo chấm công: ' . $e->getMessage());
+        } catch (Throwable $exception) {
+            Log::warning('dashboard_controller_failed', [
+                'endpoint' => 'attendance',
+                'exception_class' => $exception::class,
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -185,16 +209,21 @@ class DashboardController extends Controller
      */
     public function salaryReport(Request $request): JsonResponse
     {
+        $actor = $this->actor();
+
         try {
-            $data = $this->dashboardService->getSalaryReport();
+            $data = $this->dashboardService->getSalaryReport($actor);
 
             return response()->json([
                 'success' => true,
                 'data' => $data,
                 'timestamp' => now()->toIso8601String()
             ]);
-        } catch (\Exception $e) {
-            Log::error('[DashboardController] Lỗi lấy báo cáo lương: ' . $e->getMessage());
+        } catch (Throwable $exception) {
+            Log::warning('dashboard_controller_failed', [
+                'endpoint' => 'salary',
+                'exception_class' => $exception::class,
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -202,5 +231,51 @@ class DashboardController extends Controller
                 'error' => null
             ], 500);
         }
+    }
+
+    /** API: tổng hợp dữ liệu tự phục vụ chính chủ của actor. */
+    public function personal(): JsonResponse
+    {
+        $actor = $this->actor();
+
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => $this->personalDashboardService->getOverview($actor),
+                'timestamp' => now()->toIso8601String(),
+            ]);
+        } catch (HttpExceptionInterface $exception) {
+            Log::warning('dashboard_controller_rejected_actor', [
+                'endpoint' => 'personal',
+                'exception_class' => $exception::class,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Tài khoản không hợp lệ.',
+                'error' => null,
+                'timestamp' => now()->toIso8601String(),
+            ], $exception->getStatusCode());
+        } catch (Throwable $exception) {
+            Log::warning('dashboard_controller_failed', [
+                'endpoint' => 'personal',
+                'exception_class' => $exception::class,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể tải dữ liệu cá nhân lúc này.',
+                'error' => null,
+                'timestamp' => now()->toIso8601String(),
+            ], 500);
+        }
+    }
+
+    private function actor(): NhanVien
+    {
+        $actor = auth()->user();
+        abort_unless($actor instanceof NhanVien, 403, 'Tài khoản không hợp lệ.');
+
+        return $actor;
     }
 }

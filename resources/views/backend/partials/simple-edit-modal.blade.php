@@ -14,8 +14,8 @@
             data-edit-title="{{ $editTitle ?? $title }}"
             data-create-title="{{ $createTitle ?? $title }}"
         >{{ $title }}</h2>
-        <button class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2" type="button" data-edit-modal-close>
-                <i class="bi bi-x-lg" aria-hidden="true"></i>Đóng
+        <button class="btn btn-outline-secondary btn-sm btn-icon-text" type="button" data-edit-modal-close>
+                <i class="bi bi-x-lg" aria-hidden="true"></i><span>Đóng</span>
         </button>
     </div>
     <div class="backend-edit-dialog-status" id="{{ $modalId }}-status" aria-live="polite">

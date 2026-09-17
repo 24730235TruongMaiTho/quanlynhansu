@@ -6,7 +6,15 @@ export function extractData(result) {
 }
 
 export function genderLabel(value) {
-    return value ? (value === 1) ? 'Nam' : 'Nữ' : '—';
+    if (value === 1 || value === '1' || value === true || value === 'Nam') {
+        return 'Nam';
+    }
+
+    if (value === 0 || value === '0' || value === false || value === 'Nữ') {
+        return 'Nữ';
+    }
+
+    return '—';
 }
 
 export function normalizeEmployee(employee) {

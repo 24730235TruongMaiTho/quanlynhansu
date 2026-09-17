@@ -13,6 +13,7 @@ test('canonical employee paginator is normalized without browser globals or unde
             data: [{
                 ma_nv: 'NV001',
                 ho_ten: 'Nguyễn An',
+                gioi_tinh: 0,
                 sdt: '0900000001',
                 email: 'an@example.test',
                 ma_pb: 2,
@@ -29,7 +30,7 @@ test('canonical employee paginator is normalized without browser globals or unde
     assert.deepEqual(rows, [{
         ma_nv: 'NV001',
         ho_ten: 'Nguyễn An',
-        gioi_tinh: null,
+        gioi_tinh: 0,
         sdt: '0900000001',
         email: 'an@example.test',
         ma_pb: 2,
@@ -38,6 +39,20 @@ test('canonical employee paginator is normalized without browser globals or unde
         ten_cv: 'Lập trình viên',
         ten_tt: 'Đang làm',
     }]);
-    assert.equal(genderLabel(rows[0].gioi_tinh), '—');
+    assert.equal(genderLabel(rows[0].gioi_tinh), 'Nữ');
     assert.equal(JSON.stringify(rows).includes('undefined'), false);
+});
+
+test('gender labels explicitly preserve canonical boolean and string values', () => {
+    for (const value of [1, '1', true, 'Nam']) {
+        assert.equal(genderLabel(value), 'Nam');
+    }
+
+    for (const value of [0, '0', false, 'Nữ']) {
+        assert.equal(genderLabel(value), 'Nữ');
+    }
+
+    for (const value of [null, undefined, 2, 'unknown']) {
+        assert.equal(genderLabel(value), '—');
+    }
 });

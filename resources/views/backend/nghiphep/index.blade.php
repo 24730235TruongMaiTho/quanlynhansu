@@ -55,6 +55,7 @@
 
         <section class="card shadow-sm mb-3 filter-card"
                  aria-label="Bộ lọc nhân viên"
+                 data-leave-employee-filter
                  data-leave-permission="NghiPhep.Read"
                  hidden>
             <div class="card-header bg-white py-3"><h2 class="h6 fw-semibold mb-0">Bộ lọc nghỉ phép</h2></div>
@@ -88,8 +89,8 @@
 
                 </div>
                 <div class="filter-bar__actions">
-                    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng bộ lọc</button>
-                    <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Đặt lại</button>
+                    <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i><span>Áp dụng bộ lọc</span></button>
+                    <button class="btn btn-outline-secondary btn-icon-text" id="clear-filter-btn" type="button"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Đặt lại</span></button>
                 </div>
                 </form>
             </div>
@@ -97,6 +98,7 @@
 
         <section class="card shadow-sm overflow-hidden mb-3"
                  aria-labelledby="employee-table-title"
+                 data-leave-employee-filter
                  data-leave-permission="NghiPhep.Read"
                  hidden>
             <div class="card-header bg-white d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 py-3">
@@ -117,14 +119,17 @@
                     <thead class="table-light">
                     <tr>
                         <th scope="col" style="width:42px;"></th>
-                        <th scope="col">Mã NV</th>
-                        <th scope="col">Họ tên</th>
-                        <th scope="col">Giới tính</th>
-                        <th scope="col">Số điện thoại</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Phòng ban</th>
-                        <th scope="col">Chức vụ</th>
-                        <th scope="col">Trạng thái</th>
+                        @foreach ([
+                            'ma_nv' => 'Mã nhân viên', 'ho_ten' => 'Họ tên', 'gioi_tinh' => 'Giới tính',
+                            'sdt' => 'Số điện thoại', 'email' => 'Email', 'ma_pb' => 'Phòng ban',
+                            'ma_cv' => 'Chức vụ', 'ma_tt' => 'Trạng thái',
+                        ] as $sortColumn => $sortLabel)
+                            <th scope="col" aria-sort="none">
+                                <button class="table-sort-control" type="button" data-leave-employee-sort="{{ $sortColumn }}" data-sort-label="{{ $sortLabel }}" aria-label="Sắp xếp {{ $sortLabel }} tăng dần">
+                                    <i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>{{ $sortLabel }}</span>
+                                </button>
+                            </th>
+                        @endforeach
                     </tr>
                     </thead>
                     <tbody id="employee-tbody">
@@ -205,11 +210,11 @@
                             </div>
                         </div>
                         <div class="filter-bar__actions">
-                            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit">
-                                <i class="bi bi-funnel" aria-hidden="true"></i>Áp dụng
+                            <button class="btn btn-primary btn-icon-text" type="submit">
+                                <i class="bi bi-funnel" aria-hidden="true"></i><span>Áp dụng</span>
                             </button>
-                            <button class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" id="all-leaves-btn" type="button">
-                                <i class="bi bi-people" aria-hidden="true"></i>Xem tất cả lịch nghỉ
+                            <button class="btn btn-outline-secondary btn-icon-text" id="all-leaves-btn" type="button" data-leave-employee-filter>
+                                <i class="bi bi-people" aria-hidden="true"></i><span>Xem tất cả lịch nghỉ</span>
                             </button>
                         </div>
                     </form>
@@ -227,13 +232,13 @@
                     <caption class="visually-hidden">Danh sách đơn nghỉ phép</caption>
                     <thead class="table-light">
                     <tr>
-                        <th scope="col">Mã nhân viên</th>
-                        <th scope="col">Họ tên</th>
-                        <th scope="col">Từ ngày</th>
-                        <th scope="col">Đến ngày</th>
-                        <th scope="col">Loại phép</th>
-                        <th scope="col">Lý do</th>
-                        <th scope="col">Trạng thái duyệt</th>
+                        <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-leave-sort="ma_nv" data-sort-label="Mã nhân viên" aria-label="Sắp xếp Mã nhân viên tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Mã nhân viên</span></button></th>
+                        <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-leave-sort="ho_ten" data-sort-label="Họ tên" aria-label="Sắp xếp Họ tên tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Họ tên</span></button></th>
+                        <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-leave-sort="tu_ngay" data-sort-label="Từ ngày" aria-label="Sắp xếp Từ ngày tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Từ ngày</span></button></th>
+                        <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-leave-sort="den_ngay" data-sort-label="Đến ngày" aria-label="Sắp xếp Đến ngày tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Đến ngày</span></button></th>
+                        <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-leave-sort="ten_lp" data-sort-label="Loại phép" aria-label="Sắp xếp Loại phép tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Loại phép</span></button></th>
+                        <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-leave-sort="ly_do" data-sort-label="Lý do" aria-label="Sắp xếp Lý do tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Lý do</span></button></th>
+                        <th scope="col" aria-sort="none"><button class="table-sort-control" type="button" data-leave-sort="trang_thai_duyet" data-sort-label="Trạng thái duyệt" aria-label="Sắp xếp Trạng thái duyệt tăng dần"><i class="bi bi-arrow-down-up" aria-hidden="true"></i><span>Trạng thái duyệt</span></button></th>
                         <th scope="col">Thao tác</th>
                     </tr>
                     </thead>
@@ -435,19 +440,19 @@
             {{-- Footer --}}
             <div class="d-flex justify-content-end gap-2 px-4 py-3 border-top bg-light">
                 <button
-                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-outline-secondary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="leave-modal-cancel"
                     type="button"
                 >
-                    <i class="bi bi-x-lg" aria-hidden="true"></i>Hủy
+                    <i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span>
                 </button>
 
                 <button
-                    class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2"
+                    class="btn btn-primary btn-sm btn-icon-text d-inline-flex align-items-center gap-2"
                     id="leave-modal-submit"
                     type="submit"
                 >
-                    <i class="bi bi-check2" aria-hidden="true"></i>Lưu thay đổi
+                    <i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>Lưu thay đổi</span>
                 </button>
             </div>
         </form>

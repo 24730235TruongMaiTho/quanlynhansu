@@ -35,7 +35,7 @@
             ]"
         >
             <x-slot:actions>
-            <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ $backUrl }}">
+            <a class="btn btn-outline-secondary btn-icon-text" href="{{ $backUrl }}">
                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 Quay lại hồ sơ
             </a>

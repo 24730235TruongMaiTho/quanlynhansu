@@ -14,6 +14,13 @@ const view = fs.readFileSync(
     new URL('../../../resources/views/backend/luong/index.blade.php', import.meta.url),
     'utf8',
 );
+const permissions = fs.readFileSync(
+    new URL('../../../resources/js/frontend/luong/luongPermissions.js', import.meta.url),
+    'utf8',
+);
+const salaryStatus = await import(
+    '../../../resources/js/frontend/luong/salary-status.js'
+);
 
 test('salary list uses explicit filter submit and canonical page sizes', () => {
     assert.match(view, /<form[^>]+class="[^"]*filter-bar[^"]*"[^>]+id="salary-filter-form"/);
@@ -35,6 +42,13 @@ test('salary list uses explicit filter submit and canonical page sizes', () => {
     assert.doesNotMatch(js, /addEventListener\(\s*['"]input['"]/);
     assert.doesNotMatch(js, /addEventListener\(\s*['"]change['"][\s\S]{0,180}applyFilters/);
     assert.match(js, /loadSalaryData\(\s*1/);
+});
+
+test('employee salary role cannot see cross-employee filters', () => {
+    assert.match(view, /data-salary-employee-filter/u);
+    assert.match(permissions, /getUser\(\)\?\.ma_vt/);
+    assert.match(permissions, /applyEmployeeScopeVisibility/);
+    assert.match(permissions, /element\.hidden\s*=\s*selfOnly/);
 });
 
 test('salary and coefficient lists use server paginator metadata without local truncation', () => {
@@ -61,6 +75,17 @@ test('salary tables expose responsive accessible state contracts', () => {
     assert.match(view, /salary-coefficient-tbody/);
     assert.match(view, /colspan="14"/);
     assert.match(view, /colspan="7"/);
+});
+
+test('salary selected cells stay opaque across sticky columns and status messages can mark completion', () => {
+    assert.match(view, /salary-row-selected[\s\S]{0,180}background:\s*#[0-9a-f]{6}\s*!important/iu);
+    assert.doesNotMatch(view, /salary-row-selected[\s\S]{0,180}background:\s*rgba\(/iu);
+    assert.equal(salaryStatus.isSalaryCalculationComplete({ trang_thai_tinh_luong: ' READY ' }), true);
+    assert.equal(salaryStatus.isSalaryCalculationComplete({ thong_bao_tinh_luong: '  hoàn TẤT tính LƯƠNG  ' }), true);
+    assert.equal(salaryStatus.isSalaryCalculationComplete({ thong_bao_tinh_luong: 'Đang kiểm tra' }), false);
+    assert.equal(salaryStatus.getSalaryStatusText({ thong_bao_tinh_luong: 'Hoàn tất tính lương' }), 'Hoàn tất tính lương');
+    assert.match(js, /text-bg-success/u);
+    assert.match(js, /Hoàn tất tính lương/u);
 });
 
 test('salary detail rows keep employee name and code without generated avatar initials', () => {

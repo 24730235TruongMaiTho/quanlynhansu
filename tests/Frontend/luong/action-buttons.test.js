@@ -70,7 +70,7 @@ test('salary row actions keep view/create text while edit/delete are icon-only',
     assert.doesNotMatch(createMarkup, /class="[^"]*btn-icon-action/, 'create must keep the icon-and-text contract');
     assert.match(createMarkup, /title="Tạo thông tin lương"/);
     assert.match(createMarkup, /aria-label="Tạo thông tin lương cho [^"]+"/);
-    assert.match(createMarkup, /\$\{iconCreate\(\)\}Tạo thông tin lương/);
+    assert.match(createMarkup, /\$\{iconCreate\(\)\}(?:Tạo thông tin lương|<span data-button-label>Tạo thông tin lương<\/span>)/);
 });
 
 test('salary employee rows select coefficient context with keyboard without hijacking controls', () => {

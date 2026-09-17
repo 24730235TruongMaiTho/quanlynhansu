@@ -17,5 +17,5 @@
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
     </div>
-    <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit" data-submit-edit data-submit data-submitting-text="Đang lưu..."><i class="bi bi-check2" aria-hidden="true"></i>Lưu thay đổi</button>
+    <button class="btn btn-primary btn-icon-text" type="submit" data-submit-edit data-submit data-submitting-text="Đang lưu..."><i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>Lưu thay đổi</span></button>
 </form>

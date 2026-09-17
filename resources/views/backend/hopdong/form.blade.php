@@ -26,8 +26,8 @@
                 @include('backend.hopdong.partials.form-fields')
             </div>
             <div class="card-footer bg-white d-flex flex-wrap justify-content-end gap-2 py-3">
-                <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ route('backend.hopdong.index') }}"><i class="bi bi-x-lg" aria-hidden="true"></i>Hủy</a>
-                <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="submit"><i class="bi bi-check2" aria-hidden="true"></i>{{ $isEdit ? 'Cập nhật hợp đồng' : 'Lưu hợp đồng' }}</button>
+                <a class="btn btn-outline-secondary btn-icon-text" href="{{ route('backend.hopdong.index') }}"><i class="bi bi-x-lg" aria-hidden="true"></i><span>Hủy</span></a>
+                <button class="btn btn-primary btn-icon-text" type="submit"><i class="bi bi-check2" aria-hidden="true"></i><span data-button-label>{{ $isEdit ? 'Cập nhật hợp đồng' : 'Lưu hợp đồng' }}</span></button>
             </div>
         </form>
     </main>

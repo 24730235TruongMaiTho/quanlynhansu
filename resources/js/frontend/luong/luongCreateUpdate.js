@@ -3,6 +3,7 @@ import {
     loadAuthContext,
     guard,
 } from './luongPermissions.js';
+import { showToast } from '../shared/toast.js';
 
 document.addEventListener(
     'DOMContentLoaded',
@@ -480,9 +481,10 @@ document.addEventListener(
             } catch (
                 error
                 ) {
-                window.alert(
-                    error.message
-                );
+                showToast(error.message, {
+                    variant: 'danger',
+                    title: 'Lỗi tải thông tin lương',
+                });
             }
         }
 
@@ -526,9 +528,10 @@ document.addEventListener(
             } catch (
                 error
                 ) {
-                window.alert(
-                    error.message
-                );
+                showToast(error.message, {
+                    variant: 'danger',
+                    title: 'Lỗi xóa thông tin lương',
+                });
             }
         }
 
@@ -699,9 +702,10 @@ document.addEventListener(
                     } catch (
                         error
                         ) {
-                        window.alert(
-                            error.message
-                        );
+                        showToast(error.message, {
+                            variant: 'danger',
+                            title: 'Lỗi lưu thông tin lương',
+                        });
                     }
                 }
             );
